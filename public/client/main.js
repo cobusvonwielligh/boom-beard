@@ -852,6 +852,7 @@ const input = createInput({
 // ─── loop ─────────────────────────────────────────────────────────────────────
 
 let acc = 0, last = performance.now(), hudAt = 0, roundOverUntil = 0;
+let perfAt = last, perfFrames = 0, perfTimer = 0;
 let lastMask = 0;
 const fuseStage = new Map();     // bomb id -> how urgent it sounded last time
 let warnedAt = -1;
@@ -862,6 +863,25 @@ let nextHiccupAt = 0;
 // The mascot's reaction to the music: see syncMeter. `kick` decays, `lastBass` is what the
 // rise is measured against.
 let kick = 0, lastBass = 0;
+
+function pollServerPerformance() {
+  fetch('/healthz', { cache: 'no-store' })
+    .then(r => r.ok ? r.json() : null)
+    .then(h => {
+      if (!h || !Number.isFinite(h.cpuPct) || !Number.isFinite(h.memoryPct)) return;
+      $('perfCpu').textContent = `CPU ${h.cpuPct.toFixed(1)}%`;
+      $('perfMem').textContent = `RAM ${h.memoryPct.toFixed(1)}%`;
+    })
+    .catch(() => {});
+}
+
+function startPerformanceMonitor() {
+  clearInterval(perfTimer);
+  perfAt = performance.now();
+  perfFrames = 0;
+  pollServerPerformance();
+  perfTimer = setInterval(pollServerPerformance, 2000);
+}
 
 /**
  * Your own bomb, the instant you press the key.
@@ -936,6 +956,13 @@ function loop(now) {
   // pressing play used to start a second one on top of the first: two simulation steps and two
   // input packets per tick, which is indistinguishable from the server lagging.
   if (!running) return;
+  perfFrames++;
+  if (now - perfAt >= 500) {
+    const fps = perfFrames * 1000 / (now - perfAt);
+    $('perfFps').textContent = `${Math.round(fps)} FPS`;
+    perfAt = now;
+    perfFrames = 0;
+  }
   requestAnimationFrame(loop);
   const raw = now - last;
   const dt = Math.min(250, raw);            // a backgrounded tab must not replay two minutes
@@ -1699,6 +1726,8 @@ function renderScores() {
 
 function leave() {
   net.close();
+  clearInterval(perfTimer);
+  perfTimer = 0;
   world.ready = false;
   running = false;
   $('menu').style.display = 'grid';
@@ -1795,6 +1824,7 @@ function play(observe = false) {
     s.vol = music.audible ? music.volume : 0;
     return s;
   });
+  startPerformanceMonitor();
   sfx.start().then(() => sfx.play('click'));
   /* Out of the theme and into a bed, immediately and at random.
    *

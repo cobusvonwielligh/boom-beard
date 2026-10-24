@@ -5,6 +5,7 @@ import http from 'node:http';
 import https from 'node:https';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { spawn } from 'node:child_process';
 import { attachHub } from './net.js';
 import { config, usingTls, ROOT, sameSecret } from './config.js';
@@ -127,6 +128,21 @@ function handleDeploy(req, res) {
 
 const started = Date.now();
 const guard = createGuard();
+let lastProcessSample = { at: process.hrtime.bigint(), usage: process.cpuUsage() };
+
+/** Lightweight process metrics for the in-game diagnostics badge. */
+function processMetrics() {
+  const at = process.hrtime.bigint();
+  const usage = process.cpuUsage();
+  const elapsedUs = Number(at - lastProcessSample.at) / 1000;
+  const cpuUs = (usage.user - lastProcessSample.usage.user)
+    + (usage.system - lastProcessSample.usage.system);
+  lastProcessSample = { at, usage };
+  return {
+    cpuPct: elapsedUs > 0 ? Math.min(100, +(cpuUs / elapsedUs * 100).toFixed(1)) : 0,
+    memoryPct: +((process.memoryUsage().rss / os.totalmem()) * 100).toFixed(1),
+  };
+}
 
 /* A throw while answering one request must never become an uncaught exception: that handler
  * exits the process, so a single malformed URL was enough to restart the game for everybody. */
@@ -182,6 +198,7 @@ function serve(req, res) {
   if (url === '/healthz') {
     const body = JSON.stringify(hub.health({
       uptimeS: Math.round((Date.now() - started) / 1000),
+      ...processMetrics(),
       version: version(),
       transports: { ...hub.transportCounts, webtransport: wt ? hub.transportCounts.webtransport : null },
       top: leaderboard.top(5),

@@ -570,6 +570,34 @@ canvas#game {
   display: block;
 }
 
+/* Tiny diagnostics badge: useful while tuning the live game, quiet enough to disappear into the
+   lower-right chrome during normal play. Server values refresh every two seconds; FPS is local. */
+#perf {
+  display: none;
+  position: fixed;
+  right: var(--gap);
+  bottom: var(--gap);
+  z-index: 11;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 7px;
+  border: 1px solid #ffffff12;
+  border-radius: 8px;
+  background: #0d1117b8;
+  color: #8f9bad;
+  font: 9px/1 var(--nums);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
+  backdrop-filter: blur(8px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+}
+#hud.on ~ #perf { display: flex; }
+#perfFps { color: var(--gold); }
+.perfSep { color: #ffffff2e; }
+
 #topbar {
   --panel-fill: #0d1117d9;
   position: fixed;
