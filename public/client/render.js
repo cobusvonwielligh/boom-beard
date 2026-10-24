@@ -3948,7 +3948,14 @@ export function createRenderer(canvas, world) {
         default: return rimCorner(x0 + r, y0 + r, Math.PI + f * (Math.PI / 2), r);
       }
     };
-    return { total, at };
+    /** Which of the eight runs a distance falls in; the odd ones are the four corners. */
+    const runAt = t => {
+      let d = ((t % total) + total) % total;
+      let i = 0;
+      while (i < runs.length - 1 && d > runs[i]) { d -= runs[i]; i++; }
+      return i;
+    };
+    return { total, at, runAt };
   }
 
   function drawRadarRim(ox, oy, vw, vh, dtMs, zoom) {
@@ -4018,12 +4025,24 @@ export function createRenderer(canvas, world) {
         .map(q => ({ q, d: Math.hypot(q.rx - me.rx, q.ry - me.ry) }))
         .sort((m, n) => m.d - n.d)
         .slice(0, RIM_BLIPS);
-      for (const { q } of others) {
+      for (const [n, { q }] of others.entries()) {
         const bx = ox + (q.rx / UNITS_PER_TILE) * TILE_PX;
         const by = oy + (q.ry / UNITS_PER_TILE) * TILE_PX;
-        // Their own colour, from the same shades the sprite is painted with - `playerShades` is
-        // what this module already has; `playerColor` lives in constants and is main.js's.
-        slither(nearestAt(bx, by), (RIM_BLIP_PX / 2) / zoom, 0.22, playerShades(q.i).base, 12);
+        /* Cold white-blue, and it breathes hard.
+         *
+         * Not the player's own colour: sixteen hues on one dark band is a fruit salad, and half
+         * of them are the same orange as the fire. One cool tone instead, which reads as a
+         * radar return rather than as a person, and leaves gold meaning YOU and nothing else.
+         *
+         * The pulse is the music, pushed much further than your own slither gets - a blip is a
+         * secondary thing on the frame and a secondary thing is better MOVING than bright. Each
+         * one is a third of a beat out of phase with the last, so three of them read as three
+         * rather than as one light drawn three times. */
+        const ph = seaT * 5.5 + n * 2.1;
+        const pulse = 0.55 + 0.45 * Math.sin(ph);
+        const sound = 0.45 + mood.beat * 0.8 + mood.level * 0.4;
+        slither(nearestAt(bx, by), ((RIM_BLIP_PX / 2) / zoom) * (0.85 + 0.3 * pulse),
+          Math.min(0.5, 0.2 * pulse * sound), '#dceeff', 12);
       }
     }
 
@@ -4036,7 +4055,16 @@ export function createRenderer(canvas, world) {
       if (rimAt < 0) rimAt = want;
       else {
         const delta = ((want - rimAt + rim.total * 1.5) % rim.total) - rim.total / 2;
-        rimAt = (rimAt + delta * (1 - Math.exp(-dtMs / 90)) + rim.total) % rim.total;
+        /* Slower through the corners.
+         *
+         * A corner is where the border changes direction fastest and where the light has the
+         * furthest to travel for the least movement from you - at the same follow rate it
+         * whips round the arc and snaps out the far side, which is the one place on the frame
+         * the eye is already watching. Three times the time constant while either end of the
+         * move is on an arc turns that whip into a glide; the straights keep the quick follow,
+         * which is what makes the light feel attached to you at all. */
+        const corner = rim.runAt(rimAt) % 2 === 1 || rim.runAt(want) % 2 === 1;
+        rimAt = (rimAt + delta * (1 - Math.exp(-dtMs / (corner ? 300 : 90))) + rim.total) % rim.total;
       }
 
       // The music: longer and brighter on the level, a lift on every beat. The same two numbers
