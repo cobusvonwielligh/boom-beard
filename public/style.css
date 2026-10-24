@@ -132,10 +132,7 @@
    *
    * Heavy on purpose: these land over a board full of fire and sixteen saturated players, and a
    * banner that does not sit clearly in FRONT of all that is a banner nobody reads in time. */
-  --banner-shadow:
-    0 4px 0 #000,
-    0 8px 18px #000d,
-    0 14px 36px #000a;
+  --banner-shadow: 0 4px 0 #000, 0 8px 18px #000d, 0 14px 36px #000a;
 
   --cast-edge: drop-shadow(1px 0 0 #1c1304) drop-shadow(-1px 0 0 #1c1304)
     drop-shadow(0 1px 0 #1c1304) drop-shadow(0 -1px 0 #1c1304);
@@ -594,9 +591,15 @@ canvas#game {
   backdrop-filter: blur(8px) saturate(1.2);
   -webkit-backdrop-filter: blur(8px) saturate(1.2);
 }
-#hud.on ~ #perf { display: flex; }
-#perfFps { color: var(--gold); }
-.perfSep { color: #ffffff2e; }
+#hud.on ~ #perf {
+  display: flex;
+}
+#perfFps {
+  color: var(--gold);
+}
+.perfSep {
+  color: #ffffff2e;
+}
 
 #topbar {
   --panel-fill: #0d1117d9;
@@ -751,8 +754,12 @@ canvas#game {
   animation: tick 1s steps(2) infinite;
 }
 @keyframes timerShine {
-  from { background-position: 130% 0; }
-  to { background-position: -130% 0; }
+  from {
+    background-position: 130% 0;
+  }
+  to {
+    background-position: -130% 0;
+  }
 }
 @keyframes tick {
   50% {
@@ -1414,11 +1421,22 @@ body.dead #who {
     0 0 18px #c4140e,
     0 2px 0 #000;
 }
-body.dead #who::after { opacity: 0; }
+body.dead #who::after {
+  opacity: 0;
+}
 body.dead #who,
-body.dead #avatar { transition: opacity .5s, filter .5s, color .5s; }
-body.dead #avatar { filter: grayscale(1) brightness(.72) drop-shadow(0 6px 14px #000c); }
-body.dead #rank { color: #8a5a5a; }
+body.dead #avatar {
+  transition:
+    opacity 0.5s,
+    filter 0.5s,
+    color 0.5s;
+}
+body.dead #avatar {
+  filter: grayscale(1) brightness(0.72) drop-shadow(0 6px 14px #000c);
+}
+body.dead #rank {
+  color: #8a5a5a;
+}
 
 /* The mascot, and the only thing in the HUD that moves with the music.
  *
@@ -1731,7 +1749,9 @@ body.dead #rank { color: #8a5a5a; }
 }
 /* A little air above the bar, so `lvl 1 · ROOKIE` and the track under it both clear the
    mascot's chin instead of tucking beneath it. */
-#xp { margin-top: 8px; }
+#xp {
+  margin-top: 8px;
+}
 #xpTrack {
   height: 7px;
   border-radius: 4px;
@@ -2018,6 +2038,31 @@ body.dead #rank { color: #8a5a5a; }
   border-color: var(--gold);
 }
 
+#deadBanner {
+  position: fixed;
+  display: grid;
+  place-items: center;
+  z-index: 8;
+  top: calc(var(--bar) + var(--gap) * 2);
+  left: var(--gap);
+  width: calc(100vw - var(--side) - var(--gap) * 3);
+  height: calc(100vh - var(--bar) - var(--gap) * 3);
+  background: #0d111788;
+  pointer-events: none;
+  border-radius: 8px;
+  text-align: center;
+  font-family: var(--display);
+  letter-spacing: 0.08em;
+  text-indent: 0.08em;
+  text-shadow: var(--rim);
+  opacity: 0;
+  transform: none;
+}
+
+#deadBanner .who {
+  margin-top: -20px;
+}
+
 /* ─── kill streaks ────────────────────────────────────────────────────────────
  * Centre screen, over everything, for about a second and a half. Deliberately loud: a streak is
  * the one moment the game should interrupt you.
@@ -2026,35 +2071,10 @@ body.dead #rank { color: #8a5a5a; }
 /* Anchored to the board, which is the window minus the top bar and the side panel. A banner
  * centred on the viewport sits noticeably off to one side of the thing you are actually looking
  * at, and the one moment it has to be read is the one moment you have no attention to spare. */
-#centre {
-  position: fixed;
-  z-index: 9;
-  pointer-events: none;
-  top: calc(var(--bar) + var(--gap) * 2);
-  left: var(--gap);
-  width: calc(100vw - var(--side) - var(--gap) * 3);
-  height: calc(100vh - var(--bar) - var(--gap) * 3);
-  display: grid;
-  place-items: center;
-  /* A third of the way up from centre, not centred.
-   *
-   * Dead centre is where your own player is, which is the one spot on the board a banner must
-   * not cover — an announcement that hides the thing it is announcing about is worse than none.
-   * A third up puts it clear of the fight and still well inside the eye's resting area. */
-  align-content: center;
-  /* 33%, half again on the 22 it was. Dead centre is where your own player is, and an
-     announcement that covers the thing it is announcing about is worse than none. */
-  padding-bottom: 33%;
-}
-@media (max-width: 1080px) {
-  #centre {
-    width: calc(100vw - var(--gap) * 2);
-  }
-}
 
-#streak,
-#deadBanner {
+#streak {
   grid-area: 1 / 1;
+  transform: translateY(100px);
   text-align: center;
   /* See @keyframes streakIn: letter-spacing is added after the LAST glyph too, so a centred
      line needs a matching text-indent or it sits half the spacing left of centre. */
@@ -2147,7 +2167,7 @@ body.dead #rank { color: #8a5a5a; }
   display: block;
   font-size: 14px;
   color: var(--ink);
-  margin-top: 7px;
+  margin-top: -300px;
   opacity: 0.85;
   font-family: var(--text);
   letter-spacing: 0.14em;
@@ -2166,13 +2186,24 @@ body.dead #rank { color: #8a5a5a; }
   color: var(--gold);
   opacity: 1;
   text-shadow: none;
-  background: linear-gradient(90deg, #ffd24a, #ff8a2a, #ff3f5e, #ffe9a8, #ffd24a, #ff8a2a);
+  background: linear-gradient(
+    90deg,
+    #ffd24a,
+    #ff8a2a,
+    #ff3f5e,
+    #ffe9a8,
+    #ffd24a,
+    #ff8a2a
+  );
   background-size: 300% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 10px #ff7a2acc) drop-shadow(0 3px 0 #000) drop-shadow(0 6px 14px #000c);
-  animation: whoFlow 1.1s linear infinite, whoGlow 0.55s ease-in-out infinite alternate;
+  filter: drop-shadow(0 0 10px #ff7a2acc) drop-shadow(0 3px 0 #000)
+    drop-shadow(0 6px 14px #000c);
+  animation:
+    whoFlow 1.1s linear infinite,
+    whoGlow 0.55s ease-in-out infinite alternate;
 }
 /* The robot keeps its own colour inside the gradient text, or it would be invisible. */
 #streak .who .botIcon {
@@ -2181,14 +2212,24 @@ body.dead #rank { color: #8a5a5a; }
   height: 0.85em;
 }
 @keyframes whoFlow {
-  to { background-position: 150% 0; }
+  to {
+    background-position: 150% 0;
+  }
 }
 @keyframes whoGlow {
-  from { filter: drop-shadow(0 0 6px #ff7a2a99) drop-shadow(0 3px 0 #000) drop-shadow(0 6px 14px #000c); }
-  to { filter: drop-shadow(0 0 18px #ffb347ff) drop-shadow(0 3px 0 #000) drop-shadow(0 6px 14px #000c); }
+  from {
+    filter: drop-shadow(0 0 6px #ff7a2a99) drop-shadow(0 3px 0 #000)
+      drop-shadow(0 6px 14px #000c);
+  }
+  to {
+    filter: drop-shadow(0 0 18px #ffb347ff) drop-shadow(0 3px 0 #000)
+      drop-shadow(0 6px 14px #000c);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  #streak .who { animation: none; }
+  #streak .who {
+    animation: none;
+  }
 }
 
 /* The robot, inline, wherever a bot's name is written — the same head the live scoreboard
@@ -2451,25 +2492,40 @@ body.dead #rank { color: #8a5a5a; }
  * timing.
  */
 #emotePick {
-  position: fixed; z-index: 8; pointer-events: none;
+  position: fixed;
+  z-index: 8;
+  pointer-events: none;
   top: calc(var(--bar) + var(--gap) * 2);
   left: var(--gap);
   width: calc(100vw - var(--side) - var(--gap) * 3);
   height: calc(100vh - var(--bar) - var(--gap) * 3);
-  display: none; place-items: center;
+  display: none;
+  place-items: center;
 }
-#emotePick.on { display: grid; }
-@media (max-width: 1080px) { #emotePick { width: calc(100vw - var(--gap) * 2); } }
+#emotePick.on {
+  display: grid;
+}
+@media (max-width: 1080px) {
+  #emotePick {
+    width: calc(100vw - var(--gap) * 2);
+  }
+}
 
 /* `.ekey`, not `.slot`. `.slot` is the volume fader's pop-out, three thousand lines up, and it
    sets `opacity: 0; height: 0` on itself — exactly the two properties a second component called
    the same thing would least like to inherit. Two unrelated things with one class name is a bug
    waiting for whichever one is edited next. */
-.ring { position: relative; width: 190px; height: 190px; }
+.ring {
+  position: relative;
+  width: 190px;
+  height: 190px;
+}
 .ring .ekey {
   position: absolute;
-  display: grid; place-items: center;
-  width: 58px; height: 58px;
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
   margin: -29px 0 0 -29px;
   border-radius: 50%;
   background: #0d1117e8;
@@ -2478,34 +2534,66 @@ body.dead #rank { color: #8a5a5a; }
   /* Each one springs out from the middle, staggered by direction, so the cross assembles
      rather than appearing. 90ms total — fast enough that it has finished before you have
      chosen, which is the point: the animation must never be something you wait through.
- 
+
      SCALE ONLY, and no `backwards`. Animating opacity with a backwards fill means the slot
      sits at zero until the animation starts — so anything that stops animations running at all
      leaves an invisible picker, which is a worse outcome than never having animated it. At
      worst this now pops in at full size. */
-  animation: emotePop .09s cubic-bezier(.2, 1.6, .4, 1);
+  animation: emotePop 0.09s cubic-bezier(0.2, 1.6, 0.4, 1);
 }
-.ring .up    { left: 50%; top: 14%; }
-.ring .left  { left: 14%; top: 50%; animation-delay: .02s; }
-.ring .down  { left: 50%; top: 86%; animation-delay: .04s; }
-.ring .right { left: 86%; top: 50%; animation-delay: .06s; }
+.ring .up {
+  left: 50%;
+  top: 14%;
+}
+.ring .left {
+  left: 14%;
+  top: 50%;
+  animation-delay: 0.02s;
+}
+.ring .down {
+  left: 50%;
+  top: 86%;
+  animation-delay: 0.04s;
+}
+.ring .right {
+  left: 86%;
+  top: 50%;
+  animation-delay: 0.06s;
+}
 @keyframes emotePop {
-  from { transform: scale(.3); }
-  to   { transform: scale(1); }
+  from {
+    transform: scale(0.3);
+  }
+  to {
+    transform: scale(1);
+  }
 }
 
-.ring .ekey b { font-size: 26px; line-height: 1; }
+.ring .ekey b {
+  font-size: 26px;
+  line-height: 1;
+}
 /* The key cap, under the glyph. Small and dim: you need it once. */
 .ring .ekey i {
-  position: absolute; bottom: -4px;
-  font-family: var(--nums); font-style: normal; font-size: 9px; font-weight: 700;
-  letter-spacing: .1em;
+  position: absolute;
+  bottom: -4px;
+  font-family: var(--nums);
+  font-style: normal;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   color: var(--gold);
-  background: #0d1117; border-radius: 3px; padding: 1px 4px;
+  background: #0d1117;
+  border-radius: 3px;
+  padding: 1px 4px;
   border: 1px solid #ffffff1a;
 }
 
-@media (prefers-reduced-motion: reduce) { .ring .ekey { animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .ring .ekey {
+    animation: none;
+  }
+}
 
 /* ─── toast ───────────────────────────────────────────────────────────────────
  * z-index above the menu: the first thing it ever has to say is "server full".
@@ -2536,7 +2624,9 @@ body.dead #rank { color: #8a5a5a; }
   text-decoration: underline;
   text-decoration-color: #edc24e00;
   text-underline-offset: 3px;
-  transition: text-decoration-color 0.2s, filter 0.2s;
+  transition:
+    text-decoration-color 0.2s,
+    filter 0.2s;
 }
 .playerHoverTarget:hover,
 .playerHoverTarget:focus-visible {
@@ -2555,8 +2645,12 @@ body.dead #rank { color: #8a5a5a; }
   visibility: hidden;
   transform: translateY(10px) scale(0.94) rotate(-0.4deg);
   transform-origin: 22px 0;
-  box-shadow: 0 22px 52px #000d, 0 0 36px #edc24e26;
-  transition: opacity 0.18s ease, transform 0.28s cubic-bezier(0.2, 1.45, 0.3, 1),
+  box-shadow:
+    0 22px 52px #000d,
+    0 0 36px #edc24e26;
+  transition:
+    opacity 0.18s ease,
+    transform 0.28s cubic-bezier(0.2, 1.45, 0.3, 1),
     visibility 0s linear 0.28s;
 }
 #playerHover::after {
@@ -2640,12 +2734,19 @@ body.dead #rank { color: #8a5a5a; }
   justify-content: flex-start;
 }
 @keyframes dossierShine {
-  from { background-position: 130% 0; }
-  to { background-position: -130% 0; }
+  from {
+    background-position: 130% 0;
+  }
+  to {
+    background-position: -130% 0;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   #playerHover,
-  #playerHover::after { animation: none; transition: none; }
+  #playerHover::after {
+    animation: none;
+    transition: none;
+  }
 }
 
 /* ─── death + round over + scores ─────────────────────────────────────────────
@@ -2833,7 +2934,12 @@ body.dead #rank { color: #8a5a5a; }
 }
 #autoRow input:checked + .switch .knob {
   transform: translateX(18px);
-  background: linear-gradient(180deg, var(--gold-lit), var(--gold) 55%, var(--gold-deep));
+  background: linear-gradient(
+    180deg,
+    var(--gold-lit),
+    var(--gold) 55%,
+    var(--gold-deep)
+  );
   box-shadow:
     0 2px 4px #000a,
     0 0 8px #f6e7a9aa,
@@ -3026,7 +3132,9 @@ body.dead #rank { color: #8a5a5a; }
   font-size: 22px;
   letter-spacing: 0.05em;
   color: var(--gold);
-  text-shadow: 0 2px 0 #0009, 0 0 18px #edc24e44;
+  text-shadow:
+    0 2px 0 #0009,
+    0 0 18px #edc24e44;
 }
 #roundBar {
   position: relative;
@@ -3054,17 +3162,30 @@ body.dead #rank { color: #8a5a5a; }
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(100deg, transparent 30%, #ffffff70 50%, transparent 70%);
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    #ffffff70 50%,
+    transparent 70%
+  );
   background-size: 200% 100%;
   animation: roundGlint 1.6s linear infinite;
 }
 @keyframes roundFill {
-  from { clip-path: inset(0 100% 0 0 round 6px); }
-  to { clip-path: inset(0 0 0 0 round 6px); }
+  from {
+    clip-path: inset(0 100% 0 0 round 6px);
+  }
+  to {
+    clip-path: inset(0 0 0 0 round 6px);
+  }
 }
 @keyframes roundGlint {
-  from { background-position: 150% 0; }
-  to { background-position: -50% 0; }
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -50% 0;
+  }
 }
 #roundCountdown {
   font-family: var(--nums);
@@ -4046,7 +4167,8 @@ kbd.wide {
      back — the motion an escapement makes, not a fade. */
   filter: var(--cast-edge) drop-shadow(0 4px 0 #000)
     drop-shadow(0 8px 18px #000d) drop-shadow(0 0 28px #edc24e66);
-  animation: countTick 1s cubic-bezier(0.2, 1.4, 0.3, 1) both,
+  animation:
+    countTick 1s cubic-bezier(0.2, 1.4, 0.3, 1) both,
     castShine 7s linear infinite;
 }
 /* The last two get hotter and bigger. By then the number is not information any more, it is a
@@ -4058,7 +4180,8 @@ kbd.wide {
 }
 #countIn .n.go {
   font-size: 146px;
-  animation: countGo 0.9s cubic-bezier(0.16, 1, 0.3, 1) both,
+  animation:
+    countGo 0.9s cubic-bezier(0.16, 1, 0.3, 1) both,
     castShine 7s linear infinite;
 }
 
@@ -4068,8 +4191,18 @@ kbd.wide {
   width: 168px;
   height: 168px;
   border-radius: 50%;
-  background: conic-gradient(var(--gold) 0deg, #edc24e00 55deg, #edc24e00 360deg);
-  -webkit-mask: radial-gradient(circle, #0000 72px, #000 73px, #000 80px, #0000 81px);
+  background: conic-gradient(
+    var(--gold) 0deg,
+    #edc24e00 55deg,
+    #edc24e00 360deg
+  );
+  -webkit-mask: radial-gradient(
+    circle,
+    #0000 72px,
+    #000 73px,
+    #000 80px,
+    #0000 81px
+  );
   mask: radial-gradient(circle, #0000 72px, #000 73px, #000 80px, #0000 81px);
   animation: countSweep 1s linear infinite;
   opacity: 0.85;
@@ -4260,11 +4393,15 @@ kbd.wide {
 }
 #pw.invalid {
   border-color: var(--bad);
-  box-shadow: 0 0 0 3px #e8655a26, 0 0 22px #e8655a24;
+  box-shadow:
+    0 0 0 3px #e8655a26,
+    0 0 22px #e8655a24;
 }
 #pw.invalid:focus {
   border-color: var(--bad);
-  box-shadow: 0 0 0 3px #e8655a38, 0 0 26px #e8655a30;
+  box-shadow:
+    0 0 0 3px #e8655a38,
+    0 0 26px #e8655a30;
 }
 /* Why you are being asked, under the box: "pick a password for this name" and "that name needs
    its password" are different situations and the difference matters to the person reading it. */

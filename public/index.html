@@ -199,7 +199,8 @@
       ><span id="conn" data-state="connecting" title="connecting"></span
     ></span>
     <span class="stat"
-      ><span class="k">alive</span><span class="v" id="vOnline">&mdash;</span></span
+      ><span class="k">alive</span
+      ><span class="v" id="vOnline">&mdash;</span></span
     >
     <span class="stat"
       ><span class="k">map</span><span class="v" id="vMap">&mdash;</span></span
@@ -367,7 +368,9 @@
       <!-- What comes next, and when. The bar fills over the whole intermission, so "how long
            until we play" is a glance rather than a number to read. -->
       <div id="roundNext">
-        <div class="nextMap"><span class="k">next map</span><span id="nextMapName"></span></div>
+        <div class="nextMap">
+          <span class="k">next map</span><span id="nextMapName"></span>
+        </div>
         <div id="roundBar"><div class="fill"></div></div>
         <div class="nextWhen" id="roundCountdown"></div>
       </div>
@@ -403,25 +406,7 @@
       <button class="bt" data-pane="rules" type="button">rules</button>
     </div>
     <div id="boardsPane">
-    <h2 class="boardHead castSm">this round</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>name</th>
-          <th>level</th>
-          <th>medals</th>
-          <th class="num">kills</th>
-          <th class="num">deaths</th>
-          <th class="num">coins</th>
-          <th class="num">round</th>
-          <th class="num">xp</th>
-        </tr>
-      </thead>
-      <tbody id="scoreRows"></tbody>
-    </table>
-    <div id="allTime">
-      <h2 class="castSm">all time</h2>
+      <h2 class="boardHead castSm">this round</h2>
       <table>
         <thead>
           <tr>
@@ -429,13 +414,31 @@
             <th>name</th>
             <th>level</th>
             <th>medals</th>
+            <th class="num">kills</th>
+            <th class="num">deaths</th>
             <th class="num">coins</th>
+            <th class="num">round</th>
             <th class="num">xp</th>
           </tr>
         </thead>
-        <tbody id="allTimeRows"></tbody>
+        <tbody id="scoreRows"></tbody>
       </table>
-    </div>
+      <div id="allTime">
+        <h2 class="castSm">all time</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>name</th>
+              <th>level</th>
+              <th>medals</th>
+              <th class="num">coins</th>
+              <th class="num">xp</th>
+            </tr>
+          </thead>
+          <tbody id="allTimeRows"></tbody>
+        </table>
+      </div>
     </div>
 
     <!-- The rules sheet. The same icons the HUD uses, so a pip you saw mid-round and the line
@@ -443,47 +446,88 @@
     <div id="rulesPane">
       <h2 class="boardHead castSm">the rules, quickly</h2>
       <p class="rline">
-        Ten minutes a round, across five islands. Bombs burn in a cross and stop at walls. A blast
-        that reaches another bomb sets it off too, and chains are where rounds are won. Your own
-        fire kills you exactly as fast as anyone else's.
+        Ten minutes a round, across five islands. Bombs burn in a cross and stop
+        at walls. A blast that reaches another bomb sets it off too, and chains
+        are where rounds are won. Your own fire kills you exactly as fast as
+        anyone else's.
       </p>
       <dl class="rules">
-        <dt><svg><use href="#i-bomb" /></svg>bombs &amp; fire</dt>
-        <dd>A cross-shaped blast, stopped by walls, passed on to any bomb it touches.</dd>
-        <dt><svg><use href="#i-keg" /></svg>powder kegs</dt>
-        <dd>Rare barrels that erupt in a huge blast the moment they break. One a round at least.</dd>
-        <dt><svg><use href="#i-bolt" /></svg>stamina</dt>
+        <dt>
+          <svg><use href="#i-bomb" /></svg>bombs &amp; fire
+        </dt>
         <dd>
-          Run about thirteen seconds, then you limp. The bar under your boots says how much is
-          left, and the notch in it is what a slide costs. Stopping is a decision.
+          A cross-shaped blast, stopped by walls, passed on to any bomb it
+          touches.
         </dd>
-        <dt><svg><use href="#i-boot" /></svg>the slide</dt>
+        <dt>
+          <svg><use href="#i-keg" /></svg>powder kegs
+        </dt>
         <dd>
-          Double-tap a direction to dash it: three and a half tiles in half a second, a fifth of
-          your wind, and no steering or bombs until it runs out. Slide through somebody and they
-          are left seeing stars &mdash; no bombs, a quarter slower, for a moment.
+          Rare barrels that erupt in a huge blast the moment they break. One a
+          round at least.
         </dd>
-        <dt><svg><use href="#i-fire" /></svg>perks</dt>
+        <dt>
+          <svg><use href="#i-bolt" /></svg>stamina
+        </dt>
         <dd>
-          Extra bombs, bigger fire, boots, a shield, stim, and rum: tough, and hard to steer.
-          Bombs and fire both cap at five &mdash; the flames under a bomb say how far it reaches.
+          Run about thirteen seconds, then you limp. The bar under your boots
+          says how much is left, and the notch in it is what a slide costs.
+          Stopping is a decision.
         </dd>
-        <dt><svg><use href="#i-shield" /></svg>shields</dt>
+        <dt>
+          <svg><use href="#i-boot" /></svg>the slide
+        </dt>
         <dd>
-          One blast each, and never two at once: a shield that saves you buys half a second in
-          which nothing can touch you, so a chain reaction costs one shield rather than both.
+          Double-tap a direction to dash it: three and a half tiles in half a
+          second, a fifth of your wind, and no steering or bombs until it runs
+          out. Slide through somebody and they are left seeing stars &mdash; no
+          bombs, a quarter slower, for a moment.
         </dd>
-        <dt><svg><use href="#i-ice" /></svg>ice</dt>
-        <dd>Melts into a puddle when hit. Half pace, and you slide when you let go.</dd>
-        <dt><svg><use href="#i-coin" /></svg>gold</dt>
-        <dd>The rarest drop. Worth 400, and nothing at all until the board is counted.</dd>
-        <dt><svg><use href="#i-gull" /></svg>seagulls</dt>
+        <dt>
+          <svg><use href="#i-fire" /></svg>perks
+        </dt>
         <dd>
-          Catch one in any blast of yours and three gold coins fly straight to you. They cross
-          the island twice as often as they used to, and dawdle while they are over it.
+          Extra bombs, bigger fire, boots, a shield, stim, and rum: tough, and
+          hard to steer. Bombs and fire both cap at five &mdash; the flames
+          under a bomb say how far it reaches.
         </dd>
-        <dt><svg><use href="#i-skull" /></svg>streaks</dt>
-        <dd>Double, triple, ultra, rampage, and an ACE for the whole island in one run.</dd>
+        <dt>
+          <svg><use href="#i-shield" /></svg>shields
+        </dt>
+        <dd>
+          One blast each, and never two at once: a shield that saves you buys
+          half a second in which nothing can touch you, so a chain reaction
+          costs one shield rather than both.
+        </dd>
+        <dt>
+          <svg><use href="#i-ice" /></svg>ice
+        </dt>
+        <dd>
+          Melts into a puddle when hit. Half pace, and you slide when you let
+          go.
+        </dd>
+        <dt>
+          <svg><use href="#i-coin" /></svg>gold
+        </dt>
+        <dd>
+          The rarest drop. Worth 400, and nothing at all until the board is
+          counted.
+        </dd>
+        <dt>
+          <svg><use href="#i-gull" /></svg>seagulls
+        </dt>
+        <dd>
+          Catch one in any blast of yours and three gold coins fly straight to
+          you. They cross the island twice as often as they used to, and dawdle
+          while they are over it.
+        </dd>
+        <dt>
+          <svg><use href="#i-skull" /></svg>streaks
+        </dt>
+        <dd>
+          Double, triple, ultra, rampage, and an ACE for the whole island in one
+          run.
+        </dd>
       </dl>
       <h2 class="boardHead castSm">scoring</h2>
       <ul class="score">
@@ -694,7 +738,9 @@
           <dt>
             <kbd>&#8592;</kbd><kbd>&#8592;</kbd> <span class="or">twice</span>
           </dt>
-          <dd>Slide that way &mdash; fast, costly, and it knocks people silly</dd>
+          <dd>
+            Slide that way &mdash; fast, costly, and it knocks people silly
+          </dd>
 
           <dt><kbd class="wide">Shift</kbd> + a direction</dt>
           <dd>Emote</dd>
@@ -827,5 +873,26 @@
     width: 100%;
     margin-top: 5px;
     flex-shrink: 0;
+  }
+
+  /* ========================================
+   PERFORMANCE PANEL — POSITION & SIZE
+   ======================================== */
+
+  #perf {
+    position: fixed !important;
+
+    /* Position it at the bottom-left */
+    left: 10px !important;
+    right: auto !important;
+    bottom: 50px !important;
+    top: auto !important;
+
+    /* Shrink the entire panel and all its contents */
+    transform: scale(0.75);
+    transform-origin: bottom left;
+
+    /* Keep it above the game canvas */
+    z-index: 9999;
   }
 </style>

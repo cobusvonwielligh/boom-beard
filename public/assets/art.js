@@ -14,7 +14,7 @@ import { BLOCK, TILE_PX, MAX_RADIUS, playerHueSlot } from '/shared/constants.js'
 
 export const PALETTE = {
   void: '#0d1117',
-  floor: '#2c3442', floorAccent: '#333d4d',
+  floor: '#2c3442', floorAccent: '#313235',
   soft: '#8a6b4a', reinforced: '#6f7785', monolith: '#4b5362',
   iron: '#262c38', column: '#59627a', shrub: '#3f6b46',
   outline: '#161b24',
@@ -46,8 +46,8 @@ export const PALETTE = {
    *
    * Kept dark enough that sixteen saturated players still pop off it, which is the one rule the
    * sea is not allowed to break. */
-  seaDeep: '#0f2b40', seaMid: '#1a4f68', seaLight: '#2d7f94', foam: '#d8f1f7',
-  rock: '#4a4036', rockLit: '#6b5e4f', rockTop: '#857665', rockDark: '#2b241d', sand: '#6e6346',
+  seaDeep: '#163b57e2', seaMid: '#1d607f', seaLight: '#32899e', foam: '#d8f1f7',
+  rock: '#393634', rockLit: '#423b35', rockTop: '#474543', rockDark: '#251f18', sand: '#363022',
 };
 
 /** The costume, pulled out of the palette so the sprite code reads as a description of a pirate. */
