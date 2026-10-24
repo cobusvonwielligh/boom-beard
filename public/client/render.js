@@ -320,7 +320,8 @@ export function createRenderer(canvas, world) {
    * it would make the lethal window look longer than it is - the one thing the fire's own
    * drawing is responsible for saying. */
   const BLAST_LIGHT_PX = TILE_PX * 3.6;
-  const BLAST_LIGHT_ALPHA = 0.5;
+  // Per TILE, and every tile of a blast draws one. Nine arms at 0.5 each was a white board.
+  const BLAST_LIGHT_ALPHA = 0.22;
   let blastLight = null;
   /* Darker, and SOFT.
    *
@@ -3632,11 +3633,17 @@ export function createRenderer(canvas, world) {
     if (world.fires.length) {
       if (!blastLight) {
         blastLight = ctx.createRadialGradient(0, 0, TILE_PX * 0.1, 0, 0, BLAST_LIGHT_PX);
-        // Firelight: white-hot at the middle, orange through the body, out to nothing. Pure
-        // black at the rim matters under `lighter` - it is what "adds no light" looks like.
-        blastLight.addColorStop(0, 'rgba(255,236,196,0.95)');
-        blastLight.addColorStop(0.3, 'rgba(255,170,74,0.5)');
-        blastLight.addColorStop(0.65, 'rgba(188,86,24,0.2)');
+        /* Firelight: warm amber through the body, out to nothing. Pure black at the rim
+         * matters under `lighter` - it is what "adds no light" looks like.
+         *
+         * Not white at the middle, and not near-opaque. A blast is nine or more burning tiles,
+         * each one of these pools three and a half tiles across, and under `lighter` they SUM:
+         * a near-white centre at 0.95 stacked nine deep is a white screen, which is exactly
+         * what the wider radius produced. The colour carries the firelight; the alpha stays low
+         * enough that nine of them overlapping is a warm room rather than a flashbang. */
+        blastLight.addColorStop(0, 'rgba(255,206,140,0.6)');
+        blastLight.addColorStop(0.3, 'rgba(255,160,66,0.3)');
+        blastLight.addColorStop(0.65, 'rgba(176,78,22,0.12)');
         blastLight.addColorStop(1, 'rgba(0,0,0,0)');
       }
       ctx.save();
@@ -3649,7 +3656,7 @@ export function createRenderer(canvas, world) {
         const k = age < 0.07 ? age / 0.07 : Math.max(0, 1 - (age - 0.07) / 0.6);
         if (k <= 0) continue;
         // The core is the bomb itself; an arm is fire that travelled, and dimmer for it.
-        ctx.globalAlpha = BLAST_LIGHT_ALPHA * k * k * (f.kind === 'core' ? 1 : 0.7);
+        ctx.globalAlpha = BLAST_LIGHT_ALPHA * k * k * (f.kind === 'core' ? 1 : 0.45);
         ctx.save();
         ctx.translate(ox + (f.tx + 0.5) * TILE_PX, oy + (f.ty + 0.5) * TILE_PX);
         ctx.beginPath();
