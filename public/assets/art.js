@@ -313,7 +313,10 @@ function drawTileBody(c, type, tx = 0, ty = 0, dmg = 0) {
        * hoops cannot drift apart: the clip is the silhouette.
        */
       px(c, 0, 0, S, S, PALETTE.floor);
-      const cx = 16, top = 6.5, bot = 29.5, endW = 7.4, midW = 11.2;
+      // An OBJECT on the floor, not a filled tile: inset on every side, with sand visible all
+      // round it. The old one ran nearly wall to wall, which read as a block that happened to be
+      // curved — a keg has to look like something you could knock over.
+      const cx = 16, top = 8.5, bot = 27.5, endW = 5.8, midW = 8.6;
       // Half-width at a given height: the bulge, as one cosine-ish curve the hoops reuse.
       const halfAt = y => {
         const k = ((y - top) / (bot - top)) * 2 - 1;        // -1 at the top, 1 at the bottom
@@ -406,20 +409,23 @@ function drawTileBody(c, type, tx = 0, ty = 0, dmg = 0) {
       c.save();
       c.lineCap = 'round';
       c.beginPath();
-      c.moveTo(cx - 3.4, 15); c.lineTo(cx + 2.6, 21);
-      c.moveTo(cx + 2.6, 15); c.lineTo(cx - 3.4, 21);
-      // Black underneath, red on top. The mark sits on mid-brown staves, and a bare red stroke
-      // at this size has almost no luminance contrast against that — it goes muddy the moment
-      // the board is zoomed out. The dark border is what keeps it legible.
-      c.strokeStyle = '#140c08'; c.lineWidth = 4.2; c.stroke();
-      c.strokeStyle = '#e03c2e'; c.lineWidth = 2.2; c.stroke();
+      c.moveTo(cx - 4, 15); c.lineTo(cx + 4, 21);
+      c.moveTo(cx + 4, 15); c.lineTo(cx - 4, 21);
+      // Classic maroon, and bigger than it was: this mark is the entire read at a glance — keg
+      // or crate — and it was a small scratch between the hoops. Black underneath it, because a
+      // maroon stroke on mid-brown staves has almost no luminance contrast on its own and goes
+      // muddy the moment the board is zoomed out. The dark border is what keeps it legible.
+      c.strokeStyle = '#150b07'; c.lineWidth = 5.4; c.stroke();
+      c.strokeStyle = '#8f1f2b'; c.lineWidth = 3.2; c.stroke();
+      // A thin highlight down the middle of the stroke, so the paint has a surface.
+      c.strokeStyle = '#c0313a'; c.lineWidth = 1.2; c.stroke();
       c.restore();
 
       // The fuse, out of the lid: lit, so it reads as armed rather than as scenery.
       c.strokeStyle = '#d8c9a8'; c.lineWidth = 1.6; c.lineCap = 'round';
-      c.beginPath(); c.moveTo(cx + 3, top - 1.5); c.quadraticCurveTo(25, 3, 22, 1); c.stroke();
-      c.beginPath(); c.arc(22, 1.5, 2.2, 0, 7); c.fillStyle = PALETTE.fireMid; c.fill();
-      c.beginPath(); c.arc(22, 1.5, 1.1, 0, 7); c.fillStyle = PALETTE.fireCore; c.fill();
+      c.beginPath(); c.moveTo(cx + 2.6, top - 2); c.quadraticCurveTo(24, 4, 22, 1.8); c.stroke();
+      c.beginPath(); c.arc(22, 1.8, 2.2, 0, 7); c.fillStyle = PALETTE.fireMid; c.fill();
+      c.beginPath(); c.arc(22, 1.8, 1.1, 0, 7); c.fillStyle = PALETTE.fireCore; c.fill();
       break;
     }
     /* Ice: a block of real ice, sitting on the floor and starting to melt.
