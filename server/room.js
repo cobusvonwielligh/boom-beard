@@ -6,18 +6,21 @@
 import {
   TICK_MS, TICK_HZ, SNAP_EVERY_TICKS, MAX_PLAYERS, ROUND_TICKS, STATUS, STATUS_TICKS,
   ROUNDTIME_MIN_MIN, ROUNDTIME_MAX_MIN,
-  TILE_PX, UNITS_PER_TILE, FUSE_TICKS, FIRE_TICKS, playerColor, SCORE, ROUND_INTERMISSION_MS,
+  TILE_PX, UNITS_PER_TILE, HITBOX_UNITS, FUSE_TICKS, FIRE_TICKS, FIRE_LETHAL_TICKS,
+  playerColor, SCORE, ROUND_INTERMISSION_MS,
   progressFor,
   STREAK_WINDOW_TICKS, STREAK_NAMES, STREAK_ACE, GAMESPEED_MIN, GAMESPEED_MAX,
   IDLE_KICK_TICKS, AUTO_BOTS_EMPTY_ROUNDS, IN_MASK, COUNT_IN_TICKS,
 } from '../shared/constants.js';
 import { MAPS, encodeCells } from '../shared/maps.js';
 import { createState, createPlayer, applyStatus, tileCentre } from '../shared/sim/state.js';
-import { blocked, unstick } from '../shared/sim/movement.js';
+import { blocked } from '../shared/sim/movement.js';
+import { burns } from '../shared/sim/fire.js';
 import { tick as simTick } from '../shared/sim/round.js';
 import { gullWire } from '../shared/sim/gulls.js';
 import { careerKey } from './leaderboard.js';
 import { createBrain, think, dangerMap } from './ai.js';
+import { nameKey } from './names.js';
 
 // How long a seat is held for someone who vanished. A closed laptop lid, a wifi roam or a tunnel
 // all look identical to a crash, and losing your stats to a two-second blip is maddening.
@@ -99,8 +102,8 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
 
   /** Seat of a living or reserved player by name, case-insensitively. -1 for nobody. */
   const seatOfName = name => {
-    const want = String(name ?? '').toLowerCase();
-    return seats.findIndex(s => s && s.name.toLowerCase() === want);
+    const want = nameKey(name);
+    return seats.findIndex(s => s && nameKey(s.name) === want);
   };
 
   /** The bot that joined most recently, or -1. */
@@ -122,6 +125,14 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
   /** @param admin this connection presented the admin key; see `adminKey` in server/config.js. */
   function join(playerId, name, { admin = false } = {}) {
     const existing = findSeatByPlayerId(playerId);
+    const named = seatOfName(name);
+
+    // A name is one person, including while their disconnected seat is reserved. This check is
+    // independent of playerId: a fresh browser/device ID must never create a second copy, while
+    // the owner reconnecting to their own held seat remains valid.
+    if (named >= 0 && named !== existing) {
+      return { seat: -1, resumed: false, playerId: null, displaced: null, why: 'already-playing' };
+    }
 
     if (existing >= 0) {
       const held = seats[existing];
@@ -221,12 +232,32 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
   /**
    * Spawn as far as possible from the nearest living player, so nobody lands in a firefight.
    *
-   * Only legal spawns are candidates. A spawn tile is not guaranteed clear: a wall can regrow on
-   * one, a map change replaces the whole grid under a seated player, and a hand-authored map could
-   * simply get it wrong — and a player written into a wall is entombed rather than inconvenienced.
-   * `unstick` is the seatbelt for the case where every spawn is blocked; `step` calls it each tick
-   * anyway, so doing it here only saves a one-frame pop.
+   * A map marker is only a preference: regrown walls, bombs, live fire and other bodies can make
+   * one unsafe. Every candidate must fit the full hitbox and have an immediate exit. If every
+   * marker fails, scan the map; if the map has no safe tile, do not spawn at all.
    */
+  /** A spawn and one adjacent exit must both be free of geometry and live hazards. */
+  function safeSpawn(p, tx, ty) {
+    const x = tileCentre(tx), y = tileCentre(ty);
+    const half = HITBOX_UNITS >> 1;
+    const lethalAfter = state.tick + (FIRE_TICKS - FIRE_LETHAL_TICKS);
+    const lethal = state.fires.filter(f => f.until > lethalAfter);
+    const occupied = (cx, cy) => state.players.some(q => q && q !== p && q.alive
+      && Math.abs(q.x - cx) < HITBOX_UNITS && Math.abs(q.y - cy) < HITBOX_UNITS);
+    const dangerous = (cx, cy, qx, qy) => blocked(state, p, cx, cy)
+      || state.bombs.some(b => b.tx === qx && b.ty === qy)
+      || (lethal.length > 0 && burns(lethal, cx, cy, half))
+      || state.puddles.some(w => w.tx === qx && w.ty === qy && w.until > state.tick)
+      || occupied(cx, cy);
+
+    if (dangerous(x, y, tx, ty)) return false;
+    // A legal centre is not enough: a ring of blocks would still make the player wait to die.
+    return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => {
+      const qx = tx + dx, qy = ty + dy;
+      return !dangerous(tileCentre(qx), tileCentre(qy), qx, qy);
+    });
+  }
+
   function respawn(p) {
     // Statuses go first: Reduction changes the hitbox and what counts as walkable, so a legality
     // check run before the clear would be answering for a body shape this player is about to lose.
@@ -234,8 +265,17 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     p.statusUntil = {};
 
     const spawns = state.map.spawns;
-    const legal = spawns.filter(([tx, ty]) => !blocked(state, p, tileCentre(tx), tileCentre(ty)));
-    const pool = legal.length ? legal : spawns;
+    const preferred = spawns.filter(([tx, ty]) => safeSpawn(p, tx, ty));
+    const fallback = [];
+    if (!preferred.length) {
+      for (let ty = 0; ty < state.map.h; ty++) {
+        for (let tx = 0; tx < state.map.w; tx++) {
+          if (safeSpawn(p, tx, ty)) fallback.push([tx, ty]);
+        }
+      }
+    }
+    const pool = preferred.length ? preferred : fallback;
+    if (!pool.length) { p.alive = false; return false; }
 
     /* Every legal spawn is a candidate, weighted by how far the nearest living player is.
      *
@@ -279,13 +319,13 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     p.x = tileCentre(pick.tx);
     p.y = tileCentre(pick.ty);
     p.alive = true;
-    unstick(state, p);
     applyStatus(state, p, STATUS.INVULN, STATUS_TICKS[STATUS.INVULN]);
     // Godmode is a property of the SEAT, not of the body. `respawn` clears every status, and a
     // new round builds a new player object from scratch, so without this the admin quietly
     // stopped being invulnerable at the next round boundary and nothing said so.
     if (seats[p.i]?.god) grantGod(p);
     state.events.push({ e: 'spawn', tick: state.tick, i: p.i, x: p.x, y: p.y });
+    return true;
   }
 
   // ─── kill streaks ───────────────────────────────────────────────────────────
@@ -631,6 +671,9 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
       // count the same points twice and the bar would jump.
       const unbanked = Math.max(0, p.score) - (s.banked?.score ?? 0);
       const lifetime = (banked?.score ?? 0) + Math.max(0, unbanked);
+      const unbankedKills = p.kills - (s.banked?.kills ?? 0);
+      const unbankedDeaths = p.deaths - (s.banked?.deaths ?? 0);
+      const unbankedCoins = (p.coins || 0) - (s.banked?.coins ?? 0);
       // The name rides along because nothing else refreshes it. The snapshot leaves names out
       // on purpose — fifteen a second of a string that changes once per join is most of the
       // bandwidth — so a client that misses the welcome, or hydrates a seat from a snapshot
@@ -638,7 +681,13 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
       // second it heals itself.
       // Lifetime podium finishes, gold / silver / bronze, for the stats card and the TAB board.
       const medals = [banked?.gold ?? 0, banked?.silver ?? 0, banked?.bronze ?? 0];
-      ranks.push({ i, name: p.name, bot: !!s.isBot, medals, ...progressFor(lifetime) });
+      ranks.push({
+        i, name: p.name, bot: !!s.isBot, medals,
+        lifeKills: (banked?.kills ?? 0) + Math.max(0, unbankedKills),
+        lifeDeaths: (banked?.deaths ?? 0) + Math.max(0, unbankedDeaths),
+        lifeCoins: (banked?.coins ?? 0) + Math.max(0, unbankedCoins),
+        ...progressFor(lifetime),
+      });
     }
     onBroadcast({ t: 'scores', ranks, host: hostSeat(), top: leaderboard.top(5) });
   }

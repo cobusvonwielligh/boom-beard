@@ -189,7 +189,7 @@
 <div id="hud">
   <div id="topbar" class="edge">
     <span id="clock"
-      ><span class="v castSm" id="vClock">&mdash;</span
+      ><span class="v cast" id="vClock">&mdash;</span
       ><span class="k">left</span></span
     >
     <!-- The dot lives with the ping, because they answer the same question: is the link
@@ -332,7 +332,7 @@
      which is why everybody sees the same digit at the same moment. -->
 <div id="countIn" aria-hidden="true">
   <span class="ring"></span>
-  <span class="n castSm" id="countInN">5</span>
+  <span class="n cast" id="countInN">5</span>
 </div>
 
 <div id="centre">
@@ -607,6 +607,28 @@
 </div>
 
 <div id="toast"></div>
+
+<!-- Delayed player dossier. Populated from the authoritative once-a-second score broadcast and
+     shown only after a deliberate 2.5-second hover/focus on a player name. -->
+<div id="playerHover" class="edge" role="tooltip" aria-hidden="true">
+  <div class="phHead">
+    <span id="phName" class="castSm"></span>
+    <span id="phBadge"></span>
+  </div>
+  <div id="phRank"></div>
+  <div class="phSection">this round</div>
+  <div class="phGrid">
+    <span><i>score</i><b id="phRoundScore">0</b></span>
+    <span><i>kills / deaths</i><b id="phRoundKd">0 / 0</b></span>
+  </div>
+  <div class="phSection">lifetime</div>
+  <div class="phGrid">
+    <span><i>xp</i><b id="phXp">0</b></span>
+    <span><i>kills / deaths</i><b id="phLifeKd">0 / 0</b></span>
+    <span><i>gold collected</i><b id="phCoins">0</b></span>
+    <span class="phMedalCell"><i>medals</i><b id="phMedals"></b></span>
+  </div>
+</div>
 
 <div id="menu">
   <!-- The music, drawn. Absolutely placed so it escapes the centring grid, and first in the

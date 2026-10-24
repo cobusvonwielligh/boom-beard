@@ -709,21 +709,50 @@ canvas#game {
   min-width: 4.8ch;
   text-align: center;
 }
+#clock .v.cast {
+  /* The same solid lift as the landing title: a hard underside, a soft cast shadow and a warm
+     bloom. The cast-gold sweep remains visible because this is a filter around transparent,
+     background-clipped glyphs rather than a text-shadow painted through them. */
+  filter: var(--cast-edge) drop-shadow(0 3px 0 #000)
+    drop-shadow(0 6px 12px #000c) drop-shadow(0 0 22px #edc24e66);
+}
 #clock .k {
-  color: #aab6c8;
+  color: var(--gold);
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.14em;
+  /* A simpler horizontal glint at this size; the full eight-stop cast ramp turns ten-pixel type
+     muddy. It still gets the familiar black depth and warm bloom. */
+  background: linear-gradient(
+    100deg,
+    #a06a12 0%,
+    var(--gold) 34%,
+    #fff4c4 50%,
+    var(--gold) 66%,
+    #a06a12 100%
+  );
+  background-size: 260% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 0 #000) drop-shadow(0 4px 8px #000b)
+    drop-shadow(0 0 14px #edc24e52);
+  animation: timerShine 6s linear infinite;
 }
 /* The last minute. Now that the accent is itself a red, `--bad` no longer reads as an alarm
    next to it — it is darker and less saturated than the resting colour, which is backwards for
    a warning. White-hot and blinking is the signal instead: brightness, not hue. */
 #clock.low .v {
+  background: none;
+  -webkit-text-fill-color: #fff;
   color: #fff;
-  text-shadow:
-    0 0 12px #ff3b2f,
-    0 0 26px #ff3b2f66;
+  filter: drop-shadow(0 3px 0 #000) drop-shadow(0 6px 12px #000c)
+    drop-shadow(0 0 12px #ff3b2f) drop-shadow(0 0 26px #ff3b2f66);
   animation: tick 1s steps(2) infinite;
+}
+@keyframes timerShine {
+  from { background-position: 130% 0; }
+  to { background-position: -130% 0; }
 }
 @keyframes tick {
   50% {
@@ -2500,6 +2529,125 @@ body.dead #rank { color: #8a5a5a; }
   letter-spacing: 0.08em;
 }
 
+/* A delayed player dossier, anchored beside whichever name was held for 2.5 seconds. Fixed so it
+   is never clipped by the compact live board or the TAB scoreboard's scroll frame. */
+.playerHoverTarget {
+  cursor: help;
+  text-decoration: underline;
+  text-decoration-color: #edc24e00;
+  text-underline-offset: 3px;
+  transition: text-decoration-color 0.2s, filter 0.2s;
+}
+.playerHoverTarget:hover,
+.playerHoverTarget:focus-visible {
+  text-decoration-color: #edc24e70;
+  filter: drop-shadow(0 0 7px #edc24e4d);
+  outline: none;
+}
+#playerHover {
+  --panel-fill: #121923fa;
+  position: fixed;
+  z-index: 40;
+  width: 310px;
+  padding: 18px;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(10px) scale(0.94) rotate(-0.4deg);
+  transform-origin: 22px 0;
+  box-shadow: 0 22px 52px #000d, 0 0 36px #edc24e26;
+  transition: opacity 0.18s ease, transform 0.28s cubic-bezier(0.2, 1.45, 0.3, 1),
+    visibility 0s linear 0.28s;
+}
+#playerHover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(110deg, #fff0 35%, #f6e7a929 48%, #fff0 61%);
+  background-size: 260% 100%;
+  pointer-events: none;
+  animation: dossierShine 4.8s linear infinite;
+}
+#playerHover.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1) rotate(0);
+  transition-delay: 0s;
+}
+.phHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+#phName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--display);
+  font-size: 20px;
+  letter-spacing: 0.08em;
+}
+#phBadge {
+  flex: 0 0 auto;
+  color: var(--good);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+}
+#phRank {
+  margin-top: 3px;
+  color: var(--dim);
+  font-size: 12px;
+}
+.phSection {
+  margin: 13px 0 7px;
+  padding-top: 9px;
+  border-top: 1px solid #edc24e24;
+  color: var(--gold);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+}
+.phGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 14px;
+}
+.phGrid span {
+  min-width: 0;
+}
+.phGrid i {
+  display: block;
+  color: var(--dim);
+  font-size: 9px;
+  font-style: normal;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.phGrid b {
+  display: block;
+  margin-top: 2px;
+  color: var(--ink);
+  font-family: var(--nums);
+  font-size: 14px;
+  font-weight: 700;
+}
+.phMedalCell .tally {
+  justify-content: flex-start;
+}
+@keyframes dossierShine {
+  from { background-position: 130% 0; }
+  to { background-position: -130% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #playerHover,
+  #playerHover::after { animation: none; transition: none; }
+}
+
 /* ─── death + round over + scores ─────────────────────────────────────────────
  * Click-through except for the card, so the chat underneath stays usable while dead and through
  * the twenty seconds of round-over standings.
@@ -3275,6 +3423,11 @@ body.intermission #dead {
    the form. */
 #menuWrap > .card {
   z-index: 1;
+  /* Fifteen percent wider and roughly fifteen percent shorter than the old 600 x 772 card.
+     Width gives the control descriptions room; tighter vertical rhythm removes dead air without
+     shrinking the readable type or the hit targets. */
+  width: min(690px, calc(100vw - 32px));
+  padding: 26px 48px 18px;
 }
 
 /* The kegs, standing on the top edge of the card.
@@ -3308,7 +3461,7 @@ body.intermission #dead {
  * the controls, and one too far below looks like it fell off. */
 #propBarrels {
   width: 285px;
-  left: -258px;
+  left: -270px;
   bottom: -40px; /* clear of the card, off to its left */
   transform: rotate(-6deg);
   animation: propA 9s ease-in-out infinite;
@@ -3391,7 +3544,7 @@ body.intermission #dead {
   /* Pinned a third of the way down the card, so he sits beside the name field rather than over
    * the title, however tall the card gets. */
   top: 26%;
-  right: -150px;
+  right: -210px;
   width: var(--mascot-size);
   height: var(--mascot-size);
   z-index: 2;
@@ -3576,6 +3729,9 @@ h1 {
   font-size: 14.5px;
   letter-spacing: 0.04em;
 }
+#menuWrap > .card > .sub {
+  margin: 6px 0 16px;
+}
 /* The two lines that introduce the game are centred; everything below them is a form and stays
    left-aligned, so the eye still has one edge to run down. */
 #title,
@@ -3678,6 +3834,14 @@ input[type="text"]:focus {
     box-shadow 0.12s,
     filter 0.12s;
 }
+#menuWrap #play {
+  margin-top: 12px;
+  padding: 12px;
+}
+#menuWrap #watch {
+  margin-top: 8px;
+  padding: 7px;
+}
 #play:hover {
   filter: brightness(1.08);
   box-shadow:
@@ -3725,6 +3889,10 @@ label {
   padding: 20px 0 0;
   border-top: 1px solid #ffffff14;
 }
+#menuWrap .keys {
+  margin-top: 16px;
+  padding-top: 12px;
+}
 .keys h2 {
   margin: 0 0 14px;
   font-size: 11px;
@@ -3734,12 +3902,21 @@ label {
   letter-spacing: 0.26em;
   font-family: var(--text);
 }
+#menuWrap .keys h2 {
+  margin-bottom: 8px;
+}
 .keys dl {
   margin: 0;
   display: grid;
   grid-template-columns: max-content 1fr;
   gap: 9px 20px;
   align-items: center;
+}
+#menuWrap .keys dl {
+  gap: 4px 24px;
+}
+#menuWrap .keys kbd {
+  height: 24px;
 }
 .keys dt {
   display: flex;
@@ -3797,6 +3974,10 @@ kbd.wide {
   color: var(--dim);
   text-transform: uppercase;
   letter-spacing: 0.14em;
+}
+#menuWrap .menuFoot {
+  margin-top: 14px;
+  padding-top: 10px;
 }
 .menuFoot a {
   color: var(--dim);
@@ -3863,17 +4044,22 @@ kbd.wide {
   /* The tick. Every whole second the class is re-applied (see the count-in block in
      client/main.js), which restarts this: the digit lands hard, overshoots a hair, and rocks
      back — the motion an escapement makes, not a fade. */
-  animation: countTick 1s cubic-bezier(0.2, 1.4, 0.3, 1) both;
+  filter: var(--cast-edge) drop-shadow(0 4px 0 #000)
+    drop-shadow(0 8px 18px #000d) drop-shadow(0 0 28px #edc24e66);
+  animation: countTick 1s cubic-bezier(0.2, 1.4, 0.3, 1) both,
+    castShine 7s linear infinite;
 }
 /* The last two get hotter and bigger. By then the number is not information any more, it is a
    warning that the round is about to be live. */
 #countIn.hot .n {
   font-size: 124px;
-  filter: drop-shadow(0 0 22px #edc24ebb);
+  filter: var(--cast-edge) drop-shadow(0 4px 0 #000)
+    drop-shadow(0 8px 18px #000d) drop-shadow(0 0 22px #edc24ebb);
 }
 #countIn .n.go {
   font-size: 146px;
-  animation: countGo 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: countGo 0.9s cubic-bezier(0.16, 1, 0.3, 1) both,
+    castShine 7s linear infinite;
 }
 
 /* The second hand: a thin gold arc sweeping one full turn per count, under the digit. A
@@ -3887,6 +4073,8 @@ kbd.wide {
   mask: radial-gradient(circle, #0000 72px, #000 73px, #000 80px, #0000 81px);
   animation: countSweep 1s linear infinite;
   opacity: 0.85;
+  filter: drop-shadow(0 3px 0 #000) drop-shadow(0 7px 14px #000b)
+    drop-shadow(0 0 22px #edc24e70);
 }
 #countIn .ring::after {
   /* The face: twelve faint marks, so the sweep has something to sweep past. */
@@ -3894,7 +4082,7 @@ kbd.wide {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: repeating-conic-gradient(#ffffff2e 0deg 2deg, #0000 2deg 30deg);
+  background: repeating-conic-gradient(#f6e7a966 0deg 2deg, #0000 2deg 30deg);
 }
 
 @keyframes countTick {
@@ -4069,6 +4257,14 @@ kbd.wide {
 }
 #pwGroup[hidden] {
   display: none;
+}
+#pw.invalid {
+  border-color: var(--bad);
+  box-shadow: 0 0 0 3px #e8655a26, 0 0 22px #e8655a24;
+}
+#pw.invalid:focus {
+  border-color: var(--bad);
+  box-shadow: 0 0 0 3px #e8655a38, 0 0 26px #e8655a30;
 }
 /* Why you are being asked, under the box: "pick a password for this name" and "that name needs
    its password" are different situations and the difference matters to the person reading it. */

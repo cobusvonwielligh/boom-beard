@@ -8,7 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createRoom } from '../server/room.js';
 import { detonate } from '../shared/sim/bombs.js';
-import { stamina, speedOf } from '../shared/sim/movement.js';
+import { blocked, stamina, speedOf } from '../shared/sim/movement.js';
 import { regenerate } from '../shared/sim/blocks.js';
 import { MAPS, buildMap, cellType } from '../shared/maps.js';
 import {
@@ -286,6 +286,62 @@ test('respawn can land anywhere, but lands away from people far more often', () 
     // And no single spot may dominate, which is what "the best five, shuffled" used to do.
     const worst = Math.max(...hits.values()) / RUNS;
     assert.ok(worst < 0.5, `one spawn took ${(worst * 100).toFixed(0)}% of respawns`);
+  } finally {
+    room.stop();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test('respawn searches beyond blocked markers and always leaves an exit', () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bv-safe-spawn-'));
+  const room = createRoom({ countIn: 0, onBroadcast: () => {}, dataDir });
+  try {
+    const p = room.state.players[0] ?? (room.state.players[0] = createPlayer(0, 'safe'));
+    for (const [tx, ty] of room.state.map.spawns) setTile(room.state.map, tx, ty, BLOCK.IRON);
+    p.alive = false;
+    assert.equal(room.respawn(p), true, 'no fallback floor was found');
+    assert.equal(blocked(room.state, p, p.x, p.y), false, 'spawned inside solid geometry');
+    const tx = p.x >> 8, ty = p.y >> 8;
+    const exits = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) =>
+      !blocked(room.state, p, tileCentre(tx + dx), tileCentre(ty + dy)));
+    assert.ok(exits.length > 0, 'spawned with no reachable exit');
+  } finally {
+    room.stop();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test('respawn refuses to materialise a player when every tile is unsafe', () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bv-no-spawn-'));
+  const room = createRoom({ countIn: 0, onBroadcast: () => {}, dataDir });
+  try {
+    const p = room.state.players[0] ?? (room.state.players[0] = createPlayer(0, 'safe'));
+    for (let ty = 0; ty < room.state.map.h; ty++) {
+      for (let tx = 0; tx < room.state.map.w; tx++) setTile(room.state.map, tx, ty, BLOCK.IRON);
+    }
+    p.alive = false;
+    assert.equal(room.respawn(p), false);
+    assert.equal(p.alive, false, 'player was forced into an unsafe tile');
+  } finally {
+    room.stop();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  }
+});
+
+test('respawn never chooses a live blast or bomb tile', () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bv-hazard-spawn-'));
+  const room = createRoom({ countIn: 0, onBroadcast: () => {}, dataDir });
+  try {
+    const p = room.state.players[0] ?? (room.state.players[0] = createPlayer(0, 'safe'));
+    for (const [tx, ty] of room.state.map.spawns) {
+      room.state.bombs.push({ id: room.state.nextBombId++, tx, ty, owner: 1, radius: 1, at: 9999 });
+      room.state.fires.push({ tx, ty, until: room.state.tick + 999, owner: 1, kind: 'core' });
+    }
+    p.alive = false;
+    assert.equal(room.respawn(p), true, 'no hazard-free fallback was found');
+    const tx = p.x >> 8, ty = p.y >> 8;
+    assert.equal(room.state.bombs.some(b => b.tx === tx && b.ty === ty), false, 'spawned on a bomb');
+    assert.equal(room.state.fires.some(f => f.tx === tx && f.ty === ty), false, 'spawned in fire');
   } finally {
     room.stop();
     fs.rmSync(dataDir, { recursive: true, force: true });

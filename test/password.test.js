@@ -69,6 +69,7 @@ test('signing in', async t => {
   t.after(async () => { server.kill('SIGTERM'); await once(server, 'exit'); });
 
   let token = null;
+  let playerId = null;
 
   await t.test('a name nobody has claimed is asked to pick a password', async () => {
     const msg = await once_({ name: 'cobus' });
@@ -89,6 +90,7 @@ test('signing in', async t => {
     assert.equal(msg.you, 0);
     assert.ok(msg.trust, 'no trusted-browser token came back with the welcome');
     token = msg.trust;
+    playerId = msg.playerId;
     ws.close();
     await once(ws, 'close');
     await new Promise(r => setTimeout(r, 60));      // let the seat go
@@ -109,7 +111,7 @@ test('signing in', async t => {
   });
 
   await t.test('the token gets in with no password at all', async () => {
-    const { ws, msg } = await hello({ name: 'cobus', trust: token });
+    const { ws, msg } = await hello({ name: 'cobus', trust: token, playerId });
     assert.equal(msg.t, 'welcome', `the trusted browser was asked again: ${msg.why ?? ''}`);
     ws.close();
     await once(ws, 'close');

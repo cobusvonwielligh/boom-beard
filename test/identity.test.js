@@ -71,3 +71,29 @@ test('different ids are unaffected', () => {
   assert.ok(b.seat >= 0);
   assert.notEqual(b.seat, a.seat);
 });
+
+test('different ids can never use the same name', () => {
+  const r = room();
+  const first = r.join('p1', 'Cobus');
+  assert.ok(first.seat >= 0);
+
+  for (const alias of ['cobus', '  COBUS  ', 'Ｃｏｂｕｓ']) {
+    const duplicate = r.join(`id-${alias}`, alias);
+    assert.equal(duplicate.seat, -1, `${JSON.stringify(alias)} got a duplicate seat`);
+    assert.equal(duplicate.why, 'already-playing');
+  }
+});
+
+test('a disconnected reservation still owns its name', () => {
+  const r = room();
+  const first = r.join('p1', 'cobus');
+  r.disconnect(first.seat);
+
+  const stranger = r.join('p2', 'COBUS');
+  assert.equal(stranger.seat, -1, 'a reserved name was reused');
+  assert.equal(stranger.why, 'already-playing');
+
+  const owner = r.join('p1', 'cobus');
+  assert.equal(owner.seat, first.seat, 'the owner could not reclaim the reserved name');
+  assert.equal(owner.resumed, true);
+});

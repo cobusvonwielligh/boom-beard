@@ -10,6 +10,7 @@ import {
 import { createRoom } from './room.js';
 import { createGuard, addressOf } from './guard.js';
 import { sameSecret } from './config.js';
+import { hasBlockedLanguage } from './names.js';
 
 // Open sessions — playing or watching — one browser may hold at once. See claimDevice.
 export const MAX_SESSIONS_PER_DEVICE = 2;
@@ -453,6 +454,10 @@ export function attachHub(server, config) {
             ? msg.playerId : `p_${randomUUID()}`;
           const name = playerName(msg.name);
 
+          if (hasBlockedLanguage(name)) {
+            return sendTo(ws, { t: 'reject', why: 'choose a different player name' });
+          }
+
           const banned = bans.remainingMs(name);
           if (banned > 0) {
             return sendTo(ws, { t: 'reject', why: `banned, ${humanDuration(banned)} left` });
@@ -509,6 +514,11 @@ export function attachHub(server, config) {
             if (now - lastCommand < 250) return;
             lastCommand = now;
             commands.run(ws, seat, said);
+            break;
+          }
+
+          if (hasBlockedLanguage(said)) {
+            reply(ws, 'message blocked');
             break;
           }
 

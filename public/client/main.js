@@ -13,7 +13,7 @@ import {
 } from '/shared/constants.js';
 // The one number the password box needs to quote at somebody. The rules themselves live on the
 // server — see badPassword in server/accounts.js — and this is only the hint text.
-import { PASSWORD_MIN } from '/shared/constants.js';
+import { PASSWORD_MIN, PASSWORD_MAX } from '/shared/constants.js';
 import { createNet } from './net.js';
 import { createInput, typingSomewhere, createTap } from './input.js';
 import { createWorld } from './world.js';
@@ -731,7 +731,14 @@ const net = createNet({
      * long". `auth` tells us which of the three it is; see askPassword.
      */
     if (m.auth) {
-      askPassword(m.auth, m.why);
+      // Initial signup/sign-in prompts explain why the field appeared. A failed attempt is
+      // different: keep the field in place, mark it red and put the actionable reason in the
+      // existing toast instead of growing a second inline error below the form.
+      if (m.auth === 'bad' || m.auth === 'wait' || (m.auth === 'signup' && pwOpen)) {
+        passwordError(m.why);
+      } else {
+        askPassword(m.auth, m.why);
+      }
       nameInput.blur();
       return;
     }
@@ -1576,6 +1583,7 @@ function renderLive() {
     for (const k of [1, 2, 3]) li.classList.toggle(`p${k}`, n === k - 1);
     nm.textContent = p.name;
     nm.style.color = playerColor(p.i);
+    markPlayerHover(nm, { seat: p.i });
     // A robot beside anything that is not a person. `bot` comes from the scores broadcast, which
     // is the only place the server says so — the snapshot has no idea what a bot is, and it
     // should not: the simulation treats them identically on purpose.
@@ -1653,6 +1661,123 @@ function medalTally(counts) {
   return wrap;
 }
 
+// A player name has to be held deliberately before this opens. The delay prevents the live
+// scoreboard becoming a minefield of popovers as the pointer crosses it during play.
+const PLAYER_HOVER_DELAY_MS = 2500;
+let playerHoverTimer = 0;
+let playerHoverTarget = null;
+
+function markPlayerHover(el, { seat = null, allTimeIndex = null } = {}) {
+  el.classList.add('playerHoverTarget');
+  if (seat === null) delete el.dataset.seat;
+  else el.dataset.seat = String(seat);
+  if (allTimeIndex === null) delete el.dataset.allTime;
+  else el.dataset.allTime = String(allTimeIndex);
+  el.tabIndex = 0;
+}
+
+function hidePlayerHover() {
+  clearTimeout(playerHoverTimer);
+  playerHoverTimer = 0;
+  playerHoverTarget = null;
+  const card = $('playerHover');
+  card.classList.remove('show');
+  card.setAttribute('aria-hidden', 'true');
+}
+
+function playerHoverData(target) {
+  if (target.dataset.seat !== undefined) {
+    const seat = Number(target.dataset.seat);
+    const p = world.players[seat];
+    if (!p) return null;
+    const r = ranks.get(seat);
+    return {
+      name: p.name,
+      colour: playerColor(p.i),
+      badge: `${seat === hostSeat ? 'host · ' : ''}${r?.bot ? 'bot · ' : ''}${p.alive ? 'alive' : 'down'}`,
+      rank: r ? `level ${r.level} · ${r.tier}` : 'rank pending',
+      roundScore: p.score,
+      roundKills: p.kills,
+      roundDeaths: p.deaths,
+      xp: r?.xp ?? 0,
+      lifeKills: r?.lifeKills ?? p.kills,
+      lifeDeaths: r?.lifeDeaths ?? p.deaths,
+      lifeCoins: r?.lifeCoins ?? p.coins ?? 0,
+      medals: r?.medals,
+    };
+  }
+
+  const e = allTime[Number(target.dataset.allTime)];
+  if (!e) return null;
+  return {
+    name: e.name,
+    colour: 'var(--gold)',
+    badge: 'all-time leader',
+    rank: `level ${e.level} · ${e.tier}`,
+    roundScore: '—', roundKills: '—', roundDeaths: '—',
+    xp: e.xp ?? e.score ?? 0,
+    lifeKills: e.kills ?? 0,
+    lifeDeaths: e.deaths ?? 0,
+    lifeCoins: e.coins ?? 0,
+    medals: [e.gold, e.silver, e.bronze],
+  };
+}
+
+function showPlayerHover(target) {
+  if (!target.isConnected) return;
+  const d = playerHoverData(target);
+  if (!d) return;
+  const card = $('playerHover');
+  castText($('phName'), d.name);
+  $('phName').style.color = d.colour;
+  $('phBadge').textContent = d.badge;
+  $('phRank').textContent = d.rank;
+  $('phRoundScore').textContent = Number.isFinite(d.roundScore) ? d.roundScore.toLocaleString() : d.roundScore;
+  $('phRoundKd').textContent = `${d.roundKills} / ${d.roundDeaths}`;
+  $('phXp').textContent = Number(d.xp || 0).toLocaleString();
+  $('phLifeKd').textContent = `${d.lifeKills} / ${d.lifeDeaths}`;
+  $('phCoins').textContent = Number(d.lifeCoins || 0).toLocaleString();
+  $('phMedals').replaceChildren(medalTally(d.medals));
+
+  card.classList.add('show');
+  card.setAttribute('aria-hidden', 'false');
+  const anchor = target.getBoundingClientRect();
+  const box = card.getBoundingClientRect();
+  const pad = 12;
+  let left = anchor.left;
+  let top = anchor.bottom + pad;
+  if (left + box.width > innerWidth - pad) left = innerWidth - box.width - pad;
+  if (top + box.height > innerHeight - pad) top = anchor.top - box.height - pad;
+  card.style.left = `${Math.max(pad, left)}px`;
+  card.style.top = `${Math.max(pad, top)}px`;
+}
+
+function schedulePlayerHover(target) {
+  if (target === playerHoverTarget) return;
+  hidePlayerHover();
+  playerHoverTarget = target;
+  playerHoverTimer = setTimeout(() => {
+    playerHoverTimer = 0;
+    showPlayerHover(target);
+  }, PLAYER_HOVER_DELAY_MS);
+}
+
+document.addEventListener('pointerover', e => {
+  const target = e.target.closest?.('.playerHoverTarget');
+  if (target) schedulePlayerHover(target);
+});
+document.addEventListener('pointerout', e => {
+  const target = e.target.closest?.('.playerHoverTarget');
+  if (target && !target.contains(e.relatedTarget)) hidePlayerHover();
+});
+document.addEventListener('focusin', e => {
+  if (e.target.matches?.('.playerHoverTarget')) schedulePlayerHover(e.target);
+});
+document.addEventListener('focusout', e => {
+  if (e.target.matches?.('.playerHoverTarget')) hidePlayerHover();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') hidePlayerHover(); });
+
 /**
  * Your own medals, on your stats card. Rebuilt only when a count changes: the HUD redraws every
  * frame, and these change at most once a round.
@@ -1693,6 +1818,7 @@ function renderScores() {
     // size, same meaning. See `td.host` in style.css — it is one mask, so there is one crown in
     // the project and three places that show it.
     const nameCell = cell(tr, p.name, playerColor(p.i));
+    markPlayerHover(nameCell, { seat: p.i });
     if (p.i === hostSeat) nameCell.classList.add('host');
     // The rank ladder is the thing returning Game of Bombs players recognise first, so it gets a
     // column of its own rather than a tooltip.
@@ -1714,7 +1840,8 @@ function renderScores() {
   for (const [n, e] of allTime.entries()) {
     const tr = document.createElement('tr');
     placeCell(tr, n);
-    cell(tr, e.name);
+    const nameCell = cell(tr, e.name);
+    markPlayerHover(nameCell, { allTimeIndex: n });
     cell(tr, `${e.level} \u00b7 ${e.tier}`, null, true);
     cell(tr, '').append(medalTally([e.gold, e.silver, e.bronze]));
     num(cell(tr, e.coins || 0, (e.coins || 0) > 0 ? 'var(--gold)' : null));
@@ -1796,7 +1923,11 @@ function play(observe = false) {
    * machine. See trustFor in client/net.js.
    */
   const pw = pwOpen && !observe ? $('pw').value : '';
-  if (pwOpen && !observe && !pw) { $('pw').focus(); return; }
+  if (pwOpen && !observe && !pw) { passwordError('a password is needed'); return; }
+  if (pwOpen && !observe && pwMode === 'signup' && pw.length < PASSWORD_MIN) {
+    passwordError(`password must be at least ${PASSWORD_MIN} characters`);
+    return;
+  }
   $('play').disabled = true;
   observing = observe;
   document.body.classList.toggle('observing', observe);
@@ -1897,9 +2028,11 @@ function play(observe = false) {
  *           the value cleared — never left in place to be re-sent by a reconnect.
  */
 let pwOpen = false;
+let pwMode = 'need';
 
 function askPassword(mode, why) {
   pwOpen = true;
+  pwMode = mode === 'signup' ? 'signup' : 'need';
   const group = $('pwGroup');
   const note = $('pwNote');
   const input = $('pw');
@@ -1907,6 +2040,9 @@ function askPassword(mode, why) {
   input.type = 'password';
   input.autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
   input.placeholder = mode === 'signup' ? `at least ${PASSWORD_MIN} characters` : 'your password';
+  input.maxLength = PASSWORD_MAX;
+  input.classList.remove('invalid');
+  input.removeAttribute('aria-invalid');
   $('pwLabel').textContent = mode === 'signup' ? 'SET PASSWORD:' : 'PASSWORD:';
   note.hidden = false;
   note.className = mode === 'bad' || mode === 'wait' ? 'bad' : '';
@@ -1917,11 +2053,25 @@ function askPassword(mode, why) {
   input.focus();
 }
 
+function passwordError(why) {
+  pwOpen = true;
+  const input = $('pw');
+  $('pwGroup').hidden = false;
+  $('pwNote').hidden = true;
+  input.value = '';
+  input.classList.add('invalid');
+  input.setAttribute('aria-invalid', 'true');
+  input.focus();
+  toast(why || 'password not accepted');
+}
+
 function closePassword() {
   pwOpen = false;
   $('pwGroup').hidden = true;
   $('pwNote').hidden = true;
   $('pw').value = '';
+  $('pw').classList.remove('invalid');
+  $('pw').removeAttribute('aria-invalid');
 }
 
 /** True while this tab is watching rather than playing. Read by the HUD and the input loop. */
@@ -1932,6 +2082,10 @@ $('watch').onclick = () => play(true);
 nameInput.onkeydown = e => { if (e.key === 'Enter') play(false); };
 // Enter in the password box plays, so a sign-in is name, tab, password, enter and nothing else.
 $('pw').onkeydown = e => { if (e.key === 'Enter') play(false); };
+$('pw').oninput = () => {
+  $('pw').classList.remove('invalid');
+  $('pw').removeAttribute('aria-invalid');
+};
 // A different name is a different account, so whatever was typed for the last one is wrong by
 // definition — and leaving it there is how somebody sends one person's password to another's
 // sign-in. Closed rather than cleared: the server will ask again if it needs to.
