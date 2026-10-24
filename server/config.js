@@ -1,4 +1,4 @@
-// Boom Beard — configuration.
+// Boom Beard - configuration.
 //
 // Precedence: environment variable > config.ini > built-in default.
 // Env wins so CI and one-off runs (`LAG=200 npm start`) never need to touch a file.
@@ -62,7 +62,7 @@ export const config = {
   lag: num('LAG', 'dev', 'lag', 0),
   jitter: num('JITTER', 'dev', 'jitter', 0),
 
-  // Who is always host. With a key set, it is whoever's browser presents the key — opened once
+  // Who is always host. With a key set, it is whoever's browser presents the key - opened once
   // as /?admin=KEY, then remembered. Without one it falls back to the name, which is fine on a
   // laptop and nowhere else: names are not secret, and this one is in a public repository.
   adminKey: pick('ADMIN_KEY', 'admin', 'key', ''),
@@ -73,7 +73,7 @@ export const config = {
    * inherit your career. See server/accounts.js.
    *
    * It is a switch because there is a real configuration where it is wrong: a LAN party, a demo,
-   * a kiosk — anywhere the room is the access control and asking sixteen people to invent
+   * a kiosk - anywhere the room is the access control and asking sixteen people to invent
    * passwords is friction for nothing. `REQUIRE_PASSWORD=0` turns the whole thing off and the
    * handshake is exactly what it was before passwords existed, which is also how the tests that
    * are about ROOMS rather than about sign-in keep being about rooms.

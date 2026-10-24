@@ -1,9 +1,9 @@
-// Flood protection. Not anti-cheat and not a firewall — one box, sixteen seats, and the aim is
+// Flood protection. Not anti-cheat and not a firewall - one box, sixteen seats, and the aim is
 // that nobody can knock the game over by accident or on purpose from a single address.
 //
 // Every limit is per remote address and generous on purpose, because an office is many people
 // behind ONE address: sixteen colleagues, each with a tab or two, all arriving at 13:00 on a
-// Friday, must never trip it. What it stops is the thing an office never does — hundreds of
+// Friday, must never trip it. What it stops is the thing an office never does - hundreds of
 // requests a second, or a pile of sockets, or a socket spraying messages.
 //
 // Token buckets throughout: a steady rate plus a burst allowance, so a page load (a dozen files

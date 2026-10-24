@@ -19,7 +19,7 @@ test('the canonical name itself is served, not redirected', () => {
   assert.equal(live({ host: 'boombeard.co.za:443' }), null);
 });
 
-test('loopback is never redirected — deploy health-checks https://localhost', () => {
+test('loopback is never redirected - deploy health-checks https://localhost', () => {
   assert.equal(live({ host: 'localhost' }), null);
   assert.equal(live({ host: 'localhost:443' }), null);
   assert.equal(live({ host: '127.0.0.1' }), null);
@@ -45,7 +45,7 @@ test('query strings and paths survive the bounce', () => {
 
 test('a junk Host header cannot reach the Location', () => {
   // The destination always comes from config, so even a nonsense Host only decides whether to
-  // redirect — never where to. An unparseable one is served locally rather than bounced.
+  // redirect - never where to. An unparseable one is served locally rather than bounced.
   assert.equal(requestHost('evil.com\r\nX-Injected: 1'), null);
   assert.equal(live({ host: 'evil.com\r\nX-Injected: 1' }), null);
   assert.equal(live({ host: 'anything.at.all' }), 'https://boombeard.co.za/');

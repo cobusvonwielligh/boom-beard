@@ -26,7 +26,7 @@ function roll(next) {
 /* Gold is the one type with a cap on top of its weight, so the roll has to be able to say no.
  *
  * Re-rolling rather than removing gold from the table once the cap is hit, because removing it
- * would silently redistribute its 2% across the other perks — a late round would have very
+ * would silently redistribute its 2% across the other perks - a late round would have very
  * slightly more bombs and fire in it than an early one, for no reason anybody could name. One
  * re-roll keeps the other six at exactly their own weights and turns a capped coin into
  * "nothing special this time", which is what it should be.
@@ -75,7 +75,7 @@ export function maybeDrop(state, tx, ty, blockType) {
 }
 
 /**
- * @param capped false for a coin that was EARNED rather than rolled — a gull's — which must not
+ * @param capped false for a coin that was EARNED rather than rolled - a gull's - which must not
  *   use up one of the round's GOLD_MAX_PER_ROUND. See GULL_* in constants.js.
  */
 export function drop(state, tx, ty, type, capped = true) {
@@ -89,7 +89,7 @@ export function drop(state, tx, ty, type, capped = true) {
 }
 
 /**
- * Caps still pay out — a late-round pickup should never be nothing at all.
+ * Caps still pay out - a late-round pickup should never be nothing at all.
  *
  * Bombs cap at MAX_BOMBS_CARRIED, not the MAX_BOMBS safety valve: the HUD shows n/8 next to n/6
  * fire and n/4 speed, so the number has to be a real limit rather than a number the player can
@@ -105,7 +105,7 @@ function apply(state, p, type) {
     // only pays off the next time you stop running does not feel like a pickup.
     /* Rum. Fire's arms stop killing you; only the bomb's own tile still does.
      *
-     * Not "half damage" — there is no health here, so the only way to take less of something
+     * Not "half damage" - there is no health here, so the only way to take less of something
      * that kills you outright is to be killed by less of it. Standing in the middle of a blast
      * is still fatal; being caught by the end of an arm is not, and that is exactly the kind
      * of death the rum is meant to save you from.
@@ -122,7 +122,7 @@ function apply(state, p, type) {
      * Every other perk makes you better at the round you are in, which means every other perk
      * is a reason to take a risk NOW. A coin is a reason to take a risk for later, and the two
      * feel different precisely because this one does nothing for you today. Returning true pays
-     * SCORE.GOLD rather than SCORE.PERK_CAPPED — it is always "gained", it can never be capped,
+     * SCORE.GOLD rather than SCORE.PERK_CAPPED - it is always "gained", it can never be capped,
      * and there is no ceiling to walk past. */
     case PERK.GOLD:
       p.coins = (p.coins || 0) + 1;
@@ -140,7 +140,7 @@ function apply(state, p, type) {
 
 export function collect(state) {
   // Decays every tick, including the ones where nothing is picked up and the early return below
-  // would otherwise skip it — a rate that only decays while perks exist never falls to zero.
+  // would otherwise skip it - a rate that only decays while perks exist never falls to zero.
   state.perkTakeRate *= PERK_TAKE_DECAY;
   if (!state.perks.length) return;
   const half = HITBOX_UNITS >> 1;
@@ -177,7 +177,7 @@ export function collect(state) {
  * square on the map. In practice it did the opposite of what it was for: the only way to open a
  * wall is with a bomb, and the bomb that opens it is usually still burning when the perk appears,
  * so the player who did the work watched their own blast eat the reward. Chain reactions made it
- * worse — a four-bomb chain could clear half the drops on the board in one tick, and there is
+ * worse - a four-bomb chain could clear half the drops on the board in one tick, and there is
  * nothing to outplay there.
  *
  * Nothing replaces it: PERK_EXPIRE_TICKS already stops a contested drop sitting there forever.

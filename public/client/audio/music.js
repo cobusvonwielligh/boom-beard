@@ -1,17 +1,17 @@
-// Boom Beard — the music.
+// Boom Beard - the music.
 //
 // This module owns everything that counts as "the music": the theme, the three ambient beds in
 // ./ambient.js, and the cycling between them. They all sit behind one public surface, so main.js
 // still only ever says start / stop / toggle / setVolume / duck and never learns that there is
 // more than one track.
 //
-// EVERY TRACK IS A FILE NOW — `/assets/audio/{theme,drift,suspend,undertow}.mp3`. This is the
+// EVERY TRACK IS A FILE NOW - `/assets/audio/{theme,drift,suspend,undertow}.mp3`. This is the
 // one place the project departs from "everything is generated in code", and it departs on
 // purpose: a produced mix beats a synthesised one at being listened to, by a distance no amount
 // of oscillator work closes.
 //
 // Each file is named after the SLOT it fills, not after the mix it came from, which is what
-// makes the fallback automatic — a track asks for its own name and gets either the file or
+// makes the fallback automatic - a track asks for its own name and gets either the file or
 // itself. So the synthesised theme below is NOT dead code. It is the fallback: if the file 404s,
 // fails to decode, or the browser refuses the format, `createTheme` takes over and there is
 // music instead of silence. It is also still the reference for what the file should sound like,
@@ -19,24 +19,24 @@
 //
 // The theme is eight bars at 116 BPM in two halves that do not sound alike.
 //
-// Both halves are the same four chords — Dm Bb F C — and the difference between them is
+// Both halves are the same four chords - Dm Bb F C - and the difference between them is
 // ARRANGEMENT, not harmony. That is the oldest structure in synthwave and it works because the
 // second time round, the ear already knows where the chords are going and is free to follow the
 // tune instead.
 //
 // Bars 1-4 are the statement: a driving octave bass on the eighths, a gated pad, and the
 // arpeggio running at half density through a filter that is barely open. No melody at all. The
-// last bar is a build — the arp fills in, the snare runs, and a noise sweep rises into bar 5.
+// last bar is a build - the arp fills in, the snare runs, and a noise sweep rises into bar 5.
 //
 // Bars 5-8 are the pirate half: Dm Bb F C, a three-octave sixteenth arpeggio, and a hook built
-// like a shanty — one rhythmic cell stated, answered, then restated a fourth higher, landing on
+// like a shanty - one rhythmic cell stated, answered, then restated a fourth higher, landing on
 // the tonic with a bar of air after it. D natural minor, flat 7, no raised leading note: that
 // one accidental is the whole difference between a sea shanty and a vampire film.
 //
 // Holding both back until bar 5 is what makes the melody an event rather than something that
 // was always there.
 //
-// Scheduling uses the standard look-ahead pattern — a timer that only ever queues notes a little
+// Scheduling uses the standard look-ahead pattern - a timer that only ever queues notes a little
 // way into the future, with the AudioContext clock doing the actual timing. setTimeout per note
 // drifts audibly within seconds.
 
@@ -46,7 +46,7 @@ import {
 } from './engine.js';
 import { createAmbient } from './ambient.js';
 // The volume and the on/off switch are sealed like everything else this project stores. See
-// client/store.js — it is tamper evidence, not secrecy, and the header there says why.
+// client/store.js - it is tamper evidence, not secrecy, and the header there says why.
 import { store } from '../store.js';
 
 // 116 BPM, not the 77 this started at. The Get Lucky pocket only exists around here: a
@@ -71,14 +71,14 @@ const XFADE_S = 2.5;
 // `notes` is the pad and arpeggio voicing; `bass` is the root the pulse is measured from.
 /* Dm Bb F C, twice. The progression every pirate tune ever written sits on.
  *
- * Same bass both times — the octave pulse lives in one register and moving it would just make
+ * Same bass both times - the octave pulse lives in one register and moving it would just make
  * half the track sound thin. What changes is the VOICING above it: the first pass is an octave
  * down, so the statement sits under the restatement rather than beside it.
  */
 const CHORDS = [
-  { bass: 38, notes: [50, 53, 57] },   // Dm, voiced low — the intro
+  { bass: 38, notes: [50, 53, 57] },   // Dm, voiced low - the intro
   { bass: 34, notes: [50, 53, 58] },   // Bb, voiced low
-  { bass: 41, notes: [60, 65, 69] },   // F  — the main section starts here
+  { bass: 41, notes: [60, 65, 69] },   // F  - the main section starts here
   { bass: 36, notes: [60, 64, 67] },   // C
   { bass: 38, notes: [62, 65, 69] },   // Dm, open
   { bass: 34, notes: [62, 65, 70] },   // Bb
@@ -110,14 +110,14 @@ const ARP_GATE = [
  *
  * Sixteenths, never repeating a note two steps running, and shaped as a long climb with a
  * stumble back on the way up. A pure up-down ramp is an exercise; the small reversals are what
- * make it a riff you can follow — your ear tracks the pattern, is wrong twice a bar, and that
+ * make it a riff you can follow - your ear tracks the pattern, is wrong twice a bar, and that
  * is what keeps it interesting on the fortieth loop.
  */
 const ARP_ROLL = [0, 2, 4, 7, 5, 4, 6, 8, 7, 5, 3, 4, 2, 5, 3, 1];
 
 /* The hook. Eight eighth-notes a bar, four bars, nulls are rests.
  *
- * The old line was four long notes a bar — correct, inoffensive, and not a tune. What makes a
+ * The old line was four long notes a bar - correct, inoffensive, and not a tune. What makes a
  * shanty singable is three things, and all of them are deliberate here:
  *
  *   1. **A rhythmic cell that repeats.** Bars 1 and 3 share the same three-quaver pickup into
@@ -141,17 +141,17 @@ const ARP_ROLL = [0, 2, 4, 7, 5, 4, 6, 8, 7, 5, 3, 4, 2, 5, 3, 1];
  *   1. **An octave up.** Down at D4 it shared a register with the arpeggio and read as another
  *      moving part. At D5 it is clear of everything else and sounds like a tune.
  *   2. **It enters two eighths late**, so it arrives on top of the arpeggio rather than
- *      alongside it — the difference between a chorus and a change of track.
+ *      alongside it - the difference between a chorus and a change of track.
  *   3. **The last phrase lands on the tonic and stops**, instead of touching it and then
  *      adding another note after. The silence is the part people sing along to.
  *
  * D natural minor throughout.
  */
 const LEAD = [
-  null, null, 74, 74, 81, null, 81, 79,   // Dm — pickup, then hammer the fifth. This is the hook.
-  null, 82, 81, 79, 77, null, null, null, // Bb — answer it falling, and leave a bar of air
-  null, 72, 72, 81, null, 81, 84, 81,     // F  — the same cell a fourth up: repetition is the hook
-  86, 84, 81, 79, 74, null, null, null,   // C  — run home down the scale and land on the tonic
+  null, null, 74, 74, 81, null, 81, 79,   // Dm - pickup, then hammer the fifth. This is the hook.
+  null, 82, 81, 79, 77, null, null, null, // Bb - answer it falling, and leave a bar of air
+  null, 72, 72, 81, null, 81, 84, 81,     // F  - the same cell a fourth up: repetition is the hook
+  86, 84, 81, 79, 74, null, null, null,   // C  - run home down the scale and land on the tonic
 ];
 
 /* The octave shout, on the two moments the phrase peaks and nowhere else.
@@ -220,7 +220,7 @@ function createTheme({ bus }) {
   /**
    * The build: filtered noise rising across a bar.
    *
-   * One of the two things synthwave uses to mark a section — the other is silence — and the
+   * One of the two things synthwave uses to mark a section - the other is silence - and the
    * cheaper of the two. A bandpass climbing two octaves while it gets louder reads as "here it
    * comes" to anybody who has heard a record made after 1983.
    */
@@ -349,7 +349,7 @@ function createTheme({ bus }) {
       if (n % 2 === 1) hat(t, n === 15);
       const step = PULSE_BASS[n];
       if (step !== null) bass(t, chord.bass + step, STEP_DUR * 1.5);
-      // The same arpeggio as the back half, gated down and voiced low — so bar 5 is the figure
+      // The same arpeggio as the back half, gated down and voiced low - so bar 5 is the figure
       // you have been hearing all along, finally let out.
       if (ARP_GATE[bar][n]) {
         const idx = ARP_ROLL[n];
@@ -400,7 +400,7 @@ const METADATA_TIMEOUT_MS = 4000;
  *
  * The sequencer in createMusic() knows about `steps`, `stepDur`, `repeats`, `gain` and
  * `schedule(step, time)`, and nothing else. A whole mix is just a track with ONE step whose
- * duration is the length of the file — so crossfading, excluding, muting, ducking and the
+ * duration is the length of the file - so crossfading, excluding, muting, ducking and the
  * rotation all keep working with no special case anywhere above this function.
  *
  * Resolves to null if the file cannot be used, so the caller can fall back to the synth.
@@ -415,7 +415,7 @@ async function createFileTrack({ bus, name, loop = false }) {
   // not hear for the next five minutes. The one that is playing streams, the rest stay idle.
   el.preload = 'metadata';
   // The theme loops; the beds do not. A looping track never rotates away, which is exactly
-  // what 'the theme plays on the dashboard, always' means — see `repeats` below.
+  // what 'the theme plays on the dashboard, always' means - see `repeats` below.
   el.loop = loop;
   // The element's own volume stays at 1. The fader is the gain node below, because that is what
   // crossfade() automates and it has to be on the AudioContext clock, not the DOM one.
@@ -437,7 +437,7 @@ async function createFileTrack({ bus, name, loop = false }) {
   const gain = ctx.createGain();
   gain.gain.value = 0;
   gain.connect(bus);
-  // Once only — an element can have exactly one MediaElementAudioSourceNode, and creating a
+  // Once only - an element can have exactly one MediaElementAudioSourceNode, and creating a
   // second throws. Routing it through WebAudio also takes it off the page's own output, which
   // is what puts it behind the music bus and the volume slider with everything else.
   ctx.createMediaElementSource(el).connect(gain);
@@ -453,7 +453,7 @@ async function createFileTrack({ bus, name, loop = false }) {
      *
      * `repeats: Infinity` means the sequencer's `loops >= repeats` can never be true, so
      * crossfade() is never reached and this track owns the rotation until something calls
-     * jumpTo — which is precisely what starting a round does. The element's own `loop` does the
+     * jumpTo - which is precisely what starting a round does. The element's own `loop` does the
      * actual repeating, gaplessly; `schedule` below is a no-op while it is already running. */
     repeats: loop ? Infinity : 1,
 
@@ -481,7 +481,7 @@ async function createFileTrack({ bus, name, loop = false }) {
     },
 
     /**
-     * Stop costing anything once we have faded away. Optional on a track — the synthesised ones
+     * Stop costing anything once we have faded away. Optional on a track - the synthesised ones
      * simply stop being scheduled, but an <audio> element keeps decoding into a silent gain node
      * forever unless somebody tells it not to.
      */
@@ -502,7 +502,7 @@ export function createMusic() {
    * They are not the same thing, and the gap between them used to be invisible. The scheduler
    * works ahead: it queues a step, then advances `current` so the NEXT step comes from the next
    * track. With synthesised tracks a step is 0.13 s, so `current` was wrong for a frame and
-   * nobody could tell. A produced track is ONE step of about three minutes — so `current`
+   * nobody could tell. A produced track is ONE step of about three minutes - so `current`
    * named the next track for the entire time this one was playing.
    *
    * Which broke two things: the now-playing readout showed the wrong title for three minutes,
@@ -520,7 +520,7 @@ export function createMusic() {
    *
    * One person with three tabs open was three copies of the soundtrack playing a few hundred
    * milliseconds apart, which is worse than any one of them. The tab that is being looked at
-   * claims the audio and the others cede it — see the BroadcastChannel in client/main.js.
+   * claims the audio and the others cede it - see the BroadcastChannel in client/main.js.
    *
    * A separate flag rather than setting the volume to zero, for the same reason `ducked` is: it
    * is not the user's setting and it must not survive as one. `applyGain` is the only writer. */
@@ -534,7 +534,7 @@ export function createMusic() {
    *
    * Stored separately from the volume, because they answer different questions: the volume is
    * how loud, this is whether. Muting to zero and pausing are not the same act and should not
-   * share a setting — see the mute button in main.js.
+   * share a setting - see the mute button in main.js.
    *
    * Default TRUE, and the check is `!== '0'` rather than `=== '1'` so a browser with nothing
    * stored, or with the key cleared, lands on playing. The music is the first impression; a
@@ -555,7 +555,7 @@ export function createMusic() {
     musicGain = createMusicBus(volume);
     /* A gain node of its own, between the tracks and the bus, for the explosion duck.
      *
-     * It exists so that `applyGain` stays the ONLY writer of `musicGain` — the property the
+     * It exists so that `applyGain` stays the ONLY writer of `musicGain` - the property the
      * comment above it is about, and which a previous bug cost a whole session of silence.
      * A dip and a volume change are different concerns on different clocks: one is a 300 ms
      * transient fired by the game, the other is a setting. Sharing a parameter between them
@@ -564,14 +564,14 @@ export function createMusic() {
     sidechain.gain.value = 1;
     sidechain.connect(musicGain);
 
-    /* The ear the sea listens with — a second tap, separate from the visualisers' below. See
+    /* The ear the sea listens with - a second tap, separate from the visualisers' below. See
      * audio/listen.js.
      *
      * Two analysers because they want opposite things. A bar display wants heavy smoothing
      * (0.72) and post-volume levels; beat detection wants transients, which smoothing that heavy
      * blurs into mush, so this one runs at 0.2. And it sits after the duck but BEFORE the volume
-     * fader: the water should move the same at 10% as at 100% — the slider is how loud, not how
-     * much — while an explosion that ducks the music still ducks the sea on the same beat. The
+     * fader: the water should move the same at 10% as at 100% - the slider is how loud, not how
+     * much - while an explosion that ducks the music still ducks the sea on the same beat. The
      * renderer is told separately whether anyone can hear it (`audible`), so at zero the sea
      * still goes calm. A dangling analyser is a pure observer; the audio path is untouched. */
     seaAnalyser = ctx.createAnalyser();
@@ -581,7 +581,7 @@ export function createMusic() {
 
     /* The tap the visualisers read, hung off the bus in PARALLEL.
      *
-     * An AnalyserNode is a pass-through, but only if you connect its output — left dangling it
+     * An AnalyserNode is a pass-through, but only if you connect its output - left dangling it
      * is a pure observer. So the audio path is untouched, and nothing the drawing code does can
      * go wrong with the sound.
      *
@@ -590,7 +590,7 @@ export function createMusic() {
      * turn the music down to nothing and the bars would keep dancing, which reads as broken.
      * What is drawn should be what you can hear.
      *
-     * The decibel window is narrow — most of a mastered mix lives between -78 and -14 dBFS, and
+     * The decibel window is narrow - most of a mastered mix lives between -78 and -14 dBFS, and
      * the default -100..-30 wastes most of the range on silence, which is why naive
      * visualisers look like they are barely moving.
      */
@@ -598,7 +598,7 @@ export function createMusic() {
     /* 4096, not 1024.
      *
      * At 1024 the bins are 46.9 Hz wide, and log-spaced bands below about 500 Hz then round to
-     * the SAME bin — twenty-two of forty bands had one bin or less, so half the visualiser was
+     * the SAME bin - twenty-two of forty bands had one bin or less, so half the visualiser was
      * pairs of bars moving in perfect lockstep. That reads as a rendering fault and is really
      * an arithmetic one. 4096 brings it down to six, which is as good as it gets without
      * spending four times the FFT on frequencies nothing reproduces anyway.
@@ -615,7 +615,7 @@ export function createMusic() {
      * itself if it is not.
      *
      * The synthesised tracks are built either way, and that is on purpose rather than wasteful:
-     * they are what defines the slot — its name, and what it should sound like — and an unused
+     * they are what defines the slot - its name, and what it should sound like - and an unused
      * one costs a single gain node at zero that is never scheduled. No oscillator exists until
      * something calls its `schedule`.
      *
@@ -654,7 +654,7 @@ export function createMusic() {
 
   /**
    * Crossfade rather than cut. The outgoing track stops scheduling at the boundary but its pad
-   * releases and its delay tail keep sounding through its own fader, which is the overlap — so a
+   * releases and its delay tail keep sounding through its own fader, which is the overlap - so a
    * track change is a change of scene and not an edit.
    */
   function crossfade(at) {
@@ -765,7 +765,7 @@ export function createMusic() {
     get track() { return tracks ? tracks[sounding].name : null; },
 
     /**
-     * Must be called from a user gesture the first time — browsers block audio otherwise.
+     * Must be called from a user gesture the first time - browsers block audio otherwise.
      *
      * `from` names where to come in. The theme belongs to the landing page: it has a tune and a
      * backbeat, which is right for twenty seconds of reading a menu and wrong for ten minutes of
@@ -818,7 +818,7 @@ export function createMusic() {
 
     /**
      * Skip, in either direction. Both honour `excluded`, so neither can land you on the theme
-     * in the middle of a round — which is the one thing a skip button must not be able to do.
+     * in the middle of a round - which is the one thing a skip button must not be able to do.
      *
      * `current = sounding` first: the scheduler may have queued a handover minutes out, and a
      * skip is relative to what the person pressing it can HEAR, not to what is queued.
@@ -905,7 +905,7 @@ export function createMusic() {
      * Get out of the way of something loud, briefly. A sidechain, in the mixing sense.
      *
      * The problem it solves is that an explosion and a bassline occupy the same hundred hertz,
-     * so a blast landing on a downbeat half disappears into it — the music is not loud, but it
+     * so a blast landing on a downbeat half disappears into it - the music is not loud, but it
      * is in the way. Pulling the music down for a third of a second makes the blast feel
      * bigger without making anything louder, which is the whole trick, and it is why a game
      * mix with ducking sounds expensive and one without sounds flat.

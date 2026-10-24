@@ -1,7 +1,7 @@
 // One AudioContext for the whole page.
 //
-// Music and sound effects used to be unrelated, and the obvious shortcut — let each build its own
-// context — breaks in two ways. Browsers only unlock a context inside a user gesture, so the
+// Music and sound effects used to be unrelated, and the obvious shortcut - let each build its own
+// context - breaks in two ways. Browsers only unlock a context inside a user gesture, so the
 // second one stays suspended forever; and turning the music off would take the sound effects with
 // it, because they would be hanging off the music's context.
 //
@@ -88,7 +88,7 @@ export function createMusicBus(volume = 1) {
 }
 
 /**
- * A feedback delay — the sound that makes an arpeggio feel like synthwave rather than like a
+ * A feedback delay - the sound that makes an arpeggio feel like synthwave rather than like a
  * sequence of beeps. Connect voices into the returned node; the wet signal arrives at `out`.
  *
  * Every track owns its own line rather than sharing one, because the tracks run at different
@@ -114,7 +114,7 @@ export function createDelayLine(time, out, { feedback = 0.34, mix = 0.5 } = {}) 
  * The attack/decay(/sustain/release) shape every synthesised voice here needs, scheduled onto a
  * gain node. Pass `s` > 0 for a sustain stage, `hold` for how long to sit on it.
  *
- * Ramps are exponential because loudness is perceived logarithmically — a linear fade sounds like
+ * Ramps are exponential because loudness is perceived logarithmically - a linear fade sounds like
  * it hangs around and then drops off a cliff. They stop at a floor rather than at zero because
  * `exponentialRampToValueAtTime(0)` throws in every real browser.
  */

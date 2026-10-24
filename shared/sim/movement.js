@@ -27,7 +27,7 @@ const HALF_TILE = UNITS_PER_TILE >> 1;
  *
  *   ALIGN_RATE     never faster than the legs. At 2x it outran a deliberate move, and with
  *                  boots at 59 units a tick that was half a tile of sideways travel in ONE
- *                  tick — a snap, not an assist, and the commonest place to feel it is walking
+ *                  tick - a snap, not an assist, and the commonest place to feel it is walking
  *                  off a bomb you just placed, where the tile turns solid underneath you.
  *   ALIGN_FRACTION a quarter of whatever is left, so it decelerates into the lane instead of
  *                  arriving at full speed and stopping dead. This is the part that reads as
@@ -44,7 +44,7 @@ const ALIGN_MAX_UNITS = 1;       // one unit a tick: a tile takes eight seconds
 /* Rounding a corner is a different job from tidying up a lane, and they used to share a rate.
  *
  * Corridor centring happens while you are walking along unobstructed and nothing is asking for
- * it — so it has to be invisible, and the numbers above make it so.
+ * it - so it has to be invisible, and the numbers above make it so.
  *
  * Corner assist happens when you are PUSHING INTO a gap you are nearly lined up with and the
  * game is refusing the move. Every tick it takes is a tick of standing still against a doorway
@@ -61,14 +61,14 @@ const ASSIST_RATE = 2;           // and it may outrun the legs, because it is no
 // A fifteenth of walking pace, with a floor of three units a tick so a player with no boots is
 // not left crawling out of a wall for seven seconds. Three units is a ninth of base pace: slow
 // enough to read as drifting, fast enough that being entombed costs about a second. The far
-// commoner case — a partial overlap from a wall regrowing beside you — is over in a few ticks.
+// commoner case - a partial overlap from a wall regrowing beside you - is over in a few ticks.
 //
 // Bombs cannot reach this code at all; see the note in `unstick`.
 //
 // Deliberately much slower than the legs. Walking pace felt like being shoved, because it was
 // the same speed as a deliberate move and the eye read it as the player suddenly sprinting
 // sideways of their own accord. A twelfth of pace reads as the bomb easing you aside, which is
-// what it is — and the commonest case by far is stepping off your own bomb, where any visible
+// what it is - and the commonest case by far is stepping off your own bomb, where any visible
 // snap feels like the game taking the controls off you.
 const UNSTICK_MIN_UNITS = 1;
 const UNSTICK_MIN_PACE = 4;
@@ -102,7 +102,7 @@ function askedDir(p, mask) {
  *
  * Deliberately strict, because every refusal here is a refusal somebody can learn: no wind, no
  * slide; already sliding, no slide; still catching your breath from the last one, no slide. The
- * tired latch is in there too — an exhausted pirate limps, and a limping pirate who can still
+ * tired latch is in there too - an exhausted pirate limps, and a limping pirate who can still
  * cross three tiles in a third of a second would make the whole stamina system optional.
  *
  * Costs the stamina up front and sets a velocity, not a timer. Everything after this is drag.
@@ -115,7 +115,7 @@ function startSlide(state, p, mask) {
   if (p.stamina <= 0) { p.stamina = 0; p.tired = true; }
   p.dir = dir;
   p.slideDir = dir;
-  // The launch, from the pace you would have walked at — boots included, statuses included.
+  // The launch, from the pace you would have walked at - boots included, statuses included.
   p.slideV = Math.max(SLIDE_EXIT_UNITS + 1, ((speedOf(p) * SLIDE_PEAK_NUM) / SLIDE_PEAK_DEN) | 0);
   p.slideFor = 0;
   state.events?.push({ e: 'slide', tick: state.tick, i: p.i, x: p.x, y: p.y, d: dir });
@@ -126,7 +126,7 @@ function startSlide(state, p, mask) {
  * One tick of a slide in progress. Returns false once it is over.
  *
  * The velocity is integer units a tick and loses a tenth of itself every tick, so the whole thing
- * is a geometric series the client can replay exactly. Hitting a wall ends it immediately — a
+ * is a geometric series the client can replay exactly. Hitting a wall ends it immediately - a
  * slide that kept its momentum while pressed against stone would let you hold a slide round a
  * corner, and the one thing this mechanic must not become is a better way to walk.
  */
@@ -152,7 +152,7 @@ function stepSlide(state, p) {
  * Runs for everyone alive, moving or not, and runs BEFORE the move so the speed used this tick
  * reflects the state this tick. `tired` is a latch with hysteresis: it is set at zero and only
  * cleared once a third of the bar is back. Without the latch the exhausted flag flips every tick
- * at the boundary — the player stutters between full and half pace, and it reads as packet loss
+ * at the boundary - the player stutters between full and half pace, and it reads as packet loss
  * rather than as a mechanic.
  */
 export function stamina(p, moving) {
@@ -171,7 +171,7 @@ export function stamina(p, moving) {
 }
 
 /**
- * Is this player standing in a puddle? By the tile their centre is in — the same test fire,
+ * Is this player standing in a puddle? By the tile their centre is in - the same test fire,
  * pickups and every other per-tile rule use. `state` is the server's state or the client's
  * world; both carry the puddle list, which is what lets prediction agree.
  */
@@ -188,7 +188,7 @@ const DIR_VEC = { [DIR_R]: [1, 0], [DIR_U]: [0, -1], [DIR_L]: [-1, 0], [DIR_D]: 
 const halfBox = p => (has(p, STATUS.REDUCTION) ? HITBOX_REDUCED_UNITS : HITBOX_UNITS) >> 1;
 
 /**
- * A bomb is solid to anyone whose centre is outside its tile — and to nobody who is already
+ * A bomb is solid to anyone whose centre is outside its tile - and to nobody who is already
  * standing on it, whoever placed it.
  *
  * The owner test this used to have made a non-owner's bomb solid the instant it appeared, with
@@ -210,7 +210,7 @@ function bombSolid(state, p, tx, ty) {
      * came from: the instant the centre crossed the line, eighty units of hitbox were suddenly
      * inside a solid tile, and `unstick` had to push all of it back out. A third of a tile of
      * movement you did not ask for, every single time you walked off a bomb you had just
-     * placed — which is the most common thing anybody does in this game.
+     * placed - which is the most common thing anybody does in this game.
      *
      * Testing the HITBOX instead means the bomb becomes solid at the exact moment you are
      * clear of it, so there is nothing left to push out and the unstick never fires at all.
@@ -230,7 +230,7 @@ function bombSolid(state, p, tx, ty) {
 
 /** Would the hitbox centred on (x, y) overlap anything solid? */
 /**
- * @param bombsCount false to ask about terrain only — see `unstick`.
+ * @param bombsCount false to ask about terrain only - see `unstick`.
  */
 export function blocked(state, p, x, y, bombsCount = true) {
   const h = halfBox(p);
@@ -244,8 +244,8 @@ export function blocked(state, p, x, y, bombsCount = true) {
       if (!solid) continue;
       /* The chamfer. See CORNER_CUT_UNITS.
        *
-       * A tile the box only touches with a CORNER — it is in the first or last column of the
-       * overlap AND the first or last row, with more than one of each — is forgiven while the
+       * A tile the box only touches with a CORNER - it is in the first or last column of the
+       * overlap AND the first or last row, with more than one of each - is forgiven while the
        * bite out of it is shallow on both axes. That is exactly the case that makes rounding a
        * block diagonally feel like catching on a nail, and the only case: anything you are
        * properly into fails the depth test and is as solid as it ever was.
@@ -274,13 +274,13 @@ const laneWalkable = (state, horizontal, primaryTile, laneTile, reduced) =>
  *
  * Grid games need two behaviours that sound unrelated and are actually the same decision:
  *
- *  - **auto-centring** — walking a corridor, drift onto its centre line so you never scrape;
- *  - **corner assist** — pushing into a wall while *nearly* lined up with the gap beside it,
+ *  - **auto-centring** - walking a corridor, drift onto its centre line so you never scrape;
+ *  - **corner assist** - pushing into a wall while *nearly* lined up with the gap beside it,
  *    slide into the gap rather than stopping dead.
  *
  * Implemented separately they fight: centring drags you off the gap before you ever reach the
- * wall, so the assist never fires. So instead there is one question asked every tick — *which
- * lane do I want to be in?* — and the answer drives a single sideways drift:
+ * wall, so the assist never fires. So instead there is one question asked every tick - *which
+ * lane do I want to be in?* - and the answer drives a single sideways drift:
  *
  *   way ahead is clear          -> stay in this lane
  *   blocked, gap beside, close  -> the adjacent lane  (corner assist)
@@ -311,7 +311,7 @@ function moveAxis(state, p, ax, ay, speed, assist = true) {
    *
    * Eased rather than flat out: a quarter of the remaining offset each tick, floored so it
    * finishes and capped so it is never a lurch. From a third of a tile out that is about a
-   * dozen ticks, decelerating the whole way — you feel the game tidy you up, not shove you.
+   * dozen ticks, decelerating the whole way - you feel the game tidy you up, not shove you.
    */
   const straighten = (urgent = false) => {
     const delta = -off;
@@ -350,7 +350,7 @@ function moveAxis(state, p, ax, ay, speed, assist = true) {
     p.x = nx; p.y = ny;
     if (!assist) return true;
     // Corridor centring: drift onto the centre line, but only where there is nothing beside you
-    // to aim at. On open ground, leave the player exactly where they put themselves — pulling
+    // to aim at. On open ground, leave the player exactly where they put themselves - pulling
     // them around would fight every attempt to line up with a gap.
     if (off !== 0) {
       const adj = lane + Math.sign(off);
@@ -375,14 +375,14 @@ function moveAxis(state, p, ax, ay, speed, assist = true) {
  * Nothing may leave a player unable to move. Ever.
  *
  * `moveAxis` assumes you start from a legal position and only ever asks whether the *next* one is
- * legal — so a player who somehow ends up overlapping a solid tile finds every candidate blocked,
+ * legal - so a player who somehow ends up overlapping a solid tile finds every candidate blocked,
  * including the flush-to-wall slide, and is frozen for good. The ways in are all rare and all
  * real: a wall regrowing on top of you, Reduction expiring while you stand inside a column, a map
  * change, a spawn point that is no longer clear.
  *
  * So: if the position we are *already* in is illegal, leave for the nearest legal tile centre.
  * This runs off nothing but the shared state, so the client predicts the identical escape and
- * reconciliation stays a no-op. It never fires in normal play — if it is firing, something else
+ * reconciliation stays a no-op. It never fires in normal play - if it is firing, something else
  * is wrong and this is the seatbelt, not the fix.
  *
  * @returns true if it had to intervene
@@ -395,7 +395,7 @@ export function unstick(state, p) {
    * that is no longer clear. Every one of those is genuinely inescapable without help.
    *
    * A bomb is not. `bombSolid` already treats one you are touching as passable, so you can
-   * always simply walk off it — and a shove on top of that is the game moving you when you were
+   * always simply walk off it - and a shove on top of that is the game moving you when you were
    * perfectly capable of moving yourself. Passing `false` here makes that structural rather
    * than a property of the current tuning: even if bomb solidity changes again, the unstick
    * cannot start pushing people off bombs as a side effect.
@@ -433,8 +433,8 @@ export function unstick(state, p) {
     //
     // Snapping straight to the target was correct and felt awful: a wall growing on you threw you
     // a whole tile in one frame, and the rendered position had to be hard-cut to follow. Walking
-    // out over a few ticks reads as being shoved, which is what it is. It stays deterministic —
-    // same state, same arithmetic, same answer on both machines — so prediction still agrees.
+    // out over a few ticks reads as being shoved, which is what it is. It stays deterministic -
+    // same state, same arithmetic, same answer on both machines - so prediction still agrees.
     //
     // One axis at a time, matching the rest of movement, and the larger gap first so the escape
     // always makes progress rather than dithering between two half-steps.
@@ -466,7 +466,7 @@ export function step(state, p, mask) {
   /* The slide owns the tick.
    *
    * While one is running the keys do nothing: no steering, no braking, no bomb-key dance to cut it
-   * short. That is the trade the stamina paid for — three tiles of commitment, and the decision
+   * short. That is the trade the stamina paid for - three tiles of commitment, and the decision
    * was made when you double-tapped. It also means the whole thing is a function of (velocity,
    * direction, map), which is why the client can replay it to the unit.
    *
@@ -493,7 +493,7 @@ export function step(state, p, mask) {
    *
    * Every tick you walk in a puddle tops the slide up; let go and you keep going the way you are
    * facing until it runs out. Facing, not "the keys you last held", because facing is already on
-   * the wire and is always the axis you actually travelled — so the client replays the slide
+   * the wire and is always the axis you actually travelled - so the client replays the slide
    * from nothing but `slide` and `dir`. Leaving the water ends it at once: the floor is not wet.
    */
   const wet = inPuddle(state, p);
@@ -517,18 +517,18 @@ export function step(state, p, mask) {
   /* Drunk: you wander across the line you are walking along.
    *
    * Two sines on the tick, at rates that do not divide into each other, seeded by seat so no
-   * two drunks stagger in step. Deterministic in (tick, seat) on purpose — the client replays
+   * two drunks stagger in step. Deterministic in (tick, seat) on purpose - the client replays
    * the same arithmetic, so a drunk player is predicted exactly like a sober one and the whole
    * thing costs nothing in reconciliation.
    *
    * Across the direction of travel rather than along it. Inverting the controls would be
    * "broken", and slowing you down is already what Slowdown does; wandering is the only one of
-   * the three that reads as being drunk rather than as being punished — and it is genuinely
+   * the three that reads as being drunk rather than as being punished - and it is genuinely
    * hard to thread a corridor with, which is the point.
    */
   if (has(p, STATUS.DRUNK)) {
     const t = state.tick + p.i * 37;
-    // The stagger: briefly, you go the way you were NOT pointing. Only ever sideways — a
+    // The stagger: briefly, you go the way you were NOT pointing. Only ever sideways - a
     // reversal would read as broken controls, where a lurch into the wall beside you reads as
     // being unable to walk straight, which is the thing being modelled.
     if (t % DRUNK_STAGGER_EVERY < DRUNK_STAGGER_TICKS) {
@@ -549,7 +549,7 @@ export function step(state, p, mask) {
 
   /* Diagonals: both axes, in the same tick, at 1/√2 each.
    *
-   * It used to be one axis a tick — whichever of the two was open, preferring your facing — so
+   * It used to be one axis a tick - whichever of the two was open, preferring your facing - so
    * holding two keys walked you in a straight line and the second key was only ever a fallback
    * for when the first was walled. That is cheap to interpolate and it is not what anybody
    * pressing two keys is asking for.
@@ -557,7 +557,7 @@ export function step(state, p, mask) {
    * Now the step is a real diagonal: both axes move, each at DIAG_NUM/DIAG_DEN of your pace, so
    * the distance covered is the same as walking straight and holding two keys is not a speed
    * exploit. Each axis is still its own `moveAxis` call, which is what keeps every existing
-   * rule — the flush-to-wall slide, bomb solidity, reduction — exactly as it was, and what
+   * rule - the flush-to-wall slide, bomb solidity, reduction - exactly as it was, and what
    * makes a diagonal into a wall slide ALONG it: the blocked axis contributes nothing and the
    * open one carries you.
    *
@@ -570,8 +570,8 @@ export function step(state, p, mask) {
   if (dx && dy) {
     const pace = Math.max(1, ((speed * DIAG_NUM) / DIAG_DEN) | 0);
     const facingH = p.dir === DIR_L || p.dir === DIR_R;
-    // The facing axis goes first. Which of the two moves first is observable — the second call
-    // sees the position the first one left — so the order has to be a rule, not an accident.
+    // The facing axis goes first. Which of the two moves first is observable - the second call
+    // sees the position the first one left - so the order has to be a rule, not an accident.
     const first = facingH ? [dx, 0] : [0, dy];
     const second = facingH ? [0, dy] : [dx, 0];
 
@@ -590,7 +590,7 @@ export function step(state, p, mask) {
   moveAxis(state, p, dx, dy, speed);
 }
 
-/** Every alive player, in seat order. Order is part of determinism — never iterate a Map here. */
+/** Every alive player, in seat order. Order is part of determinism - never iterate a Map here. */
 export function stepAll(state, inputs) {
   for (let i = 0; i < state.players.length; i++) {
     const p = state.players[i];

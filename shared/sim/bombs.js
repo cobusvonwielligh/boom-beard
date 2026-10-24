@@ -19,7 +19,7 @@ export const bombAt = (state, tx, ty) => state.bombs.find(b => b.tx === tx && b.
  * `toTile(p.x), toTile(p.y)`, so it changes the instant your centre crosses a tile boundary and
  * never depends on where inside the tile you are.
  *
- * It falls back to the tile underneath when the facing one cannot take a bomb — a wall, the
+ * It falls back to the tile underneath when the facing one cannot take a bomb - a wall, the
  * sea, the map edge, or another bomb. That fallback is not a compromise, it is the only way the
  * game still works: the commonest reason to bomb anything is to break the wall you are facing,
  * and a rule that refused would mean walls could never be broken by somebody looking at them.
@@ -51,7 +51,7 @@ export function place(state, p, mask) {
    * and a single tap lays two bombs a third of a second apart.
    *
    * The edge is tracked on the player rather than in the client, so prediction and the server
-   * agree without the client having to send anything new — it replays the same masks through
+   * agree without the client having to send anything new - it replays the same masks through
    * the same function and arrives at the same answer.
    */
   const held = (mask & IN_BOMB) !== 0;
@@ -61,7 +61,7 @@ export function place(state, p, mask) {
   if (has(p, STATUS.PACIFISM)) return;
   // Seeing stars: somebody slid through you and for the next second and a half you cannot find
   // the fuse. The edge above has already been consumed, so holding the key through it does not
-  // bank a bomb that fires the moment it wears off — you have to press again.
+  // bank a bomb that fires the moment it wears off - you have to press again.
   if (has(p, STATUS.CONFUSED)) return;
   // A slide in progress is hands-full. Without this the slide becomes a bomb-delivery vehicle:
   // launch, cross three tiles in a third of a second, and drop one at the far end from safety.
@@ -88,7 +88,7 @@ export function place(state, p, mask) {
 /**
  * Detonate everything due this tick, including whatever the blasts set off.
  *
- * Resolved as a queue in one tick, always in ascending bomb id, with a hard cap — a 16-player
+ * Resolved as a queue in one tick, always in ascending bomb id, with a hard cap - a 16-player
  * bomb carpet must not be able to stall the loop. Deterministic ordering matters more than it
  * looks: it decides who gets credit for a chain kill.
  */
@@ -111,14 +111,14 @@ export function detonate(state) {
     // `boom` must come out BEFORE the block events this same blast produces.
     //
     // The client replays a snapshot's events strictly in order and only derives the blast when it
-    // reaches `boom` — by running the same `spread` against its own map. Emitted last, the block
+    // reaches `boom` - by running the same `spread` against its own map. Emitted last, the block
     // the arm was supposed to stop at has already been turned to floor by the preceding
     // `blockdie`, so the client draws fire two tiles past where the server actually burned. That
     // happened on roughly half of all bombs (both fuse lengths are even, so `at` shares parity
     // with the placement tick and lands in the same snapshot as its own block events) and on every
     // chain-detonated bomb regardless of parity.
     //
-    // The alternative — buffering block events on the client until after the booms — is wrong: a
+    // The alternative - buffering block events on the client until after the booms - is wrong: a
     // snapshot spans two ticks, so it would mis-order block changes from the earlier tick.
     state.events.push({
       e: 'boom', tick: state.tick, id: bomb.id,
@@ -143,7 +143,7 @@ export function detonate(state) {
     }
 
     for (const c of cells) {
-      // `src` is which blast this is, so a hit can be counted once per blast — see killInFire.
+      // `src` is which blast this is, so a hit can be counted once per blast - see killInFire.
       state.fires.push({ tx: c.tx, ty: c.ty, kind: c.kind, rot: c.rot, until: state.tick + FIRE_TICKS, owner: bomb.owner, src: bomb.id });
       // Anything caught in the blast goes off now, not on its own fuse.
       const neighbour = bombAt(state, c.tx, c.ty);

@@ -2,8 +2,8 @@
 //
 // The shipped version took the two newest, which is wrong in a way that is invisible in the code
 // and very visible on screen: remote players teleported fifteen times a second and it looked
-// exactly like a bad connection. These tests pin the shape of the real buffer — snapshots every
-// SNAP_EVERY_TICKS, rendering INTERP_DELAY_TICKS behind — because that is where it broke.
+// exactly like a bad connection. These tests pin the shape of the real buffer - snapshots every
+// SNAP_EVERY_TICKS, rendering INTERP_DELAY_TICKS behind - because that is where it broke.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -27,7 +27,7 @@ test('the fraction sweeps 0 to 1 across a span', () => {
   assert.equal(pickPair(b, 12).f, 1);
 });
 
-test('it never pins — the real cadence produces motion every tick', () => {
+test('it never pins - the real cadence produces motion every tick', () => {
   // The exact situation that broke: snapshots every 2 ticks, render 4 ticks behind, and the
   // newest snapshot therefore always starts AFTER the time being drawn.
   const ticks = [];
@@ -43,7 +43,7 @@ test('it never pins — the real cadence produces motion every tick', () => {
   }
 
   // Every step forward in time must move the drawn position forward too. The old code produced
-  // long runs of the identical value — that run is the judder.
+  // long runs of the identical value - that run is the judder.
   let stalls = 0;
   for (let i = 1; i < positions.length; i++) if (positions[i] === positions[i - 1]) stalls++;
   assert.equal(stalls, 0, `the drawn position stood still on ${stalls}/${positions.length - 1} ticks`);

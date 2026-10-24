@@ -8,7 +8,7 @@ import {
 } from '../constants.js';
 import { has, applyStatus } from './state.js';
 
-/** Every contagious status, as a list, in a fixed order — iteration order is part of the sim. */
+/** Every contagious status, as a list, in a fixed order - iteration order is part of the sim. */
 export const CONTAGIOUS_LIST = [
   STATUS.PACIFISM, STATUS.SLOWDOWN, STATUS.INVISIBLE,
   STATUS.CHANGELING, STATUS.REDUCTION, STATUS.FAST_DET,
@@ -22,7 +22,7 @@ const overlapping = (a, b) =>
 /**
  * Pass statuses between touching players.
  *
- * The carrier keeps theirs — this is contagion, not a trade. The per-pair cooldown stops a scrum
+ * The carrier keeps theirs - this is contagion, not a trade. The per-pair cooldown stops a scrum
  * from ping-ponging the same status back and forth every tick, which would both spam the event
  * log and make the status effectively permanent for everyone in the pile.
  *
@@ -73,12 +73,12 @@ export function spread(state) {
  * Anyone a sliding player went through is left seeing stars. See STATUS.CONFUSED.
  *
  * Run straight after movement, because the overlap this looks for exists for the one tick the
- * slider passed through it — a slide covers most of a tile per tick, so a check anywhere later in
+ * slider passed through it - a slide covers most of a tile per tick, so a check anywhere later in
  * the tick would miss the people it went past rather than the people it stopped on.
  *
  * Not a trade and not contagious: the slider keeps everything they had, nothing is passed back,
  * and a confused player barging about cannot confuse anybody else. Invulnerability covers this
- * like it covers the diseases — a spawn that can be shoved out of its own protection is not
+ * like it covers the diseases - a spawn that can be shoved out of its own protection is not
  * protection. The slider's own confusion, if they have any, is irrelevant: the shove is physical.
  */
 export function daze(state) {

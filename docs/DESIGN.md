@@ -1,4 +1,4 @@
-# Boom Beard — Design
+# Boom Beard - Design
 
 Date: 2026-10-23
 Author: Cobus (with Claude)
@@ -9,7 +9,7 @@ Status: agreed, drives the plan in [PLAN.md](PLAN.md)
 ## 1. Intent
 
 The eezi team wants something to play together on Friday afternoons. Game of Bombs is the
-reference — some of us already played it — but it is someone else's server, it is flaky, and
+reference - some of us already played it - but it is someone else's server, it is flaky, and
 corporate IT does not reliably let it through. We want our own: one box, one hostname, type
 your name, play.
 
@@ -19,7 +19,7 @@ The success test is simple and social, not technical:
 > without anyone saying "mine is lagging" or "how do I do the thing again".
 
 That second half matters. People who played Game of Bombs should not have to relearn anything.
-Movement feel, bomb fuse, blast shape, perk icons, the rhythm of the round — all of it should be
+Movement feel, bomb fuse, blast shape, perk icons, the rhythm of the round - all of it should be
 close enough that muscle memory transfers.
 
 ---
@@ -38,7 +38,7 @@ close enough that muscle memory transfers.
 
 ## 3. Non-goals (v1)
 
-Explicitly out. Not "later" — out of this build.
+Explicitly out. Not "later" - out of this build.
 
 - Accounts, passwords, email, OAuth, social login.
 - Payments, plutonium, gold, shops, skins, the skin constructor.
@@ -77,7 +77,7 @@ dies to a blast they could not see. This single decision removes most of the lat
 
 **(b) Players do not collide with each other.** In classic Bomberman and in Game of Bombs you
 walk through other players. Keeping that means nothing in the game depends on knowing exactly
-where a remote player is *right now* — we can render them 130 ms in the past and it is invisible.
+where a remote player is *right now* - we can render them 130 ms in the past and it is invisible.
 
 **(c) Your own movement is predicted and reconciled.** Your character responds to your keys on
 the same frame. The server is still authoritative; mismatches are corrected by replaying your
@@ -97,7 +97,7 @@ These were chosen, not discovered. A builder may push back but should not quietl
 | Area | Decision |
 |---|---|
 | Server runtime | Node 20+. One dependency: `ws`. HTTP + WebSocket in the same process on the same port. |
-| Client | Vanilla ES modules served raw. jQuery for menu/HUD DOM only — never in the game loop. |
+| Client | Vanilla ES modules served raw. jQuery for menu/HUD DOM only - never in the game loop. |
 | Rendering | Canvas 2D. Static map drawn once into cached 8×8-tile chunk canvases, dirty-redrawn on change. Entities drawn per frame on top. Same approach Game of Bombs uses. |
 | Shared code | `shared/` directory, ES modules, imported unchanged by Node and the browser. The simulation is literally the same file on both sides. |
 | Wire format | JSON over WebSocket. Full snapshots at 15 Hz. Binary is a later optimisation with a stated trigger, not a day-one cost. |
@@ -122,7 +122,7 @@ Agreed in planning:
 - **Chat** (ENTER) and **observer mode** (TAB → click a name).
 - **Leaderboard** with the 16 Game of Bombs rank titles.
 
-Designed-for but **not built** in v1 — the architecture leaves explicit, named slots so adding
+Designed-for but **not built** in v1 - the architecture leaves explicit, named slots so adding
 them later is a new file, not a refactor:
 
 - Kick, Jelly, Detonator (radio bombs), Bat (charge-throw), Jetpack, Nuclear charge, Blue fire,
@@ -135,7 +135,7 @@ Exact numbers for everything in scope: [RULES.md](RULES.md).
 ## 8. Constraints
 
 - AWS free tier: one `t3.micro`/`t2.micro`, 1 GB RAM, burstable CPU. The sim must stay well
-  inside one core at 30 Hz with 16 players. It will — this is a grid game with ~1 200 cells.
+  inside one core at 30 Hz with 16 players. It will - this is a grid game with ~1 200 cells.
 - Free tier egress is 100 GB/month. At 15 Hz JSON snapshots a full 16-player round costs about
   180 MB. That is roughly 500 rounds a month. Comfortable, but it is the number to watch if we
   ever raise the snapshot rate.
@@ -145,7 +145,7 @@ Exact numbers for everything in scope: [RULES.md](RULES.md).
 
 ## 9. What is left to the builder
 
-Deliberately unspecified — make the call, write it down in the PR:
+Deliberately unspecified - make the call, write it down in the PR:
 
 - Exact easing on the camera follow.
 - Menu layout and copy, beyond "name field, three map cards, play button".
@@ -158,8 +158,8 @@ Deliberately unspecified — make the call, write it down in the PR:
 - **Where the players sit.** Design assumes worst case. If everyone turns out to be in one
   office in South Africa, moving the server to `af-south-1` drops RTT to ~15 ms and we get a
   better game for free. Decide before the first real session; it is a config change, not a code
-  change. Note that `af-south-1` is not always covered by the EC2 free tier — check before
+  change. Note that `af-south-1` is not always covered by the EC2 free tier - check before
   switching.
 - **Domain name.** Needed for TLS on 443. If there is no spare eezi domain, use a free
-  `*.duckdns.org` or `*.sslip.io` host — still one hostname, still one port, still free.
+  `*.duckdns.org` or `*.sslip.io` host - still one hostname, still one port, still free.
   See [DEPLOY.md](DEPLOY.md).

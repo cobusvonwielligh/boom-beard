@@ -1,7 +1,7 @@
 // A seat held by a backgrounded tab is a person who cannot join.
 //
 // Sixteen is a hard cap, so the server reclaims a seat that has gone silent. A playing client
-// sends an input every tick — including a mask of zero while standing still — so silence means
+// sends an input every tick - including a mask of zero while standing still - so silence means
 // the tab is hidden, frozen, or on a sleeping laptop, not that somebody is thinking.
 
 import { test } from 'node:test';

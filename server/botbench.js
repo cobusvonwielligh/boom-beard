@@ -2,13 +2,13 @@
 //
 //   node server/botbench.js [minutes per map] [bots]
 //
-// Fifteen bots, every map, ticked by hand as fast as the CPU allows — ten simulated minutes is a
+// Fifteen bots, every map, ticked by hand as fast as the CPU allows - ten simulated minutes is a
 // few seconds of wall clock. Prints deaths, suicides and kills per bot per minute, which are the
 // numbers STATUS.md quotes. Run it before and after touching ai.js; a change that is not visible
 // here is not a change.
 //
 // Suicides are the number to push down. Kills are the number that must not collapse while you do
-// it — a bot that never bombs never dies, and is also not worth playing against.
+// it - a bot that never bombs never dies, and is also not worth playing against.
 
 import { pathToFileURL } from 'node:url';
 import { createRoom } from './room.js';

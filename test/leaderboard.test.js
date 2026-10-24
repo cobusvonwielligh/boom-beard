@@ -1,4 +1,4 @@
-// Lifetime scores have to survive a restart, a crash mid-write and a mangled file — docs/PLAN.md
+// Lifetime scores have to survive a restart, a crash mid-write and a mangled file - docs/PLAN.md
 // RND-2. Every test gets its own temporary data dir, because the file *is* the state.
 
 import { test } from 'node:test';
@@ -181,7 +181,7 @@ test('leaderboard', async t => {
 
 test('the round in progress survives a restart', async () => {
   // The whole point. Scores used to reach the file only at a round boundary or on disconnect,
-  // so a deploy mid-round threw away everything since the last round end — and on a build day
+  // so a deploy mid-round threw away everything since the last round end - and on a build day
   // that is most deploys.
   const dataDir = fss.mkdtempSync(path.join(os.tmpdir(), 'bv-bank-'));
   try {

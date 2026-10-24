@@ -1,7 +1,7 @@
 // There is no build step, so nothing checks the browser's module graph until a browser loads it.
 //
 // `node --check` only parses. A named import of something the target module does not export is
-// perfectly valid syntax and fails at link time — in the browser, at the worst possible moment,
+// perfectly valid syntax and fails at link time - in the browser, at the worst possible moment,
 // with a blank screen and one line in a console nobody has open. This walks the graph the way the
 // browser will, resolving the `/shared` and `/assets` mounts exactly as server/index.js does, and
 // proves every specifier resolves and every named import actually exists.
@@ -39,8 +39,8 @@ const EXPORT_RE = [
 /**
  * Every name this module exports.
  *
- * Deliberately over-generous on `export const a = 1, b = 2, c = 3` — a very common shape in
- * constants.js — by taking every `identifier =` on the statement. An extra name here can only
+ * Deliberately over-generous on `export const a = 1, b = 2, c = 3` - a very common shape in
+ * constants.js - by taking every `identifier =` on the statement. An extra name here can only
  * ever let a bad import through; missing one would fail a perfectly good import, and a test that
  * cries wolf gets deleted. `=>` and `==` are excluded so arrow parameters do not count.
  */
@@ -115,7 +115,7 @@ function walk(entry) {
 
 test('the browser module graph resolves and every named import exists', () => {
   const { modules, problems } = walk(path.join(ROOT, 'public', 'client', 'main.js'));
-  assert.ok(modules.length >= 8, `only walked ${modules.length} modules — the walker is broken`);
+  assert.ok(modules.length >= 8, `only walked ${modules.length} modules - the walker is broken`);
   assert.deepEqual(problems, [], `\n  ${problems.join('\n  ')}\n`);
 });
 

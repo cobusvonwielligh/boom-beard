@@ -66,7 +66,7 @@ test('the round is a full round of PLAY, not of play minus the count-in', () => 
   const r = room({});
   try {
     const { seat } = r.join('p1', 'cobus');
-    // What the client counts down to, and what the room ends on, have to be the same number —
+    // What the client counts down to, and what the room ends on, have to be the same number -
     // otherwise the clock on screen reads 9:55 at the whistle, or runs out before it.
     const w = r.welcomeFor(seat);
     assert.equal(w.startsAtTick, COUNT_IN_TICKS, 'the client is told the wrong start tick');

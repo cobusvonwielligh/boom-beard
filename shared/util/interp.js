@@ -1,13 +1,13 @@
 // Choosing which two snapshots to draw a remote player between.
 //
 // In `shared/` rather than in the client because it is pure, fiddly, and was wrong for a while in
-// a way nobody could see from reading it — so it wants a test, and a test needs it importable
+// a way nobody could see from reading it - so it wants a test, and a test needs it importable
 // from Node.
 
 /**
  * The pair of buffered snapshots that brackets `t`, and how far between them to sit.
  *
- * The obvious implementation — take the two newest — is a trap, and it is the one this project
+ * The obvious implementation - take the two newest - is a trap, and it is the one this project
  * shipped. Snapshots arrive every 2 ticks and remotes are drawn INTERP_DELAY_TICKS behind, so the
  * newest pair usually starts *after* the time being drawn: the fraction clamps to 0 and the
  * player is pinned to one snapshot until the next arrives. The result is not a smooth 15 Hz, it
@@ -34,7 +34,7 @@ export function pickPair(buf, t) {
     return { a, b, f: Math.max(0, Math.min(1, (t - a.tick) / span)) };
   }
 
-  // Newer than everything we have — the next snapshot is late. Hold the newest position rather
+  // Newer than everything we have - the next snapshot is late. Hold the newest position rather
   // than extrapolating: a guess that overshoots has to be taken back, and taking it back is more
   // visible than being 30 ms behind.
   const last = buf[buf.length - 1];

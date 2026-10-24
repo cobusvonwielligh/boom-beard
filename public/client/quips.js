@@ -81,7 +81,7 @@ export const MENU_QUIPS = [
 ];
 
 /**
- * The rum. Its own pool, because it is the only pickup the mascot has an opinion about — and
+ * The rum. Its own pool, because it is the only pickup the mascot has an opinion about - and
  * because a line that fires on one drop in ten stays funny, where the same line on every bomb
  * would be wallpaper inside a minute.
  */

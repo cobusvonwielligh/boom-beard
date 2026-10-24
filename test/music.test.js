@@ -1,4 +1,4 @@
-// The music cannot run in Node — it needs an AudioContext — but its note tables are plain data,
+// The music cannot run in Node - it needs an AudioContext - but its note tables are plain data,
 // and that is where the bugs that are expensive to find by ear live: a pattern one step short so
 // the groove limps, an arpeggio index past the end of a voicing so a note silently vanishes, an
 // ambient bed accidentally spelled the same as its neighbour so cycling does nothing.
@@ -23,7 +23,7 @@ const hz = midi => 440 * Math.pow(2, (midi - 69) / 12);
 
 /**
  * The value of a top-level `const NAME = <array or object literal>`, bracket-balanced. `scope`
- * binds any other constant the literal refers to — BEDS names its arpeggio tables rather than
+ * binds any other constant the literal refers to - BEDS names its arpeggio tables rather than
  * inlining them, which is worth keeping readable in the source.
  */
 function literal(src, name, scope = {}) {
@@ -118,7 +118,7 @@ test('the octave bass pulses and never wanders', () => {
   for (const [n, v] of PULSE_BASS.entries()) {
     if (n % 4 === 0) assert.equal(v, 0, `step ${n} should be the root`);
     else if (n % 2 === 0) assert.equal(v, 12, `step ${n} should be the octave`);
-    else assert.equal(v, null, `step ${n} should be silent — this is eighths, not sixteenths`);
+    else assert.equal(v, null, `step ${n} should be silent - this is eighths, not sixteenths`);
   }
 });
 
@@ -149,7 +149,7 @@ test('the hook is a repeated-note cell that climbs, and it enters late', () => {
 
   // Enters after the section does, not with it.
   assert.ok(bar(0).slice(0, 2).every(n => n === null),
-    'the melody starts on the downbeat — it should arrive on top of the arpeggio, not with it');
+    'the melody starts on the downbeat - it should arrive on top of the arpeggio, not with it');
   assert.ok(bar(0)[2] !== null, 'and it should not wait longer than that either');
 
   // The cell: somewhere in the line, the same note twice running, at least twice over.
@@ -255,7 +255,7 @@ test('the beds are atmosphere, not music with a tune in it', () => {
   for (const bed of BEDS) {
     const notes = bed.arp.filter(s => s !== null).length;
     // Sixteen notes a bar is the main theme's arpeggio. Anything near it is too busy to sit
-    // under sixteen minutes of play — the acceptance test in docs/ART-AUDIO.md.
+    // under sixteen minutes of play - the acceptance test in docs/ART-AUDIO.md.
     assert.ok(notes <= 8, `${bed.name}: ${notes} notes a bar is a sequence, not a bed`);
     assert.ok(notes >= 4, `${bed.name}: ${notes} notes a bar is not an arpeggio`);
     assert.ok(bed.release >= 1.5,
@@ -265,7 +265,7 @@ test('the beds are atmosphere, not music with a tune in it', () => {
   }
   // No kit. The theme has the drums; a bed is allowed one soft sub pulse and nothing else.
   for (const voice of ['kick(', 'snare(', 'hat(', 'noiseSource']) {
-    assert.ok(!ambientSrc.includes(voice), `ambient.js has a ${voice} — the beds have no kit`);
+    assert.ok(!ambientSrc.includes(voice), `ambient.js has a ${voice} - the beds have no kit`);
   }
   assert.equal(BEDS.filter(b => b.pulse).length, 1, 'at most one bed gets a pulse');
 });
@@ -319,8 +319,8 @@ test('music.js still exposes exactly what main.js calls, and nothing less', () =
     assert.ok(new RegExp(`(^|\\s)(get )?${name}\\s*\\(`, 'm').test(musicSrc),
       `main.js calls music.${name}, which createMusic does not return`);
   }
-  // main.js names a track to start on — the theme belongs to the landing page and a bed belongs
-  // to a round — but that is the whole extent of what it knows. Everything about how tracks are
+  // main.js names a track to start on - the theme belongs to the landing page and a bed belongs
+  // to a round - but that is the whole extent of what it knows. Everything about how tracks are
   // built, scheduled and cycled stays behind the music module.
   assert.match(musicSrc, /createAmbient/, 'the ambient beds are not wired into the music module');
   assert.ok(!/from ['"].*ambient/.test(mainSrc), 'main.js imports the ambient module directly');
@@ -334,7 +334,7 @@ test('music.js still exposes exactly what main.js calls, and nothing less', () =
   const beds = /const BEDS = \[([^\]]*)\]/.exec(mainSrc);
   assert.ok(beds, 'main.js no longer declares BEDS; the rotation is named somewhere else now');
   for (const m of beds[1].matchAll(/'(\w+)'/g)) asked.add(m[1]);
-  assert.ok(!/'theme'/.test(beds[1]), 'the theme is in BEDS — it would play during a round');
+  assert.ok(!/'theme'/.test(beds[1]), 'the theme is in BEDS - it would play during a round');
   assert.ok(asked.size >= 2, `expected main.js to name tracks; found ${[...asked]}`);
   const ambientSrc = read('public/client/audio/ambient.js');
   for (const name of asked) {
@@ -351,7 +351,7 @@ test('the bus gain has exactly one writer, so start() cannot leave it ramping to
   assert.deepEqual(writes, ['musicGain.gain.setTargetAtTime'],
     `musicGain.gain is written in more than one place: ${writes.join(', ')}`);
   assert.match(musicSrc, /function applyGain/, 'there is no single gain writer');
-  // Duck state has to be remembered, or a restart while chat is focused comes back at full — and
+  // Duck state has to be remembered, or a restart while chat is focused comes back at full - and
   // so does the ceded state, or a tab that handed the speakers to another one comes back loud.
   assert.match(musicSrc, /playing && !ceded \? volume \* \(ducked \? 0\.4 : 1\) : 0/);
 });
@@ -364,8 +364,8 @@ test('the master trim lives in engine.js, where a stored slider value cannot bea
   const sfxSrc = read('public/client/audio/sfx.js');
   assert.ok(!sfxSrc.includes('VOLUME_MASTER'), 'sfx.js should get the trim from createBus');
   assert.match(sfxSrc, /createBus\(volume\)/);
-  // Each bus now carries its own trim on top of the shared master — effects are transients and
-  // sit too low, the music is a mastered mix and arrives too hot — so the call takes a third
+  // Each bus now carries its own trim on top of the shared master - effects are transients and
+  // sit too low, the music is a mastered mix and arrives too hot - so the call takes a third
   // argument. What must stay true is that BOTH go through trimmedOutput, which is the only
   // place downstream of the sliders.
   for (const factory of ['createBus', 'createMusicBus']) {

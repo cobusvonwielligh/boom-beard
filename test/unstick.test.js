@@ -11,7 +11,7 @@ import {
 } from '../shared/constants.js';
 
 // A hand-authored empty room. The generated maps put an indestructible pillar on every even/even
-// tile, so a clear 3x3 does not exist on any of them by construction — and these tests need room
+// tile, so a clear 3x3 does not exist on any of them by construction - and these tests need room
 // to move in every direction without a pillar deciding the answer for them.
 const ROOM = {
   id: 'room', name: 'Test Room', w: 9, h: 9, seed: 1,
@@ -47,14 +47,14 @@ test('a wall growing on top of you does not entomb you', () => {
 
   assert.equal(unstick(s, p), true, 'unstick should report that it intervened');
 
-  // It drifts rather than teleporting, so freedom takes a while — but a bounded while. A
+  // It drifts rather than teleporting, so freedom takes a while - but a bounded while. A
   // twelfth of walking pace clears a whole tile in about 111 ticks, or 3.7 s, and that is the
   // worst case: being fully entombed. Stepping off your own bomb is a sliver of that. 250 is
   // generous and still catches a stall.
   let ticks = 1;
   while (blocked(s, p, p.x, p.y) && ticks < 250) { unstick(s, p); ticks++; }
   assert.ok(!blocked(s, p, p.x, p.y), `still inside a wall after ${ticks} ticks`);
-  assert.ok(ticks > 1, 'it teleported — the whole point is that it slides');
+  assert.ok(ticks > 1, 'it teleported - the whole point is that it slides');
 
   // And it is a neighbour, not a jump across the map.
   assert.ok(Math.abs((p.x >> 8) - tx) <= 1 && Math.abs((p.y >> 8) - ty) <= 1);
@@ -81,8 +81,8 @@ test('both machines unstick the same way', () => {
 
 test('a bomb dropped on you is not an unavoidable kill', () => {
   // Two players on one tile. One drops a bomb and walks off; the other used to find every
-  // direction blocked — the bomb was solid to them immediately, with no grace for already being
-  // inside it — and burned to death with no counterplay for the whole 72-tick fuse.
+  // direction blocked - the bomb was solid to them immediately, with no grace for already being
+  // inside it - and burned to death with no counterplay for the whole 72-tick fuse.
   const { s, tx, ty } = world();
   const victim = seat(s, 0, tx, ty);
   seat(s, 1, tx, ty);
@@ -97,7 +97,7 @@ test('a bomb dropped on you is not an unavoidable kill', () => {
   const startX = victim.x;
   for (let i = 0; i < FUSE_TICKS - 1; i++) tick(s, inputs);
 
-  assert.ok(victim.x > startX + 256, `victim only moved ${victim.x - startX} units — still trapped`);
+  assert.ok(victim.x > startX + 256, `victim only moved ${victim.x - startX} units - still trapped`);
   assert.equal(victim.alive, true, 'victim died to a bomb they could not escape');
 });
 
@@ -113,7 +113,7 @@ test('lane centring is imperceptible, and corner assist is not', () => {
   /* Two jobs, two rates, and conflating them was the bug.
    *
    * Corridor centring happens while you walk along unobstructed and nothing asked for it, so it
-   * has to be invisible — a unit a tick. Corner assist happens when you are pushing into a gap
+   * has to be invisible - a unit a tick. Corner assist happens when you are pushing into a gap
    * the game is refusing you, where every tick is a tick of standing still against a doorway you
    * can see you fit through. That one has to be immediate.
    */
@@ -121,7 +121,7 @@ test('lane centring is imperceptible, and corner assist is not', () => {
   const p = seat(s, 0, 2, 4);
   p.speed = 4;                                   // fully booted: the worst case
   // A corridor, so centring fires at all, with an offset small enough that the hitbox stays
-  // clear of the walls — otherwise this measures the assist instead.
+  // clear of the walls - otherwise this measures the assist instead.
   for (let x = 1; x <= 7; x++) {
     setTile(s.map, x, 3, BLOCK.SOFT, BLOCK_HP[BLOCK.SOFT]);
     setTile(s.map, x, 5, BLOCK.SOFT, BLOCK_HP[BLOCK.SOFT]);
@@ -151,7 +151,7 @@ test('lane centring is imperceptible, and corner assist is not', () => {
   q.y = tileCentre(4) + 100;
   let ticks = 0;
   while (Math.abs((((q.y % 256) + 256) % 256) - 128) > 0 && ticks < 200) { step(s2, q, IN_RIGHT); ticks++; }
-  assert.ok(ticks <= 40, `corner assist took ${ticks} ticks to line up — that is a stuck player`);
+  assert.ok(ticks <= 40, `corner assist took ${ticks} ticks to line up - that is a stuck player`);
 });
 
 
@@ -165,7 +165,7 @@ test('walking off your own bomb never pushes you', () => {
    */
   const { s, tx, ty } = world();
   const p = seat(s, 0, tx, ty);
-  // Facing a wall, so the bomb lands underneath — which is the case this test is about.
+  // Facing a wall, so the bomb lands underneath - which is the case this test is about.
   setTile(s.map, tx + 1, ty, BLOCK.SOFT, BLOCK_HP[BLOCK.SOFT]);
   p.dir = DIR_R;
   place(s, p, IN_BOMB);
@@ -198,8 +198,8 @@ test('a bomb is still solid once you are clear of it', () => {
 test('standing on a bomb is never a shove, and standing in a wall always is', () => {
   // A bomb you are squarely on top of must not push you anywhere: you can walk off it, and
   // being moved when you were perfectly capable of moving yourself is the complaint this whole
-  // area exists to answer. A wall grown on top of you is the opposite — inescapable without
-  // help — and still gets the full seatbelt.
+  // area exists to answer. A wall grown on top of you is the opposite - inescapable without
+  // help - and still gets the full seatbelt.
   const { s, tx, ty } = world();
   const p = seat(s, 0, tx, ty);
   setTile(s.map, tx + 1, ty, BLOCK.SOFT, BLOCK_HP[BLOCK.SOFT]);
@@ -229,6 +229,6 @@ test('easing off the edge of a bomb is a nudge, not a shove', () => {
     if (unstick(s, p)) { nudges++; travelled += Math.abs(p.x - before); }
     step(s, p, IN_RIGHT);
   }
-  assert.ok(travelled <= 24, `eased ${travelled} units off a bomb — that is a shove`);
+  assert.ok(travelled <= 24, `eased ${travelled} units off a bomb - that is a shove`);
   assert.ok(!blocked(s, p, p.x, p.y), 'left inside something');
 });

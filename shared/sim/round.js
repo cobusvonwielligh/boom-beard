@@ -1,7 +1,7 @@
 // The tick, in order.
 //
 // This is the only place that decides the order of operations, and the order is part of the
-// rules — reordering these changes outcomes, and a new step in the wrong place is the classic
+// rules - reordering these changes outcomes, and a new step in the wrong place is the classic
 // cause of "it desyncs after about a minute". docs/ARCHITECTURE.md §4.
 
 import {
@@ -46,7 +46,7 @@ export function tick(state, inputs, { onRespawn } = {}) {
   // pickups, so a coin knocked out of one lands on a floor everyone is about to check.
   gulls(state);
 
-  // 7. pickups. Perks are fireproof — see the note in perks.js.
+  // 7. pickups. Perks are fireproof - see the note in perks.js.
   collect(state);
 
   // 8. statuses spread on contact
@@ -70,7 +70,7 @@ export function tick(state, inputs, { onRespawn } = {}) {
  * Anyone standing in fire dies, unless they are invulnerable or spend a shield.
  *
  * Kill credit goes to the owner of the fire tile, which is why ordering inside `detonate` is
- * deterministic — in a chain, two players' bombs can both be burning the same square.
+ * deterministic - in a chain, two players' bombs can both be burning the same square.
  */
 function killInFire(state) {
   if (!state.fires.length) return;
@@ -102,7 +102,7 @@ function killInFire(state) {
      *
      * Without the timer a chain reaction stripped both shields in the same frame, which is the
      * thing the second shield exists to prevent. With it, surviving a crossfire costs exactly one
-     * shield and the second is still there for the next mistake — and because the grace outlasts
+     * shield and the second is still there for the next mistake - and because the grace outlasts
      * a blast's lethal window, the explosion that triggered it can never come back for more. */
     if (p.shieldGrace && state.tick < p.shieldGrace) continue;
     const live = new Set(fresh.map(f => f.src));
@@ -110,7 +110,7 @@ function killInFire(state) {
     const inBox = f =>
       f.tx >= (p.x - half) >> 8 && f.tx <= (p.x + half - 1) >> 8 &&
       f.ty >= (p.y - half) >> 8 && f.ty <= (p.y + half - 1) >> 8;
-    // One entry per blast reaching you this tick that you have not already paid for — the blast
+    // One entry per blast reaching you this tick that you have not already paid for - the blast
     // on your centre tile first, because that is who the kill goes to (RULES.md §3).
     const ctx = toTile(p.x), cty = toTile(p.y);
     const ordered = [...lethal.filter(f => f.tx === ctx && f.ty === cty), ...lethal];
@@ -124,7 +124,7 @@ function killInFire(state) {
     /* The first new hit decides everything: a shield eats it, or it kills.
      *
      * Not a loop over every blast any more. Spending one shield opens the grace window, and the
-     * grace window is precisely the statement that nothing else lands until it closes — so
+     * grace window is precisely the statement that nothing else lands until it closes - so
      * charging the rest of this tick's blasts against the remaining shields would contradict it.
      * The blasts that are being shrugged off still go into `hitBy`, or they would each be a fresh
      * hit again the moment the grace expires, which would spend the second shield on an
@@ -145,8 +145,8 @@ function killInFire(state) {
     // Who gets the kill.
     //
     // The centre tile is the documented rule (RULES.md §3) and stays the first choice, so every
-    // outcome that was already right is unchanged. The fallback used to be `fresh[0]` — the oldest
-    // still-burning fire ANYWHERE on the map — which handed +100 and the kill-feed line to a
+    // outcome that was already right is unchanged. The fallback used to be `fresh[0]` - the oldest
+    // still-burning fire ANYWHERE on the map - which handed +100 and the kill-feed line to a
     // player who was not involved, or scored a suicide when that stray fire happened to be the
     // victim's own. A 160-unit hitbox straddles a tile boundary most of the time, so the centre
     // tile misses often and the wrong fallback fired often.
@@ -157,7 +157,7 @@ function killInFire(state) {
     //
     // With shields in play the answer is narrower still: the blast that got past them. Shields
     // spent on earlier blasts this tick do not hand those blasts the kill. `newHits` is already
-    // in that order — centre tile first, then the rest as `detonate` pushed them.
+    // in that order - centre tile first, then the rest as `detonate` pushed them.
     const killer = fatal.owner;
     p.hitBy = [];
 

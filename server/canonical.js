@@ -1,7 +1,7 @@
 // One name in the address bar.
 //
-// The box answers on several names — the apex, www, the sslip.io name the certificate was first
-// issued for, and the bare elastic IP — and every one that is not the canonical name bounces to
+// The box answers on several names - the apex, www, the sslip.io name the certificate was first
+// issued for, and the bare elastic IP - and every one that is not the canonical name bounces to
 // it. Players share links, and three links for the same game is how half the office ends up on a
 // URL that stops working.
 //
@@ -26,7 +26,7 @@ export function requestHost(hostHeader) {
  *
  * Never redirects loopback: a 301 on `https://localhost/healthz` would make every deploy look
  * like a failed one. Never redirects when `public_host` is still the local default, so a laptop
- * running `npm start` behaves. Never redirects plain HTTP either — that listener has its own
+ * running `npm start` behaves. Never redirects plain HTTP either - that listener has its own
  * unconditional bounce to HTTPS, and sending someone through two hops is pointless.
  *
  * @param {{host?: string, url: string, want?: string, tls: boolean}} req

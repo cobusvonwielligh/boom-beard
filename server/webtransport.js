@@ -1,13 +1,13 @@
 // WebTransport over HTTP/3, on UDP/443, alongside the WebSocket server on TCP/443.
 //
 // It is additive on purpose. UDP/443 is blocked by corporate firewalls far more often than TCP
-// is, so WebTransport can never be the only way in — the client races both and uses whichever
+// is, so WebTransport can never be the only way in - the client races both and uses whichever
 // connects. Behind a hostile firewall nobody notices; everywhere else you get QUIC.
 //
 // What QUIC actually buys here is the absence of head-of-line blocking. Over TCP a single lost
 // packet stalls every byte behind it, so one drop delays the next three snapshots as well as the
-// one it hit. Inputs and snapshots are continuously replaced — a lost one is superseded 33 ms
-// later — so they want a channel that drops rather than waits. That is what datagrams are.
+// one it hit. Inputs and snapshots are continuously replaced - a lost one is superseded 33 ms
+// later - so they want a channel that drops rather than waits. That is what datagrams are.
 //
 // Each session is wrapped in a `ws`-shaped adapter so server/net.js never learns which transport
 // a player arrived on.
@@ -56,7 +56,7 @@ class SessionSocket extends EventEmitter {
     if (pickChannel(msg, bytes.length) === 'datagram' && this.datagramWriter) {
       this.stats.datagrams++;
       // Fire and forget. A datagram that cannot be written right now is one the network was
-      // going to drop anyway, and the next tick supersedes it — queueing would add latency to
+      // going to drop anyway, and the next tick supersedes it - queueing would add latency to
       // fix a problem that solves itself.
       this.datagramWriter.write(bytes).catch(() => {});
       return;
@@ -94,7 +94,7 @@ class SessionSocket extends EventEmitter {
 /**
  * Start the HTTP/3 listener and hand every session to `onSocket` as a ws-shaped object.
  *
- * Returns null — never throws — when WebTransport cannot start: a missing native binary for this
+ * Returns null - never throws - when WebTransport cannot start: a missing native binary for this
  * platform, a port already taken, a kernel that will not give us UDP. The game must survive all
  * of those by simply being WebSocket-only, because that is the configuration most players behind
  * a corporate firewall will be in regardless.
@@ -112,7 +112,7 @@ export async function startWebTransport({ port, cert, privKey, path = '/wt', onS
   let server, sessions;
   try {
     // IPv4 any-address. Binding '::' relies on dual-stack being enabled, which is a per-kernel
-    // setting, and when it is not the listener silently answers nothing on IPv4 — which is every
+    // setting, and when it is not the listener silently answers nothing on IPv4 - which is every
     // player.
     server = new Http3Server({ port, host: '0.0.0.0', secret: 'boom-beard', cert, privKey });
     // The session reader has to exist before any client arrives: sessions that show up with
@@ -169,8 +169,8 @@ export async function startWebTransport({ port, cert, privKey, path = '/wt', onS
     /* Hand the socket over BEFORE anything can be read off the wire.
      *
      * The read loops below emit 'message' the instant bytes arrive, and a client that sends its
-     * join in the same breath as opening the stream — which both our client and the browser one
-     * do — can get that join delivered before net.js has attached a listener. EventEmitter drops
+     * join in the same breath as opening the stream - which both our client and the browser one
+     * do - can get that join delivered before net.js has attached a listener. EventEmitter drops
      * an event with no listener silently, so the symptom was a QUIC session that connected
      * perfectly and then sat there receiving nothing, which looks like a server bug anywhere but
      * here.
@@ -187,7 +187,7 @@ export async function startWebTransport({ port, cert, privKey, path = '/wt', onS
       }
     })().catch(() => {}).finally(() => socket._gone());
 
-    // Unreliable half. One datagram is exactly one message — no framing needed.
+    // Unreliable half. One datagram is exactly one message - no framing needed.
     (async () => {
       const r = session.datagrams.readable.getReader();
       for (;;) {

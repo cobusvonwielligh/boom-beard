@@ -17,7 +17,7 @@ const BINDINGS = {
 /* Keys Game of Bombs has and this build does not. Swallowing them with a hint beats doing
  * nothing, which just reads as broken to a returning player.
  *
- * Shift used to be here. It is the emote modifier now — see createInput's `onEmote` — which is
+ * Shift used to be here. It is the emote modifier now - see createInput's `onEmote` - which is
  * a better use of a key people already reach for, and the detonator hint survives on L. */
 const RESERVED = {
   KeyL: 'detonator',
@@ -28,7 +28,7 @@ const RESERVED = {
  *
  * WASD and the arrows both, because both already mean "a direction" here and somebody who
  * plays on arrows should not have to move their hand to use this. The mapping is the compass:
- * up, left, down, right — so the picker can be drawn as a cross and there is nothing to learn.
+ * up, left, down, right - so the picker can be drawn as a cross and there is nothing to learn.
  */
 const EMOTE_KEYS = {
   KeyW: 0, ArrowUp: 0,
@@ -38,7 +38,7 @@ const EMOTE_KEYS = {
 };
 
 // Input types that take no text. A denylist rather than an allowlist of text types, so the next
-// field anyone adds is gated by default — which is the property that stopped the name box from
+// field anyone adds is gated by default - which is the property that stopped the name box from
 // eating WASD in the first place.
 const NON_TEXT_INPUT = /^(range|checkbox|radio|button|submit|reset|file|color|image)$/;
 
@@ -66,8 +66,8 @@ export const typingSomewhere = () => {
  *      is correct for walking and catastrophic for anything that toggles: a held Tab opens and
  *      closes the scoreboard thirty times, a held Escape leaves the game, a held Space sends a
  *      respawn request every frame. Dealt with by refusing `event.repeat`.
- *   2. **Chatter and double-fire.** Two paths can reach the same action — Space while the
- *      respawn button has focus is both a keypress and a synthetic click — and a key can bounce.
+ *   2. **Chatter and double-fire.** Two paths can reach the same action - Space while the
+ *      respawn button has focus is both a keypress and a synthetic click - and a key can bounce.
  *      Dealt with by a short cooldown per action.
  *
  * Deliberately NOT applied to movement or to placing bombs. Debouncing those would be adding
@@ -101,7 +101,7 @@ export function createInput({ onReserved, onEmote, onEmoteMenu, isTyping = typin
    * without the rules changing at all.
    *
    * Tracked per DIRECTION rather than per key code, so tapping Left on the arrows and then A
-   * counts — they are the same instruction, and a player with a hand on each is not making two
+   * counts - they are the same instruction, and a player with a hand on each is not making two
    * different requests. Auto-repeat never reaches here (see the repeat guard in keydown), which is
    * what stops holding a direction from reading as an endless stream of taps.
    */
@@ -119,7 +119,7 @@ export function createInput({ onReserved, onEmote, onEmoteMenu, isTyping = typin
     /* Everything stops when the picker opens.
      *
      * Holding Shift takes WASD away from walking, so the mask has to be cleared or you keep
-     * sliding in whatever direction you were last pressing — which is the single worst thing
+     * sliding in whatever direction you were last pressing - which is the single worst thing
      * a UI mode can do in a game where standing still is a decision. You stop, you choose, you
      * let go. Deliberate, brief, and entirely yours: nothing opens this but your own hand. */
     if (on) { down.clear(); recompute(); }
@@ -172,7 +172,7 @@ export function createInput({ onReserved, onEmote, onEmoteMenu, isTyping = typin
   });
 
   // Losing focus mid-stride would otherwise leave you walking into a wall forever.
-  // Losing focus mid-stride would otherwise leave you walking into a wall forever — and would
+  // Losing focus mid-stride would otherwise leave you walking into a wall forever - and would
   // leave the picker open over a game you are no longer looking at.
   addEventListener('blur', () => {
     down.clear(); recompute(); setPicking(false);
@@ -188,7 +188,7 @@ export function createInput({ onReserved, onEmote, onEmoteMenu, isTyping = typin
     get picking() { return picking; },
     /**
      * Was a slide asked for? One-shot: it reads and clears, so one double-tap is one slide
-     * whatever the frame rate — several simulation steps in one frame cannot launch twice.
+     * whatever the frame rate - several simulation steps in one frame cannot launch twice.
      */
     takeSlide() {
       if (!slideTap || picking) { slideTap = false; return false; }

@@ -24,7 +24,7 @@ export function createWorld() {
     perks: [],
     puddles: [],          // melted ice; movement reads these, so prediction needs them too
     gulls: [],            // flight descriptions; drawn with gullAt, see shared/sim/gulls.js
-    fires: [],            // derived locally, never sent — see docs/NETCODE.md §1a
+    fires: [],            // derived locally, never sent - see docs/NETCODE.md §1a
     burst: new Set(),     // bomb ids already turned into fire here
     pending: [],          // inputs sent but not yet acknowledged
     lastCorrection: 0,
@@ -39,13 +39,13 @@ export function createWorld() {
     if (m.mapOnly) return;
     // -1 means spectating: there is no local player, so prediction and reconciliation have
     // nothing to act on and every player in the snapshot is a remote one. Nothing else in here
-    // needs to know — `w.players[-1]` is undefined, which is exactly the right answer to
+    // needs to know - `w.players[-1]` is undefined, which is exactly the right answer to
     // "where am I" when the answer is "nowhere".
     w.you = m.you;
     w.observing = !!m.observing;
     w.roundEndsAtTick = m.roundEndsAtTick ?? w.roundEndsAtTick;
-    /* The tick the freeze lifts on. Nothing is predicted or sent before it — see the loop in
-     * main.js — because the server is zeroing every input until then, and predicting movement
+    /* The tick the freeze lifts on. Nothing is predicted or sent before it - see the loop in
+     * main.js - because the server is zeroing every input until then, and predicting movement
      * the server is refusing is exactly the rubber-band this avoids. Defaults to 0 so a server
      * that does not send it behaves as it always did. */
     w.startsAtTick = m.startsAtTick ?? 0;
@@ -106,7 +106,7 @@ export function createWorld() {
   w.burstBomb = bomb => {
     if (!bomb || w.burst.has(bomb.id) || !w.map) return;
     w.burst.add(bomb.id);
-    // Same bomb list the server used, from the same snapshot, so the derived blast matches —
+    // Same bomb list the server used, from the same snapshot, so the derived blast matches -
     // including where its arms stop against other bombs.
     const { cells } = spread(
       w.map,
@@ -183,7 +183,7 @@ export function createWorld() {
   /**
    * Drop acknowledged inputs, then replay whatever is left on top of the server's answer.
    * Because movement.step is the same function on both sides, the result is normally identical
-   * and nothing visibly moves. Deliberately no tolerance band and no blending — add a 100 ms
+   * and nothing visibly moves. Deliberately no tolerance band and no blending - add a 100 ms
    * lerp here only if snapping turns out to be visible in practice.
    */
   // `ack = -1` on purpose: a snapshot without one must drop nothing, rather than compare every
@@ -198,7 +198,7 @@ export function createWorld() {
     me.score = wire.s; me.kills = wire.k; me.deaths = wire.dd; me.status = wire.stat;
     me.coins = wire.c || 0;
     // Stamina is simulated locally too, so it is replayed with the inputs below rather than
-    // simply trusted — the server's value is the one the replay starts from.
+    // simply trusted - the server's value is the one the replay starts from.
     if (wire.sta !== undefined) { me.stamina = wire.sta; me.staminaLevel = wire.stl; me.tired = !!wire.tr; }
     // Same for the slide on water: the replay below has to start from the server's count.
     me.slide = wire.sl ?? 0;
@@ -219,7 +219,7 @@ export function createWorld() {
    * Keep a drawn player out of the walls.
    *
    * The useful observation is that the *tile* a player is in is the whole truth as far as the
-   * rules go — fire, pickups and contagion all resolve per tile — and the sub-tile offset is
+   * rules go - fire, pickups and contagion all resolve per tile - and the sub-tile offset is
    * purely presentation. So when smoothing or interpolation puts the drawn point somewhere
    * illegal, the tile index is still trustworthy and we can fall back to it: pull the offending
    * axis onto the centre line of the tile the simulation says they occupy.
@@ -232,7 +232,7 @@ export function createWorld() {
     if (!w.map || !blocked(w, p, p.rx, p.ry)) return;
     const cx = tileCentre(p.x >> 8), cy = tileCentre(p.y >> 8);
     // Slide onto the lane rather than jumping onto it. A hard assignment here is a visible
-    // flick — the drawn position is usually only a few units inside the wall, and moving a few
+    // flick - the drawn position is usually only a few units inside the wall, and moving a few
     // units a frame hides the correction completely. A floor of 4 units makes it terminate.
     const ease = (from, to) => {
       const d = to - from;
@@ -268,13 +268,13 @@ export function createWorld() {
         const pushed = blocked(w, p, p.x, p.y);
         const k = 1 - Math.exp(-dtMs / (pushed ? 180 : 18));
         const dx = p.x - p.rx, dy = p.y - p.ry;
-        // A whole tile out means a respawn or a teleport, not a correction — just go.
+        // A whole tile out means a respawn or a teleport, not a correction - just go.
         if (Math.abs(dx) > 256 || Math.abs(dy) > 256) teleport(p);
         else {
           const nx = p.rx + dx * k, ny = p.ry + dy * k;
           // The eased path is a straight line and the simulated one was not, so easing across a
           // corner can draw you briefly inside a wall. Rather than snapping to the simulated
-          // position — which is the flick this used to produce — try each axis on its own: one
+          // position - which is the flick this used to produce - try each axis on its own: one
           // of them is almost always legal, and taking just that one keeps the motion smooth.
           if (!blocked(w, p, nx, ny)) { p.rx = nx; p.ry = ny; }
           else if (!blocked(w, p, nx, p.ry)) { p.rx = nx; }
@@ -282,7 +282,7 @@ export function createWorld() {
           else { p.rx = p.x; p.ry = p.y; }      // genuinely boxed in; nothing smooth left to do
         }
       } else if (p.buf.length >= 2) {
-        // The pair that BRACKETS the time being drawn, not the two newest — see pickPair. Taking
+        // The pair that BRACKETS the time being drawn, not the two newest - see pickPair. Taking
         // the newest two pinned every remote player to one snapshot until the next arrived, which
         // is a teleport fifteen times a second and the single biggest source of "the movement is
         // laggy". It was never the transport.
@@ -293,19 +293,19 @@ export function createWorld() {
         // Further than anyone can walk in one snapshot means a respawn, not a walk. Interpolating
         // it would drag the sprite across the whole map, straight through everything in between.
         if (Math.abs(dx) > 512 || Math.abs(dy) > 512) {
-          teleport(p);                    // p.x is already b.x — hydrate ran before this
+          teleport(p);                    // p.x is already b.x - hydrate ran before this
         } else {
           /* A straight lerp if the straight line is legal, an L if it is not.
            *
            * Movement can now travel on both axes in one tick (see the diagonal block in
            * sim/movement.js), so between two snapshots a remote player may genuinely have moved
-           * diagonally — and interpolating THAT along an L is the stutter the L was invented to
+           * diagonally - and interpolating THAT along an L is the stutter the L was invented to
            * prevent, just transposed. The old reason for the L has not gone away either: a lerp
            * across a corner TURN cuts through the corner block, which is the "players walk
            * through walls" everyone sees first.
            *
            * The test tells the two apart with no extra state: is the interpolated point legal?
-           * A real diagonal passes, a corner turn does not. Failing that, the L as before — and
+           * A real diagonal passes, a corner turn does not. Failing that, the L as before - and
            * which arm comes first is unknowable from two samples, so x-first, falling back to
            * y-first when the x-first elbow is solid. One of the two is always the path taken.
            */

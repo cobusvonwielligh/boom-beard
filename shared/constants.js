@@ -1,4 +1,4 @@
-// Boom Beard — tuning constants and enums.
+// Boom Beard - tuning constants and enums.
 //
 // FROZEN FILE. Both developers import this. Agree before changing it.
 // Every magic number in the project lives here; see docs/RULES.md for the rationale.
@@ -14,21 +14,21 @@ export const SNAP_EVERY_TICKS = 2; // → 15 Hz snapshots
 
 export const ROUND_TICKS = 10 * 60 * TICK_HZ; // 18000
 
-// What /roundtime will accept, in minutes. The floor is a tenth of a minute — six seconds — which
+// What /roundtime will accept, in minutes. The floor is a tenth of a minute - six seconds - which
 // is short enough to be useless for a real round and exactly right for testing the round-end
 // path without waiting ten minutes for it.
 export const ROUNDTIME_MIN_MIN = 0.1;
 export const ROUNDTIME_MAX_MIN = 60;
 
 // Tiles of open sea kept visible on every side of the island. The board is scaled so the map
-// plus this margin fits exactly — without it an island can sit flush against the panel edge and
+// plus this margin fits exactly - without it an island can sit flush against the panel edge and
 // stop reading as an island.
 export const SEA_MARGIN_TILES = 2;
 
 // The board is never drawn smaller than this, whatever the window. Below about two thirds a
 // 32-pixel tile is 21 pixels and a player is a smudge; past that point a camera that follows you
 // is strictly better than a whole map you cannot read. Maps are sized so this floor is never hit
-// on a normal window — it exists for the laptop somebody opens at 1280x720 with the panel up.
+// on a normal window - it exists for the laptop somebody opens at 1280x720 with the panel up.
 export const MIN_ZOOM = 0.68;
 export const MAX_ZOOM = 2;
 export const ROUND_INTERMISSION_MS = 20_000;
@@ -36,7 +36,7 @@ export const ROUND_INTERMISSION_MS = 20_000;
 /* The count-in: five seconds at the top of every round, and NOBODY MOVES.
  *
  * Shared rather than a client constant, because it is a rule now and not a caption. The room
- * zeroes every input — people and bots alike — until `state.tick` reaches this, and the client
+ * zeroes every input - people and bots alike - until `state.tick` reaches this, and the client
  * neither predicts nor sends over the same window, so the digit on screen and the frozen board
  * are two views of one fact.
  *
@@ -60,7 +60,7 @@ export const MAX_PLAYERS = 16;
 // at the old pace a full-speed player crossed a tile in under five ticks, which is faster than
 // the eye can plan a turn in and made corners feel like luck rather than judgement.
 //
-// The STEP is double what it was — 8 units a boot rather than 4. Four was a 59% gain across all
+// The STEP is double what it was - 8 units a boot rather than 4. Four was a 59% gain across all
 // four boots; eight makes a fully booted player 119% faster than a fresh one, 3.2 tiles a second
 // against 6.9. Worth crossing the map for, which the old step was not.
 export const SPEED_UNITS_PER_TICK = [27, 35, 43, 51, 59];
@@ -72,19 +72,19 @@ export const HITBOX_REDUCED_UNITS = 10 * (UNITS_PER_TILE / TILE_PX);
 
 /* Diagonals, and the corners they have to get round.
  *
- * Holding two keys moves you on BOTH axes in the same tick, each at 181/256 of your pace — the
+ * Holding two keys moves you on BOTH axes in the same tick, each at 181/256 of your pace - the
  * integer 1/√2, so a diagonal covers the same ground per tick as a straight line and is not a
  * free speed boost. (181/256 = 0.7070; √½ = 0.7071.)
  *
  * The corner cut is what makes it feel like anything. A square hitbox walked diagonally past the
  * corner of a square block catches on it: both shapes have a 90° corner and the two meet at a
  * single point, so there is nothing to slide along and you stop dead a pixel into the turn. So
- * the box's own corners are chamfered — a tile is only solid to you if you are into it by more
+ * the box's own corners are chamfered - a tile is only solid to you if you are into it by more
  * than this on BOTH axes at once, which turns the hitbox into an octagon and the catch into a
  * glance. 44 units is about five and a half pixels of chamfer on a twenty-pixel box.
  *
  * It lives in `blocked`, not in the diagonal code, so the shape is the same shape for everything
- * that asks — walking, the unstick, bomb solidity, spawn safety. A hitbox that is one shape when
+ * that asks - walking, the unstick, bomb solidity, spawn safety. A hitbox that is one shape when
  * moving and another when being pushed is the kind of disagreement that ends in a desync.
  */
 export const DIAG_NUM = 181, DIAG_DEN = 256;
@@ -94,14 +94,14 @@ export const CORNER_CUT_UNITS = 44;
 // kills on this fraction of them, so a player tucked behind a wall with two or three pixels of
 // shoulder past its edge lives. Without the grace the lethal box reached exactly as far as the
 // sprite, and the most careful hiding spot on the map was decided by one pixel of alignment.
-// 7/10 of 160 units is 112 — three pixels of mercy on each side. TUNE
+// 7/10 of 160 units is 112 - three pixels of mercy on each side. TUNE
 export const HITBOX_FIRE_NUM = 7, HITBOX_FIRE_DEN = 10;
 
 // Slide toward a tile centre instead of stopping when the perpendicular offset is within this.
 // This is what makes movement feel like Bomberman rather than like a grid. Do not remove.
 // Widened from 0.375 to 0.44 of a tile after playtesting: at the old window you could be visibly
 // most of the way into a doorway and still stop dead against its edge, which reads as the game
-// refusing a move you clearly made. There is no overshoot risk — the assist only ever pulls you
+// refusing a move you clearly made. There is no overshoot risk - the assist only ever pulls you
 // onto the centre line of a lane you are already in.
 export const CORNER_ASSIST_UNITS = 112; // 0.44 tile. TUNE
 
@@ -116,7 +116,7 @@ export const DIR_R = 0, DIR_U = 1, DIR_L = 2, DIR_D = 3;
 
 /* The slide. Double-tap a direction and go.
  *
- * It exists because the game had exactly one verb for distance — walking — and the whole fight is
+ * It exists because the game had exactly one verb for distance - walking - and the whole fight is
  * about whether you can be somewhere before a fuse ends. A slide is the answer to "I am two tiles
  * from cover and the bomb has half a second left", and the reason it is not simply free speed is
  * the price: a fifth of the bar per slide, so three of them is most of your wind.
@@ -128,7 +128,7 @@ export const DIR_R = 0, DIR_U = 1, DIR_L = 2, DIR_D = 3;
  *                       rather than being a flat number: a booted player who slides should still
  *                       be faster than an unbooted one who slides, or the perk stops mattering at
  *                       exactly the moment the perk matters most.
- *   SLIDE_DRAG_NUM/DEN  friction, applied to the velocity every tick. Ninety-four percent — the slide
+ *   SLIDE_DRAG_NUM/DEN  friction, applied to the velocity every tick. Ninety-four percent - the slide
  *                       decelerates the whole way out, which is what makes it read as momentum
  *                       rather than as a teleport, and it is the reason you can be carried past
  *                       the turn you wanted if you start it too late. That mistake is the cost of
@@ -138,7 +138,7 @@ export const DIR_R = 0, DIR_U = 1, DIR_L = 2, DIR_D = 3;
  *                       whatever the surface or the boots; drag gives each one its own.
  *
  * SLIDE_MAX_TICKS is a seatbelt against a tuning accident, not the mechanic: at these numbers the
- * exit speed arrives first, after about eighteen ticks — six tenths of a second and three and a
+ * exit speed arrives first, after about eighteen ticks - six tenths of a second and three and a
  * half tiles, against the one and three quarters that running the same ticks would cover. The
  * first pass at this was a 2.5x launch against a tenth of drag a tick, which decayed so fast that
  * the whole slide was worth about a sixth of a tile more than walking: a stamina cost for nothing.
@@ -150,7 +150,7 @@ export const SLIDE_EXIT_UNITS = 26;
 export const SLIDE_MAX_TICKS = 30;
 // A fifth of a fresh bar, and it is taken in full at the launch rather than per tick: a slide you
 // can abort halfway through for half price is a slide nobody ever commits to. Scaled with
-// STAMINA_MAX for the same reason the Stim is — three slides should still be most of your wind.
+// STAMINA_MAX for the same reason the Stim is - three slides should still be most of your wind.
 export const SLIDE_STAMINA_COST = 1400;
 // You may not chain them. Long enough that the second slide is a decision rather than the rest of
 // the first one, short enough to still be the answer to a chase.
@@ -161,7 +161,7 @@ export const SLIDE_COOLDOWN_TICKS = 18;
  * is what keeps the gesture a matter of local feel rather than of latency.
  *
  * 160 ms, down from 260. At the old window ordinary corridor play launched slides nobody asked
- * for — tapping a direction twice while lining up a gap is a normal thing to do, and a quarter
+ * for - tapping a direction twice while lining up a gap is a normal thing to do, and a quarter
  * of a second is long enough to catch it. A slide should cost a deliberate gesture, because it
  * costs a fifth of your wind and takes your steering away for half a second. Two quick taps.
  */
@@ -171,12 +171,12 @@ export const SLIDE_DOUBLE_TAP_MS = 160;
 
 export const FUSE_TICKS = 72;      // 2.4 s. TUNE
 export const FUSE_TICKS_FAST = 36; // Fast Detonation
-export const FIRE_TICKS = 15;      // 0.5 s — how long a blast is DRAWN
+export const FIRE_TICKS = 15;      // 0.5 s - how long a blast is DRAWN
 
 /* How long a blast actually kills for, as a fraction of how long it is drawn.
  *
  * Fire that is visibly dying should not still be lethal. The tail of the animation is a puff of
- * smoke and a few embers, and dying to it feels like the game cheating — you watched the
+ * smoke and a few embers, and dying to it feels like the game cheating - you watched the
  * explosion finish and then died anyway. Lethal for the first two thirds, decorative for the
  * last third, which is about five ticks of grace at the end of every blast.
  *
@@ -194,12 +194,12 @@ export const MAX_BOMBS = 16;        // hard ceiling on bombs alive anywhere, a s
  * when a pickup stops doing anything.
  *
  * Down from eight and six. Eight bombs was most of a corridor at once and a radius of six was
- * most of a room, so a fully kitted player did not have to aim — the two of them together cover
+ * most of a room, so a fully kitted player did not have to aim - the two of them together cover
  * so much floor that position stopped being the thing the game is about. Five and five still feel
  * like a full loadout and still leave somewhere to stand.
  *
  * A powder keg is deliberately above the cap (POWDER_RADIUS), which is how the renderer and the
- * sound both identify one without a flag on the wire — so this number dropping widens that gap
+ * sound both identify one without a flag on the wire - so this number dropping widens that gap
  * rather than closing it.
  */
 export const MAX_BOMBS_CARRIED = 5;
@@ -220,12 +220,12 @@ export const BLOCK = {
   COLUMN: 5,
   SHRUB_WALK: 6,
   SHRUB_SOLID: 7,
-  // Everything outside the island. Behaves exactly like IRON to the simulation — not walkable,
-  // not destructible, stops fire — and exists only so the renderer can tell "the sea" from "a
+  // Everything outside the island. Behaves exactly like IRON to the simulation - not walkable,
+  // not destructible, stops fire - and exists only so the renderer can tell "the sea" from "a
   // wall" and so a map can be any shape it likes inside its bounding rectangle.
   WATER: 8,
   // A powder keg. Destructible like a soft wall, but detonating one sets off a blast several
-  // times the size of the bomb that lit it. Rare on purpose — see POWDER_* below.
+  // times the size of the bomb that lit it. Rare on purpose - see POWDER_* below.
   POWDER: 9,
   // Ice. Breaks in one hit like a soft wall, but melts instead of breaking: it floods its own
   // tile and the four next to it with a short-lived puddle. See ICE_* and PUDDLE_* below.
@@ -256,17 +256,17 @@ export const REGEN_CLEAR_RADIUS_TILES = 4;
 
 /* Powder kegs.
  *
- * At most six in a round, and at least one guaranteed — a map event you can plan around is worth
+ * At most six in a round, and at least one guaranteed - a map event you can plan around is worth
  * far more than a random one you might never see. Six over ten minutes is roughly one every
  * ninety seconds, which is often enough to be part of the map rather than a rumour. Placement rides on the existing regrowth cycle
  * (every 20 s) because that function already knows which tiles are quiet: dropping a keg next to
  * a player would be a free kill nobody could read coming.
  *
  * The blast is a bomb with a much larger radius, detonating on the tick the keg breaks. Nothing
- * special in the blast code — a keg IS a bomb, which is why it chains through other kegs, bombs
+ * special in the blast code - a keg IS a bomb, which is why it chains through other kegs, bombs
  * and walls exactly the way you would expect.
  */
-// Twelve a round, up from six, and the per-cycle chance doubles with it — the cap alone would
+// Twelve a round, up from six, and the per-cycle chance doubles with it - the cap alone would
 // only have meant the same six kegs with room for more that never arrived. One every forty-five
 // seconds or so: enough that a keg is terrain you plan around rather than an event you remember.
 export const POWDER_MAX_PER_ROUND = 12;
@@ -280,7 +280,7 @@ export const POWDER_GUARANTEE_TICK = Math.round(0.6 * 10 * 60 * TICK_HZ);
  * One soft wall in twenty is ice, at map generation and when walls grow back. Rare enough that a
  * patch of water is an event, common enough that every map has a few.
  *
- * A blast that reaches ice melts it — no perk, the water IS the drop — and floods the ice tile
+ * A blast that reaches ice melts it - no perk, the water IS the drop - and floods the ice tile
  * plus its four neighbours, wherever those are walkable. Five tiles at most. The puddle lasts
  * EIGHT seconds, the last PUDDLE_FADE_TICKS of them visibly drying up.
  *
@@ -288,15 +288,15 @@ export const POWDER_GUARANTEE_TICK = Math.round(0.6 * 10 * 60 * TICK_HZ);
  * could do anything about it: ice is one soft wall in twenty, so a patch of water is a rare
  * thing to find, and a rare thing that evaporates before you can cross the map to use it is a
  * rare thing nobody ever uses. Eight seconds is long enough for the fight to move INTO the
- * water, which is the point of having it — it is terrain, not a side effect.
+ * water, which is the point of having it - it is terrain, not a side effect.
  *
  * Standing in water halves your pace and makes you slide: let go of the keys and you carry on
- * the way you were going for PUDDLE_SLIDE_TICKS before you stop. Momentum, not ice-rink chaos —
+ * the way you were going for PUDDLE_SLIDE_TICKS before you stop. Momentum, not ice-rink chaos -
  * at half pace that is about a third of a tile, enough to overshoot a corner you were braking
  * for and not enough to carry you into a blast you were standing clear of. */
 /* Seagulls.
  *
- * Now and then a gull crosses the island — a couple at a time usually, four at most — on a straight
+ * Now and then a gull crosses the island - a couple at a time usually, four at most - on a straight
  * line with a lazy weave in it, entering and leaving well outside the board. It is scenery right
  * up until somebody catches one in a blast, and then it drops a gold coin.
  *
@@ -304,7 +304,7 @@ export const POWDER_GUARANTEE_TICK = Math.round(0.6 * 10 * 60 * TICK_HZ);
  *   - it is only low enough to hit during a dive: a short dip every few seconds, the bottom
  *     GULL_LOW_TICKS of it, which you can read coming from its shadow closing in under it;
  *   - only fire still in its lethal window counts, the same window that kills players;
- *   - it is quick — about four tiles a second — and over water there is nothing to burn it with.
+ *   - it is quick - about four tiles a second - and over water there is nothing to burn it with.
  * So it is a timing shot against a moving target, which is the most satisfying thing a bomb can
  * do in a game about standing still in the right place.
  *
@@ -317,7 +317,7 @@ export const GULL_FIRST_TICK = 25 * TICK_HZ;         // the first one comes earl
 // trick shot nobody gets to practise is a trick shot nobody lands.
 export const GULL_GAP_MIN_TICKS = 10 * TICK_HZ;      // one every 10-22 s
 export const GULL_GAP_MAX_TICKS = 22 * TICK_HZ;
-// Twice the birds, and the gap above is halved to match — the cap alone would only have meant
+// Twice the birds, and the gap above is halved to match - the cap alone would only have meant
 // four gulls arriving at the old spacing, which is the same sky with a longer queue.
 export const GULL_MAX = 4;
 /* Each bird gets its own height, and that is where the depth comes from.
@@ -328,23 +328,23 @@ export const GULL_MAX = 4;
  * quick, with its shadow close; a high one is small, hazy, slow, trailing a soft shadow a long
  * way off. Same flight description, four layers of sky.
  *
- * Purely presentational — nothing about the shot changes, because the hit rule stopped caring
+ * Purely presentational - nothing about the shot changes, because the hit rule stopped caring
  * about altitude when GULL_LOW_ALT stopped being a defence. A high bird is exactly as catchable
  * as a low one; it just looks further away.
  */
 export const GULL_DEPTH_MIN = 0.8, GULL_DEPTH_MAX = 1.3;
 // A fifth slower than the 34 it was: about three tiles a second. Speed was doing too much of the
-// difficulty on its own — at four tiles a second the window over any one tile was shorter than a
+// difficulty on its own - at four tiles a second the window over any one tile was shorter than a
 // fuse, so the only way to land it was to have already had a bomb there.
 export const GULL_SPEED_UNITS = 27;
 export const GULL_OFFMAP_TILES = 4;                  // how far outside the map it enters and leaves
 /* It dawdles over the island and hurries over the sea.
  *
  * The flight is a straight line at a constant pace, and the pace that makes the middle of it
- * — the part over the board, the only part you can do anything about — worth aiming at is much
+ * - the part over the board, the only part you can do anything about - worth aiming at is much
  * slower than the pace that keeps the empty sea crossing from being dull. So progress along the
  * line is eased rather than linear: `f + k·sin(2πf)/2π`, which leaves both ends where they were
- * and runs at (1 + k·cos 2πf) of the average pace — a little over half speed across the middle,
+ * and runs at (1 + k·cos 2πf) of the average pace - a little over half speed across the middle,
  * half again as fast on the way in and out. Total flight time is unchanged, so nothing else has
  * to know. Closed form and monotonic for k < 1, which is what keeps `gullAt` a description of a
  * flight rather than a simulation of one.
@@ -361,10 +361,10 @@ export const GULL_LOW_ALT = 0.22;
  *
  * It used to drop a single coin on the nearest clear floor tile, which was the wrong shape for
  * the thing it was rewarding: the hard part is the shot, and a coin on the ground after it turns
- * the hard part into a race to the spot — often won by somebody who had nothing to do with it,
+ * the hard part into a race to the spot - often won by somebody who had nothing to do with it,
  * and sometimes by nobody at all when the only floor nearby was about to be on fire. Three,
  * because it is the rarest thing in the game and a reward you can lose by half a second is not a
- * reward. A blast with no owner — a powder keg — still leaves a coin on the floor; see gulls.js.
+ * reward. A blast with no owner - a powder keg - still leaves a coin on the floor; see gulls.js.
  */
 export const GULL_COINS = 3;
 /* The raid: once a round, two gulls pick somebody and kill them.
@@ -377,7 +377,7 @@ export const GULL_COINS = 3;
  * credited to nobody, and everyone in the room watches it happen. A death you could have avoided
  * is a mistake; this is weather. Both are funny, and only one of them is your fault.
  *
- * Only a real person — a bot being mugged by seagulls is nobody's story. Between 70% and 90% of
+ * Only a real person - a bot being mugged by seagulls is nobody's story. Between 70% and 90% of
  * the round, so it always lands while people are still playing but never at the whistle, where
  * it would read as a bug in the scoring rather than as a bird.
  */
@@ -388,7 +388,7 @@ export const GULL_RAID_RETRY_TICKS = 20;             // nobody alive to pick on:
 
 export const ICE_CHANCE = 0.05;
 export const PUDDLE_TICKS = 8 * TICK_HZ;
-// The drying-up, scaled with the lifetime so the tail is still the same share of it — a puddle
+// The drying-up, scaled with the lifetime so the tail is still the same share of it - a puddle
 // that sits full for six and a half seconds and then vanishes in a blink reads as a bug.
 export const PUDDLE_FADE_TICKS = Math.round(3 * TICK_HZ);   // render only
 export const PUDDLE_SPEED_NUM = 1, PUDDLE_SPEED_DEN = 2;
@@ -397,7 +397,7 @@ export const PUDDLE_SLIDE_TICKS = 8;
 /* Stamina.
  *
  * Running flat out for ten seconds empties it; once empty you move at half pace until you have
- * recovered a third of it back. The hysteresis is the important part — a bare "zero means slow"
+ * recovered a third of it back. The hysteresis is the important part - a bare "zero means slow"
  * rule flips the speed on and off every single tick at the boundary, which is unplayable and
  * looks like lag.
  *
@@ -407,12 +407,12 @@ export const PUDDLE_SLIDE_TICKS = 8;
  */
 /* Counted in TWENTIETHS of a unit, so every rate stays a whole number.
  *
- * The sim is integers only — floats in a shared simulation are a determinism bug waiting for a
+ * The sim is integers only - floats in a shared simulation are a determinism bug waiting for a
  * platform that rounds differently. Each time these rates want a percentage change, the unit has
  * to be fine enough to express it: wanting 15% off rates of 1 and 2 made the unit tenths, and
  * wanting another 15% off a drain of 10 made it twentieths, because 8.5 is not a whole number
- * either. Doubling the resolution is free — nothing reads these as anything but a ratio against
- * STAMINA_MAX — and it leaves room for the next tweak.
+ * either. Doubling the resolution is free - nothing reads these as anything but a ratio against
+ * STAMINA_MAX - and it leaves room for the next tweak.
  *
  * The numbers, in seconds, which is the only unit anybody can feel:
  *
@@ -420,7 +420,7 @@ export const PUDDLE_SLIDE_TICKS = 8;
  *               takes 15% longer to reach the end.
  *   standing    6900 at 53 a tick is 4.3 s from empty to full, down from 5. Regen is 15% faster,
  *               so catching your breath is quicker than it was.
- *   limping     28 a tick while exhausted — the same 15% on the slower of the two regens, so
+ *   limping     28 a tick while exhausted - the same 15% on the slower of the two regens, so
  *               the relationship between them is untouched: standing is still about twice as
  *               good as limping, which is what makes stopping a decision.
  */
@@ -432,11 +432,11 @@ export const STAMINA_RECOVER_UNITS = Math.round(STAMINA_MAX / 3);
 export const STAMINA_TIRED_NUM = 1, STAMINA_TIRED_DEN = 2;   // half pace when exhausted
 // Below this fraction the indicator appears beside the player. Above it nothing is drawn: a
 // meter that is always on screen is a meter nobody looks at. Raised from a half to seven tenths
-// — at a half the warning and the limp arrived almost together, which is a notification rather
+// - at a half the warning and the limp arrived almost together, which is a notification rather
 // than a warning.
 export const STAMINA_SHOW_AT = 0.7;
-// Below this the gauge goes red and flashes. A third, which is also STAMINA_RECOVER_UNITS — the
-// point the exhausted latch lets go — so the warning zone and the recovery line are the same
+// Below this the gauge goes red and flashes. A third, which is also STAMINA_RECOVER_UNITS - the
+// point the exhausted latch lets go - so the warning zone and the recovery line are the same
 // line, and the red means one thing: from here, running out is a live possibility.
 export const STAMINA_LOW_AT = 1 / 3;
 // Each Stim adds this much to your ceiling, up to MAX_STAMINA_LEVELS of them. Four of them takes
@@ -452,7 +452,7 @@ export const PERK = {
   BOMB: 1, FIRE: 2, SKATE: 3, SHIELD: 4,
   // 5 was the Gift, a random perk that sometimes handed out a disease. Removed; the number stays
   // retired so an old client never mistakes a new perk for it.
-  // Reserved — designed for, not implemented in v1. Give one a weight to turn it on.
+  // Reserved - designed for, not implemented in v1. Give one a weight to turn it on.
   KICK: 6, JELLY: 7, DETONATOR: 8, BAT: 9, JETPACK: 10,
   NUKE: 11, BLUE_FIRE: 12, HEART: 13, KEY: 14,
   // Raises your maximum stamina, so you can run for longer before the limp.
@@ -482,7 +482,7 @@ export const GOLD_MAX_PER_ROUND = 5;
 
 /* What actually drops.
  *
- * Bombs and Fire are the backbone of the game — without them everybody is stuck on one bomb at
+ * Bombs and Fire are the backbone of the game - without them everybody is stuck on one bomb at
  * radius one for ten minutes, and there is no way to build a turn around anything. Everything
  * below the live row is reserved and has always been zero. A perk at zero weight costs nothing
  * and switches back on with one number.
@@ -496,7 +496,7 @@ export const PERK_WEIGHTS = {
    * the denominator bigger rather than to pull one number down to 3 and hope: at these
    * magnitudes a single step is a quarter of a percent, so the next tweak to it can be as small
    * as it needs to be. All the OTHER perks keep their exact relative frequencies, which is the
-   * property that matters — this change is about rum and nothing else.
+   * property that matters - this change is about rum and nothing else.
    *
    * 11 of 411 is 2.7%, down from 11 of 111, which was 9.9%. It is the only perk that changes
    * how the game is played rather than how well, so it should be an event you remember rather
@@ -508,7 +508,7 @@ export const PERK_WEIGHTS = {
   [PERK.NUKE]: 0, [PERK.BLUE_FIRE]: 0, [PERK.HEART]: 0, [PERK.KEY]: 0,
 };
 
-export const PERK_DROP_CHANCE_SOFT = 0.35; // TUNE — the baseline, before supply and demand
+export const PERK_DROP_CHANCE_SOFT = 0.35; // TUNE - the baseline, before supply and demand
 
 /* How the drop rate responds to the board.
  *
@@ -536,11 +536,11 @@ export const PERK_EXPIRE_TICKS = 45 * TICK_HZ;
  * A drop that vanishes between two frames reads as a bug, or as somebody else having taken it
  * from across the map. Fading it out turns the same event into information you can act on: a
  * perk you can see going translucent is one you have a few seconds left to reach. Purely a
- * render concern — the sim still removes it on the exact tick. */
+ * render concern - the sim still removes it on the exact tick. */
 export const PERK_FADE_TICKS = 15 * TICK_HZ;
 export const PERKS_DROPPED_ON_DEATH = 3;
 // Two, so a shield can be stacked: each one survives one hit, and a second is worth walking to
-// rather than a capped pickup. Drawn on the player as a blue ring per shield — see drawShields.
+// rather than a capped pickup. Drawn on the player as a blue ring per shield - see drawShields.
 export const MAX_SHIELDS = 2;
 
 /* One shield per hit, and a moment's grace after it. Never two shields in one instant.
@@ -548,14 +548,14 @@ export const MAX_SHIELDS = 2;
  * The rule before this was "every blast that reaches you costs a shield the tick it arrives, and
  * two at once cost two". That is defensible and it played terribly: a chain reaction or a
  * crossfire is ONE event as far as the player is concerned, and walking into it with two shields
- * and coming out with none — having survived, having done nothing wrong, with no chance to react
- * in between — made the second shield feel like it had never existed. The whole reason to walk
+ * and coming out with none - having survived, having done nothing wrong, with no chance to react
+ * in between - made the second shield feel like it had never existed. The whole reason to walk
  * across the map for a second shield is that it is a second chance, and a second chance you can
  * lose in the same frame as the first is not one.
  *
  * So a shield that absorbs a blast also buys this many ticks in which nothing can touch you:
  * further blasts in the window are simply shrugged off, and the NEXT one after it comes out of
- * the next shield. Eighteen ticks, six tenths of a second — comfortably longer than a blast's
+ * the next shield. Eighteen ticks, six tenths of a second - comfortably longer than a blast's
  * lethal window (FIRE_LETHAL_TICKS), so one explosion can never reach past the grace it just
  * triggered, and short enough that it is a flinch rather than a free run through a fire.
  */
@@ -565,7 +565,7 @@ export const SHIELD_GRACE_TICKS = 18;
  *
  * The floor is the only composition rule there is: length is the one requirement that survives
  * contact with people, and "must contain a digit" produces "password1". The CEILING is the
- * security-relevant half — scrypt's cost grows with its input, so an unbounded password field is
+ * security-relevant half - scrypt's cost grows with its input, so an unbounded password field is
  * an invitation to burn a core for as long as somebody holds a socket open. The enforcement lives
  * on the server (badPassword in server/accounts.js); the client only quotes these.
  */
@@ -581,12 +581,12 @@ export const STATUS = {
   // you cannot walk straight.
   DRUNK: 128,
   /* Knocked about by somebody sliding into you. A question mark over your head, no bombs, and a
-   * quarter off your pace — for a moment. See CONFUSED_TICKS.
+   * quarter off your pace - for a moment. See CONFUSED_TICKS.
    *
    * The three together are the point. Taking the bombs away is what makes a slide a MOVE rather
    * than a faster walk: you can barge through the pirate holding a doorway and they cannot answer
    * by dropping one at your feet. The slowdown is small and short because it is a stumble, not a
-   * disease — and it is not CONTAGIOUS, because it did not come from a bottle.
+   * disease - and it is not CONTAGIOUS, because it did not come from a bottle.
    */
   CONFUSED: 256,
 };
@@ -639,12 +639,12 @@ export const DRUNK_STAGGER_TICKS = 4;      // how long one lasts
 
 /* How long you sit on the death screen before SPACE will do anything.
  *
- * It started at zero, which meant anyone holding the bomb key — everyone, always — respawned on
+ * It started at zero, which meant anyone holding the bomb key - everyone, always - respawned on
  * the same tick they died and never saw it happen. Then ten, at which a careless rush was nearly
  * free. Then fifteen: long enough that dying costs you something you feel, and short enough to
  * watch the fight you just left, which is the other thing the wait is for.
  *
- * Thirteen and a half now — a second and a half off, on request. Measured against the rest of the
+ * Thirteen and a half now - a second and a half off, on request. Measured against the rest of the
  * round it is a small change; measured against the thing it governs, which is how long you sit
  * still after a mistake, a second and a half is most of the difference between reading the
  * scoreboard and waiting. */
@@ -677,7 +677,7 @@ export const SCORE = {
 //
 // From there the only free parameters are where level 1 lands and where Veteran does. Level 1 at
 // 200 XP is about a minute, which is the right feel for a first level; Veteran at 20 is pinned to
-// 100 hours by the brief, and the exponent is DERIVED from those two rather than tuned by hand —
+// 100 hours by the brief, and the exponent is DERIVED from those two rather than tuned by hand -
 // so changing the hours or the scoring table moves the whole curve correctly instead of silently
 // making the target wrong.
 export const XP_PER_HOUR = 12_000;
@@ -746,7 +746,7 @@ export const CHAT_MIN_INTERVAL_MS = 1000;
 export const NAME_MAX_CHARS = 20;
 
 // A backgrounded tab stops being a player. Browsers throttle rAF in hidden tabs to about once a
-// second, so a background tab cannot play — it can only hold a seat other people want and drift
+// second, so a background tab cannot play - it can only hold a seat other people want and drift
 // its clock. Input is cut the moment it hides; the socket goes after this.
 export const IDLE_DISCONNECT_MS = 45_000;
 
@@ -763,7 +763,7 @@ export const IDLE_KICK_TICKS = 90 * TICK_HZ; // 90 s
 // whether the thing that just materialised is next to you.
 /* Arriving. The sprite lands at SPAWN_POP_SCALE times its size and collapses to normal.
  *
- * Twenty is absurd on purpose — at a zoomed-out map that is a pirate the height of the island,
+ * Twenty is absurd on purpose - at a zoomed-out map that is a pirate the height of the island,
  * which is exactly the point: in a sixteen-player scrum the question "where did I just come
  * back" has to be answerable in one frame, from the far corner of the screen. The quintic
  * ease-out below is what keeps it from being obnoxious: it is past 20x within three frames and
@@ -784,7 +784,7 @@ export const VOLUME_MASTER = 0.5;
 /* Per-bus trim, on top of VOLUME_MASTER.
  *
  * The two buses carried the identical master trim, which is only right if the two want the
- * same headroom — and they do not. Effects are transients with a 12:1 limiter on them and sit
+ * same headroom - and they do not. Effects are transients with a 12:1 limiter on them and sit
  * under the music more than they should; the music is a continuous mastered mix and arrives
  * hotter than anything synthesised next to it.
  *
@@ -813,7 +813,7 @@ export const BAN_MAX_HOURS = 24;
  *
  * The moment a person joins there are at least AUTO_BOTS_MIN bots, so one or two early arrivals
  * have something to fight instead of an empty island. Once no human has been present for
- * AUTO_BOTS_EMPTY_ROUNDS whole rounds the bots are all removed — sixteen brains playing to nobody
+ * AUTO_BOTS_EMPTY_ROUNDS whole rounds the bots are all removed - sixteen brains playing to nobody
  * all weekend is wasted CPU.
  *
  * A host removing bots by hand (/kick bot N, or /bots lower than it is) switches the top-up off:

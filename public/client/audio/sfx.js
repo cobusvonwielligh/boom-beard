@@ -1,4 +1,4 @@
-// Sound effects. Synthesised, per docs/ART-AUDIO.md §6 — there is not one audio file in this
+// Sound effects. Synthesised, per docs/ART-AUDIO.md §6 - there is not one audio file in this
 // project and there is not going to be one.
 //
 // Four things carry the whole design, and they matter more than the individual recipes:
@@ -9,7 +9,7 @@
 //  2. **Budgeted.** A chain can set off a dozen bombs on one tick. Past the third, the sound
 //     stops being information and becomes noise, so the rest are dropped.
 //  3. **Jittered.** Every instance is pitched and timed a few percent off. Identical repeats are
-//     the single biggest tell that a game's audio was made by a programmer — a bomb going off
+//     the single biggest tell that a game's audio was made by a programmer - a bomb going off
 //     four times in a row should not sound like one sample played four times.
 //  4. **About you.** Anything that happened TO you is non-positional, longer and louder than the
 //     same thing happening to somebody else. You killing someone has its own sound; that
@@ -44,7 +44,7 @@ const CLOSE_UP = new Set([
 /* How loud somebody ELSE's sound is, against the same thing happening to you.
  *
  * Distance attenuation alone is not enough. With sixteen players on a board, most of what you
- * hear is other people — their bombs, their pickups, their deaths — and all of it arrives at
+ * hear is other people - their bombs, their pickups, their deaths - and all of it arrives at
  * the same volume as your own as soon as they are standing near you. The result is that the
  * sound you most need to hear, the one you caused, is buried in fifteen other people's.
  *
@@ -69,7 +69,7 @@ export function createSfx({ listener }) {
     return store.number('bv.sfx', VOLUME_SFX_DEFAULT, 0, 1);
   }
 
-  /** ±`pct` either way. Presentation only — the simulation never calls Math.random(). */
+  /** ±`pct` either way. Presentation only - the simulation never calls Math.random(). */
   const jit = (v, pct = 0.05) => v * (1 + (Math.random() * 2 - 1) * pct);
 
   /**
@@ -115,7 +115,7 @@ export function createSfx({ listener }) {
      * All three cues move together, because they are one perception: a sound that is panned
      * further but just as loud reads as a mixing error, not as distance. The spread is 1.5x,
      * the rolloff takes 1.5x as much level by the edge of earshot, and the lowpass closes 1.5x
-     * further. The only one with a hard limit is level — it bottoms out at a tenth rather than
+     * further. The only one with a hard limit is level - it bottoms out at a tenth rather than
      * going silent, because a bomb you cannot hear at all is information lost, and information
      * is what this whole mix is for.
      */
@@ -135,7 +135,7 @@ export function createSfx({ listener }) {
 
   /**
    * One panner (and one distance lowpass) per sound. Voices build their own envelope gains and
-   * connect into `out`, so a voice with several components — a noise burst plus a sine thump —
+   * connect into `out`, so a voice with several components - a noise burst plus a sine thump -
    * can shape each separately.
    */
   function head(pan, cutoff) {
@@ -175,9 +175,9 @@ export function createSfx({ listener }) {
 
   /** Pitch pairs for each perk, so grabbing a Fire is audibly not grabbing a Skate. */
   const PERK_NOTES = {
-    [PERK.BOMB]: [76, 83],      // fifth up — solid, grounded
-    [PERK.FIRE]: [79, 83],      // major third — bright
-    [PERK.SKATE]: [81, 93],     // octave, quick — it is about speed
+    [PERK.BOMB]: [76, 83],      // fifth up - solid, grounded
+    [PERK.FIRE]: [79, 83],      // major third - bright
+    [PERK.SKATE]: [81, 93],     // octave, quick - it is about speed
     [PERK.SHIELD]: [84, 91],    // high and open
   };
 
@@ -192,7 +192,7 @@ export function createSfx({ listener }) {
      * more than any other in the game, so it has to stay sweet at the hundredth time of asking.
      *
      *   the set-down  a soft low triangle, the keg touching sand. Weight, not a click.
-     *   the strike    a short band-passed noise burst sweeping up — a match catching. This is
+     *   the strike    a short band-passed noise burst sweeping up - a match catching. This is
      *                 the part that says "lit", and it is the quietest of the three: hiss is
      *                 what the ear finds abrasive, so there is just enough to read as a fuse.
      *   the spark     two tiny sine blips a fourth apart, rising. The sweetness, and the reason
@@ -249,13 +249,13 @@ export function createSfx({ listener }) {
     /**
      * An explosion, in five layers.
      *
-     * The old one was three — noise sweep, sine thump, a crack — and it sounded like a programmer
+     * The old one was three - noise sweep, sine thump, a crack - and it sounded like a programmer
      * explosion: all of it arrived at once and all of it left at once, so a bomb and a powder keg
      * were the same event at different volumes. Real blasts are a SEQUENCE, and the sequence is
      * what carries size:
      *
      *   1. **Crack.** Highpassed noise, three milliseconds. The transient. Without it the blast
-     *      reads as distant no matter how loud the rest is — this is the layer that says "here".
+     *      reads as distant no matter how loud the rest is - this is the layer that says "here".
      *   2. **Body.** Bandpassed noise sweeping down. The bulk of what you hear.
      *   3. **Sub.** A sine falling off a cliff. You feel this one more than hear it, and it is
      *      the single biggest difference between a firework and a bomb.
@@ -308,7 +308,7 @@ export function createSfx({ listener }) {
       sub.connect(sg);
       sub.start(t); sub.stop(t + 0.36 * long);
 
-      // 4. rubble — only worth the nodes on a blast big enough to throw any
+      // 4. rubble - only worth the nodes on a blast big enough to throw any
       if (s01 > 0.15) {
         const rt = t + 0.05;
         const rg = voiceGain(c, out, rt, { a: 0.04, d: (0.45 + 0.5 * s01), peak: 0.1 * s01 * level, send: 0.6 });
@@ -346,7 +346,7 @@ export function createSfx({ listener }) {
      */
     kegboom(c, out, t, level) {
       // The fizz wants to come BEFORE the blast. It only gets as much head start as the
-      // scheduling margin allows, which is a few milliseconds — enough to read as a fuse
+      // scheduling margin allows, which is a few milliseconds - enough to read as a fuse
       // catching rather than as part of the hit, and it cannot be scheduled into the past.
       const ft = Math.max(c.currentTime, t - 0.07);
       const fg = voiceGain(c, out, ft, { a: 0.01, d: 0.09, peak: 0.13 * level });
@@ -479,7 +479,7 @@ export function createSfx({ listener }) {
      * Your own arrival: a falling whoosh that lands on a thump, then the rising chime.
      *
      * Matched to what the sprite does. It drops in from twenty times its size and collapses, so
-     * the sound has to fall too — a rising tone alone said "something good happened" when the
+     * the sound has to fall too - a rising tone alone said "something good happened" when the
      * picture said "something just landed". The noise sweeps DOWN through the collapse, the
      * thump hits where the squash is, and only then does the chime rise.
      */
@@ -517,7 +517,7 @@ export function createSfx({ listener }) {
       }
     },
 
-    /** Wobbly detuned pair — something is wrong with you now. */
+    /** Wobbly detuned pair - something is wrong with you now. */
     status(c, out, t, level) {
       const g = voiceGain(c, out, t, { a: 0.01, d: 0.26, peak: 0.24 * level });
       const lfo = c.createOscillator();
@@ -553,7 +553,7 @@ export function createSfx({ listener }) {
      * A slide: a short filtered whoosh with a scuff in front of it.
      *
      * Noise swept downward, which is what a body moving past a microphone actually does to the
-     * spectrum, plus one click of grit at the start for the push off. Brief on purpose — the
+     * spectrum, plus one click of grit at the start for the push off. Brief on purpose - the
      * slide itself is a third of a second, and a sound longer than the move it describes is a
      * sound that is still going when you have already stopped.
      */
@@ -582,7 +582,7 @@ export function createSfx({ listener }) {
      * Barged: two notes that cannot decide which way up they are, wobbling.
      *
      * A detuned pair sliding in opposite directions is the oldest "confused" cue there is, and it
-     * is the right one — it says disorientation without saying damage, which matters because
+     * is the right one - it says disorientation without saying damage, which matters because
      * being knocked silly costs you no health and the sound must not suggest otherwise.
      */
     dazed(c, out, t, level) {
@@ -678,7 +678,7 @@ export function createSfx({ listener }) {
       }
     },
 
-    /** A wall coming apart. Quiet — this fires several times per explosion. */
+    /** A wall coming apart. Quiet - this fires several times per explosion. */
     blockdie(c, out, t, level) {
       const g = voiceGain(c, out, t, { a: 0.003, d: jit(0.15), peak: 0.16 * level });
       const s = noiseSource();
@@ -695,7 +695,7 @@ export function createSfx({ listener }) {
     /**
      * Ice giving way. Three parts, in order: a glassy crack, a scatter of high tinkles as it
      * shatters, and the wet slap of the water hitting the floor. The tinkles are what make it
-     * ice rather than any other block — nothing else in the game rings.
+     * ice rather than any other block - nothing else in the game rings.
      */
     melt(c, out, t, level) {
       const cg = voiceGain(c, out, t, { a: 0.001, d: 0.05, peak: 0.2 * level, send: 0.2 });
@@ -760,8 +760,8 @@ export function createSfx({ listener }) {
      *   4. the FINAL chord, a bar later, with a timpani thump under it and the longest note in
      *      the game on top
      *
-     * Three detuned oscillators per note throughout — square for the body, triangle for the
-     * sweetness and sawtooth for the bite — which is the brass section of a machine that has
+     * Three detuned oscillators per note throughout - square for the body, triangle for the
+     * sweetness and sawtooth for the bite - which is the brass section of a machine that has
      * no brass. */
     fanfare(c, out, t) {
       const voice = (n, at, d, peak, send = 0.5) => {
@@ -776,7 +776,7 @@ export function createSfx({ listener }) {
         }
       };
 
-      // 1. the pickup — G A B, fast, straight into the downbeat
+      // 1. the pickup - G A B, fast, straight into the downbeat
       voice(67, 0.00, 0.11, 0.17);
       voice(69, 0.09, 0.11, 0.18);
       voice(71, 0.18, 0.11, 0.19);
@@ -820,7 +820,7 @@ export function createSfx({ listener }) {
     /**
      * You levelled up, mid-round.
      *
-     * The opening figure of the fanfare and nothing else — the pickup and the arrival, under a
+     * The opening figure of the fanfare and nothing else - the pickup and the arrival, under a
      * second. It used to play the WHOLE fanfare, which is four and a half seconds of brass over
      * a firefight for a thing that happens every few rounds. Sharing the opening is deliberate:
      * it is recognisably the same family as winning, just not the whole of it.
@@ -847,17 +847,17 @@ export function createSfx({ listener }) {
      * The round is over and you did not win it.
      *
      * A second and a bit, against the winner's four and a half, and that difference is the
-     * point — length is the reward, so the consolation cannot have it. What it CAN have is a
+     * point - length is the reward, so the consolation cannot have it. What it CAN have is a
      * tune, and it gets a better one than the fanfare does: five notes with a hook in them,
      * falling to a minor sixth that does not resolve.
      *
      * Not sad. A sad sound after every losing round is a sound you learn to dread, and most
-     * rounds are losing rounds for fifteen out of sixteen people. This is wry — it lands on a
+     * rounds are losing rounds for fifteen out of sixteen people. This is wry - it lands on a
      * note that says "again?" rather than one that says "oh dear", and it is short enough that
      * the next round starts before you have finished hearing it.
      */
     playoff(c, out, t) {
-      // E D C — a quick fall — then up to A and settling on G. The leap back up is what makes
+      // E D C - a quick fall - then up to A and settling on G. The leap back up is what makes
       // it a phrase instead of a sigh.
       const NOTES = [[76, 0.00, 0.12], [74, 0.11, 0.12], [72, 0.22, 0.14],
         [81, 0.38, 0.16], [79, 0.56, 0.55]];
@@ -928,8 +928,8 @@ export function createSfx({ listener }) {
      * A gull overhead: the long call, "kee-ow, kyow-kyow".
      *
      * A gull's voice is a nasal, slightly hoarse wail that leaps UP into the note and slides
-     * down out of it. Built from a sawtooth through two resonances — the nasal band near
-     * 1.9 kHz and a body near 900 Hz — with a fast wobble on the pitch, which is the hoarseness.
+     * down out of it. Built from a sawtooth through two resonances - the nasal band near
+     * 1.9 kHz and a body near 900 Hz - with a fast wobble on the pitch, which is the hoarseness.
      * Three calls, the first long and the two after it short and lower, the way they actually
      * do it. Quiet: it is the sound of the place, not an event.
      */
@@ -962,7 +962,7 @@ export function createSfx({ listener }) {
     },
 
     /**
-     * A gull caught in a blast: a strangled squawk, a puff of feathers, and the coin — two bright
+     * A gull caught in a blast: a strangled squawk, a puff of feathers, and the coin - two bright
      * bell partials a beat later, so the ear hears "got it" and then "and it paid".
      */
     gullhit(c, out, t, level) {
@@ -997,7 +997,7 @@ export function createSfx({ listener }) {
     /**
      * Two gulls committing to a run: the warning, about a second before it lands.
      *
-     * Ordinary gull calls, but stacked, fast and RISING — the same voice as the scenery bird so
+     * Ordinary gull calls, but stacked, fast and RISING - the same voice as the scenery bird so
      * the ear knows what is coming, played in a way no scenery bird ever does. That is the whole
      * trick: it is not a new sound to learn, it is a familiar one behaving wrong.
      */
@@ -1029,7 +1029,7 @@ export function createSfx({ listener }) {
      *
      * Four parts, in the order the joke needs them: a flurry of wingbeats, one indignant squawk
      * cut off mid-note, a slide whistle going down because that is the law, and a flat little
-     * splat at the bottom. Nothing here is frightening on purpose — the round just lost somebody
+     * splat at the bottom. Nothing here is frightening on purpose - the round just lost somebody
      * to birds, and the sound has to agree that this is ridiculous.
      */
     gullmug(c, out, t, level = 1) {

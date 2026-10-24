@@ -1,7 +1,7 @@
 // Fire kills on a box smaller than the sprite. See HITBOX_FIRE_NUM.
 //
 // The case that matters is hiding: a shoulder past the edge of a wall is not a death, a body in
-// the blast is. Both assertions are needed — a grace wide enough to survive the blast itself
+// the blast is. Both assertions are needed - a grace wide enough to survive the blast itself
 // would be worse than no grace at all.
 
 import { test } from 'node:test';

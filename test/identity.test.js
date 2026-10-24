@@ -2,7 +2,7 @@
 //
 // A second window on the same identity is turned away rather than handed a second seat or
 // allowed to steal the first: a sixteen-seat server where one person can hold two of them is a
-// smaller server. Only a LIVE seat refuses — a socket that has actually gone is the reconnect
+// smaller server. Only a LIVE seat refuses - a socket that has actually gone is the reconnect
 // case, and a wifi roam must never lock you out of your own score.
 
 import { test } from 'node:test';

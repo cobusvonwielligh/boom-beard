@@ -189,21 +189,21 @@
 <div id="hud">
   <div id="topbar" class="edge">
     <span id="clock"
-      ><span class="v cast" id="vClock">&mdash;</span
+      ><span class="v cast" id="vClock">-</span
       ><span class="k">left</span></span
     >
     <!-- The dot lives with the ping, because they answer the same question: is the link
          healthy. Next to the volume controls it was just another icon in a row of icons. -->
     <span class="stat"
-      ><span class="k">ping</span><span class="v" id="vPing">&mdash;</span
+      ><span class="k">ping</span><span class="v" id="vPing">-</span
       ><span id="conn" data-state="connecting" title="connecting"></span
     ></span>
     <span class="stat"
       ><span class="k">alive</span
-      ><span class="v" id="vOnline">&mdash;</span></span
+      ><span class="v" id="vOnline">-</span></span
     >
     <span class="stat"
-      ><span class="k">map</span><span class="v" id="vMap">&mdash;</span></span
+      ><span class="k">map</span><span class="v" id="vMap">-</span></span
     >
     <span class="sep"></span>
 
@@ -276,7 +276,7 @@
 
       <!-- The bar first, then the counts.
            `lvl 4 · Rookie` is one fact in two halves, and it was split across two rows with the
-           stats wedged in between — so the tier read as a caption on your NAME rather than as
+           stats wedged in between - so the tier read as a caption on your NAME rather than as
            what it is: the name of the level sitting next to it. Joined, the head of the bar
            says everything about where you are, and the counts sit under it as the detail. -->
       <div id="xp">
@@ -291,7 +291,7 @@
       <!-- Kills, deaths, coins. The round score used to be here and is not information: it is
            a number you cannot act on, derived from the other two plus pickups, and it is
            already the thing the scoreboard ranks by. Hours played is tracked on the server and
-           deliberately not shown — nobody needs to be told how long they have been here. -->
+           deliberately not shown - nobody needs to be told how long they have been here. -->
       <div id="cardStats">
         <span><span class="k">kills</span><span id="vKills">0</span></span>
         <span><span class="k">deaths</span><span id="vDeaths">0</span></span>
@@ -328,7 +328,7 @@
      announcement centred on the viewport sits visibly off to one side of the thing you are
      looking at. -->
 <!-- The count-in: five seconds at the top of every round, in the same cast gold as the clock it
-     sits under. The ring is a second hand — one sweep per count — so the thing reads as a clock
+     sits under. The ring is a second hand - one sweep per count - so the thing reads as a clock
      ticking rather than as a number changing. Driven from the round's own tick in client/main.js,
      which is why everybody sees the same digit at the same moment. -->
 <div id="countIn" aria-hidden="true">
@@ -346,7 +346,7 @@
 <div id="dead">
   <!-- The landing page's visualiser, between rounds, in the same place relative to the card.
        `#dead` happens to be exactly the board's box, so a canvas at inset:0 inside it puts the
-       bars on the board's own left and right edges — the same frame the menu card gets. First in
+       bars on the board's own left and right edges - the same frame the menu card gets. First in
        the markup so the card paints over it. See client/menuviz.js. -->
   <canvas id="roundViz" aria-hidden="true"></canvas>
   <div class="card small edge">
@@ -380,8 +380,8 @@
          the same sentence twice. -->
     <button id="respawn">respawn</button>
     <!-- Auto-respawn. Remembered across sessions like the volume sliders, because it is a
-         preference rather than a per-round choice. A real checkbox underneath — keyboard,
-         screen readers and main.js all see an ordinary input — dressed as a sliding switch. -->
+         preference rather than a per-round choice. A real checkbox underneath - keyboard,
+         screen readers and main.js all see an ordinary input - dressed as a sliding switch. -->
     <label id="autoRow"
       ><span class="lbl">auto respawn</span
       ><input type="checkbox" id="autoRespawn" role="switch" /><span
@@ -480,14 +480,14 @@
         <dd>
           Double-tap a direction: three and a half tiles in half a second, a
           fifth of your wind, and no steering or bombs until it ends. Go through
-          somebody and they are left seeing stars &mdash; no bombs, a quarter
+          somebody and they are left seeing stars - no bombs, a quarter
           slower, for a moment.
         </dd>
         <dt>
           <svg><use href="#i-fire" /></svg>perks
         </dt>
         <dd>
-          More bombs, longer fire, boots, a shield, stim, and rum &mdash; which
+          More bombs, longer fire, boots, a shield, stim, and rum - which
           saves you from everything except the tile the bomb was on, and steers
           like a shopping trolley. Bombs and fire cap at five; the flames under
           a bomb say how far it reaches.
@@ -521,7 +521,7 @@
           Catch one in a blast of yours and three coins fly straight to you.
           They dawdle over the island, which is your window. Once a round two of
           them come in fast and low for one player, and that player is finished
-          &mdash; the scoreboard remembers who.
+          - the scoreboard remembers who.
         </dd>
         <dt>
           <svg><use href="#i-skull" /></svg>streaks
@@ -548,7 +548,7 @@
 <!-- Two rows, and they are two different machines.
      The bottom row is THIS computer: frame rate, how much of one core the game's own frame work
      is using, and how much of the JS heap it is holding. Everybody sees it.
-     The top row is the SERVER, in its own colour, and only the owner's client ever unhides it —
+     The top row is the SERVER, in its own colour, and only the owner's client ever unhides it -
      a number nobody else can act on is noise on fifteen screens. -->
 <div id="perf" aria-label="performance diagnostics">
   <div id="perfServer" hidden>
@@ -577,7 +577,7 @@
 
 <!-- Audio, bottom left, outside the HUD on purpose.
      The music starts on the menu, so the control for it has to be on the menu. The lazy version
-     is a second set of widgets there, kept in step with these ones — which is two sources of
+     is a second set of widgets there, kept in step with these ones - which is two sources of
      truth and a sync bug waiting to happen. This is the same set of elements on both screens:
      it just moves. Nothing in main.js knows the difference.
 
@@ -663,7 +663,7 @@
   ></span>
 </div>
 
-<!-- The emote picker. A compass, because the keys are a compass — up, left, down, right — so
+<!-- The emote picker. A compass, because the keys are a compass - up, left, down, right - so
      there is nothing to learn beyond "hold shift". Centred on the board rather than the window,
      like every other centred thing here, and `pointer-events: none` throughout: it is a legend,
      not a menu, and the keyboard is the only way to use it. -->
@@ -687,8 +687,8 @@
   </div>
   <div id="phRank"></div>
   <!-- No "this round" block. The round numbers are already on the scoreboard this card is being
-       opened from, two rows away, and repeating them pushed the lifetime figures — the only
-       thing here you cannot read anywhere else — down past a fold on a short window. -->
+       opened from, two rows away, and repeating them pushed the lifetime figures - the only
+       thing here you cannot read anywhere else - down past a fold on a short window. -->
   <div class="phSection">lifetime</div>
   <div class="phGrid">
     <span><i>xp</i><b id="phXp">0</b></span>
@@ -713,7 +713,7 @@
       </div>
       <!-- Three beats, and each one does a job: the number tells you the scale, the island
            tells you there is nowhere to go, and the last tells you what you actually DO. The
-           old line opened with "Online multiplayer", which is a category rather than a hook —
+           old line opened with "Online multiplayer", which is a category rather than a hook -
            and the PLAY button two inches below it already says that. -->
       <p class="sub" style="margin-top: 5px">
         Sixteen pirates. One island. Light the fuse and run.
@@ -728,7 +728,7 @@
           autofocus
         />
       </div>
-      <!-- The password, hidden until the server asks for it — which is the first time a name is
+      <!-- The password, hidden until the server asks for it - which is the first time a name is
            claimed, and the first time it arrives from a browser the server has not seen. After
            that this browser holds a token and the box never appears again. See server/accounts.js
            and the `auth` branch of onRejected in client/main.js.
@@ -759,7 +759,7 @@
             ><kbd>&#8594;</kbd> <span class="or">or</span> <kbd>W</kbd
             ><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>
           </dt>
-          <dd>Move &mdash; hold two for a diagonal</dd>
+          <dd>Move - hold two for a diagonal</dd>
 
           <dt>
             <kbd>&#8592;</kbd><kbd>&#8592;</kbd> <span class="or">twice</span>
@@ -815,7 +815,7 @@
       <img src="/assets/img/bomb-barrels.png" alt="" width="440" height="440" />
     </div>
 
-    <!-- `.mascot-dash` is the size knob, and it is his alone — nothing else on the page uses it.
+    <!-- `.mascot-dash` is the size knob, and it is his alone - nothing else on the page uses it.
          It sets the BOX, never the <img>, for the reason spelled out beside it in style.css. -->
     <div id="mascot" class="mascot-dash">
       <img src="/assets/img/mascot.png" alt="" width="210" height="210" />
@@ -900,7 +900,7 @@
   }
 
   /* ========================================
-   PERFORMANCE PANEL — POSITION & SIZE
+   PERFORMANCE PANEL - POSITION & SIZE
    ======================================== */
 
   #perf {

@@ -1,4 +1,4 @@
-# Boom Beard — Deployment
+# Boom Beard - Deployment
 
 Two requirements shape all of this:
 
@@ -26,7 +26,7 @@ Two requirements shape all of this:
 ```
 
 One instance. One process. No load balancer, no CDN, no bucket, no database, no second domain.
-The WebSocket shares the HTTP server, so `wss://host/ws` is the same origin as the page — no
+The WebSocket shares the HTTP server, so `wss://host/ws` is the same origin as the page - no
 CORS, no preflight, nothing extra for IT to allow.
 
 **No Docker.** The plan originally called for a container; building it, the honest answer was
@@ -48,7 +48,7 @@ Each row is a thing that commonly gets a game blocked, and the choice that avoid
 |---|---|
 | Non-standard ports | **All game traffic on 443.** Port 80 is open only for the HTTPS redirect and certificate renewal. |
 | Plain `ws://` on 80 | **`wss://` on 443.** TLS-wrapped, so proxies pass it as ordinary HTTPS. |
-| Multiple domains / CDNs | **One hostname.** `Content-Security-Policy: default-src 'self'` — the page is incapable of requesting another host. Verify in the Network tab. |
+| Multiple domains / CDNs | **One hostname.** `Content-Security-Policy: default-src 'self'` - the page is incapable of requesting another host. Verify in the Network tab. |
 | Web fonts, analytics | None. Zero external requests. |
 | WebRTC / UDP | Not used. |
 | Category filters ("games") | Prefer a neutral hostname on an eezi domain over something obviously a game. |
@@ -80,10 +80,10 @@ new `HOST`. Nothing in the code knows the name.
 
 ### On AWS (console)
 
-1. **Instance** — `t3.micro`, Amazon Linux 2023, 16–20 GB gp3, in `af-south-1`.
-2. **Elastic IP** — allocate, associate to the instance. (Since Feb 2024 every public IPv4 costs
+1. **Instance** - `t3.micro`, Amazon Linux 2023, 16–20 GB gp3, in `af-south-1`.
+2. **Elastic IP** - allocate, associate to the instance. (Since Feb 2024 every public IPv4 costs
    $0.005/h; Free Tier covers 750 h/month for 12 months, so one is free for a year.)
-3. **Security group** — exactly three inbound rules, nothing else:
+3. **Security group** - exactly three inbound rules, nothing else:
 
    | Port | Source | Purpose |
    |---|---|---|
@@ -91,7 +91,7 @@ new `HOST`. Nothing in the code knows the name.
    | 80 | `0.0.0.0/0` | HTTPS redirect + ACME renewal |
    | 22 | your IP | SSH |
 
-   Specifically **not** 8080 — that is local dev only.
+   Specifically **not** 8080 - that is local dev only.
 
 ### On the box (once, ~3 minutes)
 
@@ -101,7 +101,7 @@ ssh -i ~/Downloads/bombs-away.pem ec2-user@15.240.88.189 \
   'HOST=15.240.88.189.sslip.io EMAIL=you@example.com bash bootstrap.sh'
 ```
 
-`bootstrap.sh` is idempotent — re-run it any time. It installs Node, creates
+`bootstrap.sh` is idempotent - re-run it any time. It installs Node, creates
 `/opt/boom-beard` and `/var/lib/boom-beard`, issues the certificate, installs a deploy hook
 that copies the cert somewhere the unprivileged service can read it, and arms a weekly renewal
 timer for 03:00 Sunday.
@@ -118,7 +118,7 @@ rounds.
 
 ---
 
-## 5. Configuration — `config.ini`
+## 5. Configuration - `config.ini`
 
 All settings and secrets live in **`config.ini`**, which is gitignored and never rsynced, so a
 deploy can never clobber it and a secret can never reach GitHub. `config.example.ini` is the
@@ -137,8 +137,8 @@ Precedence is **environment variable > `config.ini` > built-in default**, so a o
 | | `data_dir` | `DATA_DIR` | `./data` | Leaderboard and certificate copies. |
 | | `max_players` | `MAX_PLAYERS` | `16` | |
 | | `min_bots` | `MIN_BOTS` | `6` | Bots kept topped up while anyone plays; 0 turns it off |
-| `deploy` | `token` | `DEPLOY_TOKEN` | blank | Secret for `POST /deploy`. **Blank disables the endpoint entirely** — correct on a laptop. |
-| | `ssh_host` / `ssh_user` / `ssh_key` | same | — | Used by `infra/deploy.sh`. |
+| `deploy` | `token` | `DEPLOY_TOKEN` | blank | Secret for `POST /deploy`. **Blank disables the endpoint entirely** - correct on a laptop. |
+| | `ssh_host` / `ssh_user` / `ssh_key` | same | - | Used by `infra/deploy.sh`. |
 | `admin` | `key` | `ADMIN_KEY` | blank | Whoever's browser presents it is always host. Open `https://<host>/?admin=<key>` once; the browser keeps it and the address bar drops it. `bootstrap.sh` generates one. |
 | | `name` | `ADMIN_NAME` | `cobusvw` | Only used when `key` is blank, which is right on a laptop and wrong anywhere else: names are not secret. |
 | `dev` | `lag` / `jitter` | `LAG` / `JITTER` | `0` | Outbound delay in ms. The process **refuses to start** if either is non-zero while TLS is configured. |
@@ -195,7 +195,7 @@ GitHub → Settings → Secrets and variables → Actions → New repository sec
 | `DEPLOY_URL` | `https://<host>/deploy` |
 | `DEPLOY_TOKEN` | printed at the end of `bootstrap.sh`, and stored in `config.ini` under `[deploy] token` |
 
-Until they are set the deploy job logs a skip and goes green — tests still gate every push.
+Until they are set the deploy job logs a skip and goes green - tests still gate every push.
 
 ### Deploying from a laptop
 
@@ -216,7 +216,7 @@ Everything is already parameterised. The whole switch:
    | A | `@` | `15.240.88.189` |
    | A | `www` | `15.240.88.189` |
 
-2. **Wait for DNS**, and confirm before going further — certbot fails loudly if the name does
+2. **Wait for DNS**, and confirm before going further - certbot fails loudly if the name does
    not resolve to the box yet:
 
    ```bash
@@ -235,7 +235,7 @@ Everything is already parameterised. The whole switch:
 
    `HOST` is the canonical name and goes into `config.ini` as `public_host`. Everything in
    `ALT_HOSTS` is covered by the same certificate, answered, and then **301d to `HOST`** by
-   `server/canonical.js` — so one URL shows in the address bar and every old link still works.
+   `server/canonical.js` - so one URL shows in the address bar and every old link still works.
 
 4. **Update the GitHub secret** `DEPLOY_URL` to `https://boombeard.co.za/deploy`.
 
@@ -256,10 +256,10 @@ bounces. `/healthz` and `/deploy` are exempt from the bounce, because the deploy
 
 | Thing | Personal AWS account today | eezi VPC later |
 |---|---|---|
-| Compute | EC2 + systemd | Same, in a private subnet — or ECS with a six-line Dockerfile |
+| Compute | EC2 + systemd | Same, in a private subnet - or ECS with a six-line Dockerfile |
 | TLS | Let's Encrypt on the box | ACM certificate on an ALB; the app drops to plain HTTP by unsetting `TLS_CERT` |
 | Hostname | `15.240.88.189.sslip.io` | `game.<eezi domain>` in Route 53 |
-| Access | Public internet | VPC + VPN or an internal ALB — **then IT does not need to unblock anything at all** |
+| Access | Public internet | VPC + VPN or an internal ALB - **then IT does not need to unblock anything at all** |
 | Data | `/var/lib/boom-beard/` | EFS mount, same path |
 | Config | `/etc/boom-beard.env` | Task definition env or SSM Parameter Store |
 
@@ -314,14 +314,14 @@ Free for a year, about $12/month after.
 |---|---|
 | **CI deploy returns 404** | Wrong `DEPLOY_TOKEN`, or `config.ini` on the server has no `[deploy] token`. The endpoint answers 404 to anything it does not like, on purpose. |
 | **CI deploy returns 429** | Two deploys within 10 s. The workflow `concurrency` group should prevent it; check for a manual `curl`. |
-| **Deploy accepted but version never changes** | `sudo journalctl -u boom-beard` plus `/var/lib/boom-beard/self-update.log`. Usually the deploy key cannot fetch — re-run `bootstrap.sh`. |
+| **Deploy accepted but version never changes** | `sudo journalctl -u boom-beard` plus `/var/lib/boom-beard/self-update.log`. Usually the deploy key cannot fetch - re-run `bootstrap.sh`. |
 | **Nobody has host commands, including you** | Your browser has no admin key yet, or an old one. Open `https://<host>/?admin=<key>` once; the key is `[admin] key` in the server's `config.ini`. |
 | **Server came up on 8080 without TLS** | `config.ini` is missing or has blank `tls_cert`. The service reads only that file now; `/etc/boom-beard.env` is no longer used. |
 | **No music in the browser** | Autoplay is blocked until a gesture. The page arms a one-shot click/keypress listener; if it still fails, check the console for an AudioContext error. |
 | **All ports time out** (22, 80, 443) | Security group does not have the rule, *or* the Elastic IP is not associated with a running instance. A timeout means the packet was dropped; a *refused* would mean it arrived and nothing was listening. |
 | Port 22 times out, 443 works | SSH rule source is a different IP than yours now. EC2 → Security Groups → Edit inbound → set **My IP** again. Do not reopen 22 to `0.0.0.0/0`. |
 | `certbot` fails with a connection error | Port 80 not open, or DNS not yet pointing at the box. `dig +short <host>` must return the Elastic IP. |
-| Service dies on start | `journalctl -u boom-beard -n 50`. Usually a cert path or a port permission — check `AmbientCapabilities` survived in the unit file. |
+| Service dies on start | `journalctl -u boom-beard -n 50`. Usually a cert path or a port permission - check `AmbientCapabilities` survived in the unit file. |
 | Page loads, WebSocket does not | Mixed content (page on https, socket on ws). The client derives the scheme from `location.protocol`; if you hardcoded one, that is the bug. |
 
 ---
@@ -333,7 +333,7 @@ What stands between the internet and the box, checked end to end on 2026-10-24 f
 | Layer | What it does |
 |---|---|
 | **Security group** | 443 and 80 to the world, 22 to one address. sshd logged no attempt from anywhere else in the three days checked. |
-| **sshd** | Keys only, no root login, no X11, three tries per connection — `/etc/ssh/sshd_config.d/00-boom-beard.conf`, written by `bootstrap.sh`. |
+| **sshd** | Keys only, no root login, no X11, three tries per connection - `/etc/ssh/sshd_config.d/00-boom-beard.conf`, written by `bootstrap.sh`. |
 | **The service** | Runs as `ec2-user` with `NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome` and a private `/tmp`. `ec2-user` can sudo anything, so `NoNewPrivileges` is the line that keeps a hole in the game from becoming root. |
 | **HTTP** | Per-address token bucket (40/s, burst 200) on both listeners; headers must arrive within 10 s; `GET /%`-style junk is a 404, never an exception. CSP `default-src 'self'`, `frame-ancestors 'none'`, HSTS, `nosniff`. |
 | **Sockets** | WebSocket *and* WebTransport share the per-address limits: 90 connects a minute (burst 40), 64 open at once, 120 messages a second per socket, 4 KB per message. A socket that keeps flooding is closed. |
@@ -342,6 +342,6 @@ What stands between the internet and the box, checked end to end on 2026-10-24 f
 | **`/deploy`** | 404 to anything but a POST with the right token; 10 s cooldown. |
 | **Secrets** | `config.ini` only, `chmod 600`, never in git (the history was checked). |
 
-The regressions that were found doing that check — a stray `%` in a URL, `/logout`, and a message
-field whose `toString` is not a function each ended the process — are locked in by
+The regressions that were found doing that check - a stray `%` in a URL, `/logout`, and a message
+field whose `toString` is not a function each ended the process - are locked in by
 `test/smoke.test.js`.

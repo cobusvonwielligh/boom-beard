@@ -1,4 +1,4 @@
-// Grant podium medals by hand — for testing persistence, or putting right a medal somebody was
+// Grant podium medals by hand - for testing persistence, or putting right a medal somebody was
 // owed. Operator tool, not a game feature: there is deliberately no chat command for this.
 //
 //   node server/medals.js --name cobusvw --gold 1 --silver 2 --bronze 3
@@ -42,7 +42,7 @@ const counts = MEDALS.map(m => Math.max(0, Math.floor(Number(a[m] ?? 0)) || 0));
 const granting = counts.some(n => n > 0);
 
 if (granting && await listening(config.port)) {
-  console.error(`something is answering on port ${config.port}. Stop the game server first —`);
+  console.error(`something is answering on port ${config.port}. Stop the game server first -`);
   console.error('it would save its own copy of the board straight over this edit.');
   process.exit(1);
 }

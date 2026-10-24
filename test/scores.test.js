@@ -46,7 +46,7 @@ test('lifetime rank is banked plus the round in progress', async () => {
     await wait(1200);
 
     const last = scores.at(-1);
-    assert.ok(last, 'no scores message in 1.2 s — the 1 Hz broadcast is not firing');
+    assert.ok(last, 'no scores message in 1.2 s - the 1 Hz broadcast is not firing');
 
     const seat0 = last.ranks.find(r => r.i === 0);
     assert.ok(seat0, 'seated bot missing from the ranks');

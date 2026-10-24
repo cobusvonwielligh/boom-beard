@@ -34,7 +34,7 @@ const FLOOD = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]];
  * Melted ice: a puddle on the ice's own tile and the four beside it, wherever you could stand.
  *
  * Called by detonate() once damage() has already turned the ice to floor, so the centre always
- * floods. A neighbour that is a wall, the sea or rock stays dry — five tiles is the most, never
+ * floods. A neighbour that is a wall, the sea or rock stays dry - five tiles is the most, never
  * the promise. Two melts that overlap extend each other rather than stacking: a puddle is a
  * place, and there is only ever one per tile.
  */
@@ -60,7 +60,7 @@ export function expirePuddles(state) {
  * How much of the playable map is wall right now, as a fraction of every non-IRON tile.
  *
  * "Wall" is anything you cannot walk through, which is the thing that actually turns a map into a
- * maze — soft, reinforced, monolith, solid shrub and column all count; IRON is the fixed skeleton
+ * maze - soft, reinforced, monolith, solid shrub and column all count; IRON is the fixed skeleton
  * and is not part of the denominator.
  *
  * This is a full scan of w*h cells. That is fine *here specifically*: `regenerate` returns
@@ -83,7 +83,7 @@ function wallFill(map) {
 /**
  * Game of Bombs rematerialises walls as a round runs, which stops a 16-minute map collapsing
  * into an empty field where nobody can hide. Cheap version: every 20s, turn a few quiet floor
- * tiles back into soft walls — never near a player, a bomb, fire or a dropped perk.
+ * tiles back into soft walls - never near a player, a bomb, fire or a dropped perk.
  *
  * Bounded at both ends. Unbounded growth was not a slow drift: three walls every 20 s is 144
  * walls over a round, which closes an open Arena into a maze nobody can cross. And a wall grown
@@ -113,7 +113,7 @@ export function regenerate(state) {
   //
   // A flat three a cycle is wrong at both ends: too slow to give an arena that has been chewed
   // open for eight minutes any cover back, and too fast on a map that is still mostly walls. So
-  // the rate scales with emptiness — nothing much while there is still cover, and up to three
+  // the rate scales with emptiness - nothing much while there is still cover, and up to three
   // times the base rate once the place is a field. `fill` is walls over non-iron tiles, so
   // emptiness is simply its complement.
   const bare = 1 - fill;
@@ -135,7 +135,7 @@ export function regenerate(state) {
 
   // Kegs first, and ahead of the wall-fill cap.
   //
-  // The cap stops a map silting up with walls, which has nothing to do with kegs — and a
+  // The cap stops a map silting up with walls, which has nothing to do with kegs - and a
   // guarantee that only fires on maps that happen to be open is not a guarantee. A full map is
   // also exactly when a keg is most wanted.
   maybePowder(state, quietTile);
@@ -161,7 +161,7 @@ export function regenerate(state) {
  * at least one before the round is over. A rare event that *might* not happen is one players
  * never learn to look for, so once the guarantee tick passes the roll stops being a roll.
  *
- * Shares the regrowth cycle's quiet-tile test, so a keg can never appear next to somebody — that
+ * Shares the regrowth cycle's quiet-tile test, so a keg can never appear next to somebody - that
  * would be a free kill with no reading of it possible.
  */
 function maybePowder(state, quietTile) {

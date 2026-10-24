@@ -5,14 +5,14 @@
 // independent:
 //
 //  1. **The bins are linear and hearing is not.** An FFT divides 0–24 kHz into equal slices, so
-//     at 1024 points the first bin spans 0–47 Hz and the whole bottom two octaves — every bass
-//     note, every kick — lands in one or two bins, while the top half of the display is taken up
+//     at 1024 points the first bin spans 0–47 Hz and the whole bottom two octaves - every bass
+//     note, every kick - lands in one or two bins, while the top half of the display is taken up
 //     by cymbals and hiss nobody is looking at. Bars have to be LOG spaced to look musical.
 //  2. **Nothing is ever loud.** Music is not flat: there is far more energy at 60 Hz than at
 //     6 kHz, so a faithful display is a ramp down to the right that barely twitches at the top.
 //     A tilt puts the bands on a comparable footing.
 //  3. **It moves at the wrong speed.** One smoothing constant cannot serve both directions. A
-//     bar has to SNAP up — that is the transient, and it is the whole point — and fall slowly,
+//     bar has to SNAP up - that is the transient, and it is the whole point - and fall slowly,
 //     which is what reads as a decaying note. Symmetric smoothing looks like jelly.
 //  4. **There is no memory.** The peak caps that sit above the bars on every real meter are not
 //     decoration: they hold the loudest recent moment, which is what lets the eye see the shape
@@ -40,7 +40,7 @@ function bandEdges(n, sampleRate, fftSize, lo = 55, hi = 14000) {
   for (let i = 0; i <= n; i++) {
     const f = lo * Math.pow(hi / lo, i / n);
     // At least one bin wide, and always wider than the last, or the bottom bands collide and
-    // several bars show the identical value — which looks like a bug and is one.
+    // several bars show the identical value - which looks like a bug and is one.
     const bin = Math.min(bins - 1, Math.max(i, Math.round((f / nyquist) * bins)));
     edges.push(bin);
   }
@@ -113,7 +113,7 @@ export function createSpectrum({ bands = 24, tilt = 4.5, rise = 0.55, fall = 0.0
       for (let i = 0; i < bands; i++) {
         const from = edges[i], to = Math.max(edges[i + 1], from + 1);
         // The LOUDEST bin in the band, not the average. An average drags every peak down
-        // towards the quiet bins beside it and is why so many visualisers look muffled — a band
+        // towards the quiet bins beside it and is why so many visualisers look muffled - a band
         // should report the note in it, not the note diluted by its neighbours.
         let max = 0;
         for (let b = from; b < to; b++) if (raw[b] > max) max = raw[b];
@@ -127,7 +127,7 @@ export function createSpectrum({ bands = 24, tilt = 4.5, rise = 0.55, fall = 0.0
         if (level[i] >= peak[i]) { peak[i] = level[i]; peakVel[i] = 0; }
         else {
           // 0.0007, down from 0.0016. At the old rate a cap fell from the top to nothing in
-          // half a second, which is barely longer than the bar it is capping — so it never
+          // half a second, which is barely longer than the bar it is capping - so it never
           // looked like a held peak, it looked like a second bar chasing the first. A cap wants
           // to hang around for about a second and a half.
           peakVel[i] += 0.0007 * k;
@@ -137,7 +137,7 @@ export function createSpectrum({ bands = 24, tilt = 4.5, rise = 0.55, fall = 0.0
       return true;
     },
 
-    /** Settle everything to silence — when the music stops, the bars should not freeze mid-air. */
+    /** Settle everything to silence - when the music stops, the bars should not freeze mid-air. */
     rest(dtMs = 16.7) {
       const down = 1 - Math.pow(1 - 0.12, dtMs / 16.7);
       for (let i = 0; i < bands; i++) {

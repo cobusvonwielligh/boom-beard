@@ -1,4 +1,4 @@
-// Lifetime scores — the only state the server keeps between restarts.
+// Lifetime scores - the only state the server keeps between restarts.
 //
 // One JSON file in data_dir, no database (docs/DESIGN.md). Round score resets every round; what
 // lands here is the running total that drives rank, per docs/RULES.md §8.
@@ -21,14 +21,14 @@ const positive = v => (Number.isFinite(v) && v >= 0 ? v : 0);
 export const MEDALS = ['gold', 'silver', 'bronze'];
 
 /**
- * The key a career is stored under: the player's NAME, case-insensitively — except for bots,
+ * The key a career is stored under: the player's NAME, case-insensitively - except for bots,
  * which keep their seat id, because their names are picked at random each time.
  *
  * It used to be the identity the browser keeps in localStorage. That made a career belong to a
  * browser rather than to a person: signing out, a second browser, cleared site data, or being
  * turned away as "already playing" all minted a new identity, and the player arrived to an empty
  * profile while their real one sat on disk untouched. On the live board one person had eleven.
- * In an office of colleagues who know each other's names, the name is the identity — and keyed
+ * In an office of colleagues who know each other's names, the name is the identity - and keyed
  * by name, the worst anyone can do by borrowing yours is ADD to it.
  */
 export const careerKey = (id, name, isBot = false) =>
@@ -43,7 +43,7 @@ const isBrowserIdentity = id => typeof id === 'string' && id.startsWith('p_');
  *      version mismatch started an empty board, and the first save thirty seconds later replaced
  *      everybody's career with it. Now the unreadable file is set aside under a timestamped name,
  *      the previous good copy (`.bak`) is loaded in its place, and only if that is unreadable
- *      too does the board start empty — with both originals still on disk to recover from.
+ *      too does the board start empty - with both originals still on disk to recover from.
  *   2. Every save writes a fresh temporary file, fsyncs it, keeps the current board as `.bak`,
  *      renames the new one into place and fsyncs the directory. A rename without the fsync can
  *      survive a power cut while the data it points at does not, which is a zero-byte board.
@@ -98,7 +98,7 @@ export function createLeaderboard({ dataDir }) {
     /* Careers are keyed by NAME now, and a board keyed the old way is merged on the way in.
      *
      * Every identity that shares a name becomes one career, with everything summed: XP, kills,
-     * deaths, coins and every medal. Nothing is dropped and nothing is overwritten — the merge
+     * deaths, coins and every medal. Nothing is dropped and nothing is overwritten - the merge
      * can only ever add. The old per-browser keys are what split one person into eleven, see
      * careerKey. */
     const out = new Map();
@@ -112,11 +112,11 @@ export function createLeaderboard({ dataDir }) {
         kills: positive(e.kills),
         deaths: positive(e.deaths),
         // Added later than the rest. A board written before medals existed simply has none,
-        // which is the truth — no version bump, nothing to migrate.
+        // which is the truth - no version bump, nothing to migrate.
         gold: positive(e.gold),
         silver: positive(e.silver),
         bronze: positive(e.bronze),
-        // Gold COINS, which are a different thing entirely from a gold medal — see the note
+        // Gold COINS, which are a different thing entirely from a gold medal - see the note
         // on `coins` in shared/sim/state.js for how nearly those two became one field.
         coins: positive(e.coins),
       };
@@ -150,7 +150,7 @@ export function createLeaderboard({ dataDir }) {
     ...progressFor(e.score),
   });
 
-  /** Everything earned by playing. Medals come from `award` instead — see below. */
+  /** Everything earned by playing. Medals come from `award` instead - see below. */
   function record(playerId, { name, score, kills, deaths, coins } = {}) {
     if (typeof playerId !== 'string' || !playerId) return;
     // `coins` defaults in for every record written before coins existed, so an old file loads
@@ -223,7 +223,7 @@ export function createLeaderboard({ dataDir }) {
   /* One dated copy a day, the last HISTORY_DAYS kept.
    *
    * `.bak` covers a save that went wrong; it is ten seconds old. This covers the board itself
-   * going wrong — a bug that zeroed somebody, an operator mistake — which can only be put right
+   * going wrong - a bug that zeroed somebody, an operator mistake - which can only be put right
    * from a copy older than the mistake. A day's worth of these is a few kilobytes. */
   const HISTORY_DAYS = 30;
   const historyDir = path.join(dataDir, 'history');

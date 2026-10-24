@@ -1,4 +1,4 @@
-// Boom Beard — process bootstrap: config, static files, health, TLS, self-update webhook.
+// Boom Beard - process bootstrap: config, static files, health, TLS, self-update webhook.
 // The WebSocket hub lives in net.js. See docs/ARCHITECTURE.md §7.
 
 import http from 'node:http';
@@ -81,7 +81,7 @@ function resolveFile(urlPath) {
 }
 
 // ─── self-update webhook ──────────────────────────────────────────────────────
-// GitHub Actions cannot SSH in — port 22 is restricted to one IP on purpose, and runners have
+// GitHub Actions cannot SSH in - port 22 is restricted to one IP on purpose, and runners have
 // dynamic addresses. So CD is pull-based: Actions proves the tests pass, then pokes this, and
 // the box updates itself over its own outbound HTTPS. No inbound SSH, no private key in GitHub.
 
@@ -203,7 +203,7 @@ function serve(req, res) {
   /* What build is this?
    *
    * A tiny endpoint rather than a string baked into index.html, because baking it in needs a
-   * build step and this project does not have one — the deploy is an rsync of the working tree.
+   * build step and this project does not have one - the deploy is an rsync of the working tree.
    * One fetch on the menu, and the marker under the title is always the truth.
    *
    * `version` is the semantic one from package.json, bumped and tagged by `npm run tag`.
@@ -239,12 +239,12 @@ function serve(req, res) {
    *
    * CODE IS NEVER SERVED STALE. It used to be: everything that was not HTML got five minutes of
    * max-age, so for five minutes after every deploy a browser could be running a MIX of old and
-   * new modules — each file cached on its own clock. That is how ice "did not render": a fresh
+   * new modules - each file cached on its own clock. That is how ice "did not render": a fresh
    * art.js beside a cached constants.js (or the reverse) and the block type the server was sending
    * had no drawing code, so the tile drew as nothing and the sea showed through the hole. On a day
    * with several deploys that is not an edge case.
    *
-   * So code — .js, .css, .json, .html — is `no-cache`: always revalidated, never trusted. With an
+   * So code - .js, .css, .json, .html - is `no-cache`: always revalidated, never trusted. With an
    * ETag (size and mtime; rsync -a preserves mtimes, so it changes only when the file did) an
    * unchanged file costs a 304 with no body, which on one hostname over one connection is
    * nothing. Images and fonts keep a short max-age plus the ETag; the music, which never changes
@@ -308,7 +308,7 @@ function range416(res, size) {
  * The semantic version, taken from the release tag the running code was built from.
  *
  * The tag is the truth, not package.json: package.json goes stale the moment anyone tags without
- * `npm version`, and it did — it said 1.0.0 while v1.0.2 was live. `.version` is stamped from
+ * `npm version`, and it did - it said 1.0.0 while v1.0.2 was live. `.version` is stamped from
  * `git describe --tags` on every deploy (infra/deploy.sh and infra/self-update.sh), so the
  * leading `v1.0.2` of `v1.0.2-1-g0aa8364` is the release actually on disk. package.json is the
  * fallback for a plain `node server/index.js` in a tree nobody has deployed.
@@ -328,7 +328,7 @@ function pkgVersion() {
  * What is actually running, for /healthz.
  *
  * `.version` is written by infra/deploy.sh and wins, because a manual deploy rsyncs the working
- * tree without touching `.git` — reading the git sha alone would report the last *pulled*
+ * tree without touching `.git` - reading the git sha alone would report the last *pulled*
  * commit, not the code on disk. Falls back to .git/HEAD for a self-update, and to null locally.
  */
 let cachedVersion;
@@ -371,7 +371,7 @@ const leaderboard = createLeaderboard({ dataDir: config.dataDir });
 // the career is keyed by name, so the name is what needs an owner. See server/accounts.js.
 const accounts = createAccounts({ dataDir: config.dataDir });
 // `requirePassword: false` hands the hub no store at all rather than a store it is asked to
-// ignore — one branch instead of two, and no way for a future edit to half-enable it.
+// ignore - one branch instead of two, and no way for a future edit to half-enable it.
 const hub = attachHub(server, {
   ...config, leaderboard, guard,
   accounts: config.requirePassword ? accounts : null,
@@ -385,7 +385,7 @@ const hub = attachHub(server, {
  * means WebSocket only, which is the correct local setup anyway.
  *
  * Failure here is never fatal. A missing native binary, a taken port, a kernel that will not give
- * us UDP — all of them end as "WebSocket only", which is the configuration a good share of
+ * us UDP - all of them end as "WebSocket only", which is the configuration a good share of
  * players behind a corporate firewall will be in no matter what we do.
  */
 let wt = null;
@@ -418,10 +418,10 @@ if (usingTls && config.redirectPort) {
 }
 
 /* A crash is the shutdown nobody planned, and it used to save nothing: everything earned since
- * the last round boundary was simply gone. Bank and write synchronously — there is no event loop
- * worth trusting at this point — then exit non-zero so systemd restarts us. */
+ * the last round boundary was simply gone. Bank and write synchronously - there is no event loop
+ * worth trusting at this point - then exit non-zero so systemd restarts us. */
 process.on('uncaughtException', err => {
-  console.error('uncaught exception — saving the leaderboard before exiting', err);
+  console.error('uncaught exception - saving the leaderboard before exiting', err);
   try { hub.bankScores(); } catch (e) { console.error(`bank on crash failed (${e.message})`); }
   leaderboard.flushSync();
   // A password set seconds before a crash must not be lost: the person would be locked out of
@@ -436,7 +436,7 @@ process.on('unhandledRejection', err => {
 /* Shutting down has to finish writing before it exits.
  *
  * Two bugs lived here. The scores of everyone still playing were only ever written at a round
- * boundary, so a deploy in the middle of a ten-minute round discarded it — and on a build day
+ * boundary, so a deploy in the middle of a ten-minute round discarded it - and on a build day
  * that is most deploys. And `leaderboard.stop()` returns a promise that nothing awaited, while
  * `server.close` could call `process.exit` first, so even the writes that were queued could be
  * cut off halfway.
@@ -449,7 +449,7 @@ for (const sig of ['SIGTERM', 'SIGINT']) {
   process.on(sig, async () => {
     if (shuttingDown) return;
     shuttingDown = true;
-    console.log(`${sig} — shutting down`);
+    console.log(`${sig} - shutting down`);
     setTimeout(() => process.exit(0), 3000).unref();
     try {
       hub.bankScores();

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Boom Beard — one-time server setup. Amazon Linux 2023. Idempotent: safe to re-run, and
+# Boom Beard - one-time server setup. Amazon Linux 2023. Idempotent: safe to re-run, and
 # re-running is exactly how you switch to a new domain.
 #
 #   scp -i key.pem infra/bootstrap.sh ec2-user@HOST:/tmp/
@@ -8,7 +8,7 @@
 #                                 EMAIL=you@example.com bash /tmp/bootstrap.sh'
 #
 # HOST is the canonical name. Everything in ALT_HOSTS is answered and then 301d to HOST, so the
-# address bar only ever shows one URL — see the canonical-host block in server/index.js.
+# address bar only ever shows one URL - see the canonical-host block in server/index.js.
 #
 # Variables:
 #   HOST       required. Primary hostname. Must already resolve to this box.
@@ -18,7 +18,7 @@
 #              before DNS has propagated, or behind a load balancer that terminates TLS.
 #   REPO       git remote to clone if /opt/boom-beard is not already a clone.
 #
-# Note: no apostrophes inside ${VAR:?msg} — bash parses them as a quote and dies at EOF.
+# Note: no apostrophes inside ${VAR:?msg} - bash parses them as a quote and dies at EOF.
 
 set -euo pipefail
 
@@ -135,7 +135,7 @@ sudo chmod 440 /etc/sudoers.d/boom-beard
 sudo visudo -c -f /etc/sudoers.d/boom-beard >/dev/null
 
 # config.ini is never in git and never rsynced, so a deploy cannot clobber it. Preserve an
-# existing deploy token across re-runs — regenerating it would silently break CI.
+# existing deploy token across re-runs - regenerating it would silently break CI.
 # Guard the file test rather than relying on 2>/dev/null: with `set -o pipefail` a missing file
 # makes the whole pipeline fail and takes the script with it.
 TOKEN=""
@@ -180,7 +180,7 @@ install_unit() {
 }
 
 if [ "$SKIP_TLS" = 1 ]; then
-  echo "==> SKIP_TLS=1 — plain HTTP on 8080, no certificate"
+  echo "==> SKIP_TLS=1 - plain HTTP on 8080, no certificate"
   write_config 8080 0 "" ""
   install_unit
   echo
@@ -221,7 +221,7 @@ HOOK
 sudo chmod +x /etc/letsencrypt/renewal-hooks/deploy/boom-beard.sh
 sudo /etc/letsencrypt/renewal-hooks/deploy/boom-beard.sh || true
 
-echo "==> renewal timer (03:00 Sunday — nobody is playing)"
+echo "==> renewal timer (03:00 Sunday - nobody is playing)"
 sudo tee /etc/systemd/system/certbot-renew.service >/dev/null <<'UNIT'
 [Unit]
 Description=Renew TLS certificates

@@ -1,14 +1,14 @@
 // Three ambient beds for in-game, synthesised.
 //
 // All three now have a produced file in /assets/audio named after them, and that file is what
-// actually plays — see createFileTrack in music.js. What is below is the FALLBACK, and it is
+// actually plays - see createFileTrack in music.js. What is below is the FALLBACK, and it is
 // also the specification: it defines each slot, its name, and what it is supposed to sound
 // like, which is why the tests still hold it to that and why it is worth reading.
 //
 // The main theme has a kit, a lead and an opinion. These are the opposite, on purpose: a round
 // lasts sixteen minutes and the thing playing underneath it has to survive being heard sixty
-// times. The acceptance test in docs/ART-AUDIO.md is the right one — if you would mute it after
-// sixteen minutes, it is too busy — so there is no drum kit, no melody, and six or seven notes a
+// times. The acceptance test in docs/ART-AUDIO.md is the right one - if you would mute it after
+// sixteen minutes, it is too busy - so there is no drum kit, no melody, and six or seven notes a
 // bar instead of sixteen.
 //
 // What makes a bed atmospheric rather than melodic is the overlap. Every arpeggio note has a long
@@ -17,8 +17,8 @@
 // four bars on one chord are four different contours; because every note in a voicing is a chord
 // tone, any rotation is still the same harmony and no tune can emerge from the rotation.
 //
-// Each bed exposes the same shape as the main theme — steps, stepDur, repeats, a fader and a
-// schedule(step, time) — so music.js can cycle all four through one sequencer and main.js never
+// Each bed exposes the same shape as the main theme - steps, stepDur, repeats, a fader and a
+// schedule(step, time) - so music.js can cycle all four through one sequencer and main.js never
 // learns that more than one track exists.
 
 import { audioContext, createDelayLine, envelope, hz } from './engine.js';
@@ -28,7 +28,7 @@ const STEPS_PER_BAR = 16;          // sixteenth notes, same grid as the main the
 // Rests are null. Notes are indices into the chord's `voice`, which is why a pattern can be
 // reused across chords without any of them going out of key.
 //
-// `drift` climbs and falls in loose eighths. `suspend` wanders — 0 3 1 4 2 5 is deliberately not
+// `drift` climbs and falls in loose eighths. `suspend` wanders - 0 3 1 4 2 5 is deliberately not
 // a scale shape, so it reads as motion without direction. `undertow` descends, which is the
 // single cheapest way to make a bed feel like it is sinking.
 const DRIFT_ARP = [0, null, 2, null, 4, null, null, 3, 5, null, null, 2, 4, null, null, null];
@@ -37,7 +37,7 @@ const UNDERTOW_ARP = [5, null, null, 4, null, null, 3, null, 2, null, null, 1, n
 
 /**
  * The three beds. They have to be audibly different from each other, not just differently
- * spelled, so each one differs in tempo, waveform, register, filter and harmonic language —
+ * spelled, so each one differs in tempo, waveform, register, filter and harmonic language -
  * major and open, thirdless and unresolved, minor and modal.
  */
 const BEDS = [
@@ -90,7 +90,7 @@ const BEDS = [
   {
     // Dark and modal: D minor with a flat second, which is the interval that makes it sound
     // uneasy rather than merely sad. Lowpassed sawtooth an octave below the other two beds, and
-    // the only bed with a pulse — just a sub thump on the bar, because something this slow needs
+    // the only bed with a pulse - just a sub thump on the bar, because something this slow needs
     // one reference point or it stops reading as music at all.
     name: 'undertow',
     bpm: 50,
@@ -131,7 +131,7 @@ function createBed({ bus, def }) {
   gain.connect(bus);
 
   // Dotted eighth at this bed's own tempo. More feedback and more wet than the main theme gets,
-  // because here the delay is not an effect on the arpeggio — it IS most of the arpeggio.
+  // because here the delay is not an effect on the arpeggio - it IS most of the arpeggio.
   const delay = createDelayLine((60 / def.bpm) * 0.75, gain, { feedback: 0.42, mix: 0.6 });
 
   /**
@@ -184,7 +184,7 @@ function createBed({ bus, def }) {
     g.connect(gain);
   }
 
-  /** A sub under the chord. Not a bass line — it moves once every four bars and never walks. */
+  /** A sub under the chord. Not a bass line - it moves once every four bars and never walks. */
   function drone(t, note, dur) {
     const o = ctx.createOscillator(), g = ctx.createGain();
     o.type = 'sine';

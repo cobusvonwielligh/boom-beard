@@ -6,7 +6,7 @@
 // Why from the edges rather than along the bottom, which is what everything else does: the menu
 // card is centred and is the thing you came to look at, so the one place a visualiser must not
 // be is underneath it competing for the same space. The edges are dead screen on every monitor
-// wider than the card — the visualiser costs nothing that was being used, and the symmetry gives
+// wider than the card - the visualiser costs nothing that was being used, and the symmetry gives
 // the card a frame instead of a floor.
 //
 // Five things are happening at once, and the stack is the whole design:
@@ -18,7 +18,7 @@
 //   3. **A bass bloom** behind each side, which is the only part that moves the whole frame and
 //      the reason a kick reads as a kick rather than as the bottom bar twitching.
 //   4. **Embers**, lit by transients in the top half of the spectrum and carried upward. They
-//      are the part that is not a meter — something has to not be a meter.
+//      are the part that is not a meter - something has to not be a meter.
 //   5. **An entrance.** The whole thing sweeps in from the edges when the music starts and
 //      retracts when it stops, so pressing pause is visibly the same act as the bars leaving.
 //
@@ -28,22 +28,22 @@
 import { createSpectrum } from './audio/spectrum.js';
 
 // 40 thin bars rather than 26 thick ones. At 26 across a 760px window each row is 29px and the
-// bars read as a film sprocket strip — chunky rectangles that happen to change length. The
+// bars read as a film sprocket strip - chunky rectangles that happen to change length. The
 // look wants LINES: enough of them to form a shape, thin enough that the shape is the subject.
 const BANDS = 40;
 // Hard cap, so the bars stay lines on a tall monitor instead of growing into blocks.
 const MAX_BAR_PX = 8;
-// The stack occupies the bottom of the window and leaves the top clear — that is where the
+// The stack occupies the bottom of the window and leaves the top clear - that is where the
 // title is, and bass belongs low anyway.
 const STACK_TOP = 0.16;
 // How far in from the edge a full-scale bar reaches, as a fraction of the window. Past about a
 // fifth the two sides start reaching behind the card, and a bar you can see one end of is a bar
 // that has become a rectangle.
 // 0.11, down from 0.19. At a fifth of the window the two sides occupy the outer 40% of the
-// screen between them, which is not a frame any more — it is the background. The card has to
+// screen between them, which is not a frame any more - it is the background. The card has to
 // stay the subject.
 // 0.125. 0.11 was too shy and 0.145 put the two sides back to filling the outer third of the
-// screen between them — which is not a frame, it is a background, and the card has to stay the
+// screen between them - which is not a frame, it is a background, and the card has to stay the
 // subject. This is the 'slightly' in 'slightly more prominent'.
 const REACH = 0.125;
 const EMBERS = 28;
@@ -54,14 +54,14 @@ const EMBERS = 28;
  * to the music, which is somebody else's doing; this responds to YOU, before you have clicked
  * anything, which is the cheapest way a page can feel like a place rather than a screenshot.
  *
- * They are not sparks and they are not snow — they are specks in a shaft of light, which is what
+ * They are not sparks and they are not snow - they are specks in a shaft of light, which is what
  * the bloom at the bottom of the stack already implies is there.
  */
 const MOTES = 70;
 /* How far the pointer's push reaches, and how hard.
  *
  * Halved from 150/0.55. At that strength the pointer carved a visible hole in the field and
- * motes shot off it — which is a cursor with a forcefield on it, not air being moved. At half,
+ * motes shot off it - which is a cursor with a forcefield on it, not air being moved. At half,
  * you notice the specks drifting aside as you pass and you do not notice yourself noticing,
  * which is the whole effect.
  *
@@ -69,11 +69,11 @@ const MOTES = 70;
 const MOUSE_R = 75;
 const MOUSE_FORCE = 0.275;
 
-/* The visualiser's colours, turning at the same rate as the animated panel borders — see
+/* The visualiser's colours, turning at the same rate as the animated panel borders - see
  * `.edge` in style.css.
  *
  * Gold and maroon. The bars used to share the borders' old rainbow, and on a dark page the
- * lavender and the two blue-greens dominated — the landing page read as purple. The mascot's
+ * lavender and the two blue-greens dominated - the landing page read as purple. The mascot's
  * world is gold and a deep bandana red, so the bars run between them: bright gold, old gold,
  * amber, a lit maroon, the deep maroon, and a warm rose on the way back. The panel borders now
  * run the same six stops, so keep the two lists in step by hand.
@@ -136,7 +136,7 @@ export function createMenuViz({ canvas, music }) {
         dy: -(0.004 + Math.random() * 0.014),
         vx: 0, vy: 0,
         r: 0.7 + Math.random() * 2.1,
-        // Depth, 0..1. Drives size, brightness AND how hard the pointer shoves it — a speck
+        // Depth, 0..1. Drives size, brightness AND how hard the pointer shoves it - a speck
         // far away should barely notice, and that parallax is most of the illusion.
         z: Math.random(),
         phase: Math.random() * 7,
@@ -185,7 +185,7 @@ export function createMenuViz({ canvas, music }) {
     for (const m of motes) {
       // Twinkle, so a static field still has life in it when nothing is moving.
       const tw = 0.55 + 0.45 * Math.sin(now / 900 + m.phase);
-      // Never fully absent when the music is off — these belong to the page, not to the track.
+      // Never fully absent when the music is off - these belong to the page, not to the track.
       const a = (0.1 + m.z * 0.26) * tw * (0.45 + presence * 0.55);
       ctx.fillStyle = `rgba(${hue}, ${a})`;
       ctx.beginPath();
@@ -195,7 +195,7 @@ export function createMenuViz({ canvas, music }) {
   }
 
   // Embers: lit by treble transients, carried up and inward. Stateless would be cheaper and
-  // would not look like anything — the point of an ember is that it remembers where it has been.
+  // would not look like anything - the point of an ember is that it remembers where it has been.
   const embers = Array.from({ length: EMBERS }, () => ({ life: 0, x: 0, y: 0, vy: 0, vx: 0, r: 0, side: 1 }));
   let lastTreble = 0;
 
@@ -212,7 +212,7 @@ export function createMenuViz({ canvas, music }) {
   /** One side. `dir` is +1 for the left edge growing right, -1 for the right edge growing left. */
   function drawSide(dir, reach, rowH, bh) {
     // Each bar sits a little further round the sweep than the one below it, so the stack is a
-    // slice of the same spectrum the borders are running — a rainbow standing on its end rather
+    // slice of the same spectrum the borders are running - a rainbow standing on its end rather
     // than forty bars that happen to be coloured.
     const x0 = dir > 0 ? 0 : w;
     const bottom = h * 0.97;
@@ -236,14 +236,14 @@ export function createMenuViz({ canvas, music }) {
        * step along the way.
        *
        * `spin` still turns the whole thing at the border's rate, so what moves is which hue is
-       * at the bottom — the stack is a window onto the same wheel the panels are running. */
+       * at the bottom - the stack is a window onto the same wheel the panels are running. */
       const hue = edgeHue(spin + i / BANDS);
       const grad = ctx.createLinearGradient(x0, 0, x0 + dir * len, 0);
       /* Hot at the edge, cooling and vanishing inward. The alpha ramp is what keeps the inner
        * end from ever being a visible edge.
        *
        * No floor term. There used to be a `+ 0.12`, so that a quiet band was still a visible
-       * line — which is right for three bars in a dock and badly wrong for forty: it drew all
+       * line - which is right for three bars in a dock and badly wrong for forty: it drew all
        * forty at all times and the result was a venetian blind down each side of the screen,
        * with the loud ones somewhere inside it. A band with nothing in it should show nothing.
        * The shape comes from the bands that are doing something. */
@@ -331,7 +331,7 @@ export function createMenuViz({ canvas, music }) {
     if (canvas.clientWidth !== w || canvas.clientHeight !== h) resize();
 
     // Present only while the music is actually audible. Eased, so starting and stopping are
-    // movements rather than cuts — and `presence` gates every layer, so one number does it all.
+    // movements rather than cuts - and `presence` gates every layer, so one number does it all.
     spin += (dtMs / 1000) / EDGE_PERIOD_S;
     const want = music.playing && music.volume > 0 && music.analyser ? 1 : 0;
     presence += (want - presence) * (1 - Math.pow(1 - 0.06, dtMs / 16.7));
@@ -341,7 +341,7 @@ export function createMenuViz({ canvas, music }) {
 
     ctx.clearRect(0, 0, w, h);
 
-    /* The motes run whatever the music is doing — they are the page responding to YOU, and a
+    /* The motes run whatever the music is doing - they are the page responding to YOU, and a
      * page that stops responding when the music is off is a page with a bug in it. Drawn under
      * everything else and in `lighter`, like the rest of this canvas. */
     ctx.globalCompositeOperation = 'lighter';

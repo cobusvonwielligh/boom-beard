@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Boom Beard — undo the last deploy.
+# Boom Beard - undo the last deploy.
 #
 #   npm run rollback
 #
@@ -21,7 +21,7 @@ ssh -i "$KEY" -o StrictHostKeyChecking=accept-new "$SSH_USER@$SSH_HOST" bash -s 
 set -euo pipefail
 APP=/opt/boom-beard
 PREV=/var/lib/boom-beard/prev
-[ -d "$PREV" ] || { echo "no snapshot to roll back to — deploy at least once first"; exit 1; }
+[ -d "$PREV" ] || { echo "no snapshot to roll back to - deploy at least once first"; exit 1; }
 
 # Swap, keeping what we are leaving as the new snapshot, so rollback is its own undo.
 SWAP=/var/lib/boom-beard/swap

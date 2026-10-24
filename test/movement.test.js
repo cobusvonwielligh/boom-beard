@@ -1,4 +1,4 @@
-// Movement is the one piece of the game that cannot be "fixed later" — everything after M1
+// Movement is the one piece of the game that cannot be "fixed later" - everything after M1
 // inherits its feel, and both the client prediction and the server run this exact code.
 
 import { test } from 'node:test';
@@ -74,7 +74,7 @@ test('movement', async t => {
   await t.test('corner assist straightens you through a doorway you are nearly lined up with', () => {
     const st = doorway(); const p = spawn(st, 2, 2);
     p.y = tileCentre(2) + CORNER_ASSIST_UNITS;      // clipping the lower jamb
-    // Centring is deliberately gentle — a few units a tick, easing — so getting lined up takes
+    // Centring is deliberately gentle - a few units a tick, easing - so getting lined up takes
     // tens of ticks rather than two. The assertion is still that it arrives EXACTLY.
     for (let i = 0; i < 220; i++) step(st, p, IN_RIGHT);
     assert.equal(p.y, tileCentre(2), 'straightened onto the doorway centre line');
@@ -98,7 +98,7 @@ test('movement', async t => {
     assert.equal(p.y, tileCentre(2), 'drifted exactly onto the centre line');
   });
 
-  await t.test('leaves you alone on open ground — centring must not fight the assist', () => {
+  await t.test('leaves you alone on open ground - centring must not fight the assist', () => {
     const st = room(); const p = spawn(st, 2, 2);
     p.y = tileCentre(2) + 60;                       // open above and below
     for (let i = 0; i < 5; i++) step(st, p, IN_RIGHT);
@@ -124,7 +124,7 @@ test('movement', async t => {
     assert.ok(p.x > tileCentre(3), 'squeezed through once reduced');
   });
 
-  await t.test('diagonals do not stutter — it keeps the axis it is facing', () => {
+  await t.test('diagonals do not stutter - it keeps the axis it is facing', () => {
     const st = room(); const p = spawn(st, 4, 4);
     step(st, p, IN_RIGHT);
     const dirAfterRight = p.dir;
@@ -158,7 +158,7 @@ test('a held diagonal slides along whatever is in the way', async t => {
     const x0 = p.x;
     for (let i = 0; i < 12; i++) step(st, p, IN_DOWN | IN_LEFT);
     // Down is legal until the hitbox is flush against the wall, and taking that slack is
-    // correct — what matters is that it then carries on LEFT instead of standing there.
+    // correct - what matters is that it then carries on LEFT instead of standing there.
     assert.ok(p.x < x0, 'did not slide along the obstacle');
     assert.ok(!blocked(st, p, p.x, p.y), 'ended up inside the wall');
     assert.ok(p.y >> 8 === 4, 'walked into the tile below');
@@ -193,7 +193,7 @@ test('a held diagonal slides along whatever is in the way', async t => {
   await t.test('a clear diagonal travels on both axes, at the same pace as a straight line', () => {
     // Both axes every tick at DIAG_NUM/DIAG_DEN, so the ground covered matches walking straight.
     // What must not happen is either axis losing ticks to the other, or the pair of them adding
-    // up to more than a straight walk — which would make holding two keys a speed perk.
+    // up to more than a straight walk - which would make holding two keys a speed perk.
     const st = room();
     const p = spawn(st, 4, 4);
     p.dir = DIR_R;

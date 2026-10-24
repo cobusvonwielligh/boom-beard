@@ -1,6 +1,6 @@
 // One shield per blast, and never two in one instant. See killInFire and SHIELD_GRACE_TICKS.
 //
-// The rule these tests used to assert was the opposite — two blasts on one tick cost two shields —
+// The rule these tests used to assert was the opposite - two blasts on one tick cost two shields -
 // and it was changed on purpose: a chain reaction is one event to the player, and a second shield
 // that can be lost in the same frame as the first is not a second chance.
 

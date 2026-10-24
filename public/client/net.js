@@ -1,4 +1,4 @@
-// Socket, clock, and reconnect. See docs/NETCODE.md §2 — this is deliberately small.
+// Socket, clock, and reconnect. See docs/NETCODE.md §2 - this is deliberately small.
 //
 // Resume rather than redundancy: if the socket drops we reconnect immediately and send the same
 // playerId, and the server hands back the seat, score and position it was holding. A second
@@ -17,7 +17,7 @@ function deviceId() {
     id = (crypto.randomUUID?.() ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`);
     store.set('bv.device', id);
   }
-  // A browser with storage blocked gets a fresh id every load, so no limit effectively applies —
+  // A browser with storage blocked gets a fresh id every load, so no limit effectively applies -
   // which is the same outcome the old code had and the right one: the alternative is turning
   // private browsing into a ban.
   return id;
@@ -29,11 +29,11 @@ function deviceId() {
  * laptop each have their own, and neither can use the other's. Keyed by the lowercased name,
  * which is the same key the server files the account under.
  *
- * This is a bearer credential, so it is the one thing in localStorage that genuinely matters —
+ * This is a bearer credential, so it is the one thing in localStorage that genuinely matters -
  * and it is also, unavoidably, readable by anything running in the page. That is the honest limit
  * of a browser: there is no secret a page can keep from its own console. What it buys is that the
  * PASSWORD is never stored anywhere, that a token is worthless on any other machine only insofar
- * as it is not copied, and that it expires (DEVICE_TTL_MS) — and the server can revoke every one
+ * as it is not copied, and that it expires (DEVICE_TTL_MS) - and the server can revoke every one
  * of them for a name at once. See docs/DESIGN.md on the anti-cheat position.
  */
 const trustKey = name => `bv.trust.${String(name ?? '').trim().toLowerCase()}`;
@@ -78,7 +78,7 @@ export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onS
    * /gamespeed changes how often the server issues ticks, never what a tick means. The clock
    * below used to divide by TICK_MS regardless, so at 200% the server ran twice as fast as this
    * estimate of it: every input was stamped for a tick the server had already simulated, was
-   * dropped as too late, and the server held your last mask — usually "standing still" — while
+   * dropped as too late, and the server held your last mask - usually "standing still" - while
    * prediction walked you off and reconciliation dragged you back. Stuck in one tile. At 50% it
    * was the mirror image: inputs piled up in the server's buffer faster than it consumed them,
    * and the buffer evicted exactly the ones it needed next. */
@@ -110,7 +110,7 @@ export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onS
   /**
    * Follow the server's tick rate, as a percentage of real time.
    *
-   * The estimate is re-anchored at the instant of the change so it stays continuous — the tick
+   * The estimate is re-anchored at the instant of the change so it stays continuous - the tick
    * we think the server is on right now is the same number either side of the switch, only the
    * rate it advances at differs. Then the lead is recomputed, because a lead measured in ticks
    * at one rate is the wrong number of milliseconds at another.
@@ -129,7 +129,7 @@ export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onS
    * Blend a fresh measurement in rather than jumping to it.
    *
    * Except while `rtts` is still empty or nearly so. The `welcome` that seeds the clock arrives
-   * before any pong, so `rttMin()` is 0 and the estimate omits the travel correction twice —
+   * before any pong, so `rttMin()` is 0 and the estimate omits the travel correction twice -
    * leaving a lead of `2.5 - travel` ticks instead of `travel + 2.5`. Above about 83 ms of RTT
    * that lead is negative, every input packet lands after the server already simulated that tick,
    * and `room.input` drops it silently: several seconds of rubber-banding in place on every join.
@@ -185,7 +185,7 @@ export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onS
         /* Signed in. Keep the token, and forget the password.
          *
          * Dropping `pw` from `hello` is the point: the socket reconnects on its own, with the
-         * same hello, for as long as this tab is open — and a password sitting in a module
+         * same hello, for as long as this tab is open - and a password sitting in a module
          * variable being re-sent every wifi blip is a password with a much larger surface than
          * it needs. The token that just arrived covers every one of those reconnects.
          */
@@ -275,7 +275,7 @@ export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onS
      */
     /**
      * @param pw a password, when the server has asked for one. Sent once, never stored, and
-     *   dropped from `hello` the moment the server accepts it — so a reconnect an hour later
+     *   dropped from `hello` the moment the server accepts it - so a reconnect an hour later
      *   does not carry it, and a crash dump of this tab does not contain it.
      */
     connect(name, observe = false, pw = null) {
@@ -314,12 +314,12 @@ export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onS
     /** Wall-clock milliseconds per tick at the server's current /gamespeed. */
     get tickMs() { return tickMs; },
     get rtt() { return Math.round(rttMin()); },
-    /** 'webtransport' or 'websocket' — shown in the HUD so a bad round can be attributed. */
+    /** 'webtransport' or 'websocket' - shown in the HUD so a bad round can be attributed. */
     get transport() { return kind; },
     serverTickNow,
 
     /**
-     * The frame loop deliberately discarded wall-clock time — a clamped `dt` after an alt-tab, or
+     * The frame loop deliberately discarded wall-clock time - a clamped `dt` after an alt-tab, or
      * a dumped accumulator after a stall. The clock has to jump with it.
      *
      * Without this, `clientTick` sits permanently N ticks behind real time with N between 3 and
@@ -332,7 +332,7 @@ export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onS
     /**
      * Exactly one tick per simulated step. Always.
      *
-     * The obvious implementation — step twice when behind, skip when ahead — is a trap: the
+     * The obvious implementation - step twice when behind, skip when ahead - is a trap: the
      * clock correction lands on the *simulation*, so every small drift correction becomes a
      * visible jump or stall in your own movement. Instead the step count is sacred, and drift
      * is corrected rarely and by one tick at a time, which is imperceptible.

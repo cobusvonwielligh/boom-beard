@@ -50,7 +50,7 @@ test('no source file contains a raw control byte', () => {
 
 // Cheap, and it caught a 1.1 MB asset that had been committed by accident once already.
 test('every text source is plausibly a text source', () => {
-  assert.ok(sources.length > 40, `only found ${sources.length} sources — did the walk break?`);
+  assert.ok(sources.length > 40, `only found ${sources.length} sources - did the walk break?`);
 });
 
 /**
@@ -80,7 +80,7 @@ const read = rel => fs.readFileSync(path.join(ROOT, rel), 'utf8');
  *
  * The whole fallback scheme rests on that one convention: `createFileTrack` asks for
  * `/assets/audio/<name>.mp3` and uses the synthesised version of itself when it is not there.
- * Which means a missing or misnamed file does not fail — it silently downgrades to the synth,
+ * Which means a missing or misnamed file does not fail - it silently downgrades to the synth,
  * and the only symptom is that the music is not the music. Nothing else here would notice.
  */
 test('every track in the rotation has an audio file named after it', () => {
@@ -91,7 +91,7 @@ test('every track in the rotation has an audio file named after it', () => {
 
   for (const name of names) {
     const mp3 = path.join(ROOT, 'public', 'assets', 'audio', `${name}.mp3`);
-    assert.ok(fs.existsSync(mp3), `no file for track "${name}" — it would silently play the synth`);
+    assert.ok(fs.existsSync(mp3), `no file for track "${name}" - it would silently play the synth`);
     assert.ok(fs.statSync(mp3).size > 100_000, `${name}.mp3 is suspiciously small`);
 
     // ID3 cover art is about a megabyte a file and nobody will ever see it. An MPEG frame sync
@@ -101,14 +101,14 @@ test('every track in the rotation has an audio file named after it', () => {
     fs.readSync(fd, head, 0, 2, 0);
     fs.closeSync(fd);
     assert.ok(head[0] === 0xff && (head[1] & 0xe0) === 0xe0,
-      `${name}.mp3 still has an ID3 tag on the front — strip it, it is ~25% of the download`);
+      `${name}.mp3 still has an ID3 tag on the front - strip it, it is ~25% of the download`);
   }
 });
 
 /**
  * Every `<use href="#i-...">` in the page or in main.js points at a symbol that exists.
  *
- * A missing one draws nothing at all — no error, no console line, no broken-image box. The
+ * A missing one draws nothing at all - no error, no console line, no broken-image box. The
  * button is simply blank, which looks like a CSS problem and is not one.
  */
 test('every icon referenced has a symbol defined', () => {
@@ -135,7 +135,7 @@ test('the server can actually serve the audio', () => {
     'the synthesised theme is no longer wired as the fallback');
   assert.match(music, /createAmbient\(\{ bus: sidechain \}\)/,
     'the synthesised beds are no longer wired as the fallback');
-  // The dip must never write musicGain — see the comment on applyGain. One owner each.
+  // The dip must never write musicGain - see the comment on applyGain. One owner each.
   assert.match(music, /sidechain\.connect\(musicGain\)/,
     'the explosion duck is not on a node of its own any more');
 });

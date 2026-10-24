@@ -1,5 +1,5 @@
-// The contagious diseases. Contagion is the rule most likely to be quietly wrong — it is the
-// only system where one player's state writes another's — so it gets its own suite.
+// The contagious diseases. Contagion is the rule most likely to be quietly wrong - it is the
+// only system where one player's state writes another's - so it gets its own suite.
 // docs/RULES.md §7.
 
 import { test } from 'node:test';
@@ -138,7 +138,7 @@ test('contagion', async t => {
       st.tick++;
     }
     assert.ok(count <= TICKS / CONTAGION_COOLDOWN_TICKS + 1,
-      `${count} events over ${TICKS} ticks — the pair cooldown is not holding`);
+      `${count} events over ${TICKS} ticks - the pair cooldown is not holding`);
     assert.ok(count > 1, 'and it is not blocking contagion outright');
   });
 

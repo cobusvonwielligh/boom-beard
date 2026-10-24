@@ -1,6 +1,6 @@
 name: ci
 
-# Tests only. Deployment is manual — `npm run deploy` from a laptop. This workflow needs no
+# Tests only. Deployment is manual - `npm run deploy` from a laptop. This workflow needs no
 # secrets and exists so a broken push is caught before someone deploys it.
 #
 # The server still has a token-gated POST /deploy that pulls from git and restarts, so turning

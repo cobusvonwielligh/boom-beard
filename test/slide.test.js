@@ -2,7 +2,7 @@
 //
 // Three properties are worth defending with a test, because all three are things a later tuning
 // pass could quietly break: a slide must cost real stamina, it must be a commitment rather than a
-// faster walk, and barging through somebody must take their bombs away for a moment — which is the
+// faster walk, and barging through somebody must take their bombs away for a moment - which is the
 // only reason to use it on a person rather than on a corridor.
 
 import { test } from 'node:test';
@@ -57,7 +57,7 @@ test('a double-tap costs stamina up front and covers more ground than running', 
 
   assert.ok(slid > walked * 1.5,
     `a slide covered ${slid} units against ${walked} walking the same ${ticks} ticks`);
-  assert.ok(ticks < 30, `the slide ran for ${ticks} ticks — that is a vehicle, not a slide`);
+  assert.ok(ticks < 30, `the slide ran for ${ticks} ticks - that is a vehicle, not a slide`);
 });
 
 test('it cannot be chained, and cannot be bought without the wind for it', () => {
@@ -122,7 +122,7 @@ test('sliding through somebody leaves them confused, slower, and unable to bomb'
   assert.ok(has(victim, STATUS.CONFUSED), 'the slide went straight through without a mark');
   assert.ok(speedOf(victim) < theirPace, 'a confused player is no slower');
 
-  // Now they try to answer with a bomb. A fresh PRESS, because placement is edge-triggered —
+  // Now they try to answer with a bomb. A fresh PRESS, because placement is edge-triggered -
   // holding the key through the barge would have placed one before the slide ever arrived.
   const bombing = new Array(16).fill(0);
   bombing[1] = IN_BOMB;

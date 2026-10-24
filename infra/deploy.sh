@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Boom Beard — manual deploy. Pushes your working tree, including uncommitted work.
+# Boom Beard - manual deploy. Pushes your working tree, including uncommitted work.
 #
 #   npm run deploy            tests, then deploy
 #   npm run deploy:fast       skip the full suite (the boot preflight still runs)
@@ -39,7 +39,7 @@ cleanup() {
   # shellcheck disable=SC2086
   ssh $SSH_OPTS -O exit "$SSH_USER@$SSH_HOST" 2>/dev/null || true
   [ $code -ne 0 ] && [ $code -ne 130 ] && echo "deploy failed ($code)" >&2
-  [ $code -eq 130 ] && echo "cancelled — the server was not touched if this stopped before 'sync'" >&2
+  [ $code -eq 130 ] && echo "cancelled - the server was not touched if this stopped before 'sync'" >&2
   exit $code
 }
 trap cleanup EXIT INT TERM
@@ -71,7 +71,7 @@ ssh_ "mkdir -p $PREV && rsync -a --delete --exclude node_modules --link-dest=$AP
 step "sync"
 # Stamp what is really going up. rsync does not touch .git, so without this /healthz would
 # report the last commit the box pulled rather than the tree now on disk.
-# `git describe` gives the nearest tag plus how far past it we are — `v0.14-3-gaefe13f` — which
+# `git describe` gives the nearest tag plus how far past it we are - `v0.14-3-gaefe13f` - which
 # answers "which release, and how much drift" in one string. Falls back to the bare sha when
 # nothing has been tagged yet.
 printf '%s%s\n' \
@@ -107,7 +107,7 @@ fi
 # glibc 2.38; this box has 2.34, so the addon is compiled here (clang 19 + libstdc++ 14, about
 # an hour) and the result stashed outside the app directory. npm ci blows node_modules away,
 # which would silently drop the server back to WebSocket-only on the next deploy that touches
-# the lockfile — silently, because the transport is additive and nothing would look broken.
+# the lockfile - silently, because the transport is additive and nothing would look broken.
 STASH=/var/lib/boom-beard/webtransport.node
 DEST=$APP/node_modules/@fails-components/webtransport-transport-http3-quiche/build_linux_x64/Release
 if [ -f "\$STASH" ]; then
@@ -132,6 +132,6 @@ for i in $(seq 1 60); do
   sleep 0.25
 done
 
-echo "health check never answered — last 40 log lines:" >&2
+echo "health check never answered - last 40 log lines:" >&2
 ssh_ "sudo journalctl -u boom-beard -n 40 --no-pager" >&2
 exit 1

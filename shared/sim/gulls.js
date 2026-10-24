@@ -2,7 +2,7 @@
 //
 // A gull is described, not simulated. It is born with a start, an end, a departure tick and a
 // couple of phase offsets, and `gullAt` turns that into a position and an altitude for any tick
-// at all — so the snapshot carries the description once and the client draws the flight from its
+// at all - so the snapshot carries the description once and the client draws the flight from its
 // own clock, smoothly, with nothing to interpolate and nothing to correct.
 //
 // Only the SERVER decides a hit. The client never runs `gulls()`; it only draws `gullAt`. That is
@@ -26,7 +26,7 @@ const TAU = Math.PI * 2;
  * Height above the board, 1 cruising and 0 at the bottom of a dive.
  *
  * A dive is half a sine turned upside down: it drops away smoothly, bottoms out and climbs back,
- * with no corner anywhere in it — a gull that changed height in steps would read as a sprite
+ * with no corner anywhere in it - a gull that changed height in steps would read as a sprite
  * being swapped.
  */
 export function gullAltitude(g, tick) {
@@ -42,7 +42,7 @@ export function gullAltitude(g, tick) {
 }
 
 /**
- * Where a gull is at a tick, in sim units, and how high. Fractional ticks are fine — the
+ * Where a gull is at a tick, in sim units, and how high. Fractional ticks are fine - the
  * renderer passes them, so the flight is as smooth as the frame rate.
  */
 export function gullAt(g, tick) {
@@ -50,7 +50,7 @@ export function gullAt(g, tick) {
   const t = Math.max(0, Math.min(1, age / g.dur));
   // Eased, not linear: slow across the middle of the line, which is the part over the board. See
   // GULL_LOITER. Both ends are untouched, so the flight still starts and finishes where it says.
-  // A raid runs flat out — the loiter is what makes a cruising bird dawdle over the island, and
+  // A raid runs flat out - the loiter is what makes a cruising bird dawdle over the island, and
   // dawdling is the opposite of what two birds doing eighty are up to. Both halves are still
   // symmetric about the middle of the line, which is where the victim is standing.
   const f = g.raid ? t : t + (GULL_LOITER / TAU) * Math.sin(TAU * t);
@@ -106,7 +106,7 @@ function spawn(state) {
  *
  * See GULL_RAID_AT_MIN for why it exists and why it cannot be dodged. The birds are ordinary
  * gull descriptions with `raid` set, which is what gets them the straight line, the flat-out
- * pace and the one long dive — so the client draws the attack with the code it already had.
+ * pace and the one long dive - so the client draws the attack with the code it already had.
  */
 function scheduleRaid(state) {
   const span = GULL_RAID_AT_MAX - GULL_RAID_AT_MIN;
@@ -201,15 +201,15 @@ export function gulls(state) {
   /* The raid, before the ordinary traffic.
    *
    * Scheduled once the room has told the state how long the round is, launched at that tick
-   * against a living PERSON — picked from whoever is standing at that moment, so it is never
-   * somebody who spent the round dead — and landing half a run later.
+   * against a living PERSON - picked from whoever is standing at that moment, so it is never
+   * somebody who spent the round dead - and landing half a run later.
    */
   if (!state.raidAt && state.roundTicks) scheduleRaid(state);
   if (state.raidAt > 0 && state.tick >= state.raidAt) {
     const targets = state.players.filter(p => p && p.alive && !p.isBot);
     if (targets.length) launchRaid(state, targets[randInt(state.gullNext, targets.length)]);
     // Nobody to pick on. Try again shortly, and give up for the round once the window has gone
-    // — birds arriving on the whistle would read as a scoring bug.
+    // - birds arriving on the whistle would read as a scoring bug.
     else state.raidAt = state.tick + GULL_RAID_RETRY_TICKS > state.roundTicks * GULL_RAID_AT_MAX
       ? -1 : state.tick + GULL_RAID_RETRY_TICKS;
   }
@@ -234,8 +234,8 @@ export function gulls(state) {
     const at = gullAt(g, state.tick);
     /* Any fire it is over, at any height.
      *
-     * It used to have to be at the bottom of a dive — GULL_LOW_ALT, about one tick in nine of the
-     * flight — and between that and a bird crossing three tiles a second the shot was mostly
+     * It used to have to be at the bottom of a dive - GULL_LOW_ALT, about one tick in nine of the
+     * flight - and between that and a bird crossing three tiles a second the shot was mostly
      * luck. The altitude rule is gone: if a blast reaches the tile the gull is over, the gull is
      * down. Still only fire inside its lethal window, which is the same window that kills players.
      *
@@ -251,7 +251,7 @@ export function gulls(state) {
     const x = Math.round(at.x), y = Math.round(at.y);
     /* Paid to the shooter, in the air, the moment it falls.
      *
-     * Three coins into the hand of whoever owned the fire — see GULL_COINS for why that is better
+     * Three coins into the hand of whoever owned the fire - see GULL_COINS for why that is better
      * than a coin on the floor. The XP is still one coin's worth: SCORE.GOLD is already about
      * four kills, and three of them for one shot would make a lucky blast worth more than
      * winning the round. The coins are the trophy; the score is the shot.

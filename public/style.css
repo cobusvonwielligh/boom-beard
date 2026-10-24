@@ -1,4 +1,4 @@
-/* Boom Beard — all of the chrome.
+/* Boom Beard - all of the chrome.
  *
  * Split out of index.html once it outgrew a <style> block. Still one file, still no build step,
  * still no framework: the whole UI is a top bar, a chat panel, two overlays and a menu card.
@@ -8,7 +8,7 @@
  */
 
 /* The display face. 16 KB against the 136 KB this replaced, and it covers every character the
- * interface puts through it — upper, lower, digits and the punctuation in `!?.,:'-/()&`, checked
+ * interface puts through it - upper, lower, digits and the punctuation in `!?.,:'-/()&`, checked
  * against the cmap rather than assumed. A display font missing one glyph does not error: the
  * browser substitutes silently from the next family in the stack, so a single character in a
  * headline comes out in a different typeface and reads as a rendering bug.
@@ -26,8 +26,8 @@
   /* The accent: gold, and this time it means it.
    *
    * THREE tones, not one, because a single flat yellow is the thing that made the first gold
-   * look cheap. Metal is not a colour, it is a RANGE — a dark underside, a body, and a specular
-   * highlight — and the eye reads the relationship between those three as "this is reflective"
+   * look cheap. Metal is not a colour, it is a RANGE - a dark underside, a body, and a specular
+   * highlight - and the eye reads the relationship between those three as "this is reflective"
    * long before it reads the hue. One value can only ever be paint.
    *
    *   --gold-hi    the shine. Where the light lands.
@@ -39,11 +39,11 @@
    * page, so the brightest interface colour is also the most readable one.
    *
    * It has been gold, baby blue, the mascot's bandana red and fire orange. Orange lost because
-   * it WAS the fire — the chrome and the explosions were the same hue, and on a busy board that
+   * it WAS the fire - the chrome and the explosions were the same hue, and on a busy board that
    * is one signal too few. Gold is next to the fire without being it.
    *
    * CAREFUL: within 1.7:1 of `--bad`. Anything that has to read as an alarm beside the accent
-   * cannot do it with hue — see `#clock.low`, which uses brightness instead. `--warn` is blue
+   * cannot do it with hue - see `#clock.low`, which uses brightness instead. `--warn` is blue
    * for the same reason: an amber dot beside a gold HUD is not a state, it is more gold. */
   --gold-hi: #f6e7a9;
   --gold: #edc24e;
@@ -52,14 +52,14 @@
   --gold-lit: #f6e7a9; /* the top of a filled button */
   --gold-deep: #c08d22; /* the bottom of one */
   --gold-shadow: #6d4709; /* and the hard shadow under it */
-  --on-gold: #2a1a04; /* text that sits on a filled accent — 8.9:1 */
+  --on-gold: #2a1a04; /* text that sits on a filled accent - 8.9:1 */
 
   /* Cast gold, as a paintable background. Clipped to text by `.cast` below.
    *
    * Two layers. The lower one is the metal: a vertical ramp that goes dark at the top edge,
    * blows out to the highlight a third of the way down, drops back through the body, and comes
    * up to a SECOND smaller highlight near the bottom before going dark again. That second band
-   * is the whole trick — it reads as the underside catching bounced light, and it is the
+   * is the whole trick - it reads as the underside catching bounced light, and it is the
    * difference between gold and a yellow gradient. A single highlight looks like plastic.
    *
    * The upper one is a narrow specular sweep that travels across, which is what makes it look
@@ -67,7 +67,7 @@
   --cast:
     /* The band is NARROW on purpose: 8% of a layer that is 2.6x the width of the text, so it
        lands as a highlight about a fifth of the word wide. It was 32% of a 3.2x layer, which
-       works out wider than the whole word — so instead of a travelling glint it very slightly
+       works out wider than the whole word - so instead of a travelling glint it very slightly
        brightened everything, all the time, and the sweep was invisible. A specular highlight
        you cannot see the edges of is not a highlight, it is exposure. */
     linear-gradient(
@@ -112,7 +112,7 @@
    * card, the gradient border and the sea alike.
    *
    * Four zero-blur offsets draw the outline, the wide blur lifts it off whatever is behind.
-   * Only usable where the fill is opaque — #title clips a gradient through transparent glyphs,
+   * Only usable where the fill is opaque - #title clips a gradient through transparent glyphs,
    * so a shadow would show through the inside of every letter and it uses a filter instead. */
   --rim:
     1.5px 0 0 #000, -1.5px 0 0 #000, 0 1.5px 0 #000, 0 -1.5px 0 #000,
@@ -123,10 +123,10 @@
    * Four zero-blur drop-shadows at the compass points, which is an outline that follows the
    * letterforms. It has to be a FILTER rather than a text-shadow: cast text has a transparent
    * fill with a background clipped through it, and a text-shadow would show straight through
-   * the inside of every glyph. Thin — 1px, not the 1.5 the old flat rim used — because its job
+   * the inside of every glyph. Thin - 1px, not the 1.5 the old flat rim used - because its job
    * here is to give the metal an edge, not to make the word legible. Too thick and the letters
    * stop looking cast and start looking stickered on. */
-  /* The drop shadow under every centre-screen announcement — YOU DIED and the kill streaks
+  /* The drop shadow under every centre-screen announcement - YOU DIED and the kill streaks
    * alike. One token, because they appear in the same place seconds apart and two different
    * weights of shadow on the same spot reads as one of them being broken.
    *
@@ -149,7 +149,7 @@
    * falling from the top left. Separately they are invisible; together they stop a flat #11161e
    * rectangle reading as a hole cut in the screen, which is what large unbroken fills do on a
    * dark page. Nothing here costs a request or a decode. */
-  /* The weave on every panel, a fifth more visible than it was — 05/03/0a became 06/04/0c.
+  /* The weave on every panel, a fifth more visible than it was - 05/03/0a became 06/04/0c.
      At the old values it was there in the file and not on the screen: a texture nobody can see
      is a texture that is not doing its job, which is stopping a large dark panel reading as a
      flat rectangle. Still well under the type, which is what it has to stay under. */
@@ -162,11 +162,11 @@
 
   /* Podium medals: a struck disc on a ribbon, gold / silver / bronze.
    *
-   * Full-colour SVG backgrounds rather than masks — a medal is three materials, not one colour.
+   * Full-colour SVG backgrounds rather than masks - a medal is three materials, not one colour.
    * Each has the same parts: a two-tone ribbon, a disc with a diagonal metal ramp, a darker rim, a
    * faint inner ring, the place number struck into it, and one soft highlight top-left (the
    * interface's light comes from there, like everything on the board). The RIBBONS differ in hue
-   * too — red, blue, green — so the three are told apart by more than how shiny they are, which
+   * too - red, blue, green - so the three are told apart by more than how shiny they are, which
    * matters for anyone who cannot easily tell gold from bronze. */
   --medal-1: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 24'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23fff3b0'/%3E%3Cstop offset='.5' stop-color='%23edc24e'/%3E%3Cstop offset='1' stop-color='%239c6a0c'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M4.5 0h4.2l3 9.5H7.5z' fill='%23c0392b'/%3E%3Cpath d='M15.5 0h-4.2l-3 9.5h4.2z' fill='%238f2a20'/%3E%3Ccircle cx='10' cy='15' r='8' fill='url(%23g)' stroke='%236d4709' stroke-width='1.2'/%3E%3Ccircle cx='10' cy='15' r='5.7' fill='none' stroke='%23fff6c8' stroke-opacity='.6' stroke-width='.8'/%3E%3Cellipse cx='7' cy='11.8' rx='2.6' ry='1.3' fill='%23fff' fill-opacity='.55' transform='rotate(-35 7 11.8)'/%3E%3Ctext x='10' y='18.4' font-family='Arial,Helvetica,sans-serif' font-weight='700' font-size='9' text-anchor='middle' fill='%234a2f05'%3E1%3C/text%3E%3C/svg%3E");
   --medal-2: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 24'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23ffffff'/%3E%3Cstop offset='.5' stop-color='%23c9d1db'/%3E%3Cstop offset='1' stop-color='%23737d8a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M4.5 0h4.2l3 9.5H7.5z' fill='%232f6db5'/%3E%3Cpath d='M15.5 0h-4.2l-3 9.5h4.2z' fill='%23234f85'/%3E%3Ccircle cx='10' cy='15' r='8' fill='url(%23g)' stroke='%2346505e' stroke-width='1.2'/%3E%3Ccircle cx='10' cy='15' r='5.7' fill='none' stroke='%23ffffff' stroke-opacity='.6' stroke-width='.8'/%3E%3Cellipse cx='7' cy='11.8' rx='2.6' ry='1.3' fill='%23fff' fill-opacity='.6' transform='rotate(-35 7 11.8)'/%3E%3Ctext x='10' y='18.4' font-family='Arial,Helvetica,sans-serif' font-weight='700' font-size='9' text-anchor='middle' fill='%23262c35'%3E2%3C/text%3E%3C/svg%3E");
@@ -293,7 +293,7 @@ body {
 
 /* ─── layout ──────────────────────────────────────────────────────────────────
  * Three fixed regions: a banner across the top, the board, and a side panel. The board gets
- * whatever is left, and the renderer scales the map to fit it exactly — so there are no black
+ * whatever is left, and the renderer scales the map to fit it exactly - so there are no black
  * bars and the whole island is on screen at once.
  */
 
@@ -311,7 +311,7 @@ body {
 /* Explicit width and height, not `auto` with four insets.
  *
  * A canvas is a REPLACED element, and for an absolutely positioned replaced box `width: auto`
- * resolves to the INTRINSIC width — the canvas default of 300x150 — rather than to the gap
+ * resolves to the INTRINSIC width - the canvas default of 300x150 - rather than to the gap
  * between `left` and `right`. The box is then over-constrained and the browser drops `right` and
  * `bottom` entirely, so the game was laid out 300x150 in the corner and painted as an empty
  * replaced element: a white rectangle with a broken-content icon. calc() removes the ambiguity. */
@@ -346,8 +346,8 @@ canvas#game {
  * menu text. Implemented as a padding-box/border-box mask rather than a pseudo-element, so the
  * border follows the border-radius exactly and costs one compositor layer instead of two.
  *
- * Gold and maroon, the landing page's colours, not the rainbow it was. Six stops — bright gold,
- * old gold, amber, a lit maroon, the deep maroon and a warm rose — the same six the menu's VU
+ * Gold and maroon, the landing page's colours, not the rainbow it was. Six stops - bright gold,
+ * old gold, amber, a lit maroon, the deep maroon and a warm rose - the same six the menu's VU
  * runs through (EDGE_HUES in menuviz.js), on the same 28-second turn, so the whole interface
  * reads as one light. The rainbow put lavender and two blue-greens round every panel, and next
  * to cast-gold type and a maroon backdrop that read as a second, unrelated theme.
@@ -379,15 +379,15 @@ canvas#game {
  *   3. **A hard thin edge.** Metal has a boundary. Without `--cast-edge` the pale top of the
  *      gradient dissolves into any light background behind it.
  *
- * `background-clip: text` needs the fill transparent, which rules out text-shadow entirely —
+ * `background-clip: text` needs the fill transparent, which rules out text-shadow entirely -
  * see --cast-edge.
  *
- * LARGE TYPE ONLY — about 30px and up. Below that the vertical ramp has fewer pixels than it
+ * LARGE TYPE ONLY - about 30px and up. Below that the vertical ramp has fewer pixels than it
  * has stops, so the two highlights and the two dark edges all land inside three or four rows
  * and the word turns to mush. Checked at 17px and it is unreadable. Small display type stays
  * flat `var(--gold)` with `--rim`, which is what it was always for. */
 .cast {
-  /* Flat gold first — see `.castSm` below for why every cast rule is built this way. */
+  /* Flat gold first - see `.castSm` below for why every cast rule is built this way. */
   color: var(--gold);
   text-shadow: var(--rim);
 }
@@ -447,7 +447,7 @@ canvas#game {
  * scoreboard's leader.
  *
  * It is a SEPARATE class and not just `.cast` at a smaller size, because the full ramp has
- * eight stops and at 15px there are not eight rows of pixels to put them in — that is the mush
+ * eight stops and at 15px there are not eight rows of pixels to put them in - that is the mush
  * documented on `.cast`. This one has four: dark, highlight, body, dark. Enough to read as
  * metal, few enough that each one gets more than a pixel.
  *
@@ -458,7 +458,7 @@ canvas#game {
   /* Layer one: gold text with a real drop shadow. Opaque, unclipped, ordinary.
    *
    * This is BOTH the fallback and the shadow. An engine that cannot do text-clipping stops
-   * here and gets gold type with a shadow under it, which is a perfectly good result — the rule
+   * here and gets gold type with a shadow under it, which is a perfectly good result - the rule
    * never has a failure mode worse than not having written it.
    *
    * Three shadow layers: a hard offset that reads as thickness, a soft one that lifts it off
@@ -477,7 +477,7 @@ canvas#game {
    *
    * THE ORDER IS THE WHOLE POINT, and getting it the other way round is what the first attempt
    * did. `background-clip: text` makes the gold part of the element's BACKGROUND, and a
-   * background paints before negative-z children — so a shadow copy behind it covered the gold
+   * background paints before negative-z children - so a shadow copy behind it covered the gold
    * instead of sitting under it, and the name went dark again.
    *
    * Inverted, both layers land where they belong: the parent's inline text (and its shadow)
@@ -501,7 +501,7 @@ canvas#game {
     background-clip: text;
     -webkit-text-fill-color: transparent;
     color: transparent;
-    /* The thin edge, as a stroke rather than drop-shadows — no filter, no layer. Under the
+    /* The thin edge, as a stroke rather than drop-shadows - no filter, no layer. Under the
        fill, or it eats half a pixel off every stem, which at this size is most of the stem. */
     -webkit-text-stroke: 0.9px #140d02;
     paint-order: stroke fill;
@@ -623,7 +623,7 @@ canvas#game {
   gap: 5px;
 }
 /* Anything past its threshold. Red against the server row's blue, so it reads as "this one" and
-   not as a different kind of number — the figure keeps its place in the line. */
+   not as a different kind of number - the figure keeps its place in the line. */
 .perfWarn {
   color: #ff6b5e;
 }
@@ -668,14 +668,14 @@ canvas#game {
 }
 
 /* `#who` and `#rank` used to live up here, when the name was in the top bar. It moved to the
-   side card and these two rules stayed behind — same id, same element, both still applying.
+   side card and these two rules stayed behind - same id, same element, both still applying.
    That was invisible until the name became cast gold: the orphan's `text-shadow` beat the
    `.castSm` one on id specificity, and a shadow under transparent glyphs paints straight
    through the inside of every letter. The name came out as a dark smudge. */
 
 /* Nothing in the top bar may move when a number changes.
  *
- * Two separate causes, both fixed here. Proportional digits are the obvious one — "1" is
+ * Two separate causes, both fixed here. Proportional digits are the obvious one - "1" is
  * narrower than "8", so a ticking clock shuffles everything to its right. Tabular figures solve
  * that for the monospace values. The other is the values that change LENGTH: ping goes 9ms ->
  * 115ms, alive goes 9 -> 16, the map name changes entirely. No figure setting helps there, so
@@ -699,7 +699,7 @@ canvas#game {
 }
 /* The SAME SIZE as the grey label beside it, not bigger.
  *
- * These were 15px against an 11px label, which made every stat a heading with a caption — three
+ * These were 15px against an 11px label, which made every stat a heading with a caption - three
  * of them in a row, each shouting, and the only number in the bar that actually wants to shout
  * is the clock. Matched in size, the pairing reads as one item, and the ACCENT does the work
  * that size was doing: the label is grey, the value is gold, and the eye still lands on the
@@ -712,7 +712,7 @@ canvas#game {
   font-size: 11px;
   font-weight: 600;
   /* The accent, not plain ink. These three are the numbers you glance at without stopping, and
-     colour is what makes a glance work — the labels beside them stay grey so the value is the
+     colour is what makes a glance work - the labels beside them stay grey so the value is the
      thing the eye lands on. */
   color: var(--gold);
   display: inline-block;
@@ -784,7 +784,7 @@ canvas#game {
   animation: timerShine 6s linear infinite;
 }
 /* The last minute. Now that the accent is itself a red, `--bad` no longer reads as an alarm
-   next to it — it is darker and less saturated than the resting colour, which is backwards for
+   next to it - it is darker and less saturated than the resting colour, which is backwards for
    a warning. White-hot and blinking is the signal instead: brightness, not hue. */
 #clock.low .v {
   background: none;
@@ -859,7 +859,7 @@ body.observing #who {
   position: relative;
 }
 /* Same again for the loadout. 16px numbers next to a 13px cap was the same mismatch, and these
-   sit in the same row as the stats — three type sizes across one bar is two too many. */
+   sit in the same row as the stats - three type sizes across one bar is two too many. */
 .pip {
   display: flex;
   align-items: center;
@@ -884,7 +884,7 @@ body.observing #who {
 .pip .cap {
   color: #9fabbd;
   font-size: 13px;
-} /* matches .pip itself — see above */
+} /* matches .pip itself - see above */
 .pip.max .n {
   color: var(--gold);
 }
@@ -975,7 +975,7 @@ body.observing #who {
 /* The audio dock: both volume controls and what is playing, bottom left, one pill.
  *
  * One set of elements for both screens. The music starts on the menu, so the control for it has
- * to be on the menu — and a second set of widgets there, kept in step with these, is two sources
+ * to be on the menu - and a second set of widgets there, kept in step with these, is two sources
  * of truth and a sync bug waiting to happen. This just moves. It sits above `#menu` (z-index 10)
  * so it survives the overlay.
  *
@@ -1003,7 +1003,7 @@ body.observing #who {
 
 /* ─── now playing ─────────────────────────────────────────────────────────────
  * A three-bar equaliser and the track name. The bars are the only thing that says "this is
- * audio" without a word of label, and they stop when the music does — which is also the answer
+ * audio" without a word of label, and they stop when the music does - which is also the answer
  * to "is it muted or is it just quiet right now".
  */
 #nowPlaying {
@@ -1049,7 +1049,7 @@ body.observing #who {
   transform-origin: bottom;
   transform: scaleY(0.27);
 }
-/* The bars are driven from the ANALYSER, not from a keyframe — see syncMeter() in main.js.
+/* The bars are driven from the ANALYSER, not from a keyframe - see syncMeter() in main.js.
  *
  * They were three canned animations on periods that did not divide into each other, which is
  * the standard trick for faking a level, and it is convincing for about four seconds. The
@@ -1134,7 +1134,7 @@ input[type="range"] {
 
 /* Volume: one control, not three widgets.
  *
- * Music used to be a text button plus a slider, and sfx a label plus a slider — four boxes and
+ * Music used to be a text button plus a slider, and sfx a label plus a slider - four boxes and
  * about 200px of a bar that also has to hold a clock, a loadout and a connection state. Here the
  * icon IS the mute toggle, the level is a bar under the glyph so it is readable while collapsed,
  * and the slider unrolls only when you are actually reaching for it.
@@ -1177,7 +1177,7 @@ input[type="range"] {
 }
 
 /* Skip back and skip forward. Narrower than play/pause and without a level bar, because they
-   are not a level — the asymmetry is what makes the middle one read as the one you press most. */
+   are not a level - the asymmetry is what makes the middle one read as the one you press most. */
 .volBtn.skip {
   width: 24px;
   height: 30px;
@@ -1249,7 +1249,7 @@ input[type="range"] {
  * Slides UP out of its button, not sideways.
  *
  * Sideways it pushed everything to its right along, so opening the music fader moved the sfx
- * button and the track name under the pointer — and the dock is in a corner, where growing
+ * button and the track name under the pointer - and the dock is in a corner, where growing
  * sideways is the one direction that costs layout. Upward it grows into empty screen and
  * nothing else in the pill moves.
  *
@@ -1372,7 +1372,7 @@ input[type="range"] {
   }
 }
 
-/* Icon-only in the top bar — the GitHub mark needs no label, and the bar is crowded. Sized to a
+/* Icon-only in the top bar - the GitHub mark needs no label, and the bar is crowded. Sized to a
  * comfortable click target rather than to the glyph. */
 .iconBtn {
   display: grid;
@@ -1405,7 +1405,7 @@ input[type="range"] {
 }
 
 /* ─── side panel ──────────────────────────────────────────────────────────────
- * Who you are, who is winning, and the chat — in the space the board does not need. Everything
+ * Who you are, who is winning, and the chat - in the space the board does not need. Everything
  * here is glanceable between bombs, which is why the live standings live here rather than behind
  * a key you have to hold down.
  */
@@ -1439,7 +1439,7 @@ input[type="range"] {
 /* The mascot's face, in the very top right corner, over everything.
  *
  * `object-fit: contain` and no crop: the art IS the head already, so cropping it further takes
- * the bandana off. No disc and no ring either — the alpha is the shape, and a plate behind it
+ * the bandana off. No disc and no ring either - the alpha is the shape, and a plate behind it
  * would turn a character into a sticker. The z-index puts it above the bar and the panel it
  * overlaps; the menu is higher still, so it does not float over the landing page.
  */
@@ -1447,7 +1447,7 @@ input[type="range"] {
  * Two signals, both at the top right, both saying the same thing in different ways.
  *
  * The name takes the colour of the banner that just crossed the board, which is what ties the
- * two together — you read YOU DIED in the middle and then your own name is still that colour
+ * two together - you read YOU DIED in the middle and then your own name is still that colour
  * when you look away from it. And the mascot loses his colour entirely: a grey face is read as
  * "out" instantly and in peripheral vision, with no words and no icon.
  *
@@ -1455,7 +1455,7 @@ input[type="range"] {
  * returning rather than like a state flag flipping.
  */
 body.dead #who {
-  /* An id beats a class, and `.castSm` paints its metal through a pseudo-element on top — so
+  /* An id beats a class, and `.castSm` paints its metal through a pseudo-element on top - so
      recolouring the base alone would be invisible. The overlay goes with it. */
   color: #ff5a5a;
   text-shadow:
@@ -1482,8 +1482,8 @@ body.dead #rank {
 /* The mascot, and the only thing in the HUD that moves with the music.
  *
  * `--bob` and `--kick` are written once a frame by main.js off the listener. The CSS animation
- * is still the baseline — a slow six-second float that runs whether or not anything is playing
- * — and the custom properties ride ON TOP of it through a second transform on the wrapper, so
+ * is still the baseline - a slow six-second float that runs whether or not anything is playing
+ * - and the custom properties ride ON TOP of it through a second transform on the wrapper, so
  * silence leaves him doing exactly what he always did.
  *
  * He is the right home for this in a way the coast was not: he is in the corner, he is already
@@ -1535,7 +1535,7 @@ body.dead #rank {
   z-index: 60;
   pointer-events: none;
   /* Louder than it was. The mascot is the only voice in the game and at 14px in a thin gold
-     outline he was wallpaper — read once on the first round and never again. Bigger type, a
+     outline he was wallpaper - read once on the first round and never again. Bigger type, a
      brighter rim with a little warmth thrown off it, and the first line in gold. */
   padding: 11px 16px;
   border-radius: 13px;
@@ -1613,7 +1613,7 @@ body.dead #rank {
    A display face turns anything with a lowercase 'rn' or a '1' in it into a puzzle at 17px. */
 /* Your name, beside the mascot's face. The display face, cast in gold: it is the one piece of
    text on screen that is about YOU, and the only reason it was ever the accent colour.
-   No `text-shadow` here — an id beats a class, so declaring it would silently cancel the drop
+   No `text-shadow` here - an id beats a class, so declaring it would silently cancel the drop
    shadow `.castSm` provides, which is exactly what it did until this comment replaced it. */
 #who {
   font-family: var(--display);
@@ -1637,7 +1637,7 @@ body.dead #rank {
  * the board.
  *
  * It belongs with the thing it changed. Down in the side card it sat under kills/deaths/round,
- * which are a record of the match rather than of what you are carrying — and it was in the one
+ * which are a record of the match rather than of what you are carrying - and it was in the one
  * part of the screen you are not looking at while playing. The pip going from 0 to 1 is correct
  * and almost invisible; the badge is the loud half of the same event, and then it is gone,
  * leaving the pip as the permanent record.
@@ -1732,7 +1732,7 @@ body.dead #rank {
 }
 
 /* Gold. The only stat with a picture instead of a word, because it is the only one that is a
-   THING rather than a count of events — and because a coin is faster to recognise than the
+   THING rather than a count of events - and because a coin is faster to recognise than the
    four letters it would take to spell it. */
 .coinStat {
   display: inline-flex;
@@ -1778,7 +1778,7 @@ body.dead #rank {
   font-weight: 700;
 }
 /* The dot is a pseudo-element rather than text, so the gap closes cleanly on the one frame
-   before a tier has arrived from the server — a stranded "·" is worse than no separator. */
+   before a tier has arrived from the server - a stranded "·" is worse than no separator. */
 #rank:not(:empty)::before {
   content: "·";
   color: var(--dim);
@@ -1891,7 +1891,7 @@ body.dead #rank {
   }
 }
 
-/* Panel headings. 11px and cast, up from 9.5px flat grey — the cast ramp needs the extra
+/* Panel headings. 11px and cast, up from 9.5px flat grey - the cast ramp needs the extra
    pixels, and these are labels you read once per session rather than data. */
 .panelHead {
   margin: 0 0 7px;
@@ -1903,7 +1903,7 @@ body.dead #rank {
 }
 
 /* The live board. Rows are a fixed height with the place in a fixed-width slot, so a medal and a
- * plain "7" line up and the names start on one edge. Column heads say what the two numbers are —
+ * plain "7" line up and the names start on one edge. Column heads say what the two numbers are -
  * "3/5" next to a name was a riddle for anyone who had not asked. */
 .liveHead,
 #liveRows li {
@@ -2161,7 +2161,7 @@ body.dead #rank {
   animation: streakIn 2.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* The band. Skewed, wider than the screen, wiping out from the centre — it is what separates
+/* The band. Skewed, wider than the screen, wiping out from the centre - it is what separates
    the announcement from the board behind it, and the reason the type reads over fire. */
 #streak::before {
   content: "";
@@ -2169,7 +2169,7 @@ body.dead #rank {
   left: 50%;
   top: 50%;
   /* px, not em: `#streak` has no font-size of its own, so `1.25em` resolved against the
-     inherited 16px and drew a 20px ribbon behind 118px type — a pinstripe, not a band. */
+     inherited 16px and drew a 20px ribbon behind 118px type - a pinstripe, not a band. */
   width: 150vw;
   height: 62px;
   margin-left: -75vw;
@@ -2241,8 +2241,8 @@ body.dead #rank {
 }
 /* The name gets the accent and some weight: it is the half of the message that says whether
    this is a thing to celebrate or a thing to worry about. */
-/* Who did it, two and a half times the size it was, and impossible to miss: a molten gradient —
- * gold, flame, rose, white-hot — pouring through the letters, under a glow that pulses with it.
+/* Who did it, two and a half times the size it was, and impossible to miss: a molten gradient -
+ * gold, flame, rose, white-hot - pouring through the letters, under a glow that pulses with it.
  * The name is the half of the announcement that says whether to celebrate or to run. */
 #streak .who {
   font-size: 32px;
@@ -2298,7 +2298,7 @@ body.dead #rank {
   }
 }
 
-/* The robot, inline, wherever a bot's name is written — the same head the live scoreboard
+/* The robot, inline, wherever a bot's name is written - the same head the live scoreboard
  * draws (`--robot`), in the colour of the text around it. */
 /* The gull beside whoever the raid took. Same size as the robot and on the other side of the
    name, because they are two different facts about a player and a column of marks that swap
@@ -2324,10 +2324,10 @@ body.dead #rank {
 }
 
 /* Each rung is bigger and hotter than the last, so the escalation is visible as well as audible.
-   Every step is a real jump — 66, 82, 100, 118 — because two sizes eight pixels apart are the
+   Every step is a real jump - 66, 82, 100, 118 - because two sizes eight pixels apart are the
    same size to anybody who is not comparing them side by side. */
-/* clamp() rather than fixed pixels, because the banner is centred on the BOARD — the window
-   minus the 340px side panel — not on the window. At a fixed 118px, "RAMPAGE!!" is about 830px
+/* clamp() rather than fixed pixels, because the banner is centred on the BOARD - the window
+   minus the 340px side panel - not on the window. At a fixed 118px, "RAMPAGE!!" is about 830px
    of type inside a 910px board on a 1280 screen: one narrow window away from wrapping, and a
    kill streak that wraps onto two lines is a paragraph. The middle term does the work; the
    outer two stop it from vanishing or exploding. */
@@ -2379,7 +2379,7 @@ body.dead #rank {
 
 /* Blood and molten gold.
  *
- * `--bad` alone was a flat salmon — the colour of an error message, not of dying. This is a
+ * `--bad` alone was a flat salmon - the colour of an error message, not of dying. This is a
  * deep arterial red with gold heat bleeding out of it, which is the same trick the streak
  * banner uses one tier up and the reason the two now read as the same family.
  *
@@ -2407,7 +2407,7 @@ body.dead #rank {
  * you: the board stayed bright and legible for a beat after you died, and the card arrived
  * afterwards, so dying read as two events. The dark now lands on the same frame as the death.
  *
- * The scale-down punch moved to #deadBanner .big — it is a typographic effect, and on the
+ * The scale-down punch moved to #deadBanner .big - it is a typographic effect, and on the
  * backdrop it was also scaling a dim rectangle 50% past the edges of the board. */
 @keyframes deadIn {
   0%,
@@ -2438,13 +2438,13 @@ body.dead #rank {
 
 /* The `translateX(-50%)` every one of these keyframes used to carry was left over from when
  * this was absolutely positioned. In the centring grid it does nothing but shove the banner
- * half its own width to the LEFT of the middle — on an ace, about 150px off centre. */
+ * half its own width to the LEFT of the middle - on an ace, about 150px off centre. */
 /* `text-indent` tracks `letter-spacing` on every frame, and that pairing is not optional.
  *
  * Letter spacing is added AFTER each glyph including the last one, so a centred line with
  * `letter-spacing: .5em` is laid out half an em wider than it looks and the visible text sits
  * half of that to the LEFT of centre. On the ace tier at 118px that is about 30px of drift that
- * appears and disappears during the animation — the banner slides sideways as it lands, which
+ * appears and disappears during the animation - the banner slides sideways as it lands, which
  * looks like a bug because it is one. An equal `text-indent` pushes the line back. */
 @keyframes streakIn {
   0% {
@@ -2477,7 +2477,7 @@ body.dead #rank {
   }
   /* It does not simply sit there for two seconds.
    *
-   * A slow drift upward with half a degree of roll either side, alternating — not enough to
+   * A slow drift upward with half a degree of roll either side, alternating - not enough to
    * read as an animation, enough that the banner is ALIVE while you are looking at it. A
    * notice that lands hard and then freezes reads as a screenshot pasted over the game. */
   45% {
@@ -2579,7 +2579,7 @@ body.dead #rank {
 /* ─── emotes ──────────────────────────────────────────────────────────────────
  * The picker, while Shift is held.
  *
- * Over the board and centred on it, so it is where your eyes are — but it appears INSTANTLY
+ * Over the board and centred on it, so it is where your eyes are - but it appears INSTANTLY
  * and leaves instantly, because it is on screen for about a third of a second and a fade-out
  * would still be going when you need to see what you just walked into.
  *
@@ -2608,7 +2608,7 @@ body.dead #rank {
 }
 
 /* `.ekey`, not `.slot`. `.slot` is the volume fader's pop-out, three thousand lines up, and it
-   sets `opacity: 0; height: 0` on itself — exactly the two properties a second component called
+   sets `opacity: 0; height: 0` on itself - exactly the two properties a second component called
    the same thing would least like to inherit. Two unrelated things with one class name is a bug
    waiting for whichever one is edited next. */
 .ring {
@@ -2628,11 +2628,11 @@ body.dead #rank {
   border: 1.5px solid #ffffff1f;
   box-shadow: 0 6px 20px #000a;
   /* Each one springs out from the middle, staggered by direction, so the cross assembles
-     rather than appearing. 90ms total — fast enough that it has finished before you have
+     rather than appearing. 90ms total - fast enough that it has finished before you have
      chosen, which is the point: the animation must never be something you wait through.
 
      SCALE ONLY, and no `backwards`. Animating opacity with a backwards fill means the slot
-     sits at zero until the animation starts — so anything that stops animations running at all
+     sits at zero until the animation starts - so anything that stops animations running at all
      leaves an invisible picker, which is a worse outcome than never having animated it. At
      worst this now pops in at full size. */
   animation: emotePop 0.09s cubic-bezier(0.2, 1.6, 0.4, 1);
@@ -2854,7 +2854,7 @@ body.dead #rank {
  */
 
 /* Over the BOARD, not the window. The side panel is 340px of chrome and the banner another 52,
-   so a viewport-centred dialog sits visibly off to one side of the thing you are looking at —
+   so a viewport-centred dialog sits visibly off to one side of the thing you are looking at -
    and it dimmed the chat and the standings, which are exactly what you read while dead. The
    insets match canvas#game exactly. */
 #dead {
@@ -2897,7 +2897,7 @@ body.dead #rank {
    because the banner on the board has already said what happened and a second announcement
    just pushes the one control you want further down the screen. */
 /* The text face, not the display one. The rule in this stylesheet is that the pixel face is for
-   things you READ ONCE — the title, a streak — and the text face is for everything you read while
+   things you READ ONCE - the title, a streak - and the text face is for everything you read while
    playing. A round-over card is a scoreboard you actually read, and the display face on it was
    decoration sitting on top of information. */
 #deadTitle {
@@ -2951,11 +2951,11 @@ body.dead #rank {
  *
  * Under the button rather than beside it, and quiet: it is a setting, not a fourth choice, and
  * the respawn button has to stay the one thing the eye lands on. The whole row is the hit
- * target — a 13px checkbox on its own is a dexterity test. */
+ * target - a 13px checkbox on its own is a dexterity test. */
 /* A sliding switch rather than a checkbox: the label on the left in the same face as the ghost
  * buttons under it, and a gold-and-maroon pill on the right whose knob slides across and lights.
  * The native box was a 14px browser-blue square in a card where everything else is cast in
- * gold — the one control on the card that looked like it came from another page. */
+ * gold - the one control on the card that looked like it came from another page. */
 #autoRow {
   position: relative;
   display: flex;
@@ -3048,7 +3048,7 @@ body.dead #rank {
   outline: 2px solid var(--gold-hi);
   outline-offset: 2px;
 }
-/* On, it says so in the label too, so it reads at a glance without finding the switch —
+/* On, it says so in the label too, so it reads at a glance without finding the switch -
    which matters because you are about to stop looking at this card entirely. */
 #autoRow:has(input:checked) {
   color: var(--gold);
@@ -3061,7 +3061,7 @@ body.dead #rank {
 }
 
 /* Leaving is the one choice on this card you cannot undo, so it is the one that is coloured.
-   Still a ghost button — it is an alternative, not the thing you came here to press — but a red
+   Still a ghost button - it is an alternative, not the thing you came here to press - but a red
    one, which is the convention for "this ends it". */
 #deadLeave {
   color: #c86a62;
@@ -3138,7 +3138,7 @@ body.dead #rank {
   color: var(--gold);
 }
 
-/* You won it. The only place in the interface that gets the cast treatment on demand — and the
+/* You won it. The only place in the interface that gets the cast treatment on demand - and the
    only time this card ever says something worth looking at twice. */
 .card.round.won #deadTitle {
   font-family: var(--display);
@@ -3184,8 +3184,8 @@ body.dead #rank {
   font-family: var(--nums);
   font-variant-numeric: tabular-nums;
 }
-/* Tall enough for sixteen rows on an ordinary window, so the scrollbar — which narrows the body
- * and pulls its columns out of line with the header — only appears when it has to, and is thin
+/* Tall enough for sixteen rows on an ordinary window, so the scrollbar - which narrows the body
+ * and pulls its columns out of line with the header - only appears when it has to, and is thin
  * and gold when it does. */
 #roundTable tbody {
   display: block;
@@ -3200,7 +3200,7 @@ body.dead #rank {
   width: 100%;
   table-layout: fixed;
 }
-/* Your row. Gold rule down the left and a lift off the background — on a sixteen-row table the
+/* Your row. Gold rule down the left and a lift off the background - on a sixteen-row table the
    only question anyone is asking is "where am I". */
 #roundTable tr.me {
   background: #edc24e14;
@@ -3295,8 +3295,8 @@ body.dead #rank {
   color: #9fd85a;
 }
 
-/* Between rounds the board is gone, not dimmed. Everything on it — the sprites mid-stride, the
- * sea, the banners — is hidden, and the frame loop stops drawing it (see `loop` in main.js), so
+/* Between rounds the board is gone, not dimmed. Everything on it - the sprites mid-stride, the
+ * sea, the banners - is hidden, and the frame loop stops drawing it (see `loop` in main.js), so
  * the standings are the only thing on screen and nothing behind them is still moving. */
 body.intermission canvas#game,
 body.intermission #deadBanner,
@@ -3307,7 +3307,7 @@ body.intermission #dead {
   background: radial-gradient(ellipse at 50% 40%, #16202b, #0b0f15 75%);
 }
 
-/* Centred on the BOARD, not the window — the same correction the kill-streak banner got.
+/* Centred on the BOARD, not the window - the same correction the kill-streak banner got.
  *
  * The side panel is 340px of chrome and the top bar is another 52. A panel centred on the
  * viewport therefore sits visibly off to one side and low of the thing you are looking at, and
@@ -3340,7 +3340,7 @@ body.intermission #dead {
    * Depth of field, and it is doing a real job rather than decorating: the scoreboard is a page
    * of small numbers laid over a field of sixteen moving sprites and a sea that never stops, and
    * the eye keeps being pulled off the text by motion behind it. Three pixels of blur is enough
-   * that the movement stops competing and nowhere near enough to hide what is happening — you
+   * that the movement stops competing and nowhere near enough to hide what is happening - you
    * can still see a blast go off while you are reading.
    *
    * `backdrop-filter`, so it costs one compositor pass on what is already painted and the game
@@ -3547,7 +3547,7 @@ body.intermission #dead {
 
 /* Every table board: taller rows, zebra stripes, the place column centred and wide enough for a
  * medal, podium tints on the top three, and your row edged in gold. The stripes are barely there
- * — on a dark panel a sixteen-row table without them is a wall, with strong ones it is a barcode. */
+ * - on a dark panel a sixteen-row table without them is a wall, with strong ones it is a barcode. */
 #scores td,
 #roundTable td {
   padding-top: 6px;
@@ -3639,7 +3639,7 @@ body.intermission #dead {
   position: relative;
 }
 /* The card paints over the props. Both are positioned with auto z-index, which means DOM order
-   decides — and the props come later in the markup, so without this they would sit on top of
+   decides - and the props come later in the markup, so without this they would sit on top of
    the form. */
 #menuWrap > .card {
   z-index: 1;
@@ -3650,7 +3650,7 @@ body.intermission #dead {
   /* The top padding is not a taste decision: the title is lifted half its own height out of the
      card (see #titleWrap), so the card has to keep that much plus a breath of its own, or the
      lower half of the lettering lands on the slogan. The breath is 10px rather than the 22 it
-     was first drawn with — the card came out taller than it needed to be once the title was
+     was first drawn with - the card came out taller than it needed to be once the title was
      overlapping rather than sitting inside it.
 
      No `overflow` here, deliberately: the title hangs half out of the top of this box, and any
@@ -3664,7 +3664,7 @@ body.intermission #dead {
  * which reads as a mistake rather than as depth. Sitting on the edge, with the bottom of the
  * stack overlapping the card, they look like something resting on it.
  *
- * Left of centre so they never crowd the title, and full strength — the one thing in front of
+ * Left of centre so they never crowd the title, and full strength - the one thing in front of
  * the panel has to look deliberate, and a faded object in front of a solid one looks like a
  * rendering fault. */
 .prop {
@@ -3700,7 +3700,7 @@ body.intermission #dead {
  * A copy of the artwork painted behind it, scaled up a hair, filled with the conic gradient and
  * masked by the image's own alpha. The mask is what makes it an outline rather than a glow:
  * only the pixels the artwork actually covers get painted, so the colour appears as a rim
- * exactly where the edge of the stack is. A border-radius could never do this — a pile of
+ * exactly where the edge of the stack is. A border-radius could never do this - a pile of
  * barrels is not a rectangle.
  *
  * 24 s, matching the mascot and the panel borders. Three things sweeping at three different
@@ -3757,7 +3757,7 @@ body.intermission #dead {
 /* The dashboard mascot's size, in ONE place and on the box, not the artwork.
  *
  * `#mascot::before` is a second copy of the same PNG masked over the whole box and painted in
- * the moving gradient — that is what gives him a rim that follows his silhouette instead of a
+ * the moving gradient - that is what gives him a rim that follows his silhouette instead of a
  * circle around him. So the box and the artwork have to be the same size: shrink only the
  * <img> and the rim keeps painting at the old size, which is the purple ghost standing behind
  * and to the right of him. Change this one number; everything else follows. */
@@ -3795,7 +3795,7 @@ body.intermission #dead {
  * A copy of the same image, scaled up a hair and painted behind him, with the moving conic
  * gradient as its fill and the image's own alpha as its mask. The mask is what makes it an
  * outline: only the pixels the artwork actually covers get painted, so the colour appears as a
- * rim exactly where his edge is. A border-radius could never do this — he is not a circle. */
+ * rim exactly where his edge is. A border-radius could never do this - he is not a circle. */
 #mascot::before {
   content: "";
   position: absolute;
@@ -3827,14 +3827,14 @@ body.intermission #dead {
 /* His advice, on hovering PLAY. White, where the in-game bubble is dark: this one sits over a
  * near-black landing page and has to read as a piece of paper rather than another dim panel.
  *
- * Up and to his right, and inside #mascot so it rides the bob with him — a bubble that stayed
+ * Up and to his right, and inside #mascot so it rides the bob with him - a bubble that stayed
  * still while his head moved would look pinned to the page rather than attached to him. */
 #menuSay {
   position: absolute;
   bottom: calc(100% - 46px);
   left: calc(100% - 34px);
   /* Wider and a size up: this is the last thing anybody reads before the round starts, and the
-     lines are hints now rather than flavour — a hint nobody can read is not one. */
+     lines are hints now rather than flavour - a hint nobody can read is not one. */
   width: 258px;
   padding: 13px 16px;
   border-radius: 14px;
@@ -3923,7 +3923,7 @@ h1 {
 /* The title on the landing page: one line, never wrapped, and always flowing.
  *
  * clamp() rather than a fixed size, because "Boom Beard" in a display face at a fixed 46px wraps
- * the moment the card is a little narrower than the design — and a wrapped title with a
+ * the moment the card is a little narrower than the design - and a wrapped title with a
  * background-clip gradient on it looks like a rendering fault rather than a line break. */
 #title {
   /* Sized so the longest word fits the card, and the box is grown to the text rather than the
@@ -3945,8 +3945,8 @@ h1 {
   max-width: 100%;
   margin-inline: auto;
   white-space: nowrap;
-  /* Cast gold, via .cast in the markup. It used to be a travelling conic rainbow — six hues
-     rotating through the letterforms — which was striking and said nothing. The title is the
+  /* Cast gold, via .cast in the markup. It used to be a travelling conic rainbow - six hues
+     rotating through the letterforms - which was striking and said nothing. The title is the
      first thing anybody sees and it should say "treasure", not "CSS". */
   text-shadow: none;
   /* The thin edge, then depth, then the bloom. `.cast` already supplies a version of this; the
@@ -3960,7 +3960,7 @@ h1 {
 }
 
 /* The 10px top margin is for the landing slogan, which wants air under the title rather than
-   to sit tight against it. Harmless on the other `.sub`s — "tab to close" and "no scores" are
+   to sit tight against it. Harmless on the other `.sub`s - "tab to close" and "no scores" are
    both last lines in their cards with nothing above them to be pushed away from. */
 .sub {
   color: var(--dim);
@@ -3981,7 +3981,7 @@ h1 {
 /* The version, under the right-hand end of the title.
  *
  * Inside a wrapper that is itself `fit-content`, so it tracks the title's actual rendered width
- * rather than the card's — the title is clamp()ed against the viewport, so the two are only the
+ * rather than the card's - the title is clamp()ed against the viewport, so the two are only the
  * same at one window size, and anchoring to the card would leave the marker drifting away from
  * the word on every other.
  *
@@ -3991,7 +3991,7 @@ h1 {
   position: relative;
   width: fit-content;
   max-width: 100%;
-  /* Lifted until roughly half the title is above the card's top edge — the lettering sits ON the
+  /* Lifted until roughly half the title is above the card's top edge - the lettering sits ON the
      panel rather than inside it, which is what makes it read as a sign rather than as a heading.
      Half the type's own size, from the same two variables the type is built from, so the overlap
      stays half whatever the title is scaled to.
@@ -4255,7 +4255,7 @@ kbd.wide {
    The same arithmetic #centre and #dead use, for the same reason.
 
    In the middle rather than under the clock, because it is no longer a caption: nothing moves
-   until it reaches zero, so it is the only thing on screen worth looking at — and the middle is
+   until it reaches zero, so it is the only thing on screen worth looking at - and the middle is
    where the board is empty, since everyone is standing still on their spawn. */
 #countIn {
   position: fixed;
@@ -4291,7 +4291,7 @@ kbd.wide {
   letter-spacing: 0.04em;
   /* The tick. Every whole second the class is re-applied (see the count-in block in
      client/main.js), which restarts this: the digit lands hard, overshoots a hair, and rocks
-     back — the motion an escapement makes, not a fade. */
+     back - the motion an escapement makes, not a fade. */
   filter: var(--cast-edge) drop-shadow(0 4px 0 #000)
     drop-shadow(0 8px 18px #000d) drop-shadow(0 0 28px #edc24e66);
   animation:
@@ -4405,7 +4405,7 @@ kbd.wide {
    last colour differ would jump at the loop. Six hues plus the repeat of the first.
 
    `--flow` is the period, set inline by client/main.js from the rung: a double kill pours slowly
-   and an ace is a blur. Speed IS the escalation here — the colours are the same at every rung,
+   and an ace is a blur. Speed IS the escalation here - the colours are the same at every rung,
    so there is nothing else for the eye to measure it against. */
 .rainbow {
   background-image: linear-gradient(
@@ -4461,7 +4461,7 @@ kbd.wide {
     drop-shadow(0 0 22px #ffffff5c);
 }
 
-/* The chat line. The feed is 11px and dense, so the rainbow is the whole emphasis — no size
+/* The chat line. The feed is 11px and dense, so the rainbow is the whole emphasis - no size
    change, no banner, nothing that would push the other lines around. */
 #chatList li.streakLine {
   font-weight: 700;
@@ -4475,7 +4475,7 @@ kbd.wide {
    so the corner and the banner are plainly the same event.
 
    Two overrides, and both are about `.castSm`, which this element also carries. Its cast-metal
-   layer is a pseudo-element painted ON TOP of the text — see the long note on `.castSm` — so it
+   layer is a pseudo-element painted ON TOP of the text - see the long note on `.castSm` - so it
    has to go, or the gold simply covers the rainbow. And its text-shadow has to go with it: a
    shadow under transparent glyphs paints straight through them, which would fill every letter
    with gold again from underneath. */
@@ -4494,7 +4494,7 @@ kbd.wide {
   }
 }
 
-/* The between-rounds visualiser. Same canvas treatment as #menuViz — `#dead` is already the
+/* The between-rounds visualiser. Same canvas treatment as #menuViz - `#dead` is already the
    board's box, so inset:0 lands the bars on the board's own edges, exactly where the landing
    page puts them relative to its card. Behind the card: DOM order decides, and the canvas comes
    first in the markup. */

@@ -1,4 +1,4 @@
-// Sound effects cannot run in Node — they need an AudioContext — so this checks the one thing
+// Sound effects cannot run in Node - they need an AudioContext - so this checks the one thing
 // that actually breaks: a name mismatch. `sfx.play('bom')` is silent, throws nothing, and looks
 // exactly like working code.
 
@@ -15,7 +15,7 @@ const read = p => fs.readFileSync(path.join(ROOT, p), 'utf8');
 const sfxSrc = read('public/client/audio/sfx.js');
 const mainSrc = read('public/client/main.js');
 
-/** Voice names, taken from the VOICES object literal — bounded, or this also catches the
+/** Voice names, taken from the VOICES object literal - bounded, or this also catches the
  *  public surface further down the file, whose members sit at the same indentation. */
 function declaredVoices() {
   const from = sfxSrc.indexOf('const VOICES = {');
@@ -36,7 +36,7 @@ const DYNAMIC = ['boom', 'blockdie', 'blocknew'];
  *
  * Reads the whole FIRST ARGUMENT and pulls every quoted string out of it, rather than matching a
  * bare literal right after the paren. The naive version missed
- * `sfx.play(mentioned ? 'mention' : 'chat')` entirely and reported both voices as dead code —
+ * `sfx.play(mentioned ? 'mention' : 'chat')` entirely and reported both voices as dead code -
  * which is exactly backwards, and the sort of false positive that gets a test deleted.
  */
 function requestedVoices() {
@@ -92,7 +92,7 @@ test('MAX_PER_FRAME keys are all real voices', () => {
 });
 
 test('every perk that can drop has its own pickup interval', () => {
-  // A perk with no entry falls back to a generic two-note blip, which is fine — but the four
+  // A perk with no entry falls back to a generic two-note blip, which is fine - but the four
   // original upgrades should each be distinguishable. Rum has its own voice (glug).
   const block = sfxSrc.slice(sfxSrc.indexOf('const PERK_NOTES = {'));
   for (const name of ['BOMB', 'FIRE', 'SKATE', 'SHIELD']) {

@@ -1,7 +1,7 @@
 // The mascot's speech bubble.
 //
-// No DOM here: createQuips takes the element, the clock and the RNG, so the rules it enforces —
-// the cooldown, the forced lines, the name substitution — are testable as plain functions.
+// No DOM here: createQuips takes the element, the clock and the RNG, so the rules it enforces -
+// the cooldown, the forced lines, the name substitution - are testable as plain functions.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

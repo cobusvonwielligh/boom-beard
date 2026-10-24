@@ -2,8 +2,8 @@
 //
 // WebTransport runs on QUIC over UDP/443. The win is the absence of head-of-line blocking: over
 // TCP a single lost packet stalls every byte queued behind it, so one drop delays the next three
-// snapshots as well as the one it hit. Inputs and snapshots are continuously replaced — a lost
-// one is superseded 33 ms later — so they want a channel that drops rather than waits.
+// snapshots as well as the one it hit. Inputs and snapshots are continuously replaced - a lost
+// one is superseded 33 ms later - so they want a channel that drops rather than waits.
 //
 // The catch is that corporate firewalls block UDP/443 far more often than TCP, and this game
 // exists to be played in an office. So both are dialled at once and whichever answers first wins.
@@ -17,13 +17,13 @@ import { encodeFrame, createFramer, pickChannel } from '/shared/wire.js';
  *
  * This is not a plain first-past-the-post race, and it took measuring to see why. A WebSocket
  * open fires as soon as TCP and TLS are up, which on a warm connection is quicker than a cold
- * QUIC handshake plus a stream — so pure "whoever answers first" meant the WebSocket won almost
+ * QUIC handshake plus a stream - so pure "whoever answers first" meant the WebSocket won almost
  * every time and the QUIC path, once built, was never actually used by anybody.
  *
  * So WebSocket waits. When it connects first it is held as a provisional winner for PREFER_MS,
  * and if WebTransport lands inside that window it takes the connection instead. Measured from
  * an external network, a QUIC session to this server is ready in about 50 ms, so 350 ms is a
- * wide margin — and it only ever costs anything on a network where UDP is being dropped
+ * wide margin - and it only ever costs anything on a network where UDP is being dropped
  * silently, which is exactly the case that should pay rather than everybody else.
  *
  * RACE_MS is the outer backstop for when both are slow.

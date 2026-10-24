@@ -1,7 +1,7 @@
 // Framing, shared by both transports.
 //
 // A WebSocket is message-oriented and needs none of this. A WebTransport stream is a raw byte
-// stream, so anything sent over one has to carry its own boundaries — and getting that wrong
+// stream, so anything sent over one has to carry its own boundaries - and getting that wrong
 // produces a protocol that works perfectly until the day two messages land in one TCP read.
 //
 // Newline-delimited JSON, because `JSON.stringify` never emits a raw newline: every control
@@ -59,7 +59,7 @@ export function createFramer(onMessage, { maxBytes = 1 << 20 } = {}) {
  *   - `snap`   a lost one is covered by the next, 66 ms later
  *   - `ping`   a lost one is covered by the next, 2 s later
  *
- * Everything else — the handshake, chat, round transitions — has to arrive and has to arrive in
+ * Everything else - the handshake, chat, round transitions - has to arrive and has to arrive in
  * order, so it goes on the reliable stream. This split IS the reason to use WebTransport at all;
  * sending everything reliably would be a WebSocket with extra steps.
  *

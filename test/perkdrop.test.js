@@ -113,7 +113,7 @@ test('every perk that can drop has its own colour, silhouette and floating label
   // Three independent channels, because each one fails at a different distance: hue survives
   // the zoom floor, the silhouette survives a dark tile, the detail only works up close. If two
   // perks ever shared a skin they would be indistinguishable in exactly the situation that
-  // matters — glancing at the floor mid-chase.
+  // matters - glancing at the floor mid-chase.
   // art.js is read as text, not imported: it uses the browser's /shared/... absolute specifier,
   // which Node cannot resolve.
   const art = read('public/assets/art.js');
@@ -193,7 +193,7 @@ test('gold is capped per round, and the cap counts drops rather than pickups', (
   const s = fresh();
   for (let i = 0; i < GOLD_MAX_PER_ROUND + 4; i++) drop(s, 1 + i * 2, 1, PERK.GOLD);
   assert.equal(s.goldDropped, GOLD_MAX_PER_ROUND + 4,
-    'drop() is the primitive and does not enforce the cap — the roll does');
+    'drop() is the primitive and does not enforce the cap - the roll does');
 
   // The roll is where the cap lives. Once it is hit, no amount of breaking walls produces gold.
   const r = fresh();

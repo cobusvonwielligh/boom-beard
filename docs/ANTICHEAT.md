@@ -23,7 +23,7 @@ realistic attacks, in the order somebody would actually try them:
 | 4 | Flood packets, chat, joins | availability |
 | 5 | Replay or steal somebody's identity | the lifetime leaderboard |
 | 6 | Read the page's own source for secrets | nothing, if there are none |
-| 7 | A scripted player — an aimbot or a perfect-dodge loop | the game, legitimately |
+| 7 | A scripted player - an aimbot or a perfect-dodge loop | the game, legitimately |
 
 Only (3), (4), (5) and (7) can affect anybody else's round. (1) and (2) are self-harm. (6) is a
 question about what we store, answered in §4.
@@ -42,8 +42,8 @@ with the server's and replays the unacknowledged inputs on top (`reconcile` in
 * setting `speed`, `x`, `y`, `stamina` or `slideV` in the console changes what you SEE for at most
   two ticks, and the next snapshot drags you back. This is the rubber-banding the netcode is
   designed to absorb, pointed at yourself on purpose.
-* **the server never reads a position from a client.** The input packet carries `x` and `y` — the
-  client's idea of where it is — and `room.input()` ignores them completely; they exist for a
+* **the server never reads a position from a client.** The input packet carries `x` and `y` - the
+  client's idea of where it is - and `room.input()` ignores them completely; they exist for a
   future desync log. Nothing else on the server touches them. Verified by test
   (`test/wire.test.js`, "the server never trusts a client's position").
 
@@ -52,7 +52,7 @@ with the server's and replays the unacknowledged inputs on top (`reconcile` in
 `room.input(seat, tick, mask)` is the only way into the simulation, and it is narrow by
 construction:
 
-* `mask & IN_MASK` — six bits, exactly the ones a keyboard can produce. Extra bits are dropped
+* `mask & IN_MASK` - six bits, exactly the ones a keyboard can produce. Extra bits are dropped
   rather than carried into the sim.
 * `tick <= lastAckTick` is refused: an input for a tick the server has already simulated is too
   late, so there is no rewriting the past.
@@ -66,8 +66,8 @@ Bomb placement, the slide, stamina, pickups, damage, shields and the gull payout
 server-side from the mask. The slide is worth calling out because it is new and it is the one
 mechanic with a *gesture*: the double-tap is detected in the browser and arrives as a single bit,
 and the simulation then applies its own cost, cooldown and velocity. A client that sets that bit
-every tick gets exactly what a player who double-taps perfectly gets — one slide per
-`SLIDE_COOLDOWN_TICKS`, each costing `SLIDE_STAMINA_COST` — which is why the gesture can live in
+every tick gets exactly what a player who double-taps perfectly gets - one slide per
+`SLIDE_COOLDOWN_TICKS`, each costing `SLIDE_STAMINA_COST` - which is why the gesture can live in
 the client at all.
 
 ### Availability
@@ -79,13 +79,13 @@ their own shorter throttle; one browser may hold `MAX_SESSIONS_PER_DEVICE` sessi
 ### Identity
 
 Until recently: none. The leaderboard is keyed by NAME (`careerKey`), because in an office the
-name is the person — and that meant anybody could type `cobusvw` and inherit the career. Now names
+name is the person - and that meant anybody could type `cobusvw` and inherit the career. Now names
 are owned: see §3.
 
 ### Commands
 
 The dangerous ones (`/restart`, `/godmode`, `/gamespeed`, `/roundtime`, `/map`, `/kick NAME`) are
-gated on `room.isAdminSeat` — the admin key, or the configured admin name where no key is set —
+gated on `room.isAdminSeat` - the admin key, or the configured admin name where no key is set -
 and **not** on `hostSeat`, which falls back to whoever joined first. They are also absent from
 `/help` for everybody else, and refusing one returns the unknown-command reply rather than "not for
 you": a refusal that confirms the command exists is an invitation.
@@ -120,8 +120,8 @@ real socket against a real server).
 
 ## 4. Local storage (done, with an honest caveat)
 
-`public/client/store.js`. Every value the client keeps — identity, name, device id, trust tokens,
-volumes, the auto-respawn preference — goes through a seal: XOR-obfuscated, base64'd, and carrying
+`public/client/store.js`. Every value the client keeps - identity, name, device id, trust tokens,
+volumes, the auto-respawn preference - goes through a seal: XOR-obfuscated, base64'd, and carrying
 a checksum over (key, value, per-browser salt).
 
 **This is tamper evidence and obfuscation, not encryption.** A page cannot keep a secret from its
@@ -132,14 +132,14 @@ claims otherwise is wrong. What the seal does buy:
 * a hand-edited or half-written value fails its checksum and is discarded rather than used;
 * the key is part of the checksum, so one value cannot be pasted over another;
 * the salt is per browser, so a sealed value from one machine is rejected on another;
-* nothing in storage is a readable invitation — `bv.name` is not a text field inviting an edit.
+* nothing in storage is a readable invitation - `bv.name` is not a text field inviting an edit.
 
 And what makes all of that *sufficient* is §2: there is nothing in local storage worth having.
 The identity is now password-backed, and every rule is enforced on the server.
 
 ---
 
-## 5. What is left — the plan
+## 5. What is left - the plan
 
 In priority order. Nothing here is urgent, because nothing in §2 is currently broken; this is the
 list for when the server is played by people who did not write it.
@@ -150,7 +150,7 @@ The server already receives the client's own idea of its position in every input
 ignores it. Compare it instead: `|client − server| > N units` for `K` consecutive ticks is either a
 desync bug or a modified client, and both are things we want to know about. Log it with the seat
 and the name; do not act on it. This is the single highest-value addition, because it turns an
-invisible class of problem into a line in a log — and it is five lines in `room.input`.
+invisible class of problem into a line in a log - and it is five lines in `room.input`.
 
 ### 5.2 Input cadence sanity
 
@@ -160,7 +160,7 @@ input rate over a sliding second and log (later: throttle) anything far outside 
 
 ### 5.3 Win-rate and accuracy telemetry
 
-The honest answer to (7) — a scripted player — is not detection in the simulation, it is
+The honest answer to (7) - a scripted player - is not detection in the simulation, it is
 statistics over rounds: kills per bomb, dodge rate, time-to-first-input after a blast appears. All
 of it is derivable from what the server already sees. A bot does not have to be banned
 automatically; it has to be visible to a human.

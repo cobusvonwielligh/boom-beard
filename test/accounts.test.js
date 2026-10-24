@@ -164,7 +164,7 @@ test('an unreadable file is never written over', async () => {
   const a = createAccounts({ dataDir: d });
   await a.register('cobus', PW);
   a.flushSync();
-  // A second save, because that is what makes the first one the backup — the very first write
+  // A second save, because that is what makes the first one the backup - the very first write
   // has nothing to copy aside, so an account one save old is the one case with no second copy.
   await a.register('tango', 'another password');
   a.flushSync();

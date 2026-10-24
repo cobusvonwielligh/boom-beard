@@ -89,7 +89,7 @@ test('a real sixteen-player snapshot is measured, not assumed', () => {
   const snap = { t: 'snap', tick: 17999, ack: 17998, players, bombs: [], perks: [], ev: [] };
   const size = new TextEncoder().encode(JSON.stringify(snap)).length;
   const channel = pickChannel(snap, size);
-  // Not an assertion about which one is right — just that the choice is made on the real number,
+  // Not an assertion about which one is right - just that the choice is made on the real number,
   // so whoever changes playerWire finds out here instead of in a game.
   assert.ok(size > 0);
   assert.equal(channel, size <= DATAGRAM_SAFE_BYTES ? 'datagram' : 'stream');
@@ -99,7 +99,7 @@ test('a real sixteen-player snapshot is measured, not assumed', () => {
 test('the websocket defers to an in-flight webtransport attempt', () => {
   // Pure first-past-the-post was the bug: a WebSocket open fires as soon as TCP and TLS are up,
   // which beats a cold QUIC handshake, so the transport we built was never actually used. The
-  // rule is readable straight out of the source — there is no DOM here to exercise it against.
+  // rule is readable straight out of the source - there is no DOM here to exercise it against.
   const src = readFileSync(new URL('../public/client/transport.js', import.meta.url), 'utf8');
   assert.match(src, /const PREFER_MS = \d+/, 'the preference window is gone');
   assert.match(src, /t\.kind === 'websocket' && wtPending\(\)/,
@@ -126,7 +126,7 @@ test('a WebTransport peer address is reduced to the address alone', () => {
 /* What a modified client can assert, and what it cannot. See docs/ANTICHEAT.md §2.
  *
  * These are source-level assertions rather than behavioural ones on purpose: the property being
- * defended is the ABSENCE of code — that nothing on the server reads a position from a client, and
+ * defended is the ABSENCE of code - that nothing on the server reads a position from a client, and
  * that the input mask is narrowed before it reaches the simulation. A behavioural test can only
  * show that today's server ignores the field; this shows that it never looks.
  */
@@ -143,14 +143,14 @@ test('the server never trusts a client position, and narrows every input mask', 
       `${name} reads a position out of a client message`);
   }
 
-  // And the mask is masked, with the shared allowlist rather than a hand-written literal — a
+  // And the mask is masked, with the shared allowlist rather than a hand-written literal - a
   // literal is how a new input bit gets silently dropped, or an old one silently allowed.
   assert.match(code(room), /mask & IN_MASK/, 'input masks are not narrowed to IN_MASK');
 });
 
 test('IN_MASK is exactly the bits a keyboard can produce', () => {
   // A new input bit has to be added to IN_MASK deliberately. If this fails because a bit was
-  // added, add it here too — and think about whether the simulation validates what it means.
+  // added, add it here too - and think about whether the simulation validates what it means.
   const all = IN_RIGHT | IN_UP | IN_LEFT | IN_DOWN | IN_BOMB | IN_SLIDE;
   assert.equal(IN_MASK, all);
   assert.equal(IN_MASK, 0b111111, `IN_MASK is ${IN_MASK.toString(2)}`);

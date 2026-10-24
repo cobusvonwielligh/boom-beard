@@ -12,7 +12,7 @@ import { BLOCK, BLOCK_HP, ICE_CHANCE } from './constants.js';
 import { rng } from './util/rng.js';
 
 // `shape` decides what the arena is cut out of. A rectangle is the Bomberman default and Arena
-// keeps it; the others are islands, which is both prettier and better level design — a coast
+// keeps it; the others are islands, which is both prettier and better level design - a coast
 // gives you dead ends and choke points that a rectangle has to spend soft walls to create.
 //
 //   rect   the whole bounding box is playable, walled with iron
@@ -32,13 +32,13 @@ import { rng } from './util/rng.js';
  * They were walkable green bushes and solid green hedges, and the green was the problem: on an
  * island of sand, stone and sea it was the one colour that did not belong to anything, and a
  * walkable block that looks like a wall is also the worst possible thing to put on a board where
- * the only question that matters is "can I get through there". The look they were reaching for —
- * growth on old stone — is now moss, which is drawn on top of the tiles that are already there
+ * the only question that matters is "can I get through there". The look they were reaching for -
+ * growth on old stone - is now moss, which is drawn on top of the tiles that are already there
  * and spans several of them. See mossAt in client/render.js.
  *
  * The weight stays rather than coming out, like the retired perk ids: a map is data, and a field
  * every map sets to zero is a switch somebody can turn back on. The block types stay for the same
- * reason — and because a snapshot from an older server may still contain one.
+ * reason - and because a snapshot from an older server may still contain one.
  */
 export const MAPS = [
   { id: 'arena', name: 'Arena', w: 37, h: 23, seed: 1337,
@@ -64,7 +64,7 @@ export const cellHp = b => (b >> 4) & 0x0f;
 
 // ─── island shapes ────────────────────────────────────────────────────────────
 // All of this runs exactly once, on the server, when a round starts. The result goes out as
-// base64 cells and no client ever re-derives it, so floating point here cannot desync anything —
+// base64 cells and no client ever re-derives it, so floating point here cannot desync anything -
 // which is why these are the only trigonometry in the project.
 
 const SECTORS = 24;
@@ -269,7 +269,7 @@ function reachable(cells, w, h, start) {
  *
  * Farthest-point sampling over the real floor: take the tile furthest from everything chosen so
  * far, sixteen times. On a rectangle that lands on the corners and edges, which is what the old
- * hand-computed ring did — but it also works on an island with a bay in it, where the geometric
+ * hand-computed ring did - but it also works on an island with a bay in it, where the geometric
  * version happily put a spawn point in the sea.
  *
  * Distance is Manhattan over coordinates rather than path length. A path-length version would be
@@ -328,15 +328,15 @@ export function buildMap(def) {
 
   const next = rng(def.seed);
   // Ice draws from its own stream, so turning some crates to ice leaves every map's layout exactly
-  // as it was — one more call on `next` per soft wall would have reshuffled the whole island.
+  // as it was - one more call on `next` per soft wall would have reshuffled the whole island.
   const iceNext = rng(def.seed ^ 0x1ce1ce);
   /* Gaps in the lattice, and they are different every single time.
    *
    * The even/even pillar rule gives every map the same chessboard of indestructible stone, which
    * is the backbone of a Bomberman board and also the reason a map you have played twice holds no
    * surprises: the walls that cannot be broken are in exactly the places you remember. Knocking
-   * one pillar in sixteen out leaves the backbone intact — the lattice is still what shapes the
-   * fight — while making every board subtly its own: a sight line where there was cover, a long
+   * one pillar in sixteen out leaves the backbone intact - the lattice is still what shapes the
+   * fight - while making every board subtly its own: a sight line where there was cover, a long
    * diagonal that used to be blocked, a room that is now a corridor.
    *
    * SEEDED FROM THE CLOCK, not from `def.seed`, which is the whole point. Everything else about a
@@ -348,7 +348,7 @@ export function buildMap(def) {
    * predicts against the exact bytes the simulation is using. Nothing here is recomputed anywhere.
    *
    * Its own stream, like the ice, so the layout is otherwise identical to what the seed produced.
-   * And it can only ever REMOVE stone, so it cannot wall anything off — the causeway rule above
+   * And it can only ever REMOVE stone, so it cannot wall anything off - the causeway rule above
    * and the stranded-island check below both still hold without having to know about it.
    */
   const gapNext = rng(((Date.now() ^ (Math.random() * 0x7fffffff)) | 0) >>> 0);
@@ -387,7 +387,7 @@ export function buildMap(def) {
         // A pillar, unless this is one of the one-in-sixteen gaps. Open sand rather than a roll
         // on `next`: a gap has to be VISIBLE as a hole in the chessboard, and taking the normal
         // soft-wall roll here would both hide it behind a crate and shift every subsequent draw
-        // from the layout stream — which is exactly what `gapNext` exists to avoid.
+        // from the layout stream - which is exactly what `gapNext` exists to avoid.
         type = gapNext() < LATTICE_GAP ? BLOCK.FLOOR : BLOCK.IRON;
       } else {
         const r = next();
@@ -405,7 +405,7 @@ export function buildMap(def) {
   //
   // The component has to be the LARGEST one, not the first one found. Seeding from the first
   // floor tile in scan order means a single stranded tile at the top of the map becomes "the
-  // island" and the entire real map is drowned — which is exactly what a star-shaped mask did,
+  // island" and the entire real map is drowned - which is exactly what a star-shaped mask did,
   // leaving one playable tile out of two thousand.
   const visited = new Set();
   let main = null;
@@ -426,7 +426,7 @@ export function buildMap(def) {
 
   // Clear a plus-shape around every spawn. Without this you can start boxed in, which on a
   // 16-minute round is a genuinely bad first thirty seconds. Spawns are picked from real floor,
-  // so this only ever clears soft walls — it can never punch a hole in the shoreline.
+  // so this only ever clears soft walls - it can never punch a hole in the shoreline.
   const spawns = spawnPoints(cells, w, h);
   for (const [sx, sy] of spawns) {
     for (const [dx, dy] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [2, 0], [-2, 0], [0, 2], [0, -2]]) {

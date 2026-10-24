@@ -1,6 +1,6 @@
 // Bot brains for the in-game `/bots N` command.
 //
-// These are seats the server drives itself — no sockets, no second process. That makes them
+// These are seats the server drives itself - no sockets, no second process. That makes them
 // nearly free, and it means they exercise the simulation rather than the network. The separate
 // `npm run bots` harness is the one that exercises the network; this is the one that gives you
 // somebody to blow up on a Tuesday.
@@ -11,7 +11,7 @@
 // to for up to thirty ticks, which turned every indecision into a visible shuffle.
 //
 // Everything here may use Math.random(). Bot thinking is not part of the simulation: room.js
-// calls think() to produce an input bitmask, and the mask is all the sim ever sees — identical in
+// calls think() to produce an input bitmask, and the mask is all the sim ever sees - identical in
 // kind to a mask that arrived over a socket. The browser never runs this file, so there is nothing
 // for it to disagree with. The sim's own randomness is the seeded generator at state.next.
 
@@ -35,7 +35,7 @@ const DIRS = [
 const BACK = [2, 3, 0, 1];      // index of the opposite direction
 
 // Node budget for the escape flood. Fifteen of these have to fit inside a 30 Hz tick, and 48
-// nodes is a reach of roughly four tiles in open ground — further than any blast in the game.
+// nodes is a reach of roughly four tiles in open ground - further than any blast in the game.
 const ESCAPE_NODES = 48;
 
 const TRAIL_LEN = 8;            // tile changes remembered, for loop detection
@@ -55,7 +55,7 @@ const LAPSE_TICKS = 4;
  * A bot used to read a blast the tick its bomb landed and leave with most of the fuse to spare,
  * so the only bombs that ever caught one were the ones with no way out at all. Now, for a bomb it
  * did not place, it sometimes stands and stares until the fire is under half a second away, and
- * only then runs — out of a single blast with a side turning that is still enough, out of a
+ * only then runs - out of a single blast with a side turning that is still enough, out of a
  * corridor it often is not. Waiting until 24 ticks were left changed nothing measurable: from
  * there a bot still makes the turning nearly every time. At 12 it does not.
  *
@@ -69,12 +69,12 @@ const DESTRUCTIBLE = new Set([BLOCK.SOFT, BLOCK.REINFORCED, BLOCK.MONOLITH, BLOC
 const SHRUB = new Set([BLOCK.SHRUB_WALK, BLOCK.SHRUB_SOLID]);
 
 /**
- * Tile keys a bomb's fire could reach — pessimistically, and deliberately not `spread()`.
+ * Tile keys a bomb's fire could reach - pessimistically, and deliberately not `spread()`.
  *
  * `spread` is the truth for a blast resolved right now: the arm stops at the first destructible
  * wall. But bombs detonate in chains, within a single tick, in bomb-id order, and a wall broken
  * by the first link is already floor by the time the second link spreads. The tile behind a soft
- * wall is therefore not the shelter it looks like — and measured, that was almost all of what was
+ * wall is therefore not the shelter it looks like - and measured, that was almost all of what was
  * still killing these bots: forty of forty-two deaths happened with the danger map showing the
  * victim's tile completely clear on the previous tick.
  *
@@ -120,11 +120,11 @@ export const createBrain = () => ({
 /**
  * Everything about to be on fire, how soon, and where a bomb is standing.
  *
- * Computed once per tick in room.js and shared by every bot — it is the same answer for all of
+ * Computed once per tick in room.js and shared by every bot - it is the same answer for all of
  * them, and `spread` per bomb is the most expensive thing in here.
  *
  * A bomb's own fuse is not when it goes off. Anything caught in a blast detonates that same tick,
- * so a bomb due in sixty ticks fires NOW if a neighbour's arm reaches it — and that was most of
+ * so a bomb due in sixty ticks fires NOW if a neighbour's arm reaches it - and that was most of
  * what was killing these bots. A fuse read straight off `at` told them a carpet of bombs was
  * sixty ticks of safety, and the first link in the chain took the lot with it before they had
  * taken a step. So every bomb's effective time is the soonest anything in its chain fires,
@@ -136,14 +136,14 @@ export function dangerMap(state) {
 
   /* Powder kegs are bombs that have not been lit yet.
    *
-   * They are blocks, so nothing in `state.bombs` knows about them — and a keg going off is a
+   * They are blocks, so nothing in `state.bombs` knows about them - and a keg going off is a
    * radius-7 blast that appeared with no fuse, no warning and no bomb on the danger map. A bot
    * standing six tiles away was told its tile was perfectly clear right up until it was fire.
    *
    * So every keg joins the source list with an infinite time, meaning "not lit". The chain pass
    * below is what lights them: if a real bomb's arm reaches a keg, the keg inherits that bomb's
    * time and propagates in turn, exactly the way `detonate` resolves it. A keg nothing reaches
-   * stays at Infinity and contributes nothing, which is correct — an unlit keg is a wall.
+   * stays at Infinity and contributes nothing, which is correct - an unlit keg is a wall.
    */
   const sources = bombs.map(b => ({ tx: b.tx, ty: b.ty, radius: b.radius, at: b.at }));
   const bombCount = sources.length;
@@ -206,7 +206,7 @@ export function dangerMap(state) {
  * Soonest anything under this player's feet burns.
  *
  * The hitbox is 160 units wide against a 256-unit tile, so a player mid-stride stands in two
- * tiles and dies to fire in either — `burns()` tests the box, not the centre. Asking only about
+ * tiles and dies to fire in either - `burns()` tests the box, not the centre. Asking only about
  * the centre tile let a bot think it had already made it out while half of it was still in the
  * blast.
  */
@@ -234,8 +234,8 @@ function threatAt(danger, extra, tx, ty) {
 /**
  * Ticks this player needs to cross one tile. An escape that ignores speed is not an escape.
  *
- * Standing in water counts as half pace for the whole route. Pessimistic — the puddle is at most
- * a couple of tiles across — but an escape planned at full speed from a puddle is exactly the one
+ * Standing in water counts as half pace for the whole route. Pessimistic - the puddle is at most
+ * a couple of tiles across - but an escape planned at full speed from a puddle is exactly the one
  * that comes up a tile short.
  */
 function ticksPerTile(p, state = null) {
@@ -259,11 +259,11 @@ function ticksPerTile(p, state = null) {
  * Timing is part of the answer, not a refinement: a tile is only a stepping stone if this player,
  * at the speed this player actually moves, is off it before it lights. `slack` buys extra ticks on
  * top of that estimate, because the real crossing is slower than perTile whenever a corner is
- * involved — the auto-centring slide spends part of the move on the perpendicular axis.
+ * involved - the auto-centring slide spends part of the move on the perpendicular axis.
  *
  * Only a tile that no blast covers at all counts as safe. "Somewhere with a second still left on
  * it" sounds more flexible and is a trap: the tile one step along your own blast has sixty ticks
- * left, so a bot accepts it, stops, and is still inside the blast when the fuse runs out — with
+ * left, so a bot accepts it, stops, and is still inside the blast when the fuse runs out - with
  * six tiles to cover and no time to do it. Measured, that one change tripled their suicides.
  *
  * @returns {{dir: number, clear: boolean}} first step, and whether it reached a safe tile. `dir`
@@ -329,7 +329,7 @@ function hypothetical(state, p, tx, ty) {
       /* A keg in the blast is part of the blast.
        *
        * `dangerMap` lights kegs off the bombs already on the board; this layer is about a bomb
-       * that does not exist yet, and it used to stop at the keg's tile — so a bot checking its
+       * that does not exist yet, and it used to stop at the keg's tile - so a bot checking its
        * escape from its own bomb was told the keg beside it was a wall, planned a route four
        * tiles long, and was still inside the radius-7 blast it had just set up when it went.
        * Now the keg joins the queue and spreads at its own radius, exactly as `detonate` will.
@@ -360,7 +360,7 @@ function worthBombing(state, p, tx, ty) {
     const t = tileAt(state.map, tx + d.dx, ty + d.dy);
     if (DESTRUCTIBLE.has(t)) return true;
     // A keg is the best thing on the board to put a bomb next to: one fuse buys a radius-7
-    // blast. Safe to want, because `hypothetical` now chains kegs too — the escape is checked
+    // blast. Safe to want, because `hypothetical` now chains kegs too - the escape is checked
     // against the whole explosion, not just the little one the bot is lighting.
     if (t === BLOCK.POWDER) return true;
   }
@@ -444,7 +444,7 @@ function chooseDir(state, p, brain, danger, tx, ty) {
   if (brain.bored > 0 || Math.random() > HUNT_CHANCE) return pick(options);
 
   // Head roughly toward the nearest player rather than purely at random. Without this they
-  // diffuse into the far corners of a 41x29 map and you never see them again — they are there to
+  // diffuse into the far corners of a 41x29 map and you never see them again - they are there to
   // be fought, not to explore.
   const target = nearestPlayer(state, p);
   if (target) {
@@ -461,14 +461,14 @@ function chooseDir(state, p, brain, danger, tx, ty) {
  *
  * Everything above reasons in tiles; the body does not live in tiles. A bot that has just crossed
  * into a tile is ~128 units off its centre line, and corner assist only helps within
- * CORNER_ASSIST_UNITS (112) of it — so turning into a gap from there pushes the hitbox flat into
+ * CORNER_ASSIST_UNITS (112) of it - so turning into a gap from there pushes the hitbox flat into
  * the wall beside the gap and nothing moves. The bot then re-derives the same direction from the
  * same tile on the next tick, and the next, until its own fuse runs out. Measured: that was 45% of
  * every bot death, the single largest cause by far.
  *
  * A person nudges back toward the lane without thinking about it, so the bot does too: if the
  * move is blocked and we are off the centre line across it, slide toward the centre first.
- * Movement rules are untouched — this is only which keys are pressed.
+ * Movement rules are untouched - this is only which keys are pressed.
  */
 function steer(state, p, dir) {
   const d = DIRS[dir];
@@ -485,17 +485,17 @@ function steer(state, p, dir) {
  * Movement travels on both axes in a tick now (see the diagonal block in sim/movement.js), and
  * for a long time the bots were the only ones on the island who did not know: they pressed one
  * key, walked the L, and took two legs over ground a person crossed in one. Escapes were the
- * worst of it — a flee route round a corner is exactly the shape a diagonal shortens.
+ * worst of it - a flee route round a corner is exactly the shape a diagonal shortens.
  *
  * So: having chosen a direction, add the perpendicular one when all three hold.
  *
- *   1. it points at the goal   — the safe tile the flood found, or whoever is being hunted.
- *   2. the diagonal is open    — the corner tile is walkable, free of bombs, and the body fits.
- *   3. it is no more dangerous — the corner's threat is at least the straight step's. A
+ *   1. it points at the goal   - the safe tile the flood found, or whoever is being hunted.
+ *   2. the diagonal is open    - the corner tile is walkable, free of bombs, and the body fits.
+ *   3. it is no more dangerous - the corner's threat is at least the straight step's. A
  *                                diagonal that shaves a corner into a blast is not a shortcut.
  *
  * Only ever an ADDITION to a direction the bot had already committed to, so every rule above it
- * — the flee, the hold, the loop breaker — behaves exactly as it did.
+ * - the flee, the hold, the loop breaker - behaves exactly as it did.
  */
 function withDiagonal(state, p, danger, mask, dir, gx, gy) {
   if (dir < 0 || gx < 0) return mask;
@@ -541,7 +541,7 @@ export function think(state, p, brain, danger) {
   if (brain.cooldown > 0) brain.cooldown--;
   if (noteTile(brain, ty * map.w + tx)) brain.bored = BORED_TICKS;
 
-  // 1. This tile is going to burn — any blast, however distant its fuse. Standing in one is the
+  // 1. This tile is going to burn - any blast, however distant its fuse. Standing in one is the
   //    only way a bot ever takes damage, so leaving is always the first priority.
   if (here !== Infinity) {
     // The moment it notices, it may hesitate (see LAPSE_CHANCE). Rolled once per danger, not
@@ -564,16 +564,16 @@ export function think(state, p, brain, danger) {
   } else brain.inDanger = false;
 
   // 2. Bombing, with a verified way out of the blast we are about to make. Verified means a
-  //    genuinely clear tile, reachable with a blast's worth of slack in hand — a best-effort
+  //    genuinely clear tile, reachable with a blast's worth of slack in hand - a best-effort
   //    direction is good enough to flee along and nowhere near good enough to bet on.
   //
   //    The mask carries no direction. `place` runs AFTER movement in the tick, so a bomb thrown
-  //    in alongside a direction lands on whatever tile the step finished in — not the tile the
+  //    in alongside a direction lands on whatever tile the step finished in - not the tile the
   //    escape was worked out for. That is how a bot dropped a bomb into a blast it had already
   //    checked itself out of, chain-detonated it instantly, and died with no warning at all. It
   //    costs one tick of standing still; the flee branch takes over on the next one, because by
   //    then the bomb is in the danger map.
-  // Bombs land on the tile you are FACING, not the one underfoot — see bombTile. Everything
+  // Bombs land on the tile you are FACING, not the one underfoot - see bombTile. Everything
   // the bot reasons about a bomb has to use that tile, or it checks its escape from the wrong
   // blast and walks confidently into the real one.
   const drop = bombTile(state, p);
@@ -595,7 +595,7 @@ export function think(state, p, brain, danger) {
    *
    * The commitment has to break on DANGER as well as on walls, and that was the whole bug.
    * Measured over three minutes with fifteen bots, three quarters of all deaths happened on a
-   * tile the danger map already showed burning in under ten ticks — so they were not blind, they
+   * tile the danger map already showed burning in under ten ticks - so they were not blind, they
    * were committed. A bot picks a direction, holds it for five to eleven ticks, and in that
    * window somebody drops a bomb in the corridor ahead. Nothing re-read the map until the bot
    * was standing in the blast, and by then it was several tiles deep with no time to get out.
@@ -606,7 +606,7 @@ export function think(state, p, brain, danger) {
   const ahead = DIRS[brain.dir];
   const ax = tx + ahead.dx, ay = ty + ahead.dy;
   // The whole body one tile on, not just the tile in front of its centre. Off the centre line the
-  // hitbox spans two lanes, and the diagonal it is about to drag itself into was never checked —
+  // hitbox spans two lanes, and the diagonal it is about to drag itself into was never checked -
   // that was the commonest way a bot walked into fire it had been told about.
   const aheadThreat = threatUnderfoot(danger, p, p.x + ahead.dx * 256, p.y + ahead.dy * 256);
   const blockedAhead = !walkable(map, ax, ay) ||
@@ -614,7 +614,7 @@ export function think(state, p, brain, danger) {
     aheadThreat <= ticksPerTile(p, state) * 4;
   if (brain.hold <= 0 || blockedAhead) {
     const dir = chooseDir(state, p, brain, danger, tx, ty);
-    // Boxed in on a safe tile: stay. Boxed in on a burning one — the flood found nothing — keep
+    // Boxed in on a safe tile: stay. Boxed in on a burning one - the flood found nothing - keep
     // moving, because standing still in a blast is the one choice that is certainly fatal.
     if (dir < 0 && here === Infinity) { brain.hold = 0; return 0; }
     if (dir >= 0) brain.dir = dir;

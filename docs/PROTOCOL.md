@@ -1,4 +1,4 @@
-# Boom Beard — Wire Protocol v1
+# Boom Beard - Wire Protocol v1
 
 **This document is frozen on day 1.** Both developers build against it before either side exists.
 Changing it mid-sprint means coordinating a release; adding an optional field does not.
@@ -29,7 +29,7 @@ and `shared/wire.js` decides for both ends:
 
 | Message | WebTransport | WebSocket |
 |---|---|---|
-| `input`, `snap`, `ping`, `pong` | **datagram** — unreliable, unordered | ordinary message |
+| `input`, `snap`, `ping`, `pong` | **datagram** - unreliable, unordered | ordinary message |
 | everything else | reliable bidirectional stream | ordinary message |
 
 Only continuously-replaced state goes unreliable: each of those is superseded within 66 ms, so a
@@ -54,14 +54,14 @@ level.
 { "t": "input", "...": "..." }
 ```
 
-Types are lowercase strings. Unknown types must be **ignored, not rejected** — that is what makes
+Types are lowercase strings. Unknown types must be **ignored, not rejected** - that is what makes
 adding an optional message safe.
 
 ---
 
 ## 3. Client → Server
 
-### `hello` — first message after the socket opens
+### `hello` - first message after the socket opens
 
 ```json
 {
@@ -81,7 +81,7 @@ Every field is type-checked on arrival; a value of the wrong type is treated as 
 Server replies `welcome` or `reject`.
 
 **Signing in.** A name is owned by whoever claimed it (`server/accounts.js`), so `hello` can be
-refused with a `reject` carrying an `auth` field — and that is a step in a conversation rather than
+refused with a `reject` carrying an `auth` field - and that is a step in a conversation rather than
 an error:
 
 | `auth` | Means | The client does |
@@ -97,27 +97,27 @@ and dropped from the client's stored hello the moment it is accepted, so a recon
 does not carry it. Spectators (`observe: true`) are never asked. `REQUIRE_PASSWORD=0` disables the
 whole exchange. See [ANTICHEAT.md](ANTICHEAT.md) §3.
 
-### `input` — every tick (30 Hz)
+### `input` - every tick (30 Hz)
 
 ```json
 {
   "t": "input",
   "tick": 10432,                 // the client tick this input applies to
   "m": 5,                        // bitmask: 1=right 2=up 4=left 8=down 16=bomb 32=slide
-  "x": 4096, "y": 2816           // client's predicted position — LOGGING ONLY, see below
+  "x": 4096, "y": 2816           // client's predicted position - LOGGING ONLY, see below
 }
 ```
 
 `m` is masked with `IN_MASK` on arrival, so a crafted packet cannot carry a bit the keyboard
 cannot produce. Bit 32 is the slide: the double-tap is detected in the browser and arrives as one
-bit, and the simulation applies its own cost, cooldown and velocity — so a client setting it every
+bit, and the simulation applies its own cost, cooldown and velocity - so a client setting it every
 tick gets exactly what a player who double-taps perfectly gets.
 
 `x` and `y` are **never read by the simulation**. They exist for a future desync log and are
 asserted-absent by test, because a server that believes a client about where it is has no
 collision detection, no fire damage and no pickups worth the name.
 
-Send one per tick even when the mask is unchanged — it doubles as a heartbeat and keeps the clock
+Send one per tick even when the mask is unchanged - it doubles as a heartbeat and keeps the clock
 sync honest. 60 bytes × 30 Hz = 1.8 KB/s up per client. Fine.
 
 ### `respawn`
@@ -152,7 +152,7 @@ Send every 2 s. See [NETCODE.md](NETCODE.md) §4.
 
 ## 4. Server → Client
 
-### `welcome` — once, in reply to `hello`
+### `welcome` - once, in reply to `hello`
 
 ```json
 {
@@ -178,7 +178,7 @@ Send every 2 s. See [NETCODE.md](NETCODE.md) §4.
 `config` carries every rule constant the client needs so a server tuning change does not require a
 client deploy. The client must read these, never hardcode them.
 
-### `snap` — 15 Hz
+### `snap` - 15 Hz
 
 ```json
 {
@@ -211,7 +211,7 @@ position and an altitude for any (fractional) tick, so the client draws the whol
 own clock. Omitted when the sky is empty, which is most of the time; `welcome` always carries it.
 
 `puddles` is melted ice: slow, slippery tiles that dry up at `until`. It is in every snapshot
-(and in `welcome`) rather than derived from `melt` events, because movement prediction reads it —
+(and in `welcome`) rather than derived from `melt` events, because movement prediction reads it -
 a client that joined mid-puddle, or missed the snapshot carrying the event, must still agree with
 the server about where the water is. Almost always an empty array.
 
@@ -226,16 +226,16 @@ limping is the entire reason to draw it at all.
 
 **Names are deliberately absent.** They change once per join and the snapshot goes out fifteen
 times a second, so carrying them would spend most of the bandwidth on a constant string. They
-arrive in `welcome` and are refreshed by `scores` — see the note there.
+arrive in `welcome` and are refreshed by `scores` - see the note there.
 
 Bomb fields: `id` · `x`,`y` **tile** coords · `o` owner index · `r` radius at placement ·
-`at` the tick it explodes. **`at` is what makes client-side fire prediction work — it is
+`at` the tick it explodes. **`at` is what makes client-side fire prediction work - it is
 authoritative and never changes.**
 
 Only **alive or observing** players appear in `players`. A disconnected player is removed and a
 `leave` event fires.
 
-### `ev` — events, carried inside `snap`
+### `ev` - events, carried inside `snap`
 
 Events are things that happen at an instant and must not be missed. Each has `e` and a tick.
 
@@ -261,7 +261,7 @@ floor within three tiles). A client that misses it sees the gull vanish from `gu
 flight is over and treats that as a hit too.
 
 **Reliability.** WebSocket is ordered and reliable, so events cannot be lost in transit. They can
-still be *missed by a client that joined late* — which is why `welcome` carries full state. A
+still be *missed by a client that joined late* - which is why `welcome` carries full state. A
 client must tolerate an event for an entity it has never seen by ignoring it.
 
 ### `chat`
@@ -270,7 +270,7 @@ client must tolerate an event for an entity it has never seen by ignoring it.
 { "t": "chat", "i": 3, "name": "Cobus", "msg": "behind you", "tick": 10480 }
 ```
 
-### `scores` — 1 Hz
+### `scores` - 1 Hz
 
 ```json
 {
@@ -287,7 +287,7 @@ client must tolerate an event for an entity it has never seen by ignoring it.
 round end, so without the addition your level would visibly refuse to move for ten minutes while
 you earned it.
 
-Everything the XP bar needs — `into`, `need`, `nextAt`, `fraction` — is computed here rather
+Everything the XP bar needs - `into`, `need`, `nextAt`, `fraction` - is computed here rather
 than on the client. Two implementations of one curve drift.
 
 This message is also the only thing that refreshes **names**. The snapshot omits them, so a
@@ -310,7 +310,7 @@ that ignored this would count toward the wrong number.
 ```
 
 Sent when the host runs `/gamespeed`; `welcome.config.gamespeed` carries the current value. A
-tick still means 1/30 s of game time — only how often the server issues them changes — so the
+tick still means 1/30 s of game time - only how often the server issues them changes - so the
 client **must** rescale its clock and its fixed-step loop to `TICK_MS * 100 / pct`. A client that
 ignored it stamped its inputs for the wrong ticks: at 200% every input landed in the server's past
 and was dropped, and players were pinned to the tile they stood on.
@@ -337,7 +337,7 @@ and was dropped, and players were pinned to the tile they stood on.
 ```
 
 `already-playing` may carry `forget: true`, which tells the client to clear its stored
-`playerId` — the identity it was holding is not one it can use.
+`playerId` - the identity it was holding is not one it can use.
 
 ---
 

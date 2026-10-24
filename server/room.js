@@ -1,6 +1,6 @@
 // One round: the authoritative loop, the seats, and the snapshots.
 //
-// The loop is the only thing in the project allowed to decide the order of operations — see
+// The loop is the only thing in the project allowed to decide the order of operations - see
 // docs/ARCHITECTURE.md §4. Everything it calls is a pure-ish system from shared/sim.
 
 import {
@@ -45,8 +45,8 @@ export const BOT_NAMES = [
 export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = MAX_PLAYERS, leaderboard = null,
   // Overridable so a test can watch a seat be recycled without waiting 45 real seconds.
   graceTicks = RECONNECT_GRACE_TICKS,
-  // How many bots to keep topped up while people are here; see AUTO_BOTS_MIN. Zero — the
-  // default, so a test room stays exactly as its test seats it — turns the policy off.
+  // How many bots to keep topped up while people are here; see AUTO_BOTS_MIN. Zero - the
+  // default, so a test room stays exactly as its test seats it - turns the policy off.
   minBots = 0,
   /* Ticks of frozen count-in at the top of each round. See COUNT_IN_TICKS.
    *
@@ -58,7 +58,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
   countIn = COUNT_IN_TICKS,
 }) {
   // Start somewhere random rather than always on the first map. Rotation between rounds works
-  // fine, but a server that restarts — a deploy, a crash, a reboot — always came back to Arena,
+  // fine, but a server that restarts - a deploy, a crash, a reboot - always came back to Arena,
   // so in practice that is the only map anybody ever saw.
   let mapIndex = (Math.random() * MAPS.length) | 0;
   let state = createState(MAPS[mapIndex]);
@@ -77,7 +77,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
   // Percent of the real-time tick rate. The tick itself is always 1/30 s of simulated time.
   let gamespeed = 100;
   // How long a round runs, in ticks. Defaults to ROUND_TICKS and is changeable at runtime by the
-  // host with /roundtime — a Friday session is not always a ten-minute-round session.
+  // host with /roundtime - a Friday session is not always a ten-minute-round session.
   let roundTicks = ROUND_TICKS;
   const tickMs = () => TICK_MS * 100 / gamespeed;
 
@@ -138,7 +138,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
       const held = seats[existing];
 
       // An id is one person, and one person plays once. A second window on the same identity is
-      // turned away rather than quietly handed a second seat or allowed to steal the first — a
+      // turned away rather than quietly handed a second seat or allowed to steal the first - a
       // sixteen-seat server where one person can hold two of them is a smaller server.
       //
       // Only a LIVE seat refuses. A socket that has actually gone is the reconnect case, and
@@ -159,7 +159,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
 
     // A full server that is full of bots is not full. Turning away a real person so a brain we
     // wrote can keep playing is the wrong answer every time, so the newest bot gives up its seat
-    // — newest because the bots that have been in longest are the ones already in a fight.
+    // - newest because the bots that have been in longest are the ones already in a fight.
     let seat = seats.findIndex(s => s === null);
     let displaced = null;
     if (seat === -1) {
@@ -196,7 +196,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
   }
 
   /**
-   * Admin kick. Banks a human's score exactly as a disconnect would — being thrown out of a round
+   * Admin kick. Banks a human's score exactly as a disconnect would - being thrown out of a round
    * is annoying enough without also losing the career points you earned in it.
    *
    * The socket is not ours to close; net.js does that when this returns a name.
@@ -281,8 +281,8 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
      *
      * Not "the best five, shuffled". That kept sending everyone back to the same handful of
      * corners, and a corner you can predict is a corner somebody can camp. Weighting the whole
-     * list instead means any spot on the map can come up — a busy one is simply unlikely rather
-     * than impossible — so there is no set of tiles to watch.
+     * list instead means any spot on the map can come up - a busy one is simply unlikely rather
+     * than impossible - so there is no set of tiles to watch.
      *
      * Weight is the SQUARE of the distance to the nearest player, which is what makes it a
      * preference rather than a rule: twice as far away is four times as likely, so the far side
@@ -336,7 +336,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
    * Precisely: at the instant of this kill the killer is alive, every other occupied seat is dead,
    * every one of those seats was killed by this player inside the current streak, and there were
    * at least three of them. Respawning is a key press away and a corpse is only on the floor for a
-   * second, so "everyone else down at once" is a genuinely hard thing to arrange — which is the
+   * second, so "everyone else down at once" is a genuinely hard thing to arrange - which is the
    * point. A streak that scores an ACE then starts its victim list again, so the next one needs
    * another full sweep rather than one more kill while the room happens to still be empty.
    */
@@ -379,8 +379,8 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
 
       /* `n` is the rung, and it rides along so the client never has to parse `kind`.
        *
-       * Everything on the client that escalates with a streak — the size of the type, the chord,
-       * how fast the rainbow pours through the letters — was reading the KIND STRING and matching
+       * Everything on the client that escalates with a streak - the size of the type, the chord,
+       * how fast the rainbow pours through the letters - was reading the KIND STRING and matching
        * prefixes against it. That makes the announcement's wording part of the protocol: rename
        * "ULTRA KILL" and three unrelated effects quietly drop to their lowest setting. The number
        * is the fact; the words are a label for it.
@@ -404,8 +404,8 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
 
     /* The count-in. Nobody moves, and that includes the brains.
      *
-     * The simulation still runs — the tick advances, snapshots go out, the clock stays honest and
-     * a client that joins mid-count sees the board and the remaining digits — but every input is
+     * The simulation still runs - the tick advances, snapshots go out, the clock stays honest and
+     * a client that joins mid-count sees the board and the remaining digits - but every input is
      * zero, so nothing can walk and nothing can be placed. Freezing by zeroing the INPUTS rather
      * than by skipping the tick is what keeps it simple: there is no second code path through the
      * simulation, no state that only exists during a count-in, and the client's clock never
@@ -413,11 +413,11 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
      *
      * Bots are frozen by not being asked to think. A bot that thought while frozen would spend
      * the whole count-in deciding, and arrive on the first live tick with a plan made five
-     * seconds ago — which is both wrong and unfair in the same direction.
+     * seconds ago - which is both wrong and unfair in the same direction.
      */
     const counting = state.tick < countIn;
 
-    // Computed once per tick and shared by every bot — it is the same answer for all of them.
+    // Computed once per tick and shared by every bot - it is the same answer for all of them.
     const danger = !counting && seats.some(s => s?.isBot) ? dangerMap(state) : null;
 
     for (let i = 0; i < maxPlayers; i++) {
@@ -440,7 +440,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
        *
        * A client is told not to send inputs while the board is frozen (see the loop in
        * client/main.js), so five seconds of correct silence would otherwise count against the
-       * idle timer — and on a long enough count-in, join the round and be kicked from it.
+       * idle timer - and on a long enough count-in, join the round and be kicked from it.
        */
       if (counting) s.lastInputAt = state.tick;
 
@@ -448,7 +448,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
 
       // Connected but silent. A playing client sends an input every tick, including a mask of
       // zero while standing still, so silence means the tab is backgrounded, frozen or on a
-      // sleeping laptop — not that somebody is thinking. Give the seat back: sixteen is a hard
+      // sleeping laptop - not that somebody is thinking. Give the seat back: sixteen is a hard
       // cap, and a seat held by a closed lid is a person who cannot join.
       else if (s.connected && !s.isBot &&
                state.tick - (s.lastInputAt ?? state.tick) > IDLE_KICK_TICKS) {
@@ -471,7 +471,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
 
     if (state.tick % TICK_HZ === 0) emitScores();
     // Bank everyone's progress every ten seconds, not only at round end and on leaving. Banking is
-    // by delta, so doing it often costs nothing and double-counts nothing — and the most a crash
+    // by delta, so doing it often costs nothing and double-counts nothing - and the most a crash
     // can now take from anybody is ten seconds of play rather than the round so far.
     if (state.tick % (10 * TICK_HZ) === 0) bankScores();
 
@@ -480,7 +480,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     // This used to clear them every tick while snapshots go out every *second* tick, which threw
     // half of every event away. It cost: deaths that never showed a death screen or a kill-feed
     // line, so bombs looked like they did no damage; blocks that broke on the server and stayed
-    // drawn here; and — worst — every single `blocknew`, because wall regrowth lands on tick
+    // drawn here; and - worst - every single `blocknew`, because wall regrowth lands on tick
     // 600, 1200, 1800, always even. Clients never heard about a regenerated wall, so prediction
     // happily walked straight through it. That is the "I clip through walls" bug.
     if (state.tick % SNAP_EVERY_TICKS === 0) {
@@ -497,7 +497,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
 
   /**
    * End of round: bank everyone's score into the leaderboard, show the standings, then start
-   * the next map. The simulation is paused during the intermission — people deserve to read
+   * the next map. The simulation is paused during the intermission - people deserve to read
    * the scoreboard without being blown up behind it.
    */
   function endRound() {
@@ -512,7 +512,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
 
     // Survivors are paid BEFORE the banking, not after. The bonus used to be added on the line
     // below the write, so it was computed, displayed for twenty seconds, and then thrown away
-    // when the round reset — fifty points that never once reached anybody's total.
+    // when the round reset - fifty points that never once reached anybody's total.
     for (const p of state.players) if (p?.alive) p.score += SCORE.SURVIVE_ROUND;
     bankScores();
     awardMedals(standings);
@@ -538,7 +538,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
    * From the same `standings` the round-over table shows, so the medal you are given is the one
    * you were looking at. Two rules stop a medal meaning nothing:
    *
-   *   - a place only pays if somebody finished BELOW it — gold needs two players, silver three,
+   *   - a place only pays if somebody finished BELOW it - gold needs two players, silver three,
    *     bronze four. Last is never on the podium, so a two-player round is a gold, not a gold
    *     and a silver for turning up.
    *   - a finish on zero points wins nothing. A round that nobody scored in has no podium.
@@ -564,14 +564,14 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
   /**
    * Install a fresh state on `index`, keeping everyone seated, and tell the clients.
    *
-   * One helper, two callers. There used to be two copies of this — startNextRound and
-   * restartRound, identical apart from the map — and the seat-carrying bug below existed in both
+   * One helper, two callers. There used to be two copies of this - startNextRound and
+   * restartRound, identical apart from the map - and the seat-carrying bug below existed in both
    * precisely because it had to be fixed twice.
    *
    * The thing that has to happen here: a fresh `createState` restarts the tick at 0, so every
    * seat field measured in ticks has to come back to 0 with it. A carried `goneSince` of 20 000
    * can never satisfy `state.tick - goneSince > graceTicks` again, so a reserved seat was never
-   * recycled and never banked — it leaked for the lifetime of the process. A carried `lastAckTick`
+   * recycled and never banked - it leaked for the lifetime of the process. A carried `lastAckTick`
    * is just as bad in the other direction: `input()` drops anything `<= lastAckTick`, so a client
    * would be silently unable to move for the first 28 800 ticks of the new round.
    */
@@ -614,16 +614,16 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     b: p.bombs, f: p.radius, sp: p.speed, sh: p.shields,
     s: p.score, k: p.kills, dd: p.deaths, stat: p.status,
     // Coins. One small integer that only ever goes up, and the only stat on the wire that is
-    // not about this round — it is what the HUD counter reads. `c`, not `g`: `gold` on the
+    // not about this round - it is what the HUD counter reads. `c`, not `g`: `gold` on the
     // leaderboard means a first-place finish.
     c: p.coins || 0,
     // Stamina rides along because the indicator is drawn beside EVERY player, not just you:
     // seeing that the pirate chasing you is limping is the whole point of showing it at all.
     sta: p.stamina, stl: p.staminaLevel, tr: p.tired ? 1 : 0,
-    // Only while sliding on water, which is almost never — absent means zero.
+    // Only while sliding on water, which is almost never - absent means zero.
     ...(p.slide ? { sl: p.slide } : null),
     /* The deliberate slide. Three fields, and all three only while one is actually running or
-     * cooling down — which is the overwhelming majority of ticks omitted for everybody.
+     * cooling down - which is the overwhelming majority of ticks omitted for everybody.
      *
      * `sv` is the live velocity, and the renderer needs it for the dust and the streaks; the
      * other two are what prediction has to start its replay from, or your own slide would be
@@ -631,7 +631,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     ...(p.slideV ? { sv: p.slideV, sd: p.slideDir, sf: p.slideFor } : null),
     ...(p.slideCool ? { sc: p.slideCool } : null),
     // Mugged by seagulls. One player a round at most, so it is absent for everybody nearly
-    // always — and it has to be in the snapshot, not only in the event, or a client that joined
+    // always - and it has to be in the snapshot, not only in the event, or a client that joined
     // after the raid would have no idea why the table says what it says.
     ...(p.gulled ? { gl: 1 } : null),
   });
@@ -667,7 +667,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
    * this is the career one.
    *
    * It is the round score *plus* what is already banked, because the board is only written on
-   * disconnect and at the end of a round — without the addition your rank would visibly refuse to
+   * disconnect and at the end of a round - without the addition your rank would visibly refuse to
    * move for sixteen minutes while you earned it.
    */
   function emitScores() {
@@ -685,8 +685,8 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
       const unbankedDeaths = p.deaths - (s.banked?.deaths ?? 0);
       const unbankedCoins = (p.coins || 0) - (s.banked?.coins ?? 0);
       // The name rides along because nothing else refreshes it. The snapshot leaves names out
-      // on purpose — fifteen a second of a string that changes once per join is most of the
-      // bandwidth — so a client that misses the welcome, or hydrates a seat from a snapshot
+      // on purpose - fifteen a second of a string that changes once per join is most of the
+      // bandwidth - so a client that misses the welcome, or hydrates a seat from a snapshot
       // that arrived first, is stuck calling somebody "p1" for the rest of the round. Once a
       // second it heals itself.
       // Lifetime podium finishes, gold / silver / bronze, for the stats card and the TAB board.
@@ -701,7 +701,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     }
     /* `owner` is the seat that owns the server, where one is sitting.
      *
-     * Not a privilege on the wire — every owner-gated command is checked server-side and always
+     * Not a privilege on the wire - every owner-gated command is checked server-side and always
      * will be (see isOwner in server/net.js). It is here so the client can show the OWNER the
      * server's own vitals and show nobody else a number they cannot act on.
      */
@@ -725,7 +725,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
       you: seat,
       // Every welcome carries the resume token, not just the one sent on `hello`. A round restart
       // broadcasts welcomes too, and without this the client stored `undefined` over its real id
-      // and came back after the next drop claiming a seat under the literal string "undefined" —
+      // and came back after the next drop claiming a seat under the literal string "undefined" -
       // which two clients would then fight over.
       playerId: seats[seat]?.playerId ?? null,
       tick: state.tick,
@@ -765,7 +765,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
       const now = performance.now();
       // Absolute deadlines, so the tick rate does not drift. Capped catch-up, so a long GC pause
       // cannot trigger a storm of ticks that makes everyone teleport. Both still hold at any
-      // gamespeed — the deadline spacing is the only thing that changes.
+      // gamespeed - the deadline spacing is the only thing that changes.
       let guard = 0;
       while (now >= nextDeadline && guard < 3) {
         tick();
@@ -803,7 +803,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
    * Who is in charge.
    *
    * The admin whenever they are connected (the seat that joined with the admin key, or with
-   * `adminName` where no key is configured), and otherwise the longest-standing human — the
+   * `adminName` where no key is configured), and otherwise the longest-standing human - the
    * lowest occupied seat, which is the first person who joined and has not left. A room always
    * has exactly one host while anybody is in it, and losing one promotes the next without
    * anybody having to do anything.
@@ -825,7 +825,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
    * Make the number of bots exactly n, adding or removing from the end.
    *
    * @param byHand a host typed this. Asking for FEWER bots than there are switches the
-   *   automatic top-up off, for the same reason a /kick of one does — see kickSeat.
+   *   automatic top-up off, for the same reason a /kick of one does - see kickSeat.
    */
   function setBots(n, { byHand = false } = {}) {
     n = Math.max(0, Math.min(maxPlayers - 1, n | 0));   // never fill the last human seat
@@ -836,7 +836,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
       clearSeat(seat);
       // No hand-rolled snapshot here. One without an `ack` made every client replay its whole
       // unacknowledged input queue on top of the server position, which rubber-banded everyone
-      // forward. The next real snapshot drops the seat anyway — applySnap removes whoever is
+      // forward. The next real snapshot drops the seat anyway - applySnap removes whoever is
       // missing from it.
     }
     while (botCount() < n) {
@@ -850,7 +850,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
       streaks[seat] = newStreak();
       const p = createPlayer(seat, name);
       // The one thing the simulation is told about brains: gulls will not fall to a bot's fire.
-      // See gulls.js. Never on the wire and never in hashState, so prediction is unaffected —
+      // See gulls.js. Never on the wire and never in hashState, so prediction is unaffected -
       // the client does not run the gulls at all.
       p.isBot = true;
       state.players[seat] = p;
@@ -887,7 +887,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
   /**
    * End of a round with nobody in it: count it, and after AUTO_BOTS_EMPTY_ROUNDS in a row send
    * the bots home and hand the top-up back to the room. That reset is the only thing that turns
-   * a host's "no bots, thanks" back off — everyone has gone, so nobody is being overruled.
+   * a host's "no bots, thanks" back off - everyone has gone, so nobody is being overruled.
    */
   function retireIdleBots() {
     emptyRounds = humanThisRound ? 0 : emptyRounds + 1;
@@ -916,7 +916,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
    *
    * What changes is the wall-clock interval between ticks, never the tick's meaning. A tick stays
    * 1/30 s of simulated time, because the client predicts its own movement by running the same
-   * `step()` once per tick and derives explosions from a bomb's `at` tick — redefining the tick
+   * `step()` once per tick and derives explosions from a bomb's `at` tick - redefining the tick
    * would desync every one of those. The poller period is re-derived too, because an interval
    * fixed at half of 33 ms cannot deliver a tick every 16 ms at 200 %.
    */
@@ -938,7 +938,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
    * It exists because the only two places that used to write were "round over" and "player
    * disconnected", and a server restart is neither. Deploys happen several times an hour on a
    * build day, rounds last ten minutes, and everybody still connected lost everything since the
-   * last round boundary every single time. The file was never the problem — nothing was asking
+   * last round boundary every single time. The file was never the problem - nothing was asking
    * it to save.
    */
   function bankScores() {
@@ -1031,7 +1031,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
   const roundInfo = () => ({ tick: state.tick, endsAt: roundTicks, between, map: state.map.id });
 
   /**
-   * Is this seat the REAL admin — the key-holder, or the configured admin name where no key is
+   * Is this seat the REAL admin - the key-holder, or the configured admin name where no key is
    * set? Not the same question as `hostSeat`, which falls back to the longest-standing player
    * so that a room is never without somebody who can add bots.
    *

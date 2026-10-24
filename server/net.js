@@ -12,7 +12,7 @@ import { createGuard, addressOf } from './guard.js';
 import { sameSecret } from './config.js';
 import { hasBlockedLanguage, maskBlockedLanguage } from './names.js';
 
-// Open sessions — playing or watching — one browser may hold at once. See claimDevice.
+// Open sessions - playing or watching - one browser may hold at once. See claimDevice.
 export const MAX_SESSIONS_PER_DEVICE = 2;
 
 /* Wire values are coerced by type, never by `String()` or `| 0`: both call the object's own
@@ -33,7 +33,7 @@ export const playerName = raw => {
   return name.toLowerCase() === 'server' ? 'anon' : name;
 };
 
-/** "30s", "45m", "2h 15m" — short enough to fit in a reject reason. */
+/** "30s", "45m", "2h 15m" - short enough to fit in a reject reason. */
 export function humanDuration(ms) {
   const s = Math.ceil(Math.max(0, ms) / 1000);
   if (s < 60) return `${s}s`;
@@ -48,7 +48,7 @@ export function humanDuration(ms) {
  *
  * Deliberately not persisted. The leaderboard file is for scores; moderation state that survives
  * a restart is a bigger decision than one chat command should be able to make, and there is no
- * /unban to undo a mistake with. A restart clears every ban — which is also the escape hatch.
+ * /unban to undo a mistake with. A restart clears every ban - which is also the escape hatch.
  *
  * Keyed by the sanitised, lowercased name, because that is the only identity a joining client
  * cannot simply choose not to send: `playerId` comes from its own sessionStorage.
@@ -65,7 +65,7 @@ export function createBans({ now = Date.now } = {}) {
     return h;
   }
 
-  /** Milliseconds left, or 0. Expired entries are dropped as they are found — no sweeper needed. */
+  /** Milliseconds left, or 0. Expired entries are dropped as they are found - no sweeper needed. */
   function remainingMs(name) {
     const k = key(name);
     const at = until.get(k);
@@ -95,8 +95,8 @@ export function createCommands({ room, config, reply, announce, kick, signOut, b
    * OWNER things are not. Restarting the round throws away everybody's score, godmode makes one
    * player unkillable, /gamespeed and /roundtime change the rules under sixteen people, /map
    * replaces the board mid-fight, and /kick NAME can ban a person for hours. Those belong to the
-   * one account that owns the server — the admin key, or `adminName` where no key is configured
-   * — and emphatically NOT to "the longest-standing player", which is what `hostSeat` falls back
+   * one account that owns the server - the admin key, or `adminName` where no key is configured
+   * - and emphatically NOT to "the longest-standing player", which is what `hostSeat` falls back
    * to and which is simply whoever joined first.
    *
    * They are also not advertised. `PUBLIC` is what everybody sees from /help, and it does not
@@ -119,7 +119,7 @@ export function createCommands({ room, config, reply, announce, kick, signOut, b
    *
    * Deliberate: "not for you" confirms that the command is real and that somebody else can use
    * it, which is an invitation to keep trying. An unknown-command reply tells a stranger nothing
-   * they did not already know, and tells the owner nothing they need — they can always use it.
+   * they did not already know, and tells the owner nothing they need - they can always use it.
    */
   const deny = ws => reply(ws, `unknown command. ${PUBLIC}`);
 
@@ -266,8 +266,8 @@ export function attachHub(server, config) {
    *
    * Per BROWSER, because that is the only "computer" a web page can identify: a MAC address
    * never leaves the local network and no browser will reveal one, and an IP address is the
-   * whole office at once. The browser keeps a random device id in localStorage — separate from
-   * the player identity, so /logout does not reset it — and sends it with every hello. A second
+   * whole office at once. The browser keeps a random device id in localStorage - separate from
+   * the player identity, so /logout does not reset it - and sends it with every hello. A second
    * browser or a private window is a different device; this stops the easy case, tabs. */
   const devices = new Map();     // device id -> Set of ws
   const deviceOf = raw => (typeof raw === 'string' && /^[\w-]{8,64}$/.test(raw) ? raw : null);
@@ -290,14 +290,14 @@ export function attachHub(server, config) {
   /* Spectators. No seat, no inputs, no place in the simulation at all.
    *
    * Held in their own set rather than as seats with a flag, because a seat is the scarce thing
-   * — sixteen of them — and the whole point of spectating is that it costs nobody a place. It
+   * - sixteen of them - and the whole point of spectating is that it costs nobody a place. It
    * also means every rule that iterates seats stays exactly as it was: a spectator cannot win a
    * round, cannot be kicked for idling, cannot be host, and cannot appear on the scoreboard,
    * without a single one of those places having to learn the word.
    */
   const watchers = new Set();    // ws
 
-  /** Outbound delay, dev only. Refuses to coexist with TLS — see server/index.js. */
+  /** Outbound delay, dev only. Refuses to coexist with TLS - see server/index.js. */
   const sendTo = (ws, msg) => {
     if (!ws || ws.readyState !== ws.OPEN) return;
     const data = JSON.stringify(msg);
@@ -325,7 +325,7 @@ export function attachHub(server, config) {
      * The name used to grant nothing as soon as a key was configured, on the reasoning that a
      * name is a thing anybody can type. That stopped being true when accounts landed: a name is
      * claimed once and password-checked on every join after that (see `authorise` below), so
-     * "the seat called cobusvw" is as strong a claim as the password on it — and it is the claim
+     * "the seat called cobusvw" is as strong a claim as the password on it - and it is the claim
      * actually being made, from a browser, by somebody who is not going to paste a key into a
      * URL every time they sit down to play.
      *
@@ -359,7 +359,7 @@ export function attachHub(server, config) {
   /**
    * Throw someone out: free the seat, then tell their socket why.
    *
-   * `reject` before `close` on purpose — it is what stops the client reconnecting straight back
+   * `reject` before `close` on purpose - it is what stops the client reconnecting straight back
    * in (see onclose in public/client/net.js, which honours `closedByUs`). The socket is marked so
    * its own close handler does not then hand the freed seat a reconnect grace period it no longer
    * has any claim to.
@@ -396,8 +396,8 @@ export function attachHub(server, config) {
   /**
    * One connected player, whatever pipe they arrived down.
    *
-   * Factored out of the WebSocket `connection` handler so a WebTransport session — wrapped in a
-   * ws-shaped adapter by server/webtransport.js — runs this exact code. Nothing below this line
+   * Factored out of the WebSocket `connection` handler so a WebTransport session - wrapped in a
+   * ws-shaped adapter by server/webtransport.js - runs this exact code. Nothing below this line
    * knows or cares which transport it is talking to, which is the only way a dual transport
    * stays honest: one protocol, one implementation, two pipes.
    */
@@ -415,7 +415,7 @@ export function attachHub(server, config) {
     const budget = guard.messageBudget();
 
     ws.on('message', raw => {
-      // Over budget: dropped, not fatal — a tab coming back from the background can burst. Only a
+      // Over budget: dropped, not fatal - a tab coming back from the background can burst. Only a
       // socket that KEEPS flooding, a thousand dropped in ten seconds, is closed.
       if (!budget()) {
         const t = Date.now();
@@ -444,12 +444,12 @@ export function attachHub(server, config) {
 
           if (!claimDevice(ws, deviceOf(msg.device))) {
             sendTo(ws, { t: 'reject',
-              why: `this browser already has ${MAX_SESSIONS_PER_DEVICE} sessions open — close one first` });
+              why: `this browser already has ${MAX_SESSIONS_PER_DEVICE} sessions open - close one first` });
             ws.close(4003, 'too many sessions in this browser');
             return;
           }
 
-          /* Spectating. Always allowed, even on a full server — that is the entire feature.
+          /* Spectating. Always allowed, even on a full server - that is the entire feature.
            *
            * It happens before the name and ban checks on purpose: a spectator occupies nothing,
            * says nothing and is not in the player list, so there is nothing for a ban to
@@ -477,7 +477,7 @@ export function attachHub(server, config) {
           /* The name's owner has to be the one claiming it.
            *
            * Everything about this is in `authorise` below; what matters here is that it may need
-           * to hash a password, which takes about a tenth of a second — so this path became
+           * to hash a password, which takes about a tenth of a second - so this path became
            * asynchronous, and the `seat >= 0` guard at the top of the case is no longer enough on
            * its own. `ws.bvAuthing` closes that window: two hellos arriving back to back would
            * otherwise both get past the guard and claim two seats for one socket.
@@ -499,7 +499,7 @@ export function attachHub(server, config) {
                 // Never leak the reason: it is either a disk problem or a bug, and in both cases
                 // the useful thing for the player is "try again", not a stack trace.
                 console.error('auth failed', err.message);
-                sendTo(ws, { t: 'reject', why: 'could not check that password — try again' });
+                sendTo(ws, { t: 'reject', why: 'could not check that password - try again' });
               });
             return;
           }
@@ -530,7 +530,7 @@ export function attachHub(server, config) {
 
           if (now - lastChat < CHAT_MIN_INTERVAL_MS) return;
           lastChat = now;
-          // Starred, not blocked. See maskBlockedLanguage — the sentence goes out, the slur does
+          // Starred, not blocked. See maskBlockedLanguage - the sentence goes out, the slur does
           // not, and ordinary swearing is untouched.
           broadcast({
             t: 'chat', i: seat, name: room.state.players[seat]?.name ?? '?',
@@ -547,7 +547,7 @@ export function attachHub(server, config) {
           sendTo(ws, { t: 'pong', c: msg.c, tick: room.state.tick, s: Date.now() });
           break;
 
-        // Unknown types are ignored on purpose — that is the forward-compatibility story.
+        // Unknown types are ignored on purpose - that is the forward-compatibility story.
       }
     }
 
@@ -599,14 +599,14 @@ export function attachHub(server, config) {
      *   1. **Does this browser already hold a token for the name?** Then nothing is asked. This is
      *      the answer almost every time anybody ever joins, and it costs one sha256.
      *   2. **Is the name unclaimed?** Then this is a sign-up: a password is required, and once it
-     *      is set the name belongs to whoever set it. No password in the hello means "ask me" —
+     *      is set the name belongs to whoever set it. No password in the hello means "ask me" -
      *      the client shows the box and sends the hello again.
      *   3. **Is a password supplied for a claimed name?** Verify it. Right: in, with a token for
      *      this browser. Wrong: refused, and after a few of those the name stops answering for a
      *      while (see FAIL_LIMIT in accounts.js).
      *   4. **Neither?** A known name from an unknown browser. Ask for the password.
      *
-     * Spectators never reach here — see the `observe` branch in `hello`. That is deliberate: a
+     * Spectators never reach here - see the `observe` branch in `hello`. That is deliberate: a
      * watcher holds no seat, cannot chat and is not in the standings, so there is no identity to
      * protect, and it leaves one way into the server that a forgotten password cannot block.
      *
@@ -635,7 +635,7 @@ export function attachHub(server, config) {
       const waitMs = accounts.lockedFor(name);
       if (waitMs) {
         return { ok: false,
-          reject: { why: `too many tries — wait ${humanDuration(waitMs)}`, auth: 'wait' } };
+          reject: { why: `too many tries - wait ${humanDuration(waitMs)}`, auth: 'wait' } };
       }
       const check = await accounts.verify(name, pw);
       if (!check.ok) {
@@ -655,7 +655,7 @@ export function attachHub(server, config) {
       if (bySeat.get(seat) === ws) bySeat.delete(seat);
       // The seat, the score and the position are held for a while; see RECONNECT_GRACE_TICKS.
       room.disconnect(seat);
-      console.log(`leave  seat ${seat} (${bySeat.size}/${config.maxPlayers}) — seat reserved`);
+      console.log(`leave  seat ${seat} (${bySeat.size}/${config.maxPlayers}) - seat reserved`);
     });
 
     ws.on('error', () => {});

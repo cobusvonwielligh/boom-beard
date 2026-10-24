@@ -1,4 +1,4 @@
-# Boom Beard — Architecture
+# Boom Beard - Architecture
 
 The organising principle: **two developers working as vertical slices must almost never edit the
 same file.** Everything below is shaped by that, not by architectural taste.
@@ -44,16 +44,16 @@ shared/
   wire.js                      framing + which channel a message belongs on. Both ends use it.
   sim/
     state.js                   createState / createPlayer / tile accessors / seeded rng
-    movement.js                step() — walking, corner assist, centring, diagonals, stamina
+    movement.js                step() - walking, corner assist, centring, diagonals, stamina
     bombs.js                   placement, fuses, same-tick chains, powder kegs
-    fire.js                    spread() — pure (map, bomb) → cells. No state, no clock.
+    fire.js                    spread() - pure (map, bomb) → cells. No state, no clock.
     blocks.js                  damage, destruction, wall regrowth, keg placement
     perks.js                   drop table, supply-and-demand drop rate, pickup, death scatter
     statuses.js                timers, contagion
     round.js                   tick orchestration: the one place that fixes the order
   util/
-    rng.js                     seeded PRNG — the sim NEVER calls Math.random()
-    interp.js                  pickPair() — the snapshot pair that BRACKETS a render time
+    rng.js                     seeded PRNG - the sim NEVER calls Math.random()
+    interp.js                  pickPair() - the snapshot pair that BRACKETS a render time
 
 server/
   index.js                     http(s) + static + /healthz + the deploy webhook
@@ -86,7 +86,7 @@ public/
     art.js                     everything in the game, drawn from shapes
     img/*.png                  four decorative images: mascot, face, kegs, icon
     fonts/clegan.ttf           the display face, plus its licence
-    audio/*.mp3                theme, drift, suspend, undertow — named after their slots
+    audio/*.mp3                theme, drift, suspend, undertow - named after their slots
 
 infra/
   bootstrap.sh deploy.sh rollback.sh logs.sh boom-beard.service
@@ -102,15 +102,15 @@ shared/                        ← FROZEN DAY 1, changes need both devs to agree
   protocol.js                  message builders + validators (thin)
   sim/
     state.js                   createState / cloneState / hashState
-    movement.js                step() — the one movement function
+    movement.js                step() - the one movement function
     bombs.js                   placement, fuse, chain resolution
-    fire.js                    spread() — pure (map, bomb) → fire cells
+    fire.js                    spread() - pure (map, bomb) → fire cells
     blocks.js                  damage, destruction, regeneration
     perks.js                   drop table, apply effects
     statuses.js                timers, contagion
     round.js                   tick orchestration: calls the above in fixed order
   util/
-    rng.js                     seeded PRNG — the sim NEVER calls Math.random()
+    rng.js                     seeded PRNG - the sim NEVER calls Math.random()
     grid.js                    index math, neighbours
     colors.js                  golden-angle palette
 
@@ -179,7 +179,7 @@ happens maybe five times across the project, always during tuning.
 ## 4. The tick, in order
 
 `shared/sim/round.js` is the only place that decides the order of operations. Everything else is a
-pure-ish system it calls. This matters enormously for determinism — reordering these changes
+pure-ish system it calls. This matters enormously for determinism - reordering these changes
 outcomes.
 
 ```
@@ -203,18 +203,18 @@ classic source of "it desyncs after about a minute".
 
 ## 5. How vertical slices avoid each other
 
-Each slice owns whole files, top to bottom — its sim system, its render layer, its tests.
+Each slice owns whole files, top to bottom - its sim system, its render layer, its tests.
 
 | Slice | Owns (sim) | Owns (client) | Owns (server) |
 |---|---|---|---|
-| **NET** | — | `client/net.js`, `client/predict.js` | `net.js`, `inputs.js`, `snapshot.js`, `index.js` |
+| **NET** | - | `client/net.js`, `client/predict.js` | `net.js`, `inputs.js`, `snapshot.js`, `index.js` |
 | **MOVE** | `sim/movement.js`, `sim/state.js` | `client/world.js`, `client/input.js` | `room.js` |
-| **BOOM** | `sim/bombs.js`, `sim/fire.js`, `sim/blocks.js` | `render/entities.js` (bomb+fire parts) | — |
-| **ARENA** | — | `render/camera.js`, `render/chunks.js` | — |
-| **LOOT** | `sim/perks.js` | `render/entities.js` (perk parts) | — |
-| **PLAGUE** | `sim/statuses.js` | `render/entities.js` (status FX) | — |
-| **SHELL** | — | `ui/*`, `render/hud.js`, `render/overlay.js` | `leaderboard.js` |
-| **ART** | — | `assets/art.js`, `audio/*` | — |
+| **BOOM** | `sim/bombs.js`, `sim/fire.js`, `sim/blocks.js` | `render/entities.js` (bomb+fire parts) | - |
+| **ARENA** | - | `render/camera.js`, `render/chunks.js` | - |
+| **LOOT** | `sim/perks.js` | `render/entities.js` (perk parts) | - |
+| **PLAGUE** | `sim/statuses.js` | `render/entities.js` (status FX) | - |
+| **SHELL** | - | `ui/*`, `render/hud.js`, `render/overlay.js` | `leaderboard.js` |
+| **ART** | - | `assets/art.js`, `audio/*` | - |
 
 `render/entities.js` is the one genuinely shared file. Keep it as a list of small draw functions
 with a one-line dispatcher, and the merges stay trivial:
@@ -239,7 +239,7 @@ Canvas 2D, following the same approach Game of Bombs itself uses (visible in the
 At 32 × 20 visible tiles that is ~12 chunk blits plus ~80 sprite draws per frame. Trivially 60 fps
 on an office laptop, and the laptop's fan stays quiet, which matters more than it sounds.
 
-**Sprites are baked once at boot** from `assets/art.js` into offscreen canvases — including one
+**Sprites are baked once at boot** from `assets/art.js` into offscreen canvases - including one
 tinted copy per player colour. Drawing is then a plain `drawImage`, never per-pixel work in the
 loop.
 
@@ -258,7 +258,7 @@ One Node process. One port. Three responsibilities:
 2. **WebSocket hub.** `ws` server sharing the same HTTP server. One room, max 16 players, plus
    unlimited observers if we ever want them.
 3. **The room loop.** `setInterval` at 33 ms with drift correction (track the next deadline in
-   absolute time and catch up at most 3 ticks in one wake, never more — a long GC pause must not
+   absolute time and catch up at most 3 ticks in one wake, never more - a long GC pause must not
    trigger a 200-tick catch-up storm).
 
 Graceful shutdown: on SIGTERM, flush the leaderboard, send `roundend`, close sockets, exit.
@@ -272,7 +272,7 @@ Graceful shutdown: on SIGTERM, flush the leaderboard, send `roundend`, close soc
 | Map cells | server, authoritative | full in `welcome`, deltas as events |
 | Player position/stats | server | every snapshot |
 | Bombs | server | every snapshot (with `at`) |
-| Fire | **neither — derived** | computed from bombs by both sides |
+| Fire | **neither - derived** | computed from bombs by both sides |
 | Perks on ground | server | events |
 | Statuses | server | events + `stat` bitmask in snapshots |
 | Round timer | server | `roundEndsAtTick` |
@@ -287,9 +287,9 @@ Fire being derived is the load-bearing row. See [NETCODE.md](NETCODE.md) §1a.
 
 - ES modules everywhere, `.js`, no TypeScript, no bundler, no transpile.
 - The sim uses **integers only**. Floats are allowed in rendering and audio, nowhere else.
-- The sim never calls `Math.random()` — use `shared/util/rng.js` seeded from the round seed.
+- The sim never calls `Math.random()` - use `shared/util/rng.js` seeded from the round seed.
 - The sim never reads `Date.now()`. It only knows `state.tick`.
-- No `class` in shared or sim code. Plain objects and functions — they clone and hash cheaply.
+- No `class` in shared or sim code. Plain objects and functions - they clone and hash cheaply.
   (Client UI code may use whatever reads best.)
 - jQuery is for menu and HUD DOM only. It must never appear inside `requestAnimationFrame`.
 - `test/` uses `node --test`. No framework, no fixtures, no mocks.

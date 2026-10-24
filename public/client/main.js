@@ -2,7 +2,7 @@
 //
 // No framework and no jQuery: the menu is one input and one button, and jQuery inside a frame
 // loop is exactly the thing docs/ARCHITECTURE.md §9 forbids. If the UI ever grows past this,
-// revisit — right now vanilla is the smaller answer.
+// revisit - right now vanilla is the smaller answer.
 
 import {
   TICK_MS, TICK_HZ, NAME_MAX_CHARS, UNITS_PER_TILE, IN_BOMB, IN_SLIDE, playerColor,
@@ -12,7 +12,7 @@ import {
   CHAT_MIN_INTERVAL_MS, STREAK_WINDOW_TICKS,
 } from '/shared/constants.js';
 // The one number the password box needs to quote at somebody. The rules themselves live on the
-// server — see badPassword in server/accounts.js — and this is only the hint text.
+// server - see badPassword in server/accounts.js - and this is only the hint text.
 import { PASSWORD_MIN, PASSWORD_MAX } from '/shared/constants.js';
 import { createNet } from './net.js';
 import { createInput, typingSomewhere, createTap } from './input.js';
@@ -71,7 +71,7 @@ let running = false;
 
 const music = createMusic();
 
-// The listener is your own player's RENDERED position, not its simulated one — panning should
+// The listener is your own player's RENDERED position, not its simulated one - panning should
 // follow what you are looking at. Both audio buses share one AudioContext; see audio/engine.js.
 const sfx = createSfx({
   listener: () => {
@@ -128,7 +128,7 @@ let autoRespawn = store.get(AUTO_KEY) === '1';
 const BEDS = ['drift', 'suspend', 'undertow'];
 
 // The landing page listening to itself. Its own rAF loop, started with the menu and stopped the
-// moment a round begins — there is no point analysing audio nobody is looking at.
+// moment a round begins - there is no point analysing audio nobody is looking at.
 const menuViz = createMenuViz({ canvas: $('menuViz'), music });
 menuViz.start();
 
@@ -136,8 +136,8 @@ menuViz.start();
  *
  * A second instance rather than moving the first: they are two canvases in two different boxes,
  * and `createMenuViz` was already written to own no global state so that exactly this would be
- * possible (see the note on `pointer`). The two are never running at once — the menu one stops
- * when a round starts, this one only runs during an intermission — so the cost is one idle
+ * possible (see the note on `pointer`). The two are never running at once - the menu one stops
+ * when a round starts, this one only runs during an intermission - so the cost is one idle
  * object for the whole session.
  *
  * Each instance keeps its own `spectrum`, which is correct precisely because only one of them is
@@ -155,7 +155,7 @@ const roundViz = createMenuViz({ canvas: $('roundViz'), music });
  *
  * Fetched rather than baked in: baking it would need a build step, and this project does not
  * have one. The markup carries a hard-coded fallback, so a failed fetch shows a stale number
- * rather than an empty space — and the title is the one place on the site where an empty space
+ * rather than an empty space - and the title is the one place on the site where an empty space
  * would be more noticeable than a wrong digit.
  *
  * `title` carries the build sha, so "which version" and "which build" are both answerable from
@@ -185,7 +185,7 @@ menuBox.addEventListener('pointerleave', () => menuViz.pointerOut());
  * bars in the corner you already glance at for the track name is the whole budget.
  *
  * It drives CSS custom properties rather than touching geometry, so the browser never relayouts
- * for it — and it REPLACES the canned keyframe animation, which was a loop pretending to be a
+ * for it - and it REPLACES the canned keyframe animation, which was a loop pretending to be a
  * level. The difference between the two is the entire point: one of them is the music.
  */
 const eqBars = [...document.querySelectorAll('#nowPlaying .eq b')];
@@ -212,7 +212,7 @@ function syncMeter(dtMs) {
    *
    * `--bob` lifts him on the bass and `--kick` squashes and lights him on the transient. Both
    * ride on top of the CSS float rather than replacing it, so he carries on bobbing in silence.
-   * Written as custom properties because `translate` and `scale` are composited — no layout, no
+   * Written as custom properties because `translate` and `scale` are composited - no layout, no
    * paint, and a style write per frame on one element is nothing. */
   const av = avatarEl;
   av.style.setProperty('--bob', s.bass.toFixed(3));
@@ -228,7 +228,7 @@ function syncMeter(dtMs) {
  *
  * The FILENAME, not a pretty title. A title needs a lookup table that goes stale the next time
  * a track is swapped, and `drift.mp3` is the thing you would actually go and find in
- * `assets/audio` afterwards — which is the only reason to put a track name on screen at all.
+ * `assets/audio` afterwards - which is the only reason to put a track name on screen at all.
  *
  * `(synth)` when the file could not be loaded and the synthesised fallback is playing. That
  * state is otherwise completely silent: the music still plays, it is just not the music, and
@@ -236,7 +236,7 @@ function syncMeter(dtMs) {
  *
  * Polled rather than pushed. The alternative is a callback out of the sequencer on every
  * crossfade, which is a second code path through the one piece of this that has already been
- * subtly wrong twice — and the thing displayed changes about once every three minutes. A string
+ * subtly wrong twice - and the thing displayed changes about once every three minutes. A string
  * compare in a function that already runs five times a second is not worth an event for.
  */
 let shownTrack = null;
@@ -259,14 +259,14 @@ function syncNowPlaying() {
  */
 /* One tab makes the noise. Whichever one you are looking at.
  *
- * Three tabs of this game open — which happens constantly, because the link gets reopened rather
- * than switched to — meant three copies of the same soundtrack a few hundred milliseconds apart.
+ * Three tabs of this game open - which happens constantly, because the link gets reopened rather
+ * than switched to - meant three copies of the same soundtrack a few hundred milliseconds apart.
  * That is not three times the music, it is a phaser, and it is the single most obvious way the
  * site can sound broken.
  *
  * A `BroadcastChannel` is the whole mechanism: the tab that becomes visible shouts, every other
  * tab hears it and cedes, and the one that shouted takes the speakers. Last claim wins, which is
- * right — the most recent thing you looked at is the thing you meant.
+ * right - the most recent thing you looked at is the thing you meant.
  *
  * Ceding is NOT muting: the music keeps running silently (`music.cede`), so coming back finds the
  * track where it would have been rather than restarting it mid-phrase, and the volume slider still
@@ -328,7 +328,7 @@ const syncAudio = () => {
 $('musicBtn').onclick = async () => { await music.toggle(); syncAudio(); };
 $('vol').oninput = e => { music.setVolume(e.target.value / 100); syncAudio(); };
 
-/* Mute, as a real toggle — down to zero and back to whatever it was.
+/* Mute, as a real toggle - down to zero and back to whatever it was.
  *
  * Deliberately NOT the same thing as pause. Pause stops the track and loses your place in it;
  * mute leaves it running and silent, which is what you want when somebody walks over to your
@@ -346,7 +346,7 @@ $('musicVolBtn').onclick = () => {
 /* Skip, in both directions.
  *
  * Debounced with the same one-shot guard as every other button: a double click on `next` would
- * otherwise fire a crossfade per click, and each one cancels the last mid-ramp — audible as a
+ * otherwise fire a crossfade per click, and each one cancels the last mid-ramp - audible as a
  * stutter, and it can leave two tracks half up.
  *
  * No-ops while the music is paused rather than disabled, because a transport whose buttons grey
@@ -384,8 +384,8 @@ const toast = msg => {
 const net = createNet({
   onWelcome: m => {
     world.applyWelcome(m);
-    // A full welcome outside an intermission IS the next round — on time, or early because the
-    // host typed /restart or /map — so the standings go the moment it lands, not on a timer.
+    // A full welcome outside an intermission IS the next round - on time, or early because the
+    // host typed /restart or /map - so the standings go the moment it lands, not on a timer.
     if (roundOverUntil && !m.mapOnly && !m.between) endIntermission();
     renderer?.invalidateAll();
     renderer?.mapChanged();          // a different map size means a different scale
@@ -404,7 +404,7 @@ const net = createNet({
   },
   onSnap: snap => {
     // `perkget` only carries an id, and applySnap is about to replace the perk list with one that
-    // no longer contains it — so remember the types first. That is what lets a Fire sound
+    // no longer contains it - so remember the types first. That is what lets a Fire sound
     // different from a Skate.
     const perkTypes = new Map(world.perks.map(k => [k.id, k.type]));
     world.applySnap(snap);
@@ -433,7 +433,7 @@ const net = createNet({
           // Authoritative detonation. Usually we already burst it locally off its own fuse; this
           // is what covers chain reactions, which go off early and without warning. `at` is
           // carried across from the bomb we already knew about so the sound can tell the two
-          // apart — a blast before its own fuse ran out is a chain.
+          // apart - a blast before its own fuse ran out is a chain.
           const known = world.bombs.find(b => b.id === e.id);
           world.burstBomb({ id: e.id, tx: e.x, ty: e.y, o: e.o, r: e.r, at: known?.at });
           break;
@@ -488,8 +488,8 @@ const net = createNet({
         }
 
         /* Somebody slid. The dust and the streaks are drawn straight off `slideV` in the
-         * renderer — they have to be, so your own slide starts on the frame you asked for it
-         * rather than a round trip later — so this event exists for the NOISE alone, which is
+         * renderer - they have to be, so your own slide starts on the frame you asked for it
+         * rather than a round trip later - so this event exists for the NOISE alone, which is
          * the one part that cannot be derived from a snapshot without firing again on every
          * replay of the same tick. */
         case 'slide':
@@ -508,7 +508,7 @@ const net = createNet({
         case 'spawn':
           // Only your own. Sixteen players respawning at ten seconds apiece meant something was
           // ballooning across the board every few seconds, which buried the thing the effect is
-          // for — finding YOURSELF. Everyone else still gets the panned arrival sound.
+          // for - finding YOURSELF. Everyone else still gets the panned arrival sound.
           if (e.i === world.you) world.markSpawn(e.i);
           // Panned and attenuated by where it happened, so the sound alone tells you which side
           // of you somebody just appeared on. Your own is centred, because you are not elsewhere.
@@ -579,7 +579,7 @@ const net = createNet({
     /* Two different endings, and the difference between them is length.
      *
      * Winning gets four and a half seconds of actual fanfare; everybody else gets a second of
-     * something catchier. That asymmetry IS the reward — there is nothing else the game can
+     * something catchier. That asymmetry IS the reward - there is nothing else the game can
      * give you at this moment, and a win that sounds the same as fifteenth place is not a win.
      *
      * The consolation is deliberately not sad. Most rounds are losing rounds for fifteen out of
@@ -590,7 +590,7 @@ const net = createNet({
      * Both cards are the same element, and dying held it back for four and a half seconds while
      * the banner ran (see DEAD_DIALOG_DELAY_TICKS). Die in the last seconds of a round and that
      * hold outlived the round: the whistle went, the standings were ready, and what was on
-     * screen was still a respawn countdown for a round that no longer existed — counting down
+     * screen was still a respawn countdown for a round that no longer existed - counting down
      * to a button that would do nothing. Dying is over the moment the round is.
      */
     diedAtTick = -1;
@@ -630,7 +630,7 @@ const net = createNet({
     allTime = m.top || [];
     hostSeat = m.host ?? -1;
     /* Who owns the server, if they are in the room. Only used to decide whether this client
-     * shows the server's vitals — every owner-only COMMAND is checked on the server. */
+     * shows the server's vitals - every owner-only COMMAND is checked on the server. */
     ownerSeat = m.owner ?? -1;
     if (ownerSeat !== world.you) $('perfServer').hidden = true;
     // The renderer draws a crown over the host's head, so it needs the same fact. On the world
@@ -648,8 +648,8 @@ const net = createNet({
 
   onStreak: m => {
     const el = $('streak');
-    /* How far up the ladder. `n` is the rung — 2 for a double through 5 for a rampage, 6 for an
-     * ace — and the prefix matching is the fallback for a server that predates the field.
+    /* How far up the ladder. `n` is the rung - 2 for a double through 5 for a rampage, 6 for an
+     * ace - and the prefix matching is the fallback for a server that predates the field.
      * Everything scales off `step`: the type gets bigger, the chord gets wider, and the rainbow
      * pours faster. */
     const step = m.n !== undefined
@@ -661,7 +661,7 @@ const net = createNet({
     const tier = m.ace ? 'ace' : step >= 0.65 ? 's4' : step >= 0.35 ? 's3' : 's2';
 
     /* One period of the rainbow, in seconds, per rung: 2.2 for a double, then 1.6, 1.1, 0.75,
-     * and 0.5 for an ace. The colours never change, so the SPEED is the whole escalation — and
+     * and 0.5 for an ace. The colours never change, so the SPEED is the whole escalation - and
      * because the same value drives the banner, the chat line and the name in the corner, the
      * three read as one event moving at one pace. */
     const flow = `${(2.2 - step * 1.7).toFixed(2)}s`;
@@ -681,12 +681,12 @@ const net = createNet({
      *
      * The death card is centred on the same board this lands on, and a kill streak over the top
      * of your own respawn countdown is noise at the one moment you are not playing. The sound
-     * still plays — somebody is on a run and that is worth hearing — but the banner waits for
+     * still plays - somebody is on a run and that is worth hearing - but the banner waits for
      * a round where you are in it.
      */
     const dead = document.body.classList.contains('dead');
     if (!dead) {
-      // Restart the animation even if one is already running — a triple arriving on top of a
+      // Restart the animation even if one is already running - a triple arriving on top of a
       // double has to replace it, not be swallowed by it.
       void el.offsetWidth;
       el.classList.add('show');
@@ -694,7 +694,7 @@ const net = createNet({
 
     sfx.play('streak', undefined, undefined, { step });
     // Duck the music under the announcement, scaled by the rung. The top of the ladder takes a
-    // big bite and comes back over a second — the same trick a film uses when something lands.
+    // big bite and comes back over a second - the same trick a film uses when something lands.
     music.dip(0.35 + step * 0.4, 0.8 + step * 0.7);
     if (m.i === world.you) {
       // The accent golds, so the flash is the same light the banner is cast in.
@@ -702,7 +702,7 @@ const net = createNet({
       renderer?.addShake(0.26 + step * 0.5);
     } else {
       // Somebody ELSE is on a run. A small shake, because the thing worth knowing is that it is
-      // happening at all — and no flash, which would read as something having hit you.
+      // happening at all - and no flash, which would read as something having hit you.
       renderer?.addShake(0.08 + step * 0.16);
     }
     /* The same announcement, in the feed, in the same rainbow at the same speed.
@@ -740,7 +740,7 @@ const net = createNet({
      *
      * NOT commands. `/kick bob` is addressed to the server, the reply comes back as a SERVER
      * line, and putting the command itself over somebody's head would broadcast a thing they
-     * typed privately to the room. Not the server's own lines either (`i === -1`) — nobody is
+     * typed privately to the room. Not the server's own lines either (`i === -1`) - nobody is
      * standing there to say them.
      */
     const SAY_MAX = 24;
@@ -752,7 +752,7 @@ const net = createNet({
     if (m.i === world.you) li.className = 'mine';
     else if (mentioned) li.className = 'mention';
     pushLine(li);
-    /* Your own line makes no noise — you just typed it, you know.
+    /* Your own line makes no noise - you just typed it, you know.
      *
      * Two different sounds, because they are two different events: a message is ambient and a
      * message with your name in it is addressed to you. The second is louder, three notes rather
@@ -761,7 +761,7 @@ const net = createNet({
   },
   /**
    * Turned away. The usual reason is that this browser's identity is already in a game, which is
-   * a state somebody can be stuck in forever if the only feedback is the word "rejected" — so
+   * a state somebody can be stuck in forever if the only feedback is the word "rejected" - so
    * when the server says the identity is the problem, offer the way out next to the message.
    */
   onRejected: m => {
@@ -769,7 +769,7 @@ const net = createNet({
     $('menu').style.display = 'grid';
     $('hud').classList.remove('on');
     $('play').disabled = false;
-    /* Turned away because of a password, which is not an error — it is the next step.
+    /* Turned away because of a password, which is not an error - it is the next step.
      *
      * So it gets the box and a sentence, and NOT a toast: a toast says "something went wrong",
      * and the right reading of "pick a password for yourself" is "the sign-up is one field
@@ -814,7 +814,7 @@ const net = createNet({
 
 const nameOf = i => (i === world.you ? 'you' : world.players[i]?.name ?? '?');
 
-/* Bots carry the robot everywhere their name appears — the feed, chat, the banners, the boards —
+/* Bots carry the robot everywhere their name appears - the feed, chat, the banners, the boards -
  * not only on the live scoreboard. Names of the bots seated right now, lowercased, refreshed by
  * the scores broadcast, which is the only place the server says who is a bot. */
 const botNames = new Set();
@@ -842,7 +842,7 @@ function withBotIcons(el, text) {
 }
 const chatHasFocus = () => document.activeElement === $('chatInput');
 // Note: no isTyping override. It defaults to typingSomewhere(), which asks whether focus is in
-// ANY text field — passing chatHasFocus here is what made WASD unusable in the name box.
+// ANY text field - passing chatHasFocus here is what made WASD unusable in the name box.
 /* The four emotes, in compass order: up, left, down, right.
  *
  * Four and not eight. Eight needs diagonals, diagonals need two keys, and the whole value of
@@ -920,7 +920,7 @@ let lastShields = 0;
 
 /* The server's own vitals, for the owner only.
  *
- * The badge used to show these to everybody and label them CPU and RAM with no hint of whose —
+ * The badge used to show these to everybody and label them CPU and RAM with no hint of whose -
  * so fifteen people were reading the box's memory as their own. They are the server's, they are
  * on their own line in their own colour, and the fetch does not even run for anybody else:
  * /healthz is a public endpoint, but polling it every two seconds from sixteen clients to render
@@ -940,7 +940,7 @@ function pollServerPerformance() {
 
 /* Write a figure and flag it if it is past where it should be.
  *
- * A dashboard of six numbers with no thresholds on them is six numbers nobody reads — you have
+ * A dashboard of six numbers with no thresholds on them is six numbers nobody reads - you have
  * to already know what 14 ms of tick time means to notice it. The colour is the knowing. */
 function perfCell(id, text, bad) {
   const el = $(id);
@@ -953,7 +953,7 @@ function perfCell(id, text, bad) {
  *
  * The thresholds are where somebody would actually want to be told:
  *
- *   TICK   p99 of the simulation step against its 33 ms budget. Half of it is the warning —
+ *   TICK   p99 of the simulation step against its 33 ms budget. Half of it is the warning -
  *          past that a chain reaction with sixteen players on the board starts eating frames,
  *          and this is the number that goes first.
  *   CPU    85% of a core. The sim is single-threaded, so one core IS the ceiling.
@@ -997,13 +997,13 @@ function sampleServerHealth(h) {
  *
  * CPU is the only honest number a browser can give: there is no API for process CPU, so what is
  * reported is the share of wall-clock time the game's own frame work occupies on the main
- * thread — every frame is timed from the top of `loop` to the bottom, summed, and divided by the
+ * thread - every frame is timed from the top of `loop` to the bottom, summed, and divided by the
  * elapsed window. At 100% the main thread never idles and the frame rate is whatever the work
  * allows; at 20% there is four times the headroom. It is a real measurement of a real thing,
  * which "estimated CPU" never is.
  *
  * RAM is `performance.memory`: the JS heap this tab is holding against the heap limit the
- * browser will give it. Chromium only — Firefox and Safari expose nothing, and the badge says
+ * browser will give it. Chromium only - Firefox and Safari expose nothing, and the badge says
  * `--` rather than inventing a figure. It is the heap, not the tab's whole footprint: canvases,
  * textures and audio buffers live outside it and no API counts them.
  */
@@ -1043,7 +1043,7 @@ function startPerformanceMonitor() {
  *
  * The server's `bomb` event is two ticks behind, and 66 ms of lag on the one sound you trigger
  * yourself is the difference between responsive and mushy. The client knows every reason a
- * placement would be refused — dead, pacifist, out of bombs, already a bomb on this tile — so it
+ * placement would be refused - dead, pacifist, out of bombs, already a bomb on this tile - so it
  * can be honest about it rather than clicking optimistically and being wrong.
  */
 function localBombFeedback(mask) {
@@ -1052,7 +1052,7 @@ function localBombFeedback(mask) {
   if (!pressed) return;
   const me = world.me();
   if (!me || !me.alive) return;
-  // The same tile the sim will choose, from the same function — the sound has to come from
+  // The same tile the sim will choose, from the same function - the sound has to come from
   // where the bomb actually lands, which with facing-placement is rarely where you stand.
   const { tx, ty } = bombTile(world, me);
   if (world.bombs.some(b => b.tx === tx && b.ty === ty)) return;
@@ -1086,7 +1086,7 @@ function fuseTicks() {
  *
  * Fifteen seconds of no input, alive, and the arrival animation replays: the sprite blows up to
  * full size and collapses with its shockwave. This is the same cue as spawning because it is the
- * same question — on a thirty-nine tile board with sixteen pirates on it, "which one am I" is
+ * same question - on a thirty-nine tile board with sixteen pirates on it, "which one am I" is
  * genuinely hard after you look away, and hunting for your own colour is worse than being told.
  *
  * Keyed off input rather than off movement: standing still behind a wall on purpose is being
@@ -1108,7 +1108,7 @@ function idlePing(now) {
 
 /* The frame, wrapped in its own stopwatch.
  *
- * `frame` has several early exits — a hidden tab, a frame that arrived while not running — and
+ * `frame` has several early exits - a hidden tab, a frame that arrived while not running - and
  * the CPU figure has to count the work of every one of them, including the frames that do almost
  * nothing. A wrapper with a `finally` is the only version of that which cannot drift as the
  * frame grows more exits; a timer stopped by hand at the bottom of the function would have
@@ -1149,7 +1149,7 @@ function frame(now) {
   sfx.frame();                              // resets the per-frame sound budget
 
   // Exactly one simulation step per tick of real time, never more than a handful at once. The
-  // tick's length is the SERVER's, which /gamespeed changes — stepping on a fixed TICK_MS here
+  // tick's length is the SERVER's, which /gamespeed changes - stepping on a fixed TICK_MS here
   // while the server ran at 200% is what pinned players in place. See `tickMs` in net.js.
   const step = net.tickMs;
   world.tickMs = step;
@@ -1157,7 +1157,7 @@ function frame(now) {
   while (acc >= step && steps++ < 5) {
     acc -= step;
     const tick = net.advanceTick();
-    // A spectator still advances the clock — the interpolator is driven from it — but has
+    // A spectator still advances the clock - the interpolator is driven from it - but has
     // nothing to predict and nothing to send. The server ignores input from a watcher anyway;
     // not sending it is the difference between ignored and never asked.
     // Between rounds the server simulates nothing, so predicting would walk you off on your own.
@@ -1165,7 +1165,7 @@ function frame(now) {
     /* The count-in: the board is frozen and the keys do nothing.
      *
      * Not predicted and not sent, because the server is zeroing every input until this tick
-     * (see `counting` in server/room.js) — and predicting a move the server is refusing is the
+     * (see `counting` in server/room.js) - and predicting a move the server is refusing is the
      * rubber-band this whole gate exists to avoid. The CLOCK still advances, which is the part
      * that matters: inputs resume stamped for the right tick the instant the freeze lifts.
      */
@@ -1178,7 +1178,7 @@ function frame(now) {
     const me = world.me();
     net.send({ t: 'input', tick, m: mask, x: me?.x | 0, y: me?.y | 0 });
   }
-  // Fell badly behind: drop it rather than catching up — and resync, for the same reason.
+  // Fell badly behind: drop it rather than catching up - and resync, for the same reason.
   if (acc > step * 5) { acc = 0; net.resync(); }
 
   // BEFORE the renderer, not after: it reads the analyser and hands the result to the sea, and
@@ -1198,8 +1198,8 @@ function frame(now) {
 
   /* A shield going is a hit, and nothing on screen said so.
    *
-   * There is no event for it — the server spends the shield inside the death check and carries
-   * on — but the count is in every snapshot, so watching it is both free and exactly as
+   * There is no event for it - the server spends the shield inside the death check and carries
+   * on - but the count is in every snapshot, so watching it is both free and exactly as
    * authoritative as the shield itself. Only ever downward: picking one up is not a hit. */
   const mine = world.me();
   if (mine && mine.alive) {
@@ -1220,7 +1220,7 @@ function frame(now) {
  * Write a value, and flash it if it changed.
  *
  * The flash is the point. A number in the corner that silently becomes a different number is
- * invisible while you are being chased — picking up a Fire has to announce itself. Colour alone
+ * invisible while you are being chased - picking up a Fire has to announce itself. Colour alone
  * is not enough either: peripheral vision notices movement far more reliably than hue, which is
  * why the keyframe scales as well as recolours.
  *
@@ -1235,7 +1235,7 @@ function frame(now) {
  * neither a text-shadow (it would show through the inside of every glyph) nor a filter (that
  * forces a compositing layer, and a text-clip composited is what turned the name into a black
  * smudge). So the drop shadow is a SECOND COPY of the same text, in a pseudo-element behind it
- * — plain opaque text, which can take any shadow you like.
+ * - plain opaque text, which can take any shadow you like.
  *
  * CSS cannot read an element's text content, only its attributes. `data-text` is the copy the
  * pseudo-element reads, and this is the one place that keeps the two in step.
@@ -1250,7 +1250,7 @@ function castText(el, text) {
 /* Your own name, in the corner, while your run is live.
  *
  * The banner is about the kill; this is about the player, so it stays up for as long as the run
- * could still continue — STREAK_WINDOW_TICKS, the same window the server uses to decide whether
+ * could still continue - STREAK_WINDOW_TICKS, the same window the server uses to decide whether
  * the next kill counts. When it lapses the name goes back to its cast gold, which is itself
  * information: the run is over.
  *
@@ -1347,7 +1347,7 @@ function drawXp(p) {
 
   if (!levelled) { fill.style.width = `${(p.fraction * 100).toFixed(1)}%`; lastLevel = p.level; return; }
 
-  // Levelled. Run the bar to full first, then drop it to where the new level actually starts —
+  // Levelled. Run the bar to full first, then drop it to where the new level actually starts -
   // animating straight down to a sliver reads as losing progress, which is the opposite of what
   // just happened. The drop is made instant for one frame so only the climb is ever seen.
   lastLevel = p.level;
@@ -1373,7 +1373,7 @@ function drawXp(p) {
  *
  * Timed from the tick your own `alive` flag went false rather than from anything on the wire:
  * the server owns `respawnAt` but never sends it, and re-deriving it here is accurate to the two
- * ticks of snapshot granularity — which nobody can see in a number that counts whole seconds.
+ * ticks of snapshot granularity - which nobody can see in a number that counts whole seconds.
  *
  * The button is genuinely disabled while it counts. A button that looks pressable and does
  * nothing is worse than one that tells you to wait.
@@ -1417,7 +1417,7 @@ function drawHud() {
   /* Drunk, audibly.
    *
    * The bubbles and the camera roll say it to whoever is looking at the screen; this says it to
-   * whoever is looking at the board. Irregular on purpose — a hiccup on a timer is a metronome,
+   * whoever is looking at the board. Irregular on purpose - a hiccup on a timer is a metronome,
    * and the one thing a hiccup must not be is predictable, so the gap is re-rolled every time
    * between about one and three seconds.
    */
@@ -1465,7 +1465,7 @@ function drawHud() {
   drawCabinet(mine?.medals);
   setValue($('vKills'), me.kills);
   setValue($('vDeaths'), me.deaths, { worse: true });
-  // Gold. Lifetime, not this round — it is the one stat here that accumulates, which is the
+  // Gold. Lifetime, not this round - it is the one stat here that accumulates, which is the
   // whole point of it, and it is going to be a currency.
   setValue($('vCoins'), me.coins || 0);
   renderLive();
@@ -1489,7 +1489,7 @@ function drawHud() {
 //
 // Only the tab you are looking at plays. Open the game twice and the one behind freezes: browsers
 // throttle requestAnimationFrame in a hidden tab to roughly once a second, so it cannot play
-// anyway — all it can do is hold a seat somebody else wants and let its clock drift far enough
+// anyway - all it can do is hold a seat somebody else wants and let its clock drift far enough
 // that every input it sends on return lands in the server's past.
 //
 // So hiding cuts the keys immediately, and staying hidden gives the seat back. Coming back to a
@@ -1559,8 +1559,8 @@ function renderRoundTable(m) {
  * Between rounds: the board goes, the standings stay, and a bar fills until the next round.
  *
  * The simulation is paused on the server for the whole intermission, but the board used to keep
- * drawing — players frozen mid-stride or still walking on their own prediction, the sea rolling,
- * banners firing — behind a translucent card. Now `body.intermission` hides the field outright
+ * drawing - players frozen mid-stride or still walking on their own prediction, the sea rolling,
+ * banners firing - behind a translucent card. Now `body.intermission` hides the field outright
  * and `loop` stops predicting and drawing until the round is back.
  */
 let roundOverTimer = 0;
@@ -1585,7 +1585,7 @@ function startIntermission(ms) {
 function endIntermission() {
   clearTimeout(roundOverTimer);
   roundOverUntil = 0;
-  // Back to the board. Nothing analyses audio nobody is looking at — the same rule the menu one
+  // Back to the board. Nothing analyses audio nobody is looking at - the same rule the menu one
   // follows when a round starts.
   roundViz.stop();
   document.body.classList.remove('intermission');
@@ -1614,7 +1614,7 @@ function syncCountdown(now) {
  * it honest: `world.tick` restarts at zero with every fresh state the server installs and
  * `startsAtTick` comes from the same welcome, so the digit everybody is looking at is the same
  * digit at the same instant, with no message to send and nothing to keep in step. Somebody who
- * joins four seconds into a round sees "1" and then GO — the truth — rather than a fresh five
+ * joins four seconds into a round sees "1" and then GO - the truth - rather than a fresh five
  * seconds of their own.
  *
  * It is a RULE, not a caption: the room zeroes every input, people and bots alike, until the same
@@ -1654,7 +1654,7 @@ function syncCountIn() {
   num.style.animation = '';
 
   if (n > 0) {
-    // The same voice the round clock's last seconds use, climbing the same way — so the end of
+    // The same voice the round clock's last seconds use, climbing the same way - so the end of
     // the count-in and the end of the round sound like the same clock.
     sfx.play('tick', undefined, undefined, { urgency: (seconds - n) / seconds });
   } else {
@@ -1675,12 +1675,12 @@ function showDeadBanner(by) {
    *
    * They occupy the same spot, they are the same size, and only one of them is about you. A
    * RAMPAGE landing on top of YOU DIED is somebody else's good news written over your bad news
-   * — and because the streak banner runs on its own timer it would simply erase this one
+   * - and because the streak banner runs on its own timer it would simply erase this one
    * mid-sentence. Killed outright rather than queued: by the time it could be shown again the
    * run it was announcing is three kills further on. */
   $('streak').classList.remove('show');
 
-  // Everything that has to look dead, in one place — see `body.dead` in style.css. The name in
+  // Everything that has to look dead, in one place - see `body.dead` in style.css. The name in
   // the corner goes the colour of the banner and the mascot's face loses its colour.
   document.body.classList.add('dead');
 }
@@ -1689,7 +1689,7 @@ function showDeadBanner(by) {
  * The death dialog, held back for a beat.
  *
  * Dying is a thing that happens to your player on the board, and covering the board with a panel
- * the same instant takes the moment away — you never see what killed you. The banner and the
+ * the same instant takes the moment away - you never see what killed you. The banner and the
  * flash land immediately; the dialog waits for the banner to finish saying who got you, and
  * then another half second on top so the two do not cross-fade into each other.
  */
@@ -1710,7 +1710,7 @@ function pushLine(li) {
   const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 24;
   list.append(li);
   while (list.children.length > 60) list.firstChild.remove();
-  // Only follow if they were already at the bottom — yanking the view while someone is reading
+  // Only follow if they were already at the bottom - yanking the view while someone is reading
   // back through a fight is worse than missing the newest line.
   if (atBottom) list.scrollTop = list.scrollHeight;
 }
@@ -1753,7 +1753,7 @@ function renderLive() {
   for (const [n, p] of rows.entries()) {
     const li = list.children[n];
     const [pos, nm, kd, sc] = li.children;
-    // Only rebuilt when the place in this slot changes — this runs five times a second, and the
+    // Only rebuilt when the place in this slot changes - this runs five times a second, and the
     // slot's place never changes at all once the list exists. Cheap either way.
     if (pos.dataset.n !== String(n)) { pos.dataset.n = n; pos.replaceChildren(placeMark(n)); }
     for (const k of [1, 2, 3]) li.classList.toggle(`p${k}`, n === k - 1);
@@ -1762,7 +1762,7 @@ function renderLive() {
     nm.style.color = playerColor(p.i);
     markPlayerHover(nm, { seat: p.i });
     // A robot beside anything that is not a person. `bot` comes from the scores broadcast, which
-    // is the only place the server says so — the snapshot has no idea what a bot is, and it
+    // is the only place the server says so - the snapshot has no idea what a bot is, and it
     // should not: the simulation treats them identically on purpose.
     li.classList.toggle('bot', !!ranks.get(p.i)?.bot);
     // A crown on whoever can restart the round, change the map or set the speed. It passes down
@@ -1833,14 +1833,14 @@ function placeMark(n) {
 /**
  * A player's lifetime medals: gold, silver and bronze, each a small medal and a count.
  *
- * All three are always there, in place order, with an empty one dimmed rather than left out —
+ * All three are always there, in place order, with an empty one dimmed rather than left out -
  * a column whose entries change shape row to row cannot be read down, and "no silver yet" is
  * worth seeing. `counts` is [gold, silver, bronze]; missing means nobody has told us yet.
  */
 function medalTally(counts) {
   const wrap = document.createElement('span');
   wrap.className = 'tally';
-  if (!counts) { wrap.textContent = '—'; wrap.classList.add('none'); return wrap; }
+  if (!counts) { wrap.textContent = '-'; wrap.classList.add('none'); return wrap; }
   const total = counts.reduce((a, b) => a + (b || 0), 0);
   wrap.setAttribute('aria-label', `${counts[0] || 0} gold, ${counts[1] || 0} silver, ${counts[2] || 0} bronze`);
   wrap.title = total ? `${counts[0] || 0} gold · ${counts[1] || 0} silver · ${counts[2] || 0} bronze`
@@ -1864,8 +1864,8 @@ const PLAYER_HOVER_DELAY_MS = 2500;
 /* The scoreboard is a different situation to the live list.
  *
  * The long delay exists so the side panel does not sprout popovers while the pointer crosses it
- * mid-fight. Nothing is crossing the Tab board by accident — it is open because somebody opened
- * it to read it — so there it answers in half a second. */
+ * mid-fight. Nothing is crossing the Tab board by accident - it is open because somebody opened
+ * it to read it - so there it answers in half a second. */
 const BOARD_HOVER_DELAY_MS = 500;
 let playerHoverTimer = 0;
 let playerHoverTarget = null;
@@ -1917,7 +1917,7 @@ function playerHoverData(target) {
     colour: 'var(--gold)',
     badge: 'all-time leader',
     rank: `level ${e.level} · ${e.tier}`,
-    roundScore: '—', roundKills: '—', roundDeaths: '—',
+    roundScore: '-', roundKills: '-', roundDeaths: '-',
     xp: e.xp ?? e.score ?? 0,
     lifeKills: e.kills ?? 0,
     lifeDeaths: e.deaths ?? 0,
@@ -1967,7 +1967,7 @@ function schedulePlayerHover(target) {
 /* The row under the cursor was rebuilt, so point at the new one.
  *
  * This is why the card never opened on the Tab board. The scoreboard is rebuilt from scratch
- * every time the scores broadcast lands — once a second — so the element the hover was waiting
+ * every time the scores broadcast lands - once a second - so the element the hover was waiting
  * on was detached before the delay was up, `showPlayerHover` found it disconnected and gave up,
  * and nothing re-fired because the pointer had not moved. Same name, same seat, new element:
  * follow it. */
@@ -2037,7 +2037,7 @@ function renderScores() {
     const r = ranks.get(p.i);
     placeCell(tr, n);
     // The crown rides with the name here exactly as it does on the live list: same mark, same
-    // size, same meaning. See `td.host` in style.css — it is one mask, so there is one crown in
+    // size, same meaning. See `td.host` in style.css - it is one mask, so there is one crown in
     // the project and three places that show it.
     const nameCell = cell(tr, p.name, playerColor(p.i));
     markPlayerHover(nameCell, { seat: p.i });
@@ -2103,7 +2103,7 @@ function leave() {
  * "starts at the first click or keypress". Three things make that reliable:
  *
  *   1. **The listener is on the document, not the menu card.** It used to be on `#menu`, which
- *      covers the common path and misses every other one — landing straight into a game from a
+ *      covers the common path and misses every other one - landing straight into a game from a
  *      reconnect, or a first click that happens to be outside the card.
  *   2. **`music.wanted` is consulted.** It is true unless this browser has explicitly paused
  *      before, so somebody who turned the music off does not get it back every time they open
@@ -2130,7 +2130,7 @@ nameInput.value = store.get('bv.name') || '';
 
 /**
  * @param observe watch instead of play. A spectator takes no seat, so this is also the way in
- *   when the server is full — which is the whole reason the feature exists.
+ *   when the server is full - which is the whole reason the feature exists.
  */
 function play(observe = false) {
   $('signedOut').style.display = 'none';
@@ -2170,8 +2170,8 @@ function play(observe = false) {
     const s = listen(music.seaAnalyser, music.audible, dtMs, latencyS);
     /* How loud it is SET, which the listener cannot know.
      *
-     * The sea's analyser is tapped before the volume fader — deliberately, so the water reads the
-     * music's content rather than the slider — which means nothing downstream can tell a muted
+     * The sea's analyser is tapped before the volume fader - deliberately, so the water reads the
+     * music's content rather than the slider - which means nothing downstream can tell a muted
      * track from a silent one. The coast needs that difference to decide whether to light at all,
      * so it is added here, where both facts are in scope.
      */
@@ -2187,7 +2187,7 @@ function play(observe = false) {
    * it cannot come back round mid-firefight; it is let back in when you return to the menu.
    *
    * Random rather than always `drift`, because the first thing you hear should not be the same
-   * thing every single time you press PLAY — three rounds in and a fixed opener is the sound of
+   * thing every single time you press PLAY - three rounds in and a fixed opener is the sound of
    * the menu, not the sound of the game. The rotation carries on from whichever one it picked.
    */
   music.exclude('theme');
@@ -2203,11 +2203,11 @@ function play(observe = false) {
      */
     const r = bomb.r ?? bomb.radius ?? 1;
     const keg = r >= POWDER_RADIUS;
-    // Somebody else's blast. A keg is nobody's for this purpose — it was not placed, and the
+    // Somebody else's blast. A keg is nobody's for this purpose - it was not placed, and the
     // one thing everybody needs to hear at full volume is seven tiles of fire going off.
     const theirs = !keg && (bomb.o ?? bomb.owner) !== world.you;
     // A blast before its own fuse ran out was set off by something else. A bomb we never even
-    // saw placed counts too — that only happens when a chain reaches it inside one snapshot.
+    // saw placed counts too - that only happens when a chain reaches it inside one snapshot.
     const chain = bomb.at === undefined || world.tick < bomb.at;
     if (keg) sfx.play('kegboom', bomb.tx, bomb.ty);
     else sfx.play('boom', bomb.tx, bomb.ty, { chain, size: (r - 1) / (MAX_RADIUS - 1), theirs });
@@ -2248,7 +2248,7 @@ function play(observe = false) {
  *           field is `new-password` and a manager will offer to generate and save one.
  *   need    the name is claimed and this browser is not trusted. `current-password`.
  *   bad     the last attempt was wrong, or there have been too many. Same field, red note, and
- *           the value cleared — never left in place to be re-sent by a reconnect.
+ *           the value cleared - never left in place to be re-sent by a reconnect.
  */
 let pwOpen = false;
 let pwMode = 'need';
@@ -2270,7 +2270,7 @@ function askPassword(mode, why) {
   note.hidden = false;
   note.className = mode === 'bad' || mode === 'wait' ? 'bad' : '';
   note.textContent = mode === 'signup'
-    ? `"${nameInput.value.trim()}" is yours to claim. Pick a password — you will only be asked for it again on a new browser.`
+    ? `"${nameInput.value.trim()}" is yours to claim. Pick a password - you will only be asked for it again on a new browser.`
     : why;
   input.value = '';
   input.focus();
@@ -2310,12 +2310,12 @@ $('pw').oninput = () => {
   $('pw').removeAttribute('aria-invalid');
 };
 // A different name is a different account, so whatever was typed for the last one is wrong by
-// definition — and leaving it there is how somebody sends one person's password to another's
+// definition - and leaving it there is how somebody sends one person's password to another's
 // sign-in. Closed rather than cleared: the server will ask again if it needs to.
 nameInput.oninput = () => { if (pwOpen) closePassword(); };
 
 // Switching to spectating from the death screen. A fresh connection rather than a mode flag on
-// the open one: the server frees the seat on disconnect, which is the point — somebody waiting
+// the open one: the server frees the seat on disconnect, which is the point - somebody waiting
 // gets it, and that is a better outcome than a seat held by a person who has stopped playing.
 $('spectate').onclick = createTap()(() => {
   $('dead').style.display = 'none';
@@ -2363,7 +2363,7 @@ const onEscape = tapEscape(() => {
 });
 
 // The one place a respawn is actually asked for. Both the button and the spacebar come through
-// here, because they are the same action and a held Space is otherwise both at once — thirty
+// here, because they are the same action and a held Space is otherwise both at once - thirty
 // synthetic button clicks a second on top of thirty keypresses.
 const askRespawn = tapRespawn(() => net.send({ t: 'respawn' }));
 
@@ -2390,7 +2390,7 @@ $('respawn').onclick = askRespawn;
 /* The checkbox, and the stored value, kept in step in one place.
  *
  * `checked` is set from storage at boot rather than from the markup, so the box always shows
- * what will actually happen — a checkbox whose state is a guess is worse than no checkbox.
+ * what will actually happen - a checkbox whose state is a guess is worse than no checkbox.
  */
 $('autoRespawn').checked = autoRespawn;
 $('autoRespawn').onchange = e => {
@@ -2402,7 +2402,7 @@ $('autoRespawn').onchange = e => {
   if (autoRespawn && !$('respawn').disabled && $('dead').style.display !== 'none') askRespawn();
 };
 
-// Ducking hangs off focus, not off the keys that usually cause it — clicking into the chat box
+// Ducking hangs off focus, not off the keys that usually cause it - clicking into the chat box
 // with the mouse is the same thing to the person doing it.
 $('chatInput').onfocus = () => music.duck(true);
 $('chatInput').onblur = () => { music.duck(false); input.clear(); };
@@ -2413,7 +2413,7 @@ $('chatInput').onkeydown = e => {
   /* And stop it here.
    *
    * This Enter bubbles up to the window handler that OPENS the chat, and by the time it gets
-   * there the blur below has already run — so `chatHasFocus()` is false, the handler does what
+   * there the blur below has already run - so `chatHasFocus()` is false, the handler does what
    * it is for, and the box you just left takes focus straight back. Two correct handlers, one
    * event, and the second undoes the first. */
   e.stopPropagation();
@@ -2423,7 +2423,7 @@ $('chatInput').onkeydown = e => {
   /* Something to say is one thing; a command is a conversation.
    *
    * An ordinary message is finished the moment you press Enter, so the keyboard goes straight
-   * back to the board — WASD should move you, not sit in an empty text box while something
+   * back to the board - WASD should move you, not sit in an empty text box while something
    * walks into you. A command is not finished: the answer comes back as a SERVER line a moment
    * later, and half of them are "no such map" or "you need to be host", which you then retype.
    * Staying in the box is right there and wrong on the board. */

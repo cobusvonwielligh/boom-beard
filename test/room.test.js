@@ -1,5 +1,5 @@
-// End-to-end: two real WebSocket clients against a real server. This is the M1 gate — input
-// reaches the simulation and comes back in snapshots — and the seat-resume behaviour that
+// End-to-end: two real WebSocket clients against a real server. This is the M1 gate - input
+// reaches the simulation and comes back in snapshots - and the seat-resume behaviour that
 // replaces reconnect pain. docs/PLAN.md §4.
 
 import { test } from 'node:test';
@@ -86,17 +86,17 @@ test('room end to end', async t => {
 
   await t.test('spawns are far apart, not stacked', async () => {
     await wait(150);
-    // Read a snapshot, not `welcome` — alpha's welcome predates bravo existing.
+    // Read a snapshot, not `welcome` - alpha's welcome predates bravo existing.
     const snap = a.snaps.at(-1);
     const pa = snap.players.find(p => p.i === a.welcome.you);
     const pb = snap.players.find(p => p.i === b.welcome.you);
-    // Not stacked — which is all this can assert now. Respawn weights every legal spawn by
+    // Not stacked - which is all this can assert now. Respawn weights every legal spawn by
     // distance rather than always taking the furthest, so two players CAN land near each other;
     // a busy spot is unlikely, never impossible. The distribution is tested properly in
     // test/powder.test.js, over six hundred respawns, where it can be measured rather than
     // guessed at from one sample.
     const d = Math.abs(pa.x - pb.x) + Math.abs(pa.y - pb.y);
-    assert.ok(d > 256 * 2, `spawned only ${d} units apart — effectively on top of each other`);
+    assert.ok(d > 256 * 2, `spawned only ${d} units apart - effectively on top of each other`);
   });
 
   await t.test('input moves you, and only you', async () => {
@@ -121,7 +121,7 @@ test('room end to end', async t => {
     assert.ok(snap.ack <= snap.tick);
   });
 
-  await t.test('walls stop you — nobody leaves the map', async () => {
+  await t.test('walls stop you - nobody leaves the map', async () => {
     const start = a.snaps.at(-1);
     a.drive(start.tick + 2, IN_DOWN, 400);
     await wait(1200);

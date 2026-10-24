@@ -7,7 +7,7 @@ set -euo pipefail
 APP=/opt/boom-beard
 DATA=/var/lib/boom-beard
 
-# This script is spawned by the server, so it inherits the unit's sandbox — and the unit sets
+# This script is spawned by the server, so it inherits the unit's sandbox - and the unit sets
 # ProtectHome=true. /home is therefore invisible: ssh cannot read ~/.ssh and npm cannot write
 # ~/.npm. Everything this needs lives under $DATA instead, which is in ReadWritePaths.
 export HOME="$DATA"
@@ -38,7 +38,7 @@ if [ "$BEFORE" != "$AFTER" ] || [ ! -d node_modules ]; then
   if [ -f "$STASH" ]; then mkdir -p "$DEST" && cp -f "$STASH" "$DEST/webtransport.node"; fi
 fi
 
-# The unit sets NoNewPrivileges, so sudo is impossible from here — on purpose. Ask the server to
+# The unit sets NoNewPrivileges, so sudo is impossible from here - on purpose. Ask the server to
 # shut down cleanly instead (it banks the round first) and Restart=always brings up the new code.
 # A changed unit file is therefore only installed by `npm run deploy`, which comes in over SSH.
 echo "restarting"

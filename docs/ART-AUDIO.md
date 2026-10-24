@@ -1,6 +1,6 @@
-# Boom Beard — Art & Audio
+# Boom Beard - Art & Audio
 
-Slice: **ART**. Everything the game draws is code, not files — nothing to version, no CORS, no
+Slice: **ART**. Everything the game draws is code, not files - nothing to version, no CORS, no
 cache busting. The exceptions are all decoration or music: four landing-page PNGs, one font, and
 four mp3s. Nothing inside the board is an image, and every sound effect is still synthesised.
 
@@ -9,7 +9,7 @@ four mp3s. Nothing inside the board is an image, and every sound effect is still
 ## 1. The look
 
 Not strict 8-bit pixel art. The reference is Game of Bombs itself: **chunky, readable shapes with
-real shading** — closer to low-poly-flat than to NES. Big silhouettes, two-tone shading, a dark
+real shading** - closer to low-poly-flat than to NES. Big silhouettes, two-tone shading, a dark
 outline on everything that moves.
 
 Three rules that keep it coherent:
@@ -20,7 +20,7 @@ Three rules that keep it coherent:
 
 ### How it is drawn
 
-Sprites are **shape lists** — rectangles, rounded rectangles and arcs — executed into an
+Sprites are **shape lists** - rectangles, rounded rectangles and arcs - executed into an
 offscreen canvas once at boot, then blitted with `drawImage`. Not per-pixel strings.
 
 Why: ~20 lines per sprite instead of 16 rows × 8 frames of characters; scales to any tile size by
@@ -28,7 +28,7 @@ changing one number; recolouring for 16 players is free; and you can tweak a sha
 immediately in the preview harness.
 
 ```js
-// assets/art.js — the shape of the shape
+// assets/art.js - the shape of the shape
 export function drawPlayer(c, { dir, frame, tint, shade }) {
   rr(c, 4, 2, 8, 7, 2, tint);        // helmet
   rr(c, 5, 5, 6, 3, 1, '#1b2430');   // visor
@@ -89,7 +89,7 @@ export const playerColor = i => {
 
 Worth knowing why it is not the usual golden-angle trick: for exactly 16 slots, the golden angle's
 worst pair lands **12.4°** apart, against a guaranteed **22.5°** here. Do not hand-pick a palette
-either — hand-picked sets always end up with two similar blues.
+either - hand-picked sets always end up with two similar blues.
 
 The slot function lives in `shared/constants.js`, so the simulation, the HUD and the art can never
 disagree about who is what colour.
@@ -124,7 +124,7 @@ Acceptance: with 16 bots on screen, you can follow any one of them by tracer alo
 | Fire | centre, arm, tip × 4 rotations | Three-colour ramp from §2. |
 | Floor | 3 variants | Chosen by a hash of the cell coordinates, so it never looks tiled. |
 | Soft wall | 1 + 1 damaged | |
-| Reinforced | 1 + 3 damage states | Damage must read at a glance — it takes six hits. |
+| Reinforced | 1 + 3 damage states | Damage must read at a glance - it takes six hits. |
 | Monolith | 1 + 4 damage states | |
 | Iron | 2 variants | |
 | Column | 1 | |
@@ -152,7 +152,7 @@ play now; the rest are diseases with no source since the Gift was removed (RULES
 Melted ice is drawn per frame, on the floor and under everything else, in `drawPuddles` in
 `render.js`. Every wet tile contributes three overlapping ellipses plus a bridge to each wet
 neighbour, all in **one path**, so five tiles read as one pool with an organic edge rather than as
-five balloons — the first version, without bridges, looked exactly like that. The union is filled
+five balloons - the first version, without bridges, looked exactly like that. The union is filled
 opaque into its own layer (rim, body, a sheen toward the top-left light) and composited once at
 partial alpha, so overlaps never darken. Two glints circle slowly on each tile, rings spread from
 idle drips and from the feet of anyone wading.
@@ -177,14 +177,14 @@ mirror spot, a yellow bill with the red gonys spot.
   glide far more than they flap, so beats come in bursts and on every climb out of a dive; going
   down, the wings tuck back. It leans into its weave.
 - **Height** is the shadow, which slides in under the bird and sharpens at the bottom of a dive
-  — the only moment it can be hit — plus a size change of about a third.
+  - the only moment it can be hit - plus a size change of about a third.
 - **Depth** is a second height, picked once per bird (`hi`, see `GULL_DEPTH_MIN`) and carried in
   the snapshot: which layer of sky it is in. It scales size, shadow reach, shadow softness, haze
   and apparent pace together, and the flock is drawn highest-first so a low bird passes in front
-  of a high one. Presentation only — every gull is equally catchable.
+  of a high one. Presentation only - every gull is equally catchable.
 - **Hit:** a tumble that spins and shrinks to the ground and lands with a ring, fourteen feathers
   thrown out and rocking as they drift, and a gold ring and star where the coin lands.
-- **Sound:** `gull` is the long call — a hoarse sawtooth through a nasal and a body resonance,
+- **Sound:** `gull` is the long call - a hoarse sawtooth through a nasal and a body resonance,
   leaping up into the note and sliding down, three calls, quiet, only near the island. `gullhit`
   is a strangled squawk, a puff of feathers, then two bell partials for the coin.
 
@@ -193,7 +193,7 @@ mirror spot, a yellow bill with the red gonys spot.
 ## 5a. Cast gold
 
 The accent is **three** tones, not one, and that is the whole point: metal is not a colour, it
-is a range. A dark underside, a body, a specular highlight — the eye reads the *relationship*
+is a range. A dark underside, a body, a specular highlight - the eye reads the *relationship*
 between those three as "reflective" long before it reads the hue. One value can only ever be
 paint, which is why every previous flat accent looked like paint.
 
@@ -205,19 +205,19 @@ paint, which is why every previous flat accent looked like paint.
 
 `--cast` pours them through text via `background-clip`. Three things have to be true together:
 
-1. **Two highlights, not one.** A big one a third down and a smaller one near the bottom edge —
+1. **Two highlights, not one.** A big one a third down and a smaller one near the bottom edge -
    bounced light off whatever the object sits on. Its absence is why most "gold text" CSS looks
    like plastic.
 2. **The light moves, the metal does not.** A narrow specular band travels across on a loop.
    Animating the highlight rather than the colour is the difference between cast and printed.
    NARROW matters: at 32% of a 3.2× layer the band was wider than the word, so it brightened
    everything slightly and the sweep was invisible. 8% of 2.6× lands as a real glint.
-3. **A thin hard edge** — `--cast-edge`, four zero-blur drop-shadows at the compass points. It
+3. **A thin hard edge** - `--cast-edge`, four zero-blur drop-shadows at the compass points. It
    must be a filter, not a text-shadow: the fill is transparent, so a shadow shows straight
    through the inside of every glyph.
 
 **Large type only, about 30px up.** Below that the vertical ramp has fewer pixels than it has
-stops and the word turns to mush — checked at 17px, unreadable. Small display type stays flat
+stops and the word turns to mush - checked at 17px, unreadable. Small display type stays flat
 `var(--gold)` with `--rim`.
 
 Streak tiers 2 and 3 are cast; 4 and ace are white-hot. Once the metal is established, going
@@ -228,7 +228,7 @@ it is more gold.
 
 ## 5. UI style
 
-Dark panels, gold headings, white body text — close to Game of Bombs' own menu so it reads as
+Dark panels, gold headings, white body text - close to Game of Bombs' own menu so it reads as
 familiar.
 
 **Gold and maroon throughout.** Every panel and dialog (`.edge`) has the landing page's colours:
@@ -240,7 +240,7 @@ auto-respawn setting is a sliding gold switch, not a native checkbox.
 - Headings: UI gold, uppercase, letter-spaced.
 - Body: `#e8eef7`.
 - Buttons: gold border, transparent fill, filled gold on hover.
-- Fonts: one display face, `Shotling`, served from `/assets/fonts/` — same origin, so
+- Fonts: one display face, `Shotling`, served from `/assets/fonts/` - same origin, so
   `default-src 'self'` allows it and there is no third-party request for IT to block. It is for
   things you read once (titles, banners); everything read while playing uses the system text
   stack. **Never a font from a CDN.**
@@ -262,7 +262,7 @@ makes the fallback automatic: `createFileTrack` asks for `/assets/audio/<its own
 uses the synthesised version of itself if the file is missing or will not decode. There is no
 table mapping names to files; replacing a track is dropping in an mp3.
 
-A file is wrapped to look exactly like a synthesised track to the sequencer — one step whose
+A file is wrapped to look exactly like a synthesised track to the sequencer - one step whose
 duration is the length of the mix, **minus the crossfade** so the next track overlaps the outro
 rather than following a gap of silence. Nothing above `createFileTrack` in `music.js` knows the
 difference, which is why crossfading, `exclude`, `playFrom`, muting and ducking all work on it
@@ -272,7 +272,7 @@ silent gain node.
 `preload` is `metadata`, not `auto`: four tracks at ~3 MB would otherwise pull twelve megabytes
 the moment somebody unmutes, for three they will not hear for five minutes.
 
-Serving them needs an `audio/mpeg` content type **and byte ranges** — Safari will not play an
+Serving them needs an `audio/mpeg` content type **and byte ranges** - Safari will not play an
 `<audio>` source from a server that answers `Range` with a 200. `server/index.js` does both.
 
 Strip ID3 cover art before committing a track. It is about 25% of the file and nobody sees it;
@@ -282,7 +282,7 @@ Strip ID3 cover art before committing a track. It is about 25% of the file and n
 
 Bottom left, one pill: `prev`, play/pause, `next`, the sfx control, and what is playing.
 
-Every part of the fader is drawn by hand — appearance stripped, track and thumb rebuilt. This
+Every part of the fader is drawn by hand - appearance stripped, track and thumb rebuilt. This
 is not polish: `accent-color` alone leaves the native control's own geometry, and a native thumb
 is a ~40px lozenge that, stood on its end in a 30px column, looks like a rendering bug rather
 than like a fader. The track carries the level as a hard-stop gradient driven by `--lvl`, which
@@ -290,7 +290,7 @@ than like a fader. The track carries the level as a hard-stop gradient driven by
 
 The faders open **upward** out of their buttons, not sideways. Sideways they pushed everything
 to their right along, so opening the music fader moved the sfx button and the track name under
-the pointer — and in a corner, growing sideways is the one direction that costs layout. The
+the pointer - and in a corner, growing sideways is the one direction that costs layout. The
 slider is laid out horizontally and rotated `-90deg` inside a grid-centred box, which is the one
 approach that behaves identically everywhere: `appearance: slider-vertical` is deprecated in
 Chrome and the `writing-mode`/`direction` replacement is not in Safari yet. The fader sits flush
@@ -299,17 +299,17 @@ on the way up, and crossing it closes the thing you were reaching for.
 
 The readout is the **filename**, `drift.mp3`, not a title. A title needs a lookup table that
 goes stale the next time a track is swapped, and the file is the thing you would go and find
-afterwards — the only real reason to put a track name on screen. It reads `name (synth)` when
+afterwards - the only real reason to put a track name on screen. It reads `name (synth)` when
 the file failed to load and the fallback is playing, because that state is otherwise completely
 silent: the music still plays, it is just not the music.
 
-`next()` and `prev()` both honour `excluded`, so neither can land you on the theme mid-round —
+`next()` and `prev()` both honour `excluded`, so neither can land you on the theme mid-round -
 the one thing a skip button must not be able to do. Both set `current = sounding` first: a skip
 is relative to what the person pressing it can hear, not to whatever the scheduler has queued
 minutes out.
 
 **Music is on by default.** No browser lets audio start before a user gesture, so that can
-only ever mean "starts at the first click or keypress" — the listener is on the **document**,
+only ever mean "starts at the first click or keypress" - the listener is on the **document**,
 capture phase, `once`. It was on `#menu`, which covers the common path and misses every other
 one. `music.wanted` is persisted separately from the volume (`bv.musicOn`, default true, read as
 `!== '0'` so a cleared key lands on playing) and consulted before autostarting, because a
@@ -317,13 +317,13 @@ default is not the same thing as a decision somebody has already overridden. Vol
 loud; this answers whether.
 
 **The theme plays on the dashboard, always, and nowhere else.** Its file track has `loop: true`,
-which gives it `repeats: Infinity` — so the sequencer can never reach a handover and it owns the
+which gives it `repeats: Infinity` - so the sequencer can never reach a handover and it owns the
 rotation until something calls `jumpTo`. Starting a round is exactly that: `exclude('theme')`
 then `playFrom`, straight into a bed.
 
 ### Seeing the music
 
-An `AnalyserNode` hangs off `musicGain` **in parallel** — a dangling analyser is a pure observer,
+An `AnalyserNode` hangs off `musicGain` **in parallel** - a dangling analyser is a pure observer,
 so the audio path is untouched and nothing the drawing code does can go wrong with the sound. It
 is POST-volume on purpose: turn the music down and the bars should stop, because what is drawn
 has to be what you can hear.
@@ -333,9 +333,9 @@ independent, all of them why a raw `getByteFrequencyData` dump looks cheap:
 
 | Problem | Fix |
 |---|---|
-| Bins are linear, hearing is not — at 1024 points the whole bottom two octaves land in two bins | log-spaced bands, 40 Hz to 14 kHz |
+| Bins are linear, hearing is not - at 1024 points the whole bottom two octaves land in two bins | log-spaced bands, 40 Hz to 14 kHz |
 | Treble is always quieter than bass, so the right half barely moves | a +5 dB/decade tilt |
-| One smoothing constant cannot serve both directions | snap up, sag down — the asymmetry *is* the look |
+| One smoothing constant cannot serve both directions | snap up, sag down - the asymmetry *is* the look |
 | No memory of the hit | peak caps that fall under gravity |
 
 A band reports its **loudest** bin, not its average: an average drags every peak toward the quiet
@@ -343,20 +343,20 @@ bins beside it, which is why so many visualisers look muffled.
 
 **Menu** (`client/menuviz.js`): bars grow inward from both edges, mirrored, bass at the bottom.
 Not along the bottom, because the card is centred and the one place a visualiser must not be is
-underneath the thing you came to look at — the edges are dead screen, and the symmetry frames
+underneath the thing you came to look at - the edges are dead screen, and the symmetry frames
 the card instead of flooring it. Plus a bass bloom, embers lit by treble *transients* (a rise,
 not a level, or a sustained hi-hat pours them out forever), and an entrance that sweeps the
 whole thing out of the edge when the music starts.
 
 Two numbers earned the hard way: **no alpha floor** on a bar, and a 0.09 cutoff. A floor is right
-for three bars in a dock and badly wrong for forty — it draws all forty at all times, and the
+for three bars in a dock and badly wrong for forty - it draws all forty at all times, and the
 result is a venetian blind with the loud ones somewhere inside it.
 
-**In game**: almost nothing, deliberately. Three real bands in the dock meter — replacing three
-canned keyframes that were a loop pretending to be a level — and a glow on the dock pill that
+**In game**: almost nothing, deliberately. Three real bands in the dock meter - replacing three
+canned keyframes that were a loop pretending to be a level - and a glow on the dock pill that
 reaches eighteen pixels at its loudest. A round is not the place for a light show.
 
-**The sea has an ear of its own** — a second analyser, pre-fader and lightly smoothed, read by
+**The sea has an ear of its own** - a second analyser, pre-fader and lightly smoothed, read by
 `audio/listen.js` rather than by this spectrum. The bars want heavy smoothing; beat and tempo
 detection wants transients, which that smoothing blurs away. See *The sea listens* below.
 
@@ -374,7 +374,7 @@ Five layers, in sequence, because a blast is a sequence and that is what carries
 
 `size` (0..1) scales each one *differently*, which is the point: a bigger blast is not a louder
 blast, it is a longer and deeper one with relatively **less** crack. Taken from the blast radius,
-and a powder keg is radius 7 against a bomb's cap of 6 — so `r > MAX_RADIUS` identifies a keg
+and a powder keg is radius 7 against a bomb's cap of 6 - so `r > MAX_RADIUS` identifies a keg
 with no new field on the wire and nothing to go stale. Kegs get `kegboom`: the same five at
 size 1, plus a fizz of powder in front and a second sub an octave down behind.
 
@@ -382,25 +382,25 @@ size 1, plus a fizz of powder in front and a second sub an octave down behind.
 
 Two kinds, on two different nodes, and that separation is deliberate.
 
-- **`duck(on)`** — chat focus. Writes `musicGain`, through `applyGain`, which is the one writer
+- **`duck(on)`** - chat focus. Writes `musicGain`, through `applyGain`, which is the one writer
   of it.
-- **`dip(depth, recoverS)`** — explosions and your own death. Writes a **separate `sidechain`
+- **`dip(depth, recoverS)`** - explosions and your own death. Writes a **separate `sidechain`
   node** between the tracks and the bus.
 
 They are different concerns on different clocks: a dip is a 300 ms transient fired by the game,
 a duck is a setting. Sharing one parameter means every dip races every slider move, and a
 `setTargetAtTime` whose start time is already past keeps decaying until some later event
-replaces it — which is how this exact file once produced a session of silence. Two nodes, two
+replaces it - which is how this exact file once produced a session of silence. Two nodes, two
 owners, no race.
 
 The dip is scaled by distance and by blast size, with the same eight-tile falloff as the camera
 shake and for the same reason: it is about blasts you are IN, not blasts you can hear. It never
 undoes an earlier dip that is still recovering, so a chain reaction ducks once and deeply rather
-than stuttering. Down in 20 ms, back over 380 ms — a fast recovery pumps audibly and draws
+than stuttering. Down in 20 ms, back over 380 ms - a fast recovery pumps audibly and draws
 attention to the duck itself, which is the one thing it must never do.
 
 **Defaults: music `0.10`, SFX `0.75`.** Persist both to `localStorage` (`bv.music`, `bv.sfx`).
-**One** `AudioContext` for the whole page, created lazily and unlocked on the PLAY click — see
+**One** `AudioContext` for the whole page, created lazily and unlocked on the PLAY click - see
 `public/client/audio/engine.js`. Two contexts means the second never unlocks, and hanging the
 effects off the music's context means muting the music mutes the game.
 
@@ -412,7 +412,7 @@ the slider*. Three reasons it has to be there and nowhere else:
   played has one in `localStorage`, so halving the defaults would do nothing for them.
 - Downstream of the volume node means **no slider can scale back past it**.
 - After the limiter, because trimming *before* it lets peaks that used to be squashed through
-  untouched — the mix then gets quieter by rather less than the trim claims.
+  untouched - the mix then gets quieter by rather less than the trim claims.
 
 ### SFX
 
@@ -423,16 +423,16 @@ caller has already decided when, where and how loud.
 |---|---|---|
 | `place` | a bomb is placed | square blip 220 → 180 Hz, 60 ms |
 | `fuse` | a bomb within earshot has < 1 s left | dry triangle tick, 1.2–1.9 kHz, four accelerating stages |
-| `boom` | explosion | five layers in sequence — see **Explosions** above |
+| `boom` | explosion | five layers in sequence - see **Explosions** above |
 | `kegboom` | a powder keg | the same five at size 1, a powder fizz in front, a second sub an octave down |
 | `boom {chain}` | a bomb set off by another | same, pitched up 15 %, capped at 3 per frame |
-| `blockdie` | a wall is destroyed | band-passed noise 900 → 420 Hz, quiet — several fire per blast |
+| `blockdie` | a wall is destroyed | band-passed noise 900 → 420 Hz, quiet - several fire per blast |
 | `blocknew` | a wall grows back | low sine thud 150 → 70 Hz. Your escape route just changed |
 | `melt` | ice breaks | a highpassed crack, five high sine tinkles, then a lowpassed splash. Nothing else rings |
 | `pickup` | a perk is collected | two-note triangle; **the interval says which perk** |
 | `glug` / `hiccup` | rum, and being drunk on it | the one pickup that does not go up |
 | `shield` | a shield eats a blast | glassy sine pair, a fifth apart |
-| `status` | a disease is caught | detuned triangle pair with a 7 Hz wobble — dormant, nothing hands out diseases now |
+| `status` | a disease is caught | detuned triangle pair with a 7 Hz wobble - dormant, nothing hands out diseases now |
 | `death` | someone else dies | descending saw 330 → 70 Hz, positional |
 | `ownDeath` | **you** die | two detuned saws 300 → 52 Hz, 750 ms, close up |
 | `kill` | **you** killed someone | bright two-note stab up a fourth, with a click on front |
@@ -444,7 +444,7 @@ caller has already decided when, where and how loud.
 Four rules do more for how this feels than any individual recipe:
 
 1. **Positional.** Panned and attenuated by distance from your own *rendered* position, with the
-   top end rolled off with distance too — that is what actually reads as far away. Past
+   top end rolled off with distance too - that is what actually reads as far away. Past
    `SFX_MAX_DISTANCE_TILES` the sound is not played at all. Rolloff is **linear, not
    inverse-square**: physically wrong, and correct here, because a bomb four tiles away matters
    nearly as much as one at your feet.
@@ -456,13 +456,13 @@ Four rules do more for how this feels than any individual recipe:
    same thing happening to someone else, and `kill` is its own sound. That confirmation is the
    most important noise in a deathmatch.
 
-Explosions, the fanfare and both death sounds feed a shared send — one low-passed feedback delay,
-not a real reverb — so a blast sounds like it happened in a stone corridor.
+Explosions, the fanfare and both death sounds feed a shared send - one low-passed feedback delay,
+not a real reverb - so a blast sounds like it happened in a stone corridor.
 
 **Your own bomb is triggered locally, not from the server event.** The `bomb` event is two ticks
 behind, and 66 ms of lag on the one sound you trigger yourself is the difference between
 responsive and mushy. `localBombFeedback` in `main.js` re-checks every reason a placement would be
-refused — dead, pacifist, out of bombs, tile occupied — so it is honest rather than optimistic.
+refused - dead, pacifist, out of bombs, tile occupied - so it is honest rather than optimistic.
 
 ### Music
 
@@ -470,14 +470,14 @@ refused — dead, pacifist, out of bombs, tile occupied — so it is honest rath
 `public/client/audio/music.js` owns the main theme, the three ambient beds in
 `public/client/audio/ambient.js`, and the cycling between them. `main.js` only ever says
 `start` / `stop` / `toggle` / `setVolume` / `duck` and never learns that more than one track
-exists — adding a fifth track must not touch anything outside `audio/`.
+exists - adding a fifth track must not touch anything outside `audio/`.
 
-Every track is the same shape — `{ name, steps, stepDur, repeats, gain, schedule(step, time) }` —
+Every track is the same shape - `{ name, steps, stepDur, repeats, gain, schedule(step, time) }` -
 so one sequencer drives all four. Scheduling is the standard look-ahead pattern: a 25 ms timer
 that only ever queues notes ~120 ms into the future, with the AudioContext clock doing the real
-timing. **Never `setTimeout` per note** — it drifts audibly within seconds.
+timing. **Never `setTimeout` per note** - it drifts audibly within seconds.
 
-#### The main theme — 8 bars, 116 BPM, two halves that do not sound alike
+#### The main theme - 8 bars, 116 BPM, two halves that do not sound alike
 
 | | Bars 1–4 | Bars 5–8 |
 |---|---|---|
@@ -498,19 +498,19 @@ gate, Q of 5 around 1.9 kHz, no body underneath, and no send to the delay. Lengt
 and it becomes a pad; drop the Q and it becomes a synth stab; keep the low end and it fights the
 bass.
 
-116 BPM, not the 77 this started at, because the pocket only exists around there — a
+116 BPM, not the 77 this started at, because the pocket only exists around there - a
 four-on-the-floor at 77 is a funeral march, and putting the kick on the eighths instead makes it
 154, which is drum and bass. The **dotted-eighth delay time is derived from `BPM`**; if you change
 the tempo it has to follow or the echo desyncs.
 
-#### The three ambient beds — in-game atmosphere
+#### The three ambient beds - in-game atmosphere
 
 Each is 12–16 bars, 50–64 BPM, and audibly its own thing:
 
 | Bed | Key / character | Why it is different |
 |---|---|---|
-| `drift` | C major, airy — Cmaj9 Fmaj7 Am9 G6 | triangle waves, 3.2 kHz cutoff, sits well above the gameplay |
-| `suspend` | A/D/E **sus**, unresolved — not one third in it | sine, 12 bars so it is off the others' grid, 2.4 s release |
+| `drift` | C major, airy - Cmaj9 Fmaj7 Am9 G6 | triangle waves, 3.2 kHz cutoff, sits well above the gameplay |
+| `suspend` | A/D/E **sus**, unresolved - not one third in it | sine, 12 bars so it is off the others' grid, 2.4 s release |
 | `undertow` | D minor with a flat second, modal and dark | lowpassed sawtooth an octave down, the only bed with a pulse |
 
 **No kit.** The theme has the drums; `undertow` gets one soft sub thump on the bar and that is the
@@ -519,7 +519,7 @@ whole percussion budget. Six or seven arpeggio notes a bar, not sixteen.
 What makes a bed atmosphere rather than music is the **overlap**: every note has a 1.5–2.5 s
 release and feeds a dotted-eighth delay at its own tempo, so by the third note you are hearing a
 chord instead of a line and there is nothing to follow. The arpeggio index is also **rotated by
-the bar within the chord**, so four bars on one chord are four different contours — and because
+the bar within the chord**, so four bars on one chord are four different contours - and because
 every note in a voicing is a chord tone, no rotation can turn into a tune.
 
 #### Cycling
@@ -549,7 +549,7 @@ be three writers that did not agree: `stop()` ramped to zero, `start()` never pu
 `setVolume` and `duck` were both gated on `playing` so neither rescued it. Toggling the music off
 and on gave you a button saying "♪ on" and silence for the rest of the session, because a
 `setTargetAtTime` whose `startTime` is already in the past keeps decaying until some later
-automation event replaces it — and `cancelScheduledValues(currentTime)` does *not* remove it.
+automation event replaces it - and `cancelScheduledValues(currentTime)` does *not* remove it.
 Routing every writer through one place also means the ducked flag survives a restart, instead of
 coming back at full volume while the chat box still has focus.
 
@@ -563,37 +563,37 @@ and a sixteen-band equaliser a frame, and `render.js` draws with them. Nothing m
 drawn while the music is off.
 
 **Measure it in a round, not on the menu.** The first two versions were tuned against the theme
-and looked fine there. Probed in a real round — real Chrome, real `drift.mp3`, the listener's
-output sampled every half second — the pipe worked and the sea still looked dead: the beds give
+and looked fine there. Probed in a real round - real Chrome, real `drift.mp3`, the listener's
+output sampled every half second - the pipe worked and the sea still looked dead: the beds give
 about one detected kick every two seconds, the tempo never locks, hats are rare, and a curve meant
 to keep "usual" quiet turned a bass of 0.5 into 0.11. Everything below is built for what plays
 during a round.
 
 **The island is the speaker.** The headline effect: a 16-band equaliser made of the sea itself.
-Every stretch of coast belongs to one band, by angle round the island — bass at the bottom,
-treble at the top, mirrored left and right — and that band's level pushes a bar of light out from
+Every stretch of coast belongs to one band, by angle round the island - bass at the bottom,
+treble at the top, mirrored left and right - and that band's level pushes a bar of light out from
 the rock, up to 4.5 tiles, built from inset sea-tile segments like the blocks of an LED meter, with
 a bright cap on the tip. Each band is scored against its own history, so every bar dances around
 its own usual height; on the beds the bands swing across their whole range from second to second.
 Drawn under the island, additive, so anything reaching into a bay is covered by the land.
 
-**Accents, not just kicks.** An onset anywhere from 60 Hz to 8 kHz — a chord arriving, a pad
-swelling, a pluck — counts. Without a locked tempo, any beat or accent sends a swell walking out
+**Accents, not just kicks.** An onset anywhere from 60 Hz to 8 kHz - a chord arriving, a pad
+swelling, a pluck - counts. Without a locked tempo, any beat or accent sends a swell walking out
 along the coast, a **sonar ring** sweeping out across the open sea from the island, and foam off
 the rocks.
 
 Two further layers:
 
-**Rhythm — it keeps time.** Detected beats feed a tempo (the mean of recent spacings that agree
+**Rhythm - it keeps time.** Detected beats feed a tempo (the mean of recent spacings that agree
 with their median, folded into 71–143 BPM) and a phase-locked metronome: `phase` runs 0→1 once a
 beat on its own, and every detected beat pulls both its position and its rate back into line.
 Once the spacings are regular enough to trust (`lock` ≥ 0.5), swells leave the coast on the
-metronome's downbeat — on the beat, every beat, including kicks the detector missed, and never on a
+metronome's downbeat - on the beat, every beat, including kicks the detector missed, and never on a
 false hit between them. Until then, on each detected beat. The metronome also drives a concentric
 wave through the current, centred on the island, one crest per beat, so the streaks breathe in
 rings in time with the music between the kicks as well as on them.
 
-**Colour — each band does a different thing.**
+**Colour - each band does a different thing.**
 
 | Music | Sea |
 |---|---|
@@ -607,11 +607,11 @@ rings in time with the music between the kicks as well as on them.
 | 16 bands | the coastal equaliser |
 
 The continuous couplings are **linear** above 0.25 (`lifted()`). They were curved for a while, to
-keep the music's usual level from moving the water — and that is exactly what made the sea look
+keep the music's usual level from moving the water - and that is exactly what made the sea look
 dead during a round, where the usual level is most of the signal there is.
 
 **What you see lands when you hear it.** The analyser hears audio as it is processed, which is the
-output latency — tens of milliseconds — before the speakers do. Everything the listener reports
+output latency - tens of milliseconds - before the speakers do. Everything the listener reports
 goes through a short delay line of that length (`outputLatency + baseLatency`), with the
 metronome's phase advanced across the gap so frame jitter cannot make it stutter.
 
@@ -624,19 +624,19 @@ The decisions underneath:
   are decibels, which sit in the top third of the range and barely move; the first version
   normalised against a decaying peak and, measured on the real mp3s, every band sat at 0.95 the
   whole time. Now they span roughly 0.3 to 0.9 on every track, and silence maps to zero.
-- **A beat is spectral flux in 40–140 Hz** — every low bin that got louder, summed — above an
+- **A beat is spectral flux in 40–140 Hz** - every low bin that got louder, summed - above an
   adaptive threshold *and* an absolute floor, with a 260 ms refractory gap. Without the floor,
   ordinary jitter on a beatless bed fired constantly. Measured offline through a real analyser:
   the theme, at 116 BPM, detects 118 beats a minute.
 
 Attack is fast and release slow everywhere, so the water rises with the music and settles after
-it. The beat swell is drawn as rows of sea tiles stepped out from the shoreline — the same
-construction as the shallows — so it follows every bay and headland; an earlier ring round the
+it. The beat swell is drawn as rows of sea tiles stepped out from the shoreline - the same
+construction as the shallows - so it follows every bay and headland; an earlier ring round the
 island's bounding box left the visible strip of sea before anybody saw it.
 
 Measured on the real mp3s, offline through a real analyser: the theme (116 BPM) locks at 114, and
 every track holds a lock for 57–88% of a 40-second stretch. Brightness separates the tracks on its
-own — the theme and `suspend` sit around 0.75, `drift` and `undertow` around 0.28 — so each bed
+own - the theme and `suspend` sit around 0.75, `drift` and `undertow` around 0.28 - so each bed
 gets its own light.
 
 `test/listen.test.js` holds it to that with a fake analyser: beats at 90, 116 and 140 BPM land

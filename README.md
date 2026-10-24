@@ -28,7 +28,7 @@ Ten minutes a round, five islands in rotation. Drop a bomb, get clear, be standi
 | Dash | Double-tap a direction. Costs stamina, goes through people |
 | Emote | <kbd>Shift</kbd> + a direction |
 | Chat | <kbd>Enter</kbd> |
-| Scoreboard | <kbd>Tab</kbd> — round and all-time |
+| Scoreboard | <kbd>Tab</kbd> - round and all-time |
 | Back out | <kbd>Esc</kbd> |
 
 Fire runs in a cross and stops at walls. It sets off any bomb it touches, and chains are where
@@ -42,10 +42,10 @@ costs you fifteen seconds, which is long enough to watch how the fight you just 
 | <img src="docs/readme/icons/bomb.svg" width="18" align="middle"> | **Bombs and fire** | A cross, stopped by walls, handed on to any bomb it reaches. |
 | <img src="docs/readme/icons/keg.svg" width="18" align="middle"> | **Powder kegs** | Rare barrels. Break one and it takes the neighbourhood with it. One a round, at least. |
 | <img src="docs/readme/icons/bolt.svg" width="18" align="middle"> | **Stamina** | Ten seconds of sprint, then you limp. Stopping to breathe is a real decision. |
-| <img src="docs/readme/icons/boot.svg" width="18" align="middle"> | **Perks** | More bombs, longer fire, boots, a shield, stim, and rum — which saves you from everything except the tile the bomb was on, and steers like a shopping trolley. |
+| <img src="docs/readme/icons/boot.svg" width="18" align="middle"> | **Perks** | More bombs, longer fire, boots, a shield, stim, and rum - which saves you from everything except the tile the bomb was on, and steers like a shopping trolley. |
 | <img src="docs/readme/icons/ice.svg" width="18" align="middle"> | **Ice** | Melts to a puddle when it is hit. Half pace, and you keep going after you let go. |
 | <img src="docs/readme/icons/coin.svg" width="18" align="middle"> | **Gold** | The rarest thing on the floor. Worth nothing in the round, worth a lot on the board. |
-| <img src="docs/readme/icons/gull.svg" width="18" align="middle"> | **Seagulls** | Scenery, until you catch one in a blast — then it pays. Once a round, two of them pick a player and settle it themselves. |
+| <img src="docs/readme/icons/gull.svg" width="18" align="middle"> | **Seagulls** | Scenery, until you catch one in a blast - then it pays. Once a round, two of them pick a player and settle it themselves. |
 | <img src="docs/readme/icons/skull.svg" width="18" align="middle"> | **Kill streaks** | Double, triple, ultra, rampage, and an **ACE** for taking the whole island in one run. |
 
 ## <img src="docs/readme/icons/medal-gold.svg" width="18" align="middle"> Medals
@@ -58,7 +58,7 @@ A medal is a podium finish. Handed out at the whistle, kept for good.
 | <img src="docs/readme/icons/medal-silver.svg" width="22" align="middle"> | **Silver** | Second |
 | <img src="docs/readme/icons/medal-bronze.svg" width="22" align="middle"> | **Bronze** | Third |
 
-Coins are their own thing — picked up off the floor mid-round, counted next to the medals.
+Coins are their own thing - picked up off the floor mid-round, counted next to the medals.
 
 ## <img src="docs/readme/icons/coin.svg" width="20" align="middle"> Score
 
@@ -151,7 +151,7 @@ itself when they leave.
 
 ## <img src="docs/readme/icons/bug.svg" width="20" align="middle"> Credits
 
-In the line of **Bomberman**, **Game of Bombs** and **Crazy Arcade**. None of their art is used —
+In the line of **Bomberman**, **Game of Bombs** and **Crazy Arcade**. None of their art is used -
 everything here is original.
 
 Code under the [MIT licence](LICENSE). The display typeface comes with its own, included beside it

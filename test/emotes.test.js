@@ -18,7 +18,7 @@ const css = read('public/style.css');
 
 test('an emote goes down the ordinary chat path', () => {
   assert.match(main, /net\.send\(\{ t: 'chat', msg: e \}\)/,
-    'emotes are not sent as chat — that means a new protocol message to keep in step');
+    'emotes are not sent as chat - that means a new protocol message to keep in step');
   const server = read('server/net.js');
   assert.ok(!/emote/i.test(server), 'the server grew emote-specific code; it should need none');
 });
@@ -65,7 +65,7 @@ test('EMOTES is declared before the code that fills the legend from it', () => {
 });
 
 test('the bubbles are actually painted', () => {
-  /* drawSays existed, was correct, and was never called from frame() — so every bubble was
+  /* drawSays existed, was correct, and was never called from frame() - so every bubble was
    * built, aged and expired without a single pixel reaching the screen. A renderer function
    * nothing calls is the one bug reading the function will never show you. */
   const body = render.slice(render.indexOf('function frame('), render.indexOf('function drawSays'));
@@ -107,8 +107,8 @@ test('the picker does not reuse another component’s class name', () => {
 
 test('nothing in the picker can be left invisible by an animation that never runs', () => {
   /* The failure that caught this: `animation: ... backwards` with `from { opacity: 0 }` leaves
-   * the element at zero until the animation starts. Anything that stops animations running — a
-   * compositor giving up, a headless render, a system setting — then leaves an invisible
+   * the element at zero until the animation starts. Anything that stops animations running - a
+   * compositor giving up, a headless render, a system setting - then leaves an invisible
    * picker, which is worse than never having animated it at all. */
   const pop = css.match(/@keyframes emotePop \{([\s\S]*?)\n\}/);
   assert.ok(pop, 'emotePop not found');
@@ -128,7 +128,7 @@ test('a bubble is narrow, and wraps rather than spreading across the board', () 
 });
 
 test('a bubble follows the player and is drawn in screen space', () => {
-  // Board space would scale the text down with the island at the zoom floor — which is exactly
+  // Board space would scale the text down with the island at the zoom floor - which is exactly
   // when the board is busiest and the words matter most.
   assert.match(render, /function drawSays/, 'drawSays is gone');
   assert.match(render, /ctx\.setTransform\(view\.dpr, 0, 0, view\.dpr, 0, 0\);/,
@@ -138,7 +138,7 @@ test('a bubble follows the player and is drawn in screen space', () => {
 
 test('a censored word is speech, not an emote', () => {
   // `***` has no letters, which under the old test made it an emote: emoji font, dark bubble,
-  // and no glyph for an asterisk — an empty black box over the speaker's head.
+  // and no glyph for an asterisk - an empty black box over the speaker's head.
   const isEmote = t => !/[\p{L}\p{N}]/u.test(t) && /\p{Extended_Pictographic}/u.test(t);
   assert.equal(isEmote('***'), false);
   assert.equal(isEmote('?!'), false);

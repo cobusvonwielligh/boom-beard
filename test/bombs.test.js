@@ -1,5 +1,5 @@
 // Blast shape, chains, destruction and death. `spread` is pure, which is what lets the client
-// draw the identical explosion on the identical tick — docs/NETCODE.md §1a.
+// draw the identical explosion on the identical tick - docs/NETCODE.md §1a.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -88,7 +88,7 @@ test('fire spread', async t => {
     assert.ok(!at(cells, 10, 7), 'but one tile short of full reach');
   });
 
-  await t.test('is pure — same inputs, same answer', () => {
+  await t.test('is pure - same inputs, same answer', () => {
     const st = room();
     setTile(st.map, 9, 7, BLOCK.SOFT, 1);
     const a = JSON.stringify(spread(st.map, { tx: 7, ty: 7, radius: 4 }));
@@ -201,7 +201,7 @@ test('bombs in the round loop', async t => {
   });
 
   await t.test('facing a wall, the bomb lands underfoot instead', () => {
-    // Otherwise the commonest action in the game — break the wall you are looking at — would
+    // Otherwise the commonest action in the game - break the wall you are looking at - would
     // be impossible, because the tile you are aiming at is the wall itself.
     const st = room();
     const p = spawn(st, 0, 3, 3);
@@ -258,7 +258,7 @@ test('bombs in the round loop', async t => {
       assert.ok(Math.abs(share - want) < 0.08,
         `perk ${type}: ${share.toFixed(3)} against an expected ${want.toFixed(3)}`);
     }
-    // Everything at weight zero must never appear — the reserved types, and the three that are
+    // Everything at weight zero must never appear - the reserved types, and the three that are
     // implemented but switched off.
     for (const [type, w] of Object.entries(PERK_WEIGHTS)) {
       if (w === 0) assert.equal(counts[type], undefined, `perk ${type} is off but still dropped`);
@@ -339,7 +339,7 @@ test('a blast arm stops at another bomb', async t => {
     assert.equal(st.bombs.length, 0, 'a bomb survived the chain');
   });
 
-  await t.test('without a bomb list, arms pass through — the old behaviour', () => {
+  await t.test('without a bomb list, arms pass through - the old behaviour', () => {
     const st = room();
     const a = { id: 1, tx: 5, ty: 7, owner: 0, radius: 5, at: 0 };
     st.bombs.push(a, { id: 2, tx: 7, ty: 7, owner: 1, radius: 1, at: 99 });

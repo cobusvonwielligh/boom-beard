@@ -67,7 +67,7 @@ test('kegs chain into each other', () => {
   assert.equal(booms.length, 3, `the second keg did not chain (${booms.length} booms)`);
 });
 
-test('a keg drops no perk — it holds powder', () => {
+test('a keg drops no perk - it holds powder', () => {
   const s = createState(ROOM);
   setTile(s.map, 6, 4, BLOCK.POWDER, BLOCK_HP[BLOCK.POWDER]);
   s.bombs.push({ id: s.nextBombId++, tx: 4, ty: 4, owner: 0, radius: 3, at: 0 });
@@ -93,7 +93,7 @@ test('one is guaranteed, even when every roll goes against it', () => {
   // it, so "no quiet tile anywhere" would be a property of that fixture rather than of the rule.
   const s = createState(MAPS[0]);
   // The first next() of a cycle is the 12% roll, so force that one to fail every time and leave
-  // the rest alone — tile selection still needs usable randomness, and an rng clamped to half
+  // the rest alone - tile selection still needs usable randomness, and an rng clamped to half
   // the range would starve it rather than test the guarantee.
   const real = s.next;
   let firstOfCycle = true;
@@ -195,7 +195,7 @@ test('being tired halves your pace, and stim raises the ceiling', () => {
 test('every map is one connected island with sixteen reachable spawns', () => {
   // The two things that have actually gone wrong with a new shape before: an island that
   // generates as two pieces with half the players stranded on the smaller one, and a spawn
-  // placed on a tile nobody can walk out of. Both are silent — you only find out mid-round.
+  // placed on a tile nobody can walk out of. Both are silent - you only find out mid-round.
   for (const def of MAPS) {
     const map = buildMap(def);
     assert.equal(map.spawns.length, 16, `${def.id}: ${map.spawns.length} spawns`);
@@ -208,7 +208,7 @@ test('every map is one connected island with sixteen reachable spawns', () => {
       assert.ok(walkable(sy * def.w + sx), `${def.id}: spawn ${sx},${sy} is inside something`);
     }
 
-    // Flood from the first spawn, counting destructible walls as passable — you can always bomb
+    // Flood from the first spawn, counting destructible walls as passable - you can always bomb
     // your way through a crate. What must never happen is a spawn walled off by IRON or cut off
     // by water, because no amount of bombing fixes either.
     const passable = i => {

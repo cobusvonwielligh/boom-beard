@@ -1,4 +1,4 @@
-# Boom Beard — Where We Stand
+# Boom Beard - Where We Stand
 
 Last updated: **2026-10-24**, at **v1.0.0**. Live on `boombeard.co.za`. 314 tests, all of which
 now pass on Windows as well as in CI. The security check that went into 1.0 is
@@ -24,8 +24,8 @@ accurate; the parts that describe *what is not built yet* are not.
 | Maps | ✅ 5 |
 | Art and audio | ✅ art in code; music is four produced files (see §2e) |
 | Transport | ✅ **WebTransport over QUIC, with WebSocket as the fallback** |
-| Persistence | ✅ leaderboard, levels, XP — banked on disconnect, round end **and shutdown** |
-| Observer mode | ✅ built — Spectate on the menu, and from the death card |
+| Persistence | ✅ leaderboard, levels, XP - banked on disconnect, round end **and shutdown** |
+| Observer mode | ✅ built - Spectate on the menu, and from the death card |
 | Mobile | ⬜ out of scope, unchanged |
 
 ---
@@ -38,12 +38,12 @@ because the reasoning is still load-bearing.
 ### (a) WebSocket is no longer the only transport
 
 PLAN.md and NETCODE.md assume `ws://` and nothing else. The game now dials **WebTransport over
-HTTP/3 and WebSocket at the same time** and uses whichever connects — see
+HTTP/3 and WebSocket at the same time** and uses whichever connects - see
 [NETCODE.md](NETCODE.md) §8.
 
 The reason to care is head-of-line blocking. Over TCP a single lost packet stalls every byte
 queued behind it, so one drop delays the next three snapshots as well as the one it hit. Inputs
-and snapshots are continuously replaced — a lost one is superseded 33 ms later — so they want a
+and snapshots are continuously replaced - a lost one is superseded 33 ms later - so they want a
 channel that drops rather than waits. That is what QUIC datagrams are.
 
 It is strictly additive. UDP/443 is blocked by corporate firewalls far more often than TCP is,
@@ -51,7 +51,7 @@ and this game exists to be played in an office, so WebTransport can never be the
 
 > **The thing that nearly made it pointless:** a WebSocket `open` fires as soon as TCP and TLS
 > are up, which beats a cold QUIC handshake. A plain "whoever answers first" race therefore gave
-> the WebSocket the win almost every time, and the QUIC path — once built — was never actually
+> the WebSocket the win almost every time, and the QUIC path - once built - was never actually
 > used by anybody. The WebSocket now waits 350 ms for WebTransport before claiming the
 > connection, and gives up that wait the instant WebTransport fails.
 
@@ -69,7 +69,7 @@ removed. It was the only thing that handed out diseases, so the contagious statu
 Rum is the odd one. At weight 11 of 411 it is **2.7% of drops**, it glows on the floor, and it
 is the only perk you might not want: it softens damage and makes you drunk, which sways your
 walk and rolls the camera. It is the only perk whose effect is visible to the person carrying
-it and nobody else — and the only one rare enough to be an event rather than a thing you have.
+it and nobody else - and the only one rare enough to be an event rather than a thing you have.
 
 ### (d) New systems that were never in the plan
 
@@ -78,7 +78,7 @@ it and nobody else — and the only one rare enough to be an event rather than a
   punishment. See [RULES.md](RULES.md) §9.
 - **Ice.** One soft wall in twenty. A blast melts it into water on its own tile and the four
   beside it, for **eight seconds**: half pace, and you slide when you let go. Eight because at
-  four the puddle was gone before anyone but the person who made it could reach it — a rare
+  four the puddle was gone before anyone but the person who made it could reach it - a rare
   thing that evaporates before you can cross to it is a rare thing nobody uses. The water is in
   the snapshot, not derived from events, because prediction reads it. See [RULES.md](RULES.md) §4.
 - **The sea listens to the music.** Bass swells the waves, energy speeds the current, the highs
@@ -87,7 +87,7 @@ it and nobody else — and the only one rare enough to be an event rather than a
   six a round, at least one guaranteed. They chain into each other and into bombs, because a keg
   *is* a bomb as far as the blast code is concerned. See [RULES.md](RULES.md) §10.
 - **Seagulls.** One crosses the island every minute or so. Catch one in a blast at the bottom of
-  its dive — hard on purpose: about one tick in nine of its flight, and its shadow is the tell —
+  its dive - hard on purpose: about one tick in nine of its flight, and its shadow is the tell -
   and it drops a gold coin that does not count against the round's five. The server describes a
   flight once (start, end, departure tick, phases) and the client draws it from its own clock,
   so a gull costs a few dozen bytes a snapshot. See [RULES.md](RULES.md) §8c and
@@ -99,8 +99,8 @@ it and nobody else — and the only one rare enough to be an event rather than a
 ### (e) Art is still code. The music is not.
 
 Four PNGs live in `public/assets/img/`: the mascot, its cropped face, a stack of kegs and an icon.
-They are landing-page and HUD decoration only. **Everything inside the game — terrain, players,
-bombs, fire, perks, the sea, the moored ship, the boulders, the gulls — is still drawn from
+They are landing-page and HUD decoration only. **Everything inside the game - terrain, players,
+bombs, fire, perks, the sea, the moored ship, the boulders, the gulls - is still drawn from
 shapes in code**, and that rule has not moved. The ship (2.5× her original size now) and the
 sea boulders (the largest 3.5×, the rest about 2.5×) are sized in `render.js`.
 
@@ -111,7 +111,7 @@ The simulation does not know: a tile is still solid or not, and only its drawing
 
 What changed is how often some of it is drawn. Static or slow things are painted once into an
 offscreen canvas and blitted: the ship, the shallows bands, players' name labels, and the coastal
-glow (repainted at ~12 Hz rather than every frame — it moves on periods of tens of seconds). The
+glow (repainted at ~12 Hz rather than every frame - it moves on periods of tens of seconds). The
 sea's 590 flow particles evaluate the current once per particle instead of twice and stroke in a
 dozen batched paths instead of 590. The dock meter scales its bars with a transform instead of
 writing `height`, which was forcing a layout every frame. Nothing visible was taken away.
@@ -127,7 +127,7 @@ synthesised version of itself when the file is not there. There is no table mapp
 files, and adding or replacing a track is dropping in an mp3.
 
 So the synthesised theme and the three synthesised beds in `ambient.js` are not dead code. They
-are the fallback, and they are also the specification — what each slot is called and what it is
+are the fallback, and they are also the specification - what each slot is called and what it is
 supposed to sound like. The tests still hold them to it.
 
 A produced mix is wrapped as a track with ONE step whose duration is the length of the file,
@@ -135,7 +135,7 @@ minus the crossfade so the next track overlaps the outro instead of following a 
 above `createFileTrack` knows the difference, which is why crossfading, `exclude`, `playFrom`,
 muting and ducking all work on it unchanged.
 
-Serving them needed two things the server did not have — an `audio/mpeg` type and byte-range
+Serving them needed two things the server did not have - an `audio/mpeg` type and byte-range
 support, the latter because Safari refuses to play an `<audio>` source at all from a server that
 answers a `Range` request with a 200.
 
@@ -145,7 +145,7 @@ The assets folder is now `art.js` plus `img/`, `fonts/` and `audio/`.
 
 ## 3. What is built, by system
 
-### Simulation — `shared/sim/`
+### Simulation - `shared/sim/`
 
 | File | Owns |
 |---|---|
@@ -155,7 +155,7 @@ The assets folder is now `art.js` plus `img/`, `fonts/` and `audio/`.
 | `fire.js` | Blast shape. Pure: `(map, bomb, bombs) → cells` |
 | `blocks.js` | Damage, destruction, wall regrowth, keg placement |
 | `perks.js` | Drop table, pickup, supply-and-demand drop rate, scatter on death |
-| `statuses.js` | Contagious statuses and their spread — dormant since the Gift went |
+| `statuses.js` | Contagious statuses and their spread - dormant since the Gift went |
 | `gulls.js` | Seagulls: flight as a pure function of the tick, spawning, and blast hits (server-only decision) |
 | `round.js` | The one ordered tick: the only place that decides what happens before what |
 
@@ -163,20 +163,20 @@ Deterministic throughout: integers only, one tile is 256 units, no wall clock, n
 `Math.random()`. The client imports every one of these unchanged and runs them for prediction,
 which is why reconciliation is usually a no-op.
 
-### Server — `server/`
+### Server - `server/`
 
 `index.js` (static + TLS + health), `net.js` (WebSocket hub, chat commands, bans),
 `webtransport.js` (the HTTP/3 listener, presenting every session as a `ws`-shaped object),
 `room.js` (the authoritative loop, seats, snapshots, rounds, hosts), `ai.js` + `bots.js`,
 `leaderboard.js`, `config.js`, `canonical.js`.
 
-### Client — `public/client/`
+### Client - `public/client/`
 
 `main.js` (loop, HUD, events), `net.js` (clock, reconnect, identity), `transport.js` (the
 two-transport race), `world.js` (prediction, reconciliation, interpolation), `render.js` (canvas,
 camera, sea, boulders, ship), `input.js`, `quips.js`, `audio/` (engine, music, ambient, sfx).
 
-### Maps — `shared/maps.js`
+### Maps - `shared/maps.js`
 
 | id | size | shape | the idea |
 |---|---|---|---|
@@ -199,13 +199,13 @@ Every one of these is in `shared/constants.js`. Nothing is inline.
 |---|---|
 | Tick | 30 Hz, snapshots every 2 ticks (15 Hz) |
 | Round | 10 min, `/roundtime 0.1–60` to change |
-| Speed | `[27, 35, 43, 51, 59]` units/tick by boot count — 3.2 to 6.9 tiles/s |
+| Speed | `[27, 35, 43, 51, 59]` units/tick by boot count - 3.2 to 6.9 tiles/s |
 | Caps | 8 bombs, radius 6, 4 boots, 2 shields, 4 stims |
 | Stamina | 3450 tenths (+750 per stim), empty = half pace until a third is back |
 | Respawn | 15 s, then weighted-random across every legal spawn |
 | Perk drops | 35% base, scaled by what is on the floor and how fast it is taken |
 | Rum | 2.7% of drops. Softens damage, sways your walk, rolls your camera for 12 s |
-| Gold | 2.1% of drops, ≤5 a round. 400 XP. Changes nothing about the round — it is a collectible |
+| Gold | 2.1% of drops, ≤5 a round. 400 XP. Changes nothing about the round - it is a collectible |
 | Kegs | ≤6 a round, ≥1 guaranteed, radius 7 |
 | Gulls | first at 25 s, then every 40–90 s, ≤2 aloft, ~4 tiles/s, one coin each when downed |
 | Bots | ≥6 while anyone plays (`min_bots`), removed after 2 empty rounds |
@@ -221,13 +221,13 @@ is the index.
 
 | Symptom | Actual cause |
 |---|---|
-| Walls invisible, players clipping into them | Events cleared every tick, snapshots sent every 2 — half of them never shipped |
+| Walls invisible, players clipping into them | Events cleared every tick, snapshots sent every 2 - half of them never shipped |
 | Remote players juddering | Interpolation took the newest snapshot pair, not the pair that *brackets* the render time |
 | Board shimmering | Zoom recomputed from `clientWidth` every frame, which forces layout and settles over frames |
 | Canvas drawn as a white box | `width: auto` on a replaced element resolves to its intrinsic 300×150, over-constraining the box |
 | A sea of empty ocean on most maps | Zoom fitted the map **rectangle**; every map but Arena is a shape inside it, so the rest is water |
 | The spawn effect ballooning constantly | It fired for all sixteen players, burying the one case it exists for |
-| Movement "snapping" off bombs | Lane centring ran at `speed × 2` — half a tile sideways in one tick with boots |
+| Movement "snapping" off bombs | Lane centring ran at `speed × 2` - half a tile sideways in one tick with boots |
 | QUIC built but never used | The WebSocket won the race every time; see §2(a) |
 | Everyone calling each other `p1` | Snapshots carry no names, and the only message that did was the welcome |
 | Fire overshooting a chain | Blast arms passed straight through other bombs instead of stopping at them |
@@ -248,9 +248,9 @@ Ordered by how much it would change a Friday session.
 
 1. **Bots are competent at not dying; they are not yet good at killing.** `npm run botbench`
    (15 bots, every map, headless, ~3 s for 20 simulated minutes each) measures 0.10 suicides and
-   0.60 kills per bot per minute — the kills up from 0.40 since bots are sometimes slow to react
+   0.60 kills per bot per minute - the kills up from 0.40 since bots are sometimes slow to react
    to a bomb that is not theirs (`SURPRISE_*` in `ai.js`), which was asked for to make them a
-   little easier to kill. It was 2.3 and 0.33 — 87% of deaths self-inflicted — and the
+   little easier to kill. It was 2.3 and 0.33 - 87% of deaths self-inflicted - and the
    biggest cause was not the reasoning at all: a bot turning into a gap from just past the corner
    assist window pushed flat into the wall and froze there until its own fuse ran out (see
    `steer` in `ai.js`). Next: hunting. Bots bomb walls and wander toward the nearest player;
@@ -279,7 +279,7 @@ Accounts, payments, matchmaking, mobile, anti-cheat, a persistent world. Unchang
 ## 7. Operating it
 
 - **Deploy:** `npm run deploy` (~6 s), `npm run rollback`, `npm run logs`.
-- **Health:** `/healthz` — tick timings, player count, map, version, and both transports.
+- **Health:** `/healthz` - tick timings, player count, map, version, and both transports.
   `"webtransport": 0` means the listener is up with no sessions; `null` means it failed to start
   and everyone is on WebSocket.
 - **The QUIC addon is compiled on the box** and stashed outside the app directory, because
@@ -290,5 +290,5 @@ Accounts, payments, matchmaking, mobile, anti-cheat, a persistent world. Unchang
 - **Host commands:** `/restart`, `/godmode`, `/kick`, `/map`, `/gamespeed`, `/roundtime`. The host
   is the admin when present and the longest-standing human otherwise, so a room is never left
   without someone who can run it. The admin is the browser holding `[admin] key` from the
-  server's config.ini — open `https://boombeard.co.za/?admin=<key>` once, on each browser you
+  server's config.ini - open `https://boombeard.co.za/?admin=<key>` once, on each browser you
   host from.

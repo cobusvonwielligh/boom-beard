@@ -1,7 +1,7 @@
 // Code is never served stale.
 //
 // Five minutes of max-age on every module meant that after a deploy a browser could run a mix of
-// old and new files, each cached on its own clock — which is how ice tiles drew as holes onto the
+// old and new files, each cached on its own clock - which is how ice tiles drew as holes onto the
 // sea. Code now revalidates on every load and an unchanged file costs a body-less 304.
 
 import { test } from 'node:test';

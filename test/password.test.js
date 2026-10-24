@@ -1,7 +1,7 @@
 // Signing in, over a real socket, against a real server.
 //
 // server/accounts.js is unit-tested next door; this is the half that has burned every project
-// that ever added a login to something that did not have one — the HANDSHAKE. The questions it
+// that ever added a login to something that did not have one - the HANDSHAKE. The questions it
 // answers: does a new name get asked, does the right password get in, does the wrong one stay
 // out, and does the browser that signed in once stop being asked.
 
@@ -124,7 +124,7 @@ test('signing in', async t => {
     assert.equal(msg.auth, 'signup', 'a token vouched for a name it was not issued for');
   });
 
-  await t.test('watching needs no password — the way back in when you forget one', async () => {
+  await t.test('watching needs no password - the way back in when you forget one', async () => {
     const { ws, msg } = await hello({ name: 'cobus', observe: true });
     assert.equal(msg.t, 'welcome');
     assert.equal(msg.observing, true);

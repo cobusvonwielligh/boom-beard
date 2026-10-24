@@ -1,4 +1,4 @@
-// Seeded PRNG. The simulation must never call Math.random() — client and server run the same
+// Seeded PRNG. The simulation must never call Math.random() - client and server run the same
 // code and have to reach the same answer. See docs/ARCHITECTURE.md §9.
 
 /** mulberry32: small, fast, good enough, and identical in every JS engine. */

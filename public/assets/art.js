@@ -1,6 +1,6 @@
-// Boom Beard — art. Shapes, not pixels. No image files anywhere in this project.
+// Boom Beard - art. Shapes, not pixels. No image files anywhere in this project.
 //
-// Slice: ART. This is a working starter, not finished art — it exists so you can see the style,
+// Slice: ART. This is a working starter, not finished art - it exists so you can see the style,
 // check readability, and iterate in public/art-preview.html before the game exists.
 // Read docs/ART-AUDIO.md first.
 //
@@ -9,7 +9,7 @@
 //   2. One light direction: top-left.
 //   3. Terrain is muted; players are the only saturated things on screen.
 
-// `/shared` is mounted by the dev server alongside `public/` — see docs/ARCHITECTURE.md §7.
+// `/shared` is mounted by the dev server alongside `public/` - see docs/ARCHITECTURE.md §7.
 import { BLOCK, TILE_PX, MAX_RADIUS, playerHueSlot } from '/shared/constants.js';
 
 export const PALETTE = {
@@ -19,8 +19,8 @@ export const PALETTE = {
   iron: '#262c38', column: '#59627a', shrub: '#3f6b46',
   outline: '#161b24',
   fireCore: '#fff4c2', fireMid: '#ff9b3d', fireEdge: '#e63f27',
-  // The interface accent, matching --gold in style.css. It IS fireMid above — the same value,
-  // not a near miss — so the chrome is the exact colour of an explosion. Keep it off the board:
+  // The interface accent, matching --gold in style.css. It IS fireMid above - the same value,
+  // not a near miss - so the chrome is the exact colour of an explosion. Keep it off the board:
   // fire is the brightest thing there and an orange marker among it reads as a blast. Actual
   // treasure keeps its own yellow below.
   gold: '#ff9b3d', treasure: '#ffd21f', text: '#e8eef7',
@@ -39,7 +39,7 @@ export const PALETTE = {
   // slate the walls are: the coast has to read as a different material from the level.
   /* The sea, lifted and turned toward the Caribbean.
    *
-   * Every tone is lighter and greener than it was — #0a1a2e was ink, and ink is what deep cold
+   * Every tone is lighter and greener than it was - #0a1a2e was ink, and ink is what deep cold
    * water looks like. Warm shallow water over sand is a green-blue, and it is BRIGHT: the giveaway
    * is not the hue, it is that you can see through it. Pulling the whole ramp up and rotating it
    * toward cyan does that without touching anything that reads the palette.
@@ -81,14 +81,14 @@ const rr = (c, x, y, w, h, r, fill, stroke) => {
   if (stroke) { c.strokeStyle = stroke; c.lineWidth = 1; c.stroke(); }
 };
 const px = (c, x, y, w, h, fill) => { c.fillStyle = fill; c.fillRect(x, y, w, h); };
-/** Deterministic 0..1 from integers — terrain variation must not use Math.random(). */
+/** Deterministic 0..1 from integers - terrain variation must not use Math.random(). */
 const hash = (x, y) => {
   let n = (x * 374761393 + y * 668265263) ^ 0x5bf03635;
   n = (n ^ (n >>> 13)) * 1274126177;
   return ((n ^ (n >>> 16)) >>> 0) / 4294967295;
 };
 // The bevel pair, softened. At 0.12/0.28 the lit and shaded faces of a block were nearly three
-// stops apart, which on a grid of them reads as a checkerboard rather than as lighting — and it
+// stops apart, which on a grid of them reads as a checkerboard rather than as lighting - and it
 // was the single biggest source of contrast on the map. Halving the shadow and easing the
 // highlight keeps the form without the map looking etched.
 const light = 'rgba(255,255,255,0.09)';
@@ -106,7 +106,7 @@ const bevel = (c, x, y, w, h, t = 2) => {
  *
  * Square blocks on a square grid make a map read as graph paper: every corner in the picture is
  * the same corner, so the eye gets no help telling the opening between two walls from the walls
- * themselves. Taking three pixels off each corner breaks that up — a corridor gains a visible
+ * themselves. Taking three pixels off each corner breaks that up - a corridor gains a visible
  * mouth, and a lone block reads as an object standing on the sand rather than as a filled cell.
  *
  * Three, not eight. At a large radius the blocks stop meeting each other and a solid wall turns
@@ -114,13 +114,13 @@ const bevel = (c, x, y, w, h, t = 2) => {
  * about what you can walk through. At three the corner is softened and the edges still touch.
  *
  * It is drawing only: the simulation is whole tiles and the hitbox arithmetic in movement.js is
- * untouched. What it buys in play is honesty at the corners — the corner-assist slide
+ * untouched. What it buys in play is honesty at the corners - the corner-assist slide
  * (CORNER_ASSIST_UNITS) has always let you round a corner you are nearly lined up with, and a
  * rounded corner is what that behaviour has always looked like from the inside.
  */
 export const STONE_RADIUS = 3;
 /* Which types get it: everything solid that sits ON the sand. Not FLOOR (it IS the sand), and
- * not the types that already draw their own shape on a floor of their own — a column, a keg and
+ * not the types that already draw their own shape on a floor of their own - a column, a keg and
  * a block of ice are objects, not cells, and they were never square to begin with. */
 const ROUNDED_BLOCKS = new Set([BLOCK.SOFT, BLOCK.REINFORCED, BLOCK.MONOLITH, BLOCK.IRON]);
 
@@ -128,12 +128,12 @@ const ROUNDED_BLOCKS = new Set([BLOCK.SOFT, BLOCK.REINFORCED, BLOCK.MONOLITH, BL
  * One tile.
  *
  * A rounded block needs something behind it, or its corners would be transparent and the sea
- * would show through four little notches in the middle of the island — the chunk canvas is
+ * would show through four little notches in the middle of the island - the chunk canvas is
  * cleared, not filled (see chunkAt in client/render.js). So the sand is laid down first and the
  * block is clipped to its rounded shape on top of it, which is exactly what a block sitting on a
  * beach looks like.
  *
- * @param dmg 0..1, fraction of HP lost — drives the crack overlay.
+ * @param dmg 0..1, fraction of HP lost - drives the crack overlay.
  */
 export function drawTile(c, type, tx = 0, ty = 0, dmg = 0) {
   if (!ROUNDED_BLOCKS.has(type)) return drawTileBody(c, type, tx, ty, dmg);
@@ -203,7 +203,7 @@ function drawTileBody(c, type, tx = 0, ty = 0, dmg = 0) {
     /* Soft wall: a stack of crates, not masonry.
      *
      * The old brick courses were a dungeon block on a pirate island, and more importantly a
-     * breakable wall has to be visibly DIFFERENT in material from the ones that are not — the
+     * breakable wall has to be visibly DIFFERENT in material from the ones that are not - the
      * single most important read on the whole map is "can I blow through this". Wood against
      * stone does that at any zoom, in one glance, before any of the detail is resolvable.
      */
@@ -233,7 +233,7 @@ function drawTileBody(c, type, tx = 0, ty = 0, dmg = 0) {
     }
 
     /* Reinforced: cut stone, banded with iron. Six hits, so it has to look like it will take
-     * six — the bands are the visual promise that this is not a crate. */
+     * six - the bands are the visual promise that this is not a crate. */
     case BLOCK.REINFORCED: {
       px(c, 0, 0, S, S, PALETTE.reinforced);
       // Two courses of ashlar with a staggered joint, which is how stone is actually laid and
@@ -257,7 +257,7 @@ function drawTileBody(c, type, tx = 0, ty = 0, dmg = 0) {
     }
 
     /* Monolith: one carved block, nine hits. Darker and smoother than the reinforced stone, with
-     * a sunken face — the strongest thing you can actually break, and it looks it. */
+     * a sunken face - the strongest thing you can actually break, and it looks it. */
     case BLOCK.MONOLITH: {
       px(c, 0, 0, S, S, PALETTE.monolith);
       rr(c, 4, 3, S - 8, S - 6, 2, 'rgba(0,0,0,0.26)');
@@ -278,7 +278,7 @@ function drawTileBody(c, type, tx = 0, ty = 0, dmg = 0) {
       break;
     }
 
-    /* Iron: the fixed skeleton. Deliberately the dullest thing on the map — it is never a
+    /* Iron: the fixed skeleton. Deliberately the dullest thing on the map - it is never a
      * decision, so it must never pull the eye away from the things that are. */
     case BLOCK.IRON: {
       px(c, 0, 0, S, S, PALETTE.iron);
@@ -297,7 +297,7 @@ function drawTileBody(c, type, tx = 0, ty = 0, dmg = 0) {
       px(c, 9, 2, 3, S - 4, light); px(c, 20, 2, 3, S - 4, dark);
       break;
     // A powder keg: barrel staves, iron hoops, and a lit fuse so it reads as armed rather than
-    // as scenery. Warm against a map of cold blues and greys — the one tile you want spotted
+    // as scenery. Warm against a map of cold blues and greys - the one tile you want spotted
     // from across the island.
     case BLOCK.POWDER: {
       /* A barrel, and barrels are not square.
@@ -305,7 +305,7 @@ function drawTileBody(c, type, tx = 0, ty = 0, dmg = 0) {
        * The old one was a rounded rectangle with three vertical lines in it, which read as a
        * crate that had been told it was a keg. A barrel has exactly three tells and they are all
        * curves: it BULGES at the waist, its staves follow that bulge, and from slightly above
-       * you see the elliptical top. Nothing else about it matters at 32 px — and with all three
+       * you see the elliptical top. Nothing else about it matters at 32 px - and with all three
        * present it needs no outline to be recognisable, which is what makes it sit in the same
        * world as the rock and the ice rather than on top of them.
        *
@@ -315,7 +315,7 @@ function drawTileBody(c, type, tx = 0, ty = 0, dmg = 0) {
       px(c, 0, 0, S, S, PALETTE.floor);
       // An OBJECT on the floor, not a filled tile: inset on every side, with sand visible all
       // round it. The old one ran nearly wall to wall, which read as a block that happened to be
-      // curved — a keg has to look like something you could knock over.
+      // curved - a keg has to look like something you could knock over.
       const cx = 16, top = 8.5, bot = 27.5, endW = 5.8, midW = 8.6;
       // Half-width at a given height: the bulge, as one cosine-ish curve the hoops reuse.
       const halfAt = y => {
@@ -373,7 +373,7 @@ function drawTileBody(c, type, tx = 0, ty = 0, dmg = 0) {
         px(c, gx, gy, 2.4, 0.7, 'rgba(60,34,16,0.22)');
       }
       // Iron hoops: ellipses, not bars. Two wide ones at the waist and a narrow one at each end,
-      // which is how a cask is actually bound — and the ellipse is the whole reason the barrel
+      // which is how a cask is actually bound - and the ellipse is the whole reason the barrel
       // reads as round rather than as a cylinder sticker.
       for (const [y, h, tone] of [[top + 3.4, 2.4, '#3f3026'], [bot - 3.4, 2.4, '#35281f'],
         [top + 0.9, 1.5, '#463529'], [bot - 0.9, 1.5, '#2e231b']]) {
@@ -411,8 +411,8 @@ function drawTileBody(c, type, tx = 0, ty = 0, dmg = 0) {
       c.beginPath();
       c.moveTo(cx - 4, 15); c.lineTo(cx + 4, 21);
       c.moveTo(cx + 4, 15); c.lineTo(cx - 4, 21);
-      // Classic maroon, and bigger than it was: this mark is the entire read at a glance — keg
-      // or crate — and it was a small scratch between the hoops. Black underneath it, because a
+      // Classic maroon, and bigger than it was: this mark is the entire read at a glance - keg
+      // or crate - and it was a small scratch between the hoops. Black underneath it, because a
       // maroon stroke on mid-brown staves has almost no luminance contrast on its own and goes
       // muddy the moment the board is zoomed out. The dark border is what keeps it legible.
       c.strokeStyle = '#150b07'; c.lineWidth = 5.4; c.stroke();
@@ -438,7 +438,7 @@ function drawTileBody(c, type, tx = 0, ty = 0, dmg = 0) {
      *                 the ground shows faintly through; it gets denser and bluer toward the
      *                 bottom, where there is more ice to look through.
      *   a top face    frosted and brighter, at the same slight top-down angle as every other block.
-     *   inside        a cloudy core, a few fine fractures and trapped air bubbles — per tile, from
+     *   inside        a cloudy core, a few fine fractures and trapped air bubbles - per tile, from
      *                 the hash, so a row of ice is not stamped.
      *   edges         rounded, slightly slumped corners, frost along the rim, a wet sheen down the
      *                 lit side, and an edge line in ice-blue rather than the dark outline the
@@ -532,7 +532,7 @@ function drawTileBody(c, type, tx = 0, ty = 0, dmg = 0) {
       c.restore();
       break;
     }
-    /* A block this file does not recognise — never a hole.
+    /* A block this file does not recognise - never a hole.
      *
      * Chunks are cleared to transparent so the sea shows where there is sea, which means a type
      * with no case here draws as a window onto the animated water in the middle of the island.
@@ -565,7 +565,7 @@ function drawTileBody(c, type, tx = 0, ty = 0, dmg = 0) {
  *
  * Two soft walls side by side used to be one continuous slab of brown, which matters because
  * "how many hits is that" is a count of blocks, not of pixels. A single dark line between them
- * turns a wall into a row of walls. Floor and water are excluded — a grid drawn on open ground
+ * turns a wall into a row of walls. Floor and water are excluded - a grid drawn on open ground
  * is a chessboard, and the floor already has its own faint seam. */
 const OUTLINED = new Set([
   BLOCK.SOFT, BLOCK.REINFORCED, BLOCK.MONOLITH, BLOCK.POWDER, BLOCK.COLUMN,
@@ -585,7 +585,7 @@ function outlineTile(c) {
  * Water and floor are flat, and iron is the one thing deliberately kept visually quiet, so none
  * of those get one. */
 /* Solid things with height. The baked edge shading below uses it, and so does the sun in
- * render.js — a block that looks three-dimensional and throws no shadow is the one that gives
+ * render.js - a block that looks three-dimensional and throws no shadow is the one that gives
  * the trick away, so the two lists have to be the same list. */
 export const CASTS_SHADOW = new Set([
   BLOCK.SOFT, BLOCK.REINFORCED, BLOCK.MONOLITH, BLOCK.POWDER, BLOCK.COLUMN, BLOCK.SHRUB_SOLID,
@@ -596,7 +596,7 @@ export const CASTS_SHADOW = new Set([
  * A shadow along the bottom and right edges of a solid block.
  *
  * It is drawn INSIDE the block's own tile rather than onto the floor beside it, which is not
- * where a real shadow would fall — but the chunk renderer draws each tile independently and has
+ * where a real shadow would fall - but the chunk renderer draws each tile independently and has
  * no idea what its neighbour is, so a shadow that spilled outwards would be painted over by
  * whatever tile is drawn next. Inside the tile it survives, and at two pixels the eye reads the
  * block as raised either way.
@@ -616,14 +616,14 @@ function castShadow(c) {
 }
 
 /**
- * Damage must read at a glance — a monolith takes nine hits, so there need to be enough
+ * Damage must read at a glance - a monolith takes nine hits, so there need to be enough
  * distinguishable steps between pristine and about-to-go.
  *
  * Three layers, each appearing at a different damage level, so the eye has something new to
  * notice at every stage rather than just "more scribble":
- *   1. fractures  — jagged multi-segment lines radiating from an off-centre origin, with branches
- *   2. chips      — bitten-out corners, from 45% damage
- *   3. shatter    — a bright rim on the cracks plus a dark core, from 75%, so it reads as deep
+ *   1. fractures  - jagged multi-segment lines radiating from an off-centre origin, with branches
+ *   2. chips      - bitten-out corners, from 45% damage
+ *   3. shatter    - a bright rim on the cracks plus a dark core, from 75%, so it reads as deep
  *
  * Deterministic in (tx, ty): the same tile always cracks the same way, which matters because
  * the chunk renderer may redraw a tile at any time and a reshuffling crack pattern looks like
@@ -848,24 +848,24 @@ export const DIRS = { R: 0, U: 1, L: 2, D: 3 };
  *
  * Two halves, because they change at different rates:
  *
- *   drawBombBody  everything that never changes — baked once per player colour at boot. A
+ *   drawBombBody  everything that never changes - baked once per player colour at boot. A
  *                 cast-iron sphere lit from the top left, a band in the OWNER's colour wrapped
  *                 round its equator with rivets (whose bomb is this, at a glance), a brass collar
  *                 the fuse goes into, a specular glint and a rim of reflected light.
  *   drawBombLive  everything that says WHEN, drawn every frame from the real time left. A
- *                 countdown ring on the floor that drains clockwise from twelve — a full ring is
- *                 always the full 2.4 s, so a fast-fuse bomb visibly starts at half — and a rope
+ *                 countdown ring on the floor that drains clockwise from twelve - a full ring is
+ *                 always the full 2.4 s, so a fast-fuse bomb visibly starts at half - and a rope
  *                 fuse that physically burns down, its remaining length IS the remaining time,
  *                 with the spark riding the burning end. In the last 0.8 s the bomb swells and
  *                 pulses red-hot, faster and faster, and the last fifth of a second is white.
  *
  * The old one was a dark circle with a fixed stub of fuse, eight frames of a gentle pulse, and no
- * way to tell a bomb with two seconds left from one with a quarter of a second — which is the
+ * way to tell a bomb with two seconds left from one with a quarter of a second - which is the
  * only thing about a bomb anybody standing next to it wants to know. */
 /* A bomb is drawn at 85% of the size it was designed at. See the scale block in drawBombLive.
  *
- * The board got busier than the art was drawn for — eight bombs in one pair of hands, a gauge
- * under each one, dust coming off sixteen pairs of boots — and at full size a cluster of bombs
+ * The board got busier than the art was drawn for - eight bombs in one pair of hands, a gauge
+ * under each one, dust coming off sixteen pairs of boots - and at full size a cluster of bombs
  * crowded out the players standing between them. Everything about the bomb keeps its proportions;
  * there is simply less of it. */
 const BOMB_SCALE = 0.85;
@@ -955,7 +955,7 @@ const fuseAt = t => {
  * body and clear of the countdown ring's arc. Lit ones are a flame with the fire palette's own
  * colours and a slow flicker; spent ones are a dark socket, present enough that the row still
  * reads as "two of six" rather than as "two". No outline, no plate, nothing that draws a box on
- * the floor — at this size the dark sockets are the frame.
+ * the floor - at this size the dark sockets are the frame.
  */
 // One pip per step of reach a bomb can have, so the row always shows "two of the five you could
 // have" rather than two of some number nobody knows. Imported rather than a literal six: the cap
@@ -976,7 +976,7 @@ function drawBombPips(c, radius, t) {
       continue;
     }
     /* A flame, and the flicker is per pip: the phase is offset by the pip's index, so the row
-     * shimmers along rather than pumping as one block — which is what stops six identical shapes
+     * shimmers along rather than pumping as one block - which is what stops six identical shapes
      * reading as a progress bar. */
     const fl = 0.84 + 0.16 * Math.sin(t * 7.3 + i * 1.9);
     const h = 3.4 * fl;
@@ -1001,7 +1001,7 @@ function drawBombPips(c, radius, t) {
  * Everything that says when. `c` is at the tile's top-left corner.
  *
  * @param body   this owner's baked body, or null to draw it fresh (the preview harness)
- * @param leftS  seconds until it goes off, as a float — the caller interpolates between ticks
+ * @param leftS  seconds until it goes off, as a float - the caller interpolates between ticks
  * @param fullS  what a full ring means: the normal fuse. A fast fuse starts part-way round.
  * @param radius blast reach in tiles, drawn as pips under the bomb. 0 to leave them off.
  * @param t      seconds, for the flicker and the warning pulse
@@ -1017,7 +1017,7 @@ export function drawBombLive(c, body, { leftS, fullS, colorIndex = 0, radius = 0
   /* 15% off the whole bomb, ring and fuse included.
    *
    * Scaled rather than redrawn at new numbers, because every part of it is positioned against
-   * every other part — the fuse curve starts at the collar, the ring is sized to clear the
+   * every other part - the fuse curve starts at the collar, the ring is sized to clear the
    * sphere, the spark rides the end of the rope. Changing BOMB_R alone would have left the ring
    * standing off it and the fuse hanging in the air.
    *
@@ -1041,7 +1041,7 @@ export function drawBombLive(c, body, { leftS, fullS, colorIndex = 0, radius = 0
   if (f > 0) {
     /* Owner's colour while there is time, then a long blend into red that ends GLOWING.
      *
-     * The blend starts with 1.8 s left — three quarters of a normal fuse — so the ring is
+     * The blend starts with 1.8 s left - three quarters of a normal fuse - so the ring is
      * plainly on its way to red well before the end, rather than flicking orange in the last
      * second. By the end it is pure red, thicker, and wrapped in a red halo that throbs with the
      * warning pulse: a bomb about to go is the one thing on the floor that should burn. */
@@ -1075,7 +1075,7 @@ export function drawBombLive(c, body, { leftS, fullS, colorIndex = 0, radius = 0
   }
   c.restore();
 
-  // 2. The body, breathing — and in the last 0.8 s, swelling and shaking with the pulse.
+  // 2. The body, breathing - and in the last 0.8 s, swelling and shaking with the pulse.
   const scale = 1 + 0.018 * Math.sin(t * 5) + warn * (0.05 + 0.045 * wob);
   c.save();
   c.translate(cx, cy); c.scale(scale, scale); c.translate(-cx, -cy);
@@ -1133,12 +1133,12 @@ export function drawBombLive(c, body, { leftS, fullS, colorIndex = 0, radius = 0
   c.restore();
   c.restore();                                 // out of BOMB_SCALE
 
-  // 5. How strong it is, last — over the bottom of the iron and outside the warning swell, so the
+  // 5. How strong it is, last - over the bottom of the iron and outside the warning swell, so the
   // gauge stays still while the bomb shakes. A bomb with no radius given draws none.
   if (radius > 0) drawBombPips(c, radius, t);
 }
 
-/** The whole bomb at a point in its fuse, 0..1 — for the preview harness. */
+/** The whole bomb at a point in its fuse, 0..1 - for the preview harness. */
 export function drawBomb(c, { phase = 0, colorIndex = 0 }) {
   const fullS = 2.4;
   drawBombLive(c, null, { leftS: (1 - phase) * fullS, fullS, colorIndex, t: phase * 7 });
@@ -1148,7 +1148,7 @@ export function drawBomb(c, { phase = 0, colorIndex = 0 }) {
  * One tile of a blast. kind: 'core' | 'arm' | 'tip'. rot in quarter turns.
  *
  * `age` is 0..1 over the blast's life and `t` is free-running seconds, and both are expected to
- * change EVERY FRAME — the renderer feeds the smoothed tick, not the snapshot tick, so a half
+ * change EVERY FRAME - the renderer feeds the smoothed tick, not the snapshot tick, so a half
  * second of fire is thirty-odd distinct pictures at 60 Hz rather than the seven it used to be.
  * `seed` keeps neighbouring tiles from flickering in step.
  *
@@ -1156,11 +1156,11 @@ export function drawBomb(c, { phase = 0, colorIndex = 0 }) {
  *   punch   the first tenth: the tile blows out past its edges and snaps back
  *   burn    bands that breathe, with tongues of flame licking off the edges
  *   sparks  the core throws embers outward while it is young
- *   smoke   the last third darkens, shrinks and lifts away as smoke — the part that no longer kills
+ *   smoke   the last third darkens, shrinks and lifts away as smoke - the part that no longer kills
  */
 export function drawFire(c, { kind = 'core', rot = 0, age = 0, t = 0, seed = 0 }) {
   const S = TILE_PX;
-  // Fixed per tile and per tongue — nothing here is re-rolled while the blast burns. Every bit
+  // Fixed per tile and per tongue - nothing here is re-rolled while the blast burns. Every bit
   // of motion below is a slow sine on `t`, so the fire flows rather than flickers.
   const fixed = n => hash(seed * 31 + n, n * 7);
   const ease = x => x * x * (3 - 2 * x);
@@ -1223,21 +1223,21 @@ export function drawFire(c, { kind = 'core', rot = 0, age = 0, t = 0, seed = 0 }
  * chasing you, so each one has to be identifiable from THREE things at once, any of which might
  * be the one that survives the zoom level you happen to be at:
  *
- *   1. hue       — the plinth is tinted, so the colour alone is the answer at a distance
- *   2. silhouette— round, flame, wedge, shield, box: all different outlines
- *   3. detail    — only readable up close, and never the thing you depend on
+ *   1. hue       - the plinth is tinted, so the colour alone is the answer at a distance
+ *   2. silhouette- round, flame, wedge, shield, box: all different outlines
+ *   3. detail    - only readable up close, and never the thing you depend on
  *
  * The old icons were all the same slate-grey plinth, which meant only the detail distinguished
  * them, and the detail is exactly what disappears first.
  */
 const PERK_SKIN = {
-  1: { dark: '#2b3550', mid: '#3f4e74', rim: '#7e93d6' },   // bomb   — steel blue
-  2: { dark: '#5a2416', mid: '#8c3a1f', rim: '#ff9b4a' },   // fire   — ember
-  3: { dark: '#123f4e', mid: '#1b6076', rim: '#5fd8f0' },   // skate  — ice
-  4: { dark: '#15402f', mid: '#1d6347', rim: '#5ad1a0' },   // shield — green
-  15: { dark: '#4a4212', mid: '#75671d', rim: '#ffe04a' },  // stim   — yellow
-  16: { dark: '#3d2415', mid: '#64402a', rim: '#d99a55' },  // rum    — bottle brown
-  17: { dark: '#4a3608', mid: '#7d5c0f', rim: '#f6e7a9' },  // gold   — the plinth is treasure
+  1: { dark: '#2b3550', mid: '#3f4e74', rim: '#7e93d6' },   // bomb   - steel blue
+  2: { dark: '#5a2416', mid: '#8c3a1f', rim: '#ff9b4a' },   // fire   - ember
+  3: { dark: '#123f4e', mid: '#1b6076', rim: '#5fd8f0' },   // skate  - ice
+  4: { dark: '#15402f', mid: '#1d6347', rim: '#5ad1a0' },   // shield - green
+  15: { dark: '#4a4212', mid: '#75671d', rim: '#ffe04a' },  // stim   - yellow
+  16: { dark: '#3d2415', mid: '#64402a', rim: '#d99a55' },  // rum    - bottle brown
+  17: { dark: '#4a3608', mid: '#7d5c0f', rim: '#f6e7a9' },  // gold   - the plinth is treasure
 };
 
 export const PERK_ART = {
@@ -1286,7 +1286,7 @@ export const PERK_ART = {
     c.beginPath(); c.arc(16, 15, 2.6, 0, 7); c.fillStyle = '#0f3326'; c.fill();
   },
   // Stamina: a lightning bolt. Energy is the one idea with a universally understood glyph, and
-  // the zig-zag is unmistakable at any size — which is the whole brief for these.
+  // the zig-zag is unmistakable at any size - which is the whole brief for these.
   15: c => {
     c.beginPath();
     c.moveTo(19, 4); c.lineTo(10, 17); c.lineTo(15.5, 17);
@@ -1299,12 +1299,12 @@ export const PERK_ART = {
   // rather than a symbol, which is what makes it read instantly even at a small size.
   16: c => {
     /* A rum bottle. The hardest icon in the set, because a bottle on a brown plinth is a brown
-     * shape on a brown shape — so the glass is dark GREEN, which is both what rum actually
+     * shape on a brown shape - so the glass is dark GREEN, which is both what rum actually
      * comes in and the only colour that separates cleanly from the wood behind it.
      *
      * Everything else is silhouette work: square shoulders rather than a smooth taper, a neck
      * wide enough to survive at a third of this size, and a hard outline round the lot. The
-     * three crosses are drawn as strokes, not text — a 7px font renders differently on every
+     * three crosses are drawn as strokes, not text - a 7px font renders differently on every
      * machine and the crossed diagonals are more legible than any typeface at this size.
      */
     const GLASS = '#2f6340', GLASS_DARK = '#17351f', CORK = '#c49a5e';
@@ -1355,8 +1355,8 @@ export const PERK_ART = {
   },
   /* A gold coin, three-quarter on.
    *
-   * Flat-on it is a yellow circle, which at this size is a yellow circle. Tilted, it has a RIM —
-   * a visible edge of thickness down one side — and that edge is the entire reason it reads as
+   * Flat-on it is a yellow circle, which at this size is a yellow circle. Tilted, it has a RIM -
+   * a visible edge of thickness down one side - and that edge is the entire reason it reads as
    * metal rather than as a dot. Everything else is the three-tone metal ramp the interface
    * uses: dark underside, body, specular highlight, lit top-left like everything else here.
    */
@@ -1385,7 +1385,7 @@ export const PERK_ART = {
     c.lineWidth = 1.1;
     c.stroke();
 
-    // The highlight, top-left, as a crescent rather than a dot — a dot reads as a hole.
+    // The highlight, top-left, as a crescent rather than a dot - a dot reads as a hole.
     c.beginPath();
     c.ellipse(13.3, 13, 3.4, 3.8, -0.5, 0, 7);
     c.fillStyle = LIT;
@@ -1409,7 +1409,7 @@ export const PERK_ART = {
  * because a coin that does not catch the light is a disc. */
 export const PERK_GLOWS = new Set([16, 17]);
 
-// Everything that lies on the floor waiting to be walked over, at 85% — the same trim the bombs
+// Everything that lies on the floor waiting to be walked over, at 85% - the same trim the bombs
 // got, so a tile with a bomb on it and a tile with a perk on it still read as the same scale.
 const PERK_SCALE = 0.85;
 
@@ -1420,7 +1420,7 @@ export function drawPerk(c, { type = 1, bob = 0 }) {
   c.save(); c.translate(0, -bob);
   /* 15% smaller, with the bombs, and for the same reason: a pickup used to fill its tile edge to
    * edge, so a floor with four of them on it read as four more walls. Scaled about the middle of
-   * the tile so the plinth stays centred under the bob, and applied to the glow as well — a halo
+   * the tile so the plinth stays centred under the bob, and applied to the glow as well - a halo
    * at the old radius around a smaller icon is a smudge rather than a highlight. */
   c.translate(S / 2, S / 2);
   c.scale(PERK_SCALE, PERK_SCALE);
@@ -1449,12 +1449,12 @@ export function drawPerk(c, { type = 1, bob = 0 }) {
 /**
  * The ship, seen from directly above, moored off the island.
  *
- * Drawn at the origin, bow pointing along +x, about 100px long — the caller rotates and places
+ * Drawn at the origin, bow pointing along +x, about 100px long - the caller rotates and places
  * it. Top-down is an unusual view of a boat and the thing that makes it readable is the HULL
  * OUTLINE: a pointed bow, a wide waist and a square transom. Get that silhouette right and the
  * deck furniture is detail; get it wrong and no amount of detail rescues it.
  *
- * Deliberately a little grander than it needs to be — a capstan, a hatch, a boat on the deck,
+ * Deliberately a little grander than it needs to be - a capstan, a hatch, a boat on the deck,
  * two cannon a side. You only ever see part of it past the rocks, and the part you see should
  * suggest the rest.
  */
@@ -1466,7 +1466,7 @@ export function drawShip(c) {
   /* The hull outline, as one reusable path at a given inset.
    *
    * Top-down is an unusual view of a boat and the silhouette is the whole read: a sharp bow, a
-   * beam carried well aft, and a FLAT TRANSOM. Round the stern off and it becomes a canoe — the
+   * beam carried well aft, and a FLAT TRANSOM. Round the stern off and it becomes a canoe - the
    * squared-off back is the single line that says "ship". Every deck layer is the same curve
    * stepped inwards, which keeps the gunwale a constant thickness all the way round instead of
    * pinching to nothing at the bow.
@@ -1655,7 +1655,7 @@ export function drawShip(c) {
   px(c, L / 2 + 2, -2.3, 1.2, 4.6, 'rgba(60,45,28,0.5)');
 
   // A lantern at the stern. One warm point on a cold blue sea, and the only saturated colour on
-  // the whole thing — which is what makes the eye find her.
+  // the whole thing - which is what makes the eye find her.
   const lx = -L / 2 + 5;
   c.beginPath(); c.arc(lx, 0, 7, 0, 7);
   c.fillStyle = 'rgba(255,196,92,0.16)'; c.fill();
@@ -1677,7 +1677,7 @@ export function drawShip(c) {
  * against a white head and tail, and black wingtips with a white spot in each. Get those and the
  * yellow bill is a bonus.
  *
- * `span` is how much of the wing you can see, 0..1 — a wing raised or lowered in a beat is
+ * `span` is how much of the wing you can see, 0..1 - a wing raised or lowered in a beat is
  * foreshortened from above, which is the whole flap. `fold` tucks the wings back for a dive.
  * `lean` is a roll into a turn: one wing a touch longer than the other. With `shadow` set,
  * only the silhouette is drawn, in whatever fill the caller has set up, for the shadow pass.
@@ -1738,7 +1738,7 @@ export function drawGull(c, { span = 1, fold = 0, lean = 0, shadow = false } = {
     c.save();
     c.beginPath(); gullWing(c, sign, sp, fold); c.clip();
     const s = 20 * sp * (1 - 0.42 * fold);
-    // The inner wing a shade darker toward the trailing edge — a wing is a curved surface, and
+    // The inner wing a shade darker toward the trailing edge - a wing is a curved surface, and
     // the far side of the curve is the side away from the light.
     const shade = c.createLinearGradient(5, 0, -10, 0);
     shade.addColorStop(0, 'rgba(142,156,171,0)');
@@ -1782,7 +1782,7 @@ export function drawGull(c, { span = 1, fold = 0, lean = 0, shadow = false } = {
   c.fillStyle = GULL.bill; c.fill();
   c.beginPath(); c.arc(13.6, 0.45, 0.55, 0, Math.PI * 2);
   c.fillStyle = GULL.gonys; c.fill();
-  // Eyes, one each side of the crown — from above that is all of an eye you can see.
+  // Eyes, one each side of the crown - from above that is all of an eye you can see.
   c.fillStyle = '#20252c';
   c.fillRect(9.2, -2.1, 1, 1); c.fillRect(9.2, 1.1, 1, 1);
 }
@@ -1801,7 +1801,7 @@ export function drawFeather(c, tone) {
 // ─── baking ───────────────────────────────────────────────────────────────────
 //
 // Everything is drawn once into offscreen canvases at boot, then blitted. Never tint or draw
-// shapes inside the frame loop — see docs/ART-AUDIO.md §7.
+// shapes inside the frame loop - see docs/ART-AUDIO.md §7.
 
 const canvas = (w = TILE_PX, h = TILE_PX) => {
   const el = document.createElement('canvas');
@@ -1872,7 +1872,7 @@ export function drawRock(c, tx, ty, edges) {
   const EDGE = COAST_EDGE, T = 2;
 
   // Boulders, not a brick. Three overlapping rounded lumps of brown-grey stone, sized and placed
-  // by hash — so every tile is a different pile, and the same tile is the same pile every time.
+  // by hash - so every tile is a different pile, and the same tile is the same pile every time.
   // Rounded shapes are what stop a coastline reading as a wall with a different colour.
   const h = [hash(tx, ty), hash(ty + 3, tx + 11), hash(tx + 7, ty + 5), hash(ty + 13, tx + 2)];
   const lumps = [
@@ -1913,7 +1913,7 @@ export function drawRock(c, tx, ty, edges) {
  *
  * Square rock corners made every island read as a grid with a coastline drawn on it. Smoothing
  * them properly would be the one curved thing in a world of pixels, so they are stepped instead:
- * a quarter circle one tile across, at a quarter-tile resolution — two quarters off the first
+ * a quarter circle one tile across, at a quarter-tile resolution - two quarters off the first
  * row, one off the second. Convex corners lose that much rock; concave ones gain it, as a fillet
  * drawn into the corner of the water tile. render.js builds the sea's shallows from the same
  * steps, so the water follows the rounded rock rather than the square one.
@@ -1964,7 +1964,7 @@ function outlineCells(c, inside, T) {
 /**
  * Cut convex corners out of a rock tile already drawn here, and outline the steps they leave.
  * Worked from the cell mask rather than corner by corner, so a tile rounded on two or three
- * corners — a spit of rock — gets one clean outline and no step lines left floating in the sea.
+ * corners - a spit of rock - gets one clean outline and no step lines left floating in the sea.
  */
 export function carveRockCorners(c, corners) {
   const q = COAST_Q, cut = cornerCells(corners);
@@ -1976,7 +1976,7 @@ export function carveRockCorners(c, corners) {
  * Fill concave corners of a water tile with rock, outlined on the water side.
  *
  * Each fillet reaches 2px into the land tiles beside it, to paint over the straight outline they
- * drew along that side — it is inside the rock now. Drawn after every tile in the chunk, so that
+ * drew along that side - it is inside the rock now. Drawn after every tile in the chunk, so that
  * overlap lands on top of them rather than under.
  */
 export function drawCoastFillets(c, corners) {
@@ -2013,7 +2013,7 @@ export function drawCoastFillets(c, corners) {
 function outlined(c, drawShape, drawArt = drawShape, { width = 1, colour = '#0b0e13' } = {}) {
   /* The mask comes from `drawShape` and the picture from `drawArt`, and for the player those
    * are NOT the same thing: the sprite includes a soft ground shadow at 30% alpha, and
-   * `source-in` does not care about alpha — any pixel that is not fully transparent becomes
+   * `source-in` does not care about alpha - any pixel that is not fully transparent becomes
    * solid black. Built from the full sprite, the "silhouette" would include the shadow, and the
    * figure would come out standing in a hard black puddle. */
   const scratch = canvas();
@@ -2034,7 +2034,7 @@ function outlined(c, drawShape, drawArt = drawShape, { width = 1, colour = '#0b0
 }
 
 export function bake({ playerCount = 16 } = {}) {
-  // `playerShadows` is one flat black silhouette per frame of the FIRST colour's set — a
+  // `playerShadows` is one flat black silhouette per frame of the FIRST colour's set - a
   // shadow has no colour and all sixteen players are the same shape, so one set covers them.
   const out = { tiles: {}, players: [], bombs: [], perks: {}, playerShadows: [] };
 
@@ -2056,7 +2056,7 @@ export function bake({ playerCount = 16 } = {}) {
         /* The same figure as a flat black silhouette, for the sun to throw.
          *
          * Baked once rather than built per frame: a silhouette needs a scratch canvas and a
-         * `source-in` fill, which is two allocations and a composite — fine at boot, absurd
+         * `source-in` fill, which is two allocations and a composite - fine at boot, absurd
          * sixteen times a frame. Only the first colour's set is kept, because a shadow has no
          * colour and all sixteen players are the same shape. */
         if (i === 0) {
@@ -2070,7 +2070,7 @@ export function bake({ playerCount = 16 } = {}) {
         }
       }
     out.players.push(set);
-    // One body per owner. Everything that changes with the fuse is drawn live — see drawBombLive.
+    // One body per owner. Everything that changes with the fuse is drawn live - see drawBombLive.
     const b = canvas();
     drawBombBody(b.getContext('2d'), { colorIndex: i });
     out.bombs.push(b);

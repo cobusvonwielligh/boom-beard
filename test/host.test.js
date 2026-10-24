@@ -29,7 +29,7 @@ test('it passes to the next player when the host leaves', () => {
 });
 
 test('a host who merely drops keeps nothing: the room still has one', () => {
-  // Disconnected is not gone — the seat is held — but somebody present has to be able to run the
+  // Disconnected is not gone - the seat is held - but somebody present has to be able to run the
   // round, or a dropped host freezes the room for the length of the reconnect grace.
   const r = room();
   const a = r.join('p1', 'ann');

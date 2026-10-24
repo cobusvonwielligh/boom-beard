@@ -1,13 +1,13 @@
 // Blast shape. Pure: (map, bomb) in, cells out. No state, no randomness, no clock.
 //
 // This purity is what lets the client draw an explosion on exactly the same tick the server
-// does, from nothing but the bomb list — see docs/NETCODE.md §1a. It is also why there is no
+// does, from nothing but the bomb list - see docs/NETCODE.md §1a. It is also why there is no
 // rollback anywhere in this project.
 
 import { BLOCK, SHRUB_RADIUS_PENALTY } from '../constants.js';
 import { tileAt } from './state.js';
 
-const DIRS = [[1, 0], [0, -1], [-1, 0], [0, 1]];   // right, up, left, down — matches DIR_* order
+const DIRS = [[1, 0], [0, -1], [-1, 0], [0, 1]];   // right, up, left, down - matches DIR_* order
 
 // Anything a blast arm damages and then stops at. A powder keg is one of these, which is the
 // whole reason a blast reaching one sets it off: the arm registers a hit, damage() destroys it,
@@ -16,7 +16,7 @@ const DESTRUCTIBLE = new Set([BLOCK.SOFT, BLOCK.REINFORCED, BLOCK.MONOLITH, BLOC
 const SHRUB = new Set([BLOCK.SHRUB_WALK, BLOCK.SHRUB_SOLID]);
 
 /**
- * @param bombs every live bomb, so an arm can stop at one. Optional — omit it and arms pass
+ * @param bombs every live bomb, so an arm can stop at one. Optional - omit it and arms pass
  *   straight through other bombs, which is what this did before and what the tests that do not
  *   care about chaining still exercise.
  * @returns {{cells: Array<{tx,ty,kind,rot}>, hits: Array<{tx,ty}>}}
@@ -48,7 +48,7 @@ export function spread(map, bomb, bombs = null) {
 
       /* An arm stops at another bomb, the way Game of Bombs does.
        *
-       * The tile still burns — it is in `cells`, so it still kills and still chains that bomb,
+       * The tile still burns - it is in `cells`, so it still kills and still chains that bomb,
        * which goes off this same tick with its own radius. What it does not do is continue
        * past. That is the difference between a bomb being a link in a chain and a bomb being
        * transparent: a line of three bombs should propagate along itself, not have the first

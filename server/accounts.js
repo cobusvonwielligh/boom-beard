@@ -1,12 +1,12 @@
 // Passwords, and the trusted browsers that mean you almost never type one.
 //
 // The problem this solves: the only identity in the game is the NAME (see careerKey in
-// leaderboard.js), because in an office of people who know each other the name IS the person —
+// leaderboard.js), because in an office of people who know each other the name IS the person -
 // and a career worth two months of Friday evenings was protected by nothing at all. Anybody
 // could type "cobusvw" and inherit it.
 //
 // The problem it must not CREATE: a password prompt in front of a game people play for twenty
-// minutes at a time. So the prompt happens twice — once when a name is first claimed, and again
+// minutes at a time. So the prompt happens twice - once when a name is first claimed, and again
 // the first time that name arrives from a browser nobody has seen before. After that the browser
 // carries a token and the prompt is gone.
 //
@@ -14,13 +14,13 @@
 //
 // The plaintext password is never stored, never logged, never sent anywhere, and never kept in
 // memory beyond the scrypt call that consumes it. What is on disk is scrypt(password, salt) with
-// a 16-byte random salt per account — so two people with the same password have different
+// a 16-byte random salt per account - so two people with the same password have different
 // hashes, and the file is useless to somebody who reads it without weeks of GPU time per
 // account.
 //
 // Device tokens get the same treatment for the same reason: the token is a bearer credential, so
 // the file holds sha256(token) and the only copy of the token itself lives in the browser that
-// was given it. A stolen accounts.json therefore grants nothing — no passwords, no sessions.
+// was given it. A stolen accounts.json therefore grants nothing - no passwords, no sessions.
 // (sha256 and not scrypt, deliberately: a token is 256 bits of randomness from the CSPRNG, so
 // there is no dictionary to attack and nothing for a slow hash to buy.)
 //
@@ -49,8 +49,8 @@ const VERSION = 1;
  *
  * N is the memory/time knob and the only one worth tuning: 2^15 with r=8 is 32 MB and lands
  * around 100 ms on a laptop, which is a cost nobody notices once or twice an evening and a wall
- * for anybody trying passwords in bulk. It runs on the libuv thread pool — `crypto.scrypt`, not
- * `scryptSync` — because 100 ms on the main thread is three ticks of the simulation, and a login
+ * for anybody trying passwords in bulk. It runs on the libuv thread pool - `crypto.scrypt`, not
+ * `scryptSync` - because 100 ms on the main thread is three ticks of the simulation, and a login
  * must never be something the room can feel.
  *
  * The parameters are stored WITH each hash, so raising them later does not invalidate a single
@@ -61,7 +61,7 @@ const SCRYPT = { N: 1 << 15, r: 8, p: 1, len: 64 };
 /* The memory ceiling has to be raised to let those parameters run at all.
  *
  * OpenSSL refuses any scrypt whose working set exceeds `maxmem`, and Node's default is exactly
- * 32 MB — which is 128·N·r to the byte for N=2^15, r=8, so the call fails on the limit rather
+ * 32 MB - which is 128·N·r to the byte for N=2^15, r=8, so the call fails on the limit rather
  * than under it. 64 MB gives the chosen parameters room and still refuses anything twice their
  * size, which is the point of having a ceiling.
  */
@@ -70,7 +70,7 @@ const SALT_BYTES = 16;
 const TOKEN_BYTES = 32;
 
 // How long a browser stays trusted, and how many a name may trust at once. Thirty days is "the
-// season", and five is a desk, a laptop, a phone and two spare — past that the oldest is dropped,
+// season", and five is a desk, a laptop, a phone and two spare - past that the oldest is dropped,
 // which is also the only cleanup this ever needs.
 export const DEVICE_TTL_MS = 30 * 24 * 3600_000;
 export const MAX_DEVICES = 5;
@@ -79,8 +79,8 @@ export const MAX_DEVICES = 5;
  *
  * Five wrong answers and the name stops answering for a minute, doubling up to an hour for as
  * long as the wrong answers keep coming. Not persisted: a restart clears it, which is a tiny
- * weakness against an attacker who can restart the server — and anybody who can do that owns the
- * machine anyway — against a real benefit, which is that nobody can lock a colleague out of their
+ * weakness against an attacker who can restart the server - and anybody who can do that owns the
+ * machine anyway - against a real benefit, which is that nobody can lock a colleague out of their
  * own account for an hour by typing rubbish at it and then leaving.
  */
 const FAIL_LIMIT = 5;
@@ -139,7 +139,7 @@ export function createAccounts({ dataDir }) {
   /* 0600 on everything.
    *
    * This file is the one thing in the project that is actually worth stealing, and the default
-   * mask on a shared box is world-readable. Applied to the directory too — on the server this is
+   * mask on a shared box is world-readable. Applied to the directory too - on the server this is
    * ./data, which also holds the TLS key copies.
    */
   const MODE = 0o600;
@@ -204,7 +204,7 @@ export function createAccounts({ dataDir }) {
    *
    * Writes whatever is in memory, dirty or not. The asynchronous `flush` clears the flag the
    * moment it STARTS, so a crash a millisecond later would find nothing marked dirty and write
-   * nothing at all — and the thing not written would be somebody's new password. A redundant
+   * nothing at all - and the thing not written would be somebody's new password. A redundant
    * write at shutdown costs nothing; a skipped one locks a person out of their own name.
    */
   function flushSync() {
@@ -268,7 +268,7 @@ export function createAccounts({ dataDir }) {
      * Claim a name for the first time.
      *
      * @returns { ok: true, token } with a token for the browser that claimed it, or
-     *          { ok: false, why } — which is either a bad password or somebody got there first.
+     *          { ok: false, why } - which is either a bad password or somebody got there first.
      */
     async register(name, password) {
       const key = accountKey(name);
@@ -335,7 +335,7 @@ export function createAccounts({ dataDir }) {
      *
      * Sliding expiry: every successful use pushes the token's life out again, so a browser you
      * play from every Friday never asks, and one you used once in March stops being trusted in
-     * April. Synchronous — a digest comparison, not a password hash — so the hello path pays
+     * April. Synchronous - a digest comparison, not a password hash - so the hello path pays
      * nothing in the overwhelmingly common case.
      */
     checkDevice(name, token) {

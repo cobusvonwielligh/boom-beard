@@ -1,7 +1,7 @@
 // The analysis behind both visualisers and the reactive sea.
 //
-// This is the one piece of the audio stack that is pure arithmetic — no AudioContext, no canvas,
-// no clock — so it is the one piece that can actually be tested rather than looked at. Every
+// This is the one piece of the audio stack that is pure arithmetic - no AudioContext, no canvas,
+// no clock - so it is the one piece that can actually be tested rather than looked at. Every
 // property below is something that LOOKS fine while being wrong: bars that fall at the wrong
 // speed on a 144 Hz monitor, bands that all report the same value, caps that never come down.
 
@@ -30,7 +30,7 @@ test('a band reports its loudest bin, not the average of them', () => {
   // One hot bin in an otherwise silent spectrum. With an average it would all but vanish; the
   // band it lands in should read loud, because that band contains a loud note.
   const s = createSpectrum({ bands: 8, tilt: 0 });
-  // Bin 300 of 2048 at 48 kHz is about 3.5 kHz — comfortably inside the 55 Hz–14 kHz range the
+  // Bin 300 of 2048 at 48 kHz is about 3.5 kHz - comfortably inside the 55 Hz–14 kHz range the
   // bands cover. Picking one outside it reports zero everywhere, which is correct behaviour and
   // a useless test.
   const spike = fakeAnalyser((i) => (i === 300 ? 255 : 0));
@@ -42,12 +42,12 @@ test('a band reports its loudest bin, not the average of them', () => {
 test('every band owns at least one bin of its own', () => {
   /* The bug this guards, and it was real: linear FFT bins mean log-spaced bands below about
    * 500 Hz round to the SAME bin index, so several bars move in perfect lockstep. It reads as a
-   * rendering fault and is really an arithmetic one — at fftSize 1024, twenty-two of forty
+   * rendering fault and is really an arithmetic one - at fftSize 1024, twenty-two of forty
    * bands had one bin or less. The fix was a bigger FFT and a higher floor, not better drawing.
    *
    * Tested by sweeping a single hot bin across the whole range and counting how many DIFFERENT
    * bands ever light up. Any band that never lights has no bin to call its own. Not by feeding
-   * a ramp and counting distinct values — a byte-valued ramp over 2048 bins is itself coarse
+   * a ramp and counting distinct values - a byte-valued ramp over 2048 bins is itself coarse
    * enough to produce duplicates, which measures the test data rather than the code. */
   const BANDS = 24;
   const lit = new Set();
@@ -60,7 +60,7 @@ test('every band owns at least one bin of its own', () => {
     if (best >= 0) lit.add(best);
   }
   assert.equal(lit.size, BANDS,
-    `only ${lit.size} of ${BANDS} bands can ever light — the rest share bins with a neighbour`);
+    `only ${lit.size} of ${BANDS} bands can ever light - the rest share bins with a neighbour`);
 });
 
 test('the bands run low to high', () => {
@@ -74,7 +74,7 @@ test('the bands run low to high', () => {
   assert.ok(t.level[11] > t.level[0], 'a treble-only signal is not lighting the top band');
 });
 
-test('bars snap up and sag down — the asymmetry is the whole look', () => {
+test('bars snap up and sag down - the asymmetry is the whole look', () => {
   const s = createSpectrum({ bands: 8, tilt: 0 });
   s.read(flat(255), 16.7);
   const afterOneLoudFrame = s.level[0];
@@ -89,7 +89,7 @@ test('bars snap up and sag down — the asymmetry is the whole look', () => {
 });
 
 test('the fall rate is the same at 60 Hz and at 144 Hz', () => {
-  /* A per-frame constant — `level *= 0.9` — makes bars fall two and a half times faster on a
+  /* A per-frame constant - `level *= 0.9` - makes bars fall two and a half times faster on a
    * gaming monitor than on a laptop. Nobody notices until they switch machines, and then the
    * visualiser is simply "wrong on that computer" with no way to say why. */
   const run = (dtMs, frames) => {
@@ -113,7 +113,7 @@ test('peaks hold above the bar and then come down', () => {
   s.read(silent, 16.7);
   assert.ok(s.peak[0] >= s.level[0], 'the cap fell below the bar it is capping');
 
-  /* Gravity, not a constant rate — measured EARLY, before it reaches the floor.
+  /* Gravity, not a constant rate - measured EARLY, before it reaches the floor.
    *
    * Comparing two late windows measures the floor rather than the curve: a bounded quantity
    * that has already bottomed out loses nothing in the second window however fast it was
@@ -126,7 +126,7 @@ test('peaks hold above the bar and then come down', () => {
   assert.ok(mid > 0.2, `the cap fell too fast to measure: ${mid.toFixed(3)} after ten frames`);
   assert.ok(start - mid < mid - end, 'the cap falls linearly; it should accelerate');
 
-  // Half a second in it should still be well clear of the floor — a cap that is gone before
+  // Half a second in it should still be well clear of the floor - a cap that is gone before
   // the bar under it has finished falling is not holding anything.
   for (let i = 0; i < 10; i++) s.read(silent, 16.7);
   assert.ok(s.peak[0] > 0.4, `the cap is gone too soon: ${s.peak[0].toFixed(3)} after half a second`);
@@ -172,10 +172,10 @@ test('the sea rests to itself, and its clock is a multiplier from 1', () => {
 });
 
 test('the flow field never listens to the music', () => {
-  /* The streaks themselves are gone — six hundred white lines on the open water were the most
+  /* The streaks themselves are gone - six hundred white lines on the open water were the most
    * legible thing on screen and the one thing nobody needed to look at. What survives is the
    * FIELD, and the lesson it was taught survives with it: swing the current on a beat and
-   * everything drifting on it — the dust off a slide, the bioluminescence, a drying puddle —
+   * everything drifting on it - the dust off a slide, the bioluminescence, a drying puddle -
    * changes its mind faster than it can move, which reads as flicker rather than as water.
    *
    * So the field stays on the plain clock, and the music lives in the coast and the glow. */

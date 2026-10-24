@@ -3,32 +3,32 @@
 // The sea moves to the music: bass swells the waves, overall energy speeds the current, the top
 // end makes the surface glitter, every beat sends a swell out from the coast, and the whole sea
 // keeps time with the tempo between the beats. This module turns an AnalyserNode into those
-// numbers and nothing else — it knows nothing about water.
+// numbers and nothing else - it knows nothing about water.
 //
 // The problems it has to solve, and they are the whole design:
 //
 //  1. LOUDNESS IS NOT MOTION. The analyser reports decibels, so a mix that is "quiet" and a mix
 //     that is "loud" both sit in the top third of the byte range and barely move within it. Each
-//     band is therefore a z-score against its own recent history — how many of its usual swings
-//     above or below its usual level it is right now — mapped so "usual" is 0.4 and two swings
+//     band is therefore a z-score against its own recent history - how many of its usual swings
+//     above or below its usual level it is right now - mapped so "usual" is 0.4 and two swings
 //     up is 1. (The first version normalised against a decaying peak; measured on the real
 //     tracks, every band sat at 0.95 the whole time, which is no signal at all.)
 //
 //  2. SILENCE MUST BE STILL. A z-score amplifies whatever is there, including nothing. Silence is
 //     far below the running average, so it maps to zero rather than to noise.
 //
-//  3. A BEAT IS A CHANGE, NOT A LEVEL. Beats are spectral flux in the kick's range — every low bin
-//     that got louder, summed — against an adaptive threshold and an absolute floor, with a
+//  3. A BEAT IS A CHANGE, NOT A LEVEL. Beats are spectral flux in the kick's range - every low bin
+//     that got louder, summed - against an adaptive threshold and an absolute floor, with a
 //     refractory gap so one kick is one beat. The same, in the top end, for hats and snares.
 //
-//  4. A DETECTOR IS NOT A DRUMMER. Detected beats are late, early, and sometimes missing — a
+//  4. A DETECTOR IS NOT A DRUMMER. Detected beats are late, early, and sometimes missing - a
 //     sea that only moves when the detector fires stutters exactly when the music does not. So
 //     the beats feed a TEMPO (the median of recent spacings) and a phase-locked metronome that
 //     runs on its own between them and is nudged back into line by each one. `phase` goes 0→1
 //     once a beat, every beat, and `lock` says how much to believe it.
 //
 //  5. THE ANALYSER HEARS IT FIRST. It sees audio as it is processed, which is the output latency
-//     — tens of milliseconds — before it comes out of the speakers. Seeing a swell before you
+//     - tens of milliseconds - before it comes out of the speakers. Seeing a swell before you
 //     hear the kick is the version of "out of sync" that everybody notices. Every output is
 //     therefore delayed by that latency before the renderer gets it.
 //
@@ -69,7 +69,7 @@ const HISTORY = 40;               // frames of delay line; ~650 ms at 60 fps
 /* The equaliser: EQ_BANDS log-spaced bands, each its own z-score like the three broad ones, so
  * every band dances around its own usual level instead of the bass towering over the treble.
  *
- * SLOW, on purpose. These started as meter ballistics — 25 ms up, 160 ms down — and in a round
+ * SLOW, on purpose. These started as meter ballistics - 25 ms up, 160 ms down - and in a round
  * that read as jumpy: every transient flicked a whole stretch of coast. The coast is scenery,
  * not a meter, so it gets water's timing: a quarter of a second to rise, most of a second to
  * settle, and a longer history so a band's "usual" does not chase every phrase. */
@@ -79,8 +79,8 @@ const EQ_ATTACK_MS = 500, EQ_RELEASE_MS = 1400;
 const EQ_HISTORY_MS = 4500;
 
 /* Accents: an onset ANYWHERE in the spectrum, not just the kick. Ambient beds have almost no
- * kicks — measured in game, one detected beat every two seconds and a tempo lock that never
- * formed — but they are full of events: a chord arriving, a pad swelling, a pluck. Those are
+ * kicks - measured in game, one detected beat every two seconds and a tempo lock that never
+ * formed - but they are full of events: a chord arriving, a pad swelling, a pluck. Those are
  * what the sea should answer to when there is no drummer. */
 const ACCENT_GAP_MS = 380;
 const ACCENT_K = 1.6;
@@ -156,7 +156,7 @@ export function createListener() {
         spacings.push(gap);
         if (spacings.length > TEMPO_MEMORY) spacings.shift();
         // The median picks the pulse; the mean of the spacings that agree with it sets the period.
-        // A median alone is quantised to whole frames — at 60 fps, 116 BPM is 31.03 frames and
+        // A median alone is quantised to whole frames - at 60 fps, 116 BPM is 31.03 frames and
         // came out as 30, i.e. 120 BPM, and a metronome 3% fast drifts a tenth of a beat off
         // between corrections. Averaging the agreeing spacings recovers the fraction.
         const sorted = [...spacings].sort((a, b) => a - b);
@@ -173,7 +173,7 @@ export function createListener() {
     if (now.phase < 0) now.phase += 1;
     // And the rate. Arriving early beat after beat means the metronome is running fast, however
     // well each correction hides it: lengthen its beat a little. This is the second half of a
-    // phase-locked loop — position alone leaves a steady lag proportional to the tempo error.
+    // phase-locked loop - position alone leaves a steady lag proportional to the tempo error.
     trim = Math.max(0.96, Math.min(1.04, trim + err * PLL_RATE));
   }
 
@@ -181,7 +181,7 @@ export function createListener() {
    * @param analyser the music's AnalyserNode, or null before the music has been built
    * @param audible false while paused or muted: the sea should not dance to music nobody hears
    * @param latencyS how far behind the analyser the speakers are; outputs are delayed by this
-   * @returns the same object every call — read it, do not keep it
+   * @returns the same object every call - read it, do not keep it
    */
   return function sample(analyser, audible, dtMs, latencyS = 0) {
     dtMs = Math.min(100, Math.max(1, dtMs));
@@ -272,7 +272,7 @@ export function createListener() {
     }
 
     // The metronome runs whether or not a beat was heard this frame. Belief in it fades if the
-    // beats stop coming — four periods of nothing and it is a guess, not a tempo.
+    // beats stop coming - four periods of nothing and it is a guess, not a tempo.
     const beatS = period * trim;
     now.phase = (now.phase + dtMs / 1000 / beatS) % 1;
     if (lastBeatAt < 0 || clock - lastBeatAt > beatS * 4 || !audible) now.lock *= Math.exp(-dtMs / 900);

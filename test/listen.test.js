@@ -109,7 +109,7 @@ test('everything comes out delayed by the output latency', () => {
 
 test('the equaliser moves with the music, band by band, and never jumps', () => {
   // A kick every half second lives in the bottom bands: they must swing far more than the top.
-  // And smoothly — the coast is scenery, not a meter, and the fast version read as jumpy.
+  // And smoothly - the coast is scenery, not a meter, and the fast version read as jumpy.
   const listen = createListener();
   const an = fakeAnalyser(0.5);
   const lo = [], hi = [];
@@ -129,7 +129,7 @@ test('the equaliser moves with the music, band by band, and never jumps', () => 
   const range = a => Math.max(...a) - Math.min(...a);
   assert.ok(range(lo) > 0.05, `bass bar only moved ${range(lo).toFixed(2)}`);
   assert.ok(range(lo) > range(hi) * 2, 'the treble bar moved as much as the bass bar on a kick');
-  assert.ok(maxStep < 0.02, `a band moved ${maxStep.toFixed(3)} in one frame — that is a jump`);
+  assert.ok(maxStep < 0.02, `a band moved ${maxStep.toFixed(3)} in one frame - that is a jump`);
 });
 
 test('accents answer musical events that are not kicks', () => {

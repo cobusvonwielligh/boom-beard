@@ -1,4 +1,4 @@
-// The simulation state. Plain objects and integers only — they clone cheaply, hash cheaply, and
+// The simulation state. Plain objects and integers only - they clone cheaply, hash cheaply, and
 // behave identically in Node and the browser. See docs/ARCHITECTURE.md §9.
 
 import {
@@ -20,12 +20,12 @@ export function createState(mapDef, seed = mapDef.seed) {
     bombs: [],
     fires: [],
     perks: [],
-    // Melted ice: { tx, ty, at, until }. Not a tile type — the map stays the map, and a puddle is
+    // Melted ice: { tx, ty, at, until }. Not a tile type - the map stays the map, and a puddle is
     // just somewhere slow and slippery for a few seconds. See melt() in sim/blocks.js.
     puddles: [],
     nextBombId: 1,
     nextPerkId: 1,
-    // Gold coins dropped so far this round. See GOLD_MAX_PER_ROUND — counted on the drop, so a
+    // Gold coins dropped so far this round. See GOLD_MAX_PER_ROUND - counted on the drop, so a
     // coin nobody reached still used up one of the five.
     goldDropped: 0,
     // Powder kegs placed so far this round. See POWDER_MAX_PER_ROUND.
@@ -41,7 +41,7 @@ export function createState(mapDef, seed = mapDef.seed) {
     nextGullAt: GULL_FIRST_TICK,
     gullNext: rng(seed ^ 0x6a09e667),
     /* The gull raid; see GULL_RAID_AT_MIN. `roundTicks` is filled in by the room, because the
-     * simulation does not otherwise know or care how long a round is — with it zero (a test, a
+     * simulation does not otherwise know or care how long a round is - with it zero (a test, a
      * bot bench) there is simply no raid.
      *
      * `raidAt` is the tick the birds launch and goes to -1 once they have, `raidStrike` the tick
@@ -69,20 +69,20 @@ export function createPlayer(i, name) {
     speed: 0,          // index into SPEED_UNITS_PER_TICK
     shields: 0,
     /* The tick a spent shield's grace runs out. See SHIELD_GRACE_TICKS: while this is in the
-     * future nothing can touch you, so one explosion — or one chain — costs exactly one shield. */
+     * future nothing can touch you, so one explosion - or one chain - costs exactly one shield. */
     shieldGrace: 0,
     status: 0,         // bitmask
     statusUntil: {},   // STATUS bit -> tick
     score: 0, kills: 0, deaths: 0,
     /* Gold coins collected this life. Banked to the leaderboard like score and kills.
      *
-     * `coins`, not `gold`. The leaderboard already had a `gold` — first-place finishes, one of
-     * gold/silver/bronze — and the two features landed in the same field from opposite
+     * `coins`, not `gold`. The leaderboard already had a `gold` - first-place finishes, one of
+     * gold/silver/bronze - and the two features landed in the same field from opposite
      * branches: a coin pickup incremented the medal count and winning a round incremented the
      * coin counter. Both read perfectly and both were wrong. The trio is a coherent set, so the
      * one that renames is this one, and "coins" is what it actually is. */
     coins: 0,
-    // Was the bomb key down last tick? Edge detection for placement — see bombs.place.
+    // Was the bomb key down last tick? Edge detection for placement - see bombs.place.
     bombHeld: false,
     stamina: STAMINA_MAX,
     staminaLevel: 0,   // Lung perks collected; raises the ceiling, see staminaMaxFor

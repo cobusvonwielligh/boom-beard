@@ -1,4 +1,4 @@
-// Headless load-test clients — docs/PLAN.md task NET-6.
+// Headless load-test clients - docs/PLAN.md task NET-6.
 //
 // `node server/bots.js 15` plus one real browser fills the room, which is the only honest way to
 // see what 16 players does to tick time before 16 actual people are waiting on it. The bots play
