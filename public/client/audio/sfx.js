@@ -405,7 +405,10 @@ export function createSfx({ listener }) {
 
     /** You died. Same idea, bigger, slower, and right in front of you. */
     ownDeath(c, out, t) {
-      const g = voiceGain(c, out, t, { a: 0.008, d: 0.75, peak: 0.42, send: 0.45 });
+      // A fifth quieter than it was. It is already the longest sound in the game and it lands
+      // while the music dips under it, so at 0.42 it was the loudest thing anybody heard all
+      // round - for the one event you cannot do anything about.
+      const g = voiceGain(c, out, t, { a: 0.008, d: 0.75, peak: 0.336, send: 0.45 });
       const f = c.createBiquadFilter();
       f.type = 'lowpass';
       f.frequency.setValueAtTime(2200, t);
