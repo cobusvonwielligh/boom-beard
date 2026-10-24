@@ -550,9 +550,21 @@
      a number nobody else can act on is noise on fifteen screens. -->
 <div id="perf" aria-label="performance diagnostics">
   <div id="perfServer" hidden>
-    <span id="perfSrvCpu">SRV CPU --%</span><span class="perfSep">·</span>
-    <span id="perfSrvMem">RAM --%</span><span class="perfSep">·</span>
-    <span id="perfSrvDisk">DISK --%</span>
+    <div class="perfRow">
+      <span id="perfSrvCpu">SRV CPU --%</span><span class="perfSep">·</span>
+      <span id="perfSrvMem">RAM --%</span><span class="perfSep">·</span>
+      <span id="perfSrvDisk">DISK --%</span>
+    </div>
+    <!-- The second line is the one that actually wakes somebody up: whether the simulation is
+         keeping inside its tick budget, who is in the room, how long since the last restart,
+         and whether the host has left the game running at a silly speed. Anything over its
+         threshold turns red; see sampleServerHealth. -->
+    <div class="perfRow">
+      <span id="perfSrvTick">TICK --ms</span><span class="perfSep">·</span>
+      <span id="perfSrvPlayers">0P 0B</span><span class="perfSep">·</span>
+      <span id="perfSrvUp">UP --</span>
+      <span id="perfSrvFlags"></span>
+    </div>
   </div>
   <div id="perfLocal">
     <span id="perfFps">-- FPS</span><span class="perfSep">·</span>

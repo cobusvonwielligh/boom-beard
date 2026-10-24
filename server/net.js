@@ -320,8 +320,19 @@ export function attachHub(server, config) {
 
   const room = createRoom({
     onBroadcast: broadcast,
-    // With a key configured the name grants nothing: see `adminKey` in server/config.js.
-    adminName: config.adminKey ? '' : config.adminName,
+    /* The key OR the name, not one or the other.
+     *
+     * The name used to grant nothing as soon as a key was configured, on the reasoning that a
+     * name is a thing anybody can type. That stopped being true when accounts landed: a name is
+     * claimed once and password-checked on every join after that (see `authorise` below), so
+     * "the seat called cobusvw" is as strong a claim as the password on it — and it is the claim
+     * actually being made, from a browser, by somebody who is not going to paste a key into a
+     * URL every time they sit down to play.
+     *
+     * The key still works and is still the stronger of the two: it is the way in when the
+     * account file is gone, when the name is taken, or from a machine that has never signed in.
+     */
+    adminName: config.adminName,
     // The room decided this seat is gone. Close the socket too, or the client sits there happily
     // predicting into a seat that no longer exists.
     onKick: (seat, why) => {

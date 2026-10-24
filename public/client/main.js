@@ -915,12 +915,64 @@ function pollServerPerformance() {
     .then(h => {
       if (!h || !Number.isFinite(h.cpuPct) || !Number.isFinite(h.memoryPct)) return;
       $('perfServer').hidden = false;
-      $('perfSrvCpu').textContent = `SRV CPU ${h.cpuPct.toFixed(1)}%`;
-      $('perfSrvMem').textContent = `RAM ${h.memoryPct.toFixed(1)}%`;
-      $('perfSrvDisk').textContent = Number.isFinite(h.diskPct)
-        ? `DISK ${h.diskPct.toFixed(1)}%` : 'DISK --%';
+      sampleServerHealth(h);
     })
     .catch(() => {});
+}
+
+/* Write a figure and flag it if it is past where it should be.
+ *
+ * A dashboard of six numbers with no thresholds on them is six numbers nobody reads — you have
+ * to already know what 14 ms of tick time means to notice it. The colour is the knowing. */
+function perfCell(id, text, bad) {
+  const el = $(id);
+  el.textContent = text;
+  el.classList.toggle('perfWarn', !!bad);
+}
+
+/**
+ * The server's vitals, for the one seat that owns it.
+ *
+ * The thresholds are where somebody would actually want to be told:
+ *
+ *   TICK   p99 of the simulation step against its 33 ms budget. Half of it is the warning —
+ *          past that a chain reaction with sixteen players on the board starts eating frames,
+ *          and this is the number that goes first.
+ *   CPU    85% of a core. The sim is single-threaded, so one core IS the ceiling.
+ *   RAM    85% of the box. The process is the only thing on it.
+ *   DISK   90%. The leaderboard, the accounts and the logs all write to it, and a full disk
+ *          loses careers rather than frames.
+ *   LAG    anything but zero: that is the artificial latency from the dev flags, and finding it
+ *          switched on in production explains an entire evening of complaints.
+ *   SPEED  anything but 100%: /gamespeed left somewhere silly is invisible to whoever set it.
+ */
+function sampleServerHealth(h) {
+  const tick = Number.isFinite(h.tickMsP99) ? h.tickMsP99 : null;
+  perfCell('perfSrvCpu', `SRV CPU ${h.cpuPct.toFixed(1)}%`, h.cpuPct >= 85);
+  perfCell('perfSrvMem', `RAM ${h.memoryPct.toFixed(1)}%`, h.memoryPct >= 85);
+  perfCell('perfSrvDisk',
+    Number.isFinite(h.diskPct) ? `DISK ${h.diskPct.toFixed(1)}%` : 'DISK --%',
+    Number.isFinite(h.diskPct) && h.diskPct >= 90);
+  perfCell('perfSrvTick', tick === null ? 'TICK --ms' : `TICK ${tick.toFixed(1)}ms`,
+    tick !== null && tick > TICK_MS / 2);
+
+  const bots = h.bots | 0;
+  const people = Math.max(0, (h.players | 0) - bots);
+  perfCell('perfSrvPlayers',
+    `${people}P ${bots}B${h.reserved ? ` ${h.reserved}R` : ''}`, false);
+
+  const up = h.uptimeS | 0;
+  const hrs = (up / 3600) | 0, mins = ((up % 3600) / 60) | 0;
+  perfCell('perfSrvUp', hrs ? `UP ${hrs}h${String(mins).padStart(2, '0')}` : `UP ${mins}m`,
+    // A server that has been up for under two minutes restarted while you were looking at it.
+    up < 120);
+
+  // Everything that is only worth a word when it is wrong.
+  const flags = [];
+  if (h.lag) flags.push(`LAG ${h.lag}ms`);
+  if (h.gamespeed !== undefined && h.gamespeed !== 100) flags.push(`SPEED ${h.gamespeed}%`);
+  if (h.ok === false) flags.push('UNHEALTHY');
+  perfCell('perfSrvFlags', flags.length ? `· ${flags.join(' · ')}` : '', flags.length > 0);
 }
 
 /* This computer, measured rather than guessed.

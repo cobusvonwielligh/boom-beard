@@ -607,11 +607,21 @@ canvas#game {
   align-items: flex-start;
   gap: 3px;
 }
-#perfServer,
+#perfServer {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.perfRow,
 #perfLocal {
   display: flex;
   align-items: center;
   gap: 5px;
+}
+/* Anything past its threshold. Red against the server row's blue, so it reads as "this one" and
+   not as a different kind of number — the figure keeps its place in the line. */
+.perfWarn {
+  color: #ff6b5e;
 }
 /* The server's row, in the one colour nothing else in the badge uses: whatever it says is about
    the box in Paris, not about the machine you are sitting at. Only the owner sees it at all. */
