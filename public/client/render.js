@@ -319,7 +319,7 @@ export function createRenderer(canvas, world) {
    * lasted as long as the fire would read as a coloured filter laid over the board, and worse,
    * it would make the lethal window look longer than it is - the one thing the fire's own
    * drawing is responsible for saying. */
-  const BLAST_LIGHT_PX = TILE_PX * 2.4;
+  const BLAST_LIGHT_PX = TILE_PX * 3.6;
   const BLAST_LIGHT_ALPHA = 0.5;
   let blastLight = null;
   /* Darker, and SOFT.
@@ -3644,8 +3644,9 @@ export function createRenderer(canvas, world) {
       ctx.fillStyle = blastLight;
       for (const f of world.fires) {
         const age = Math.min(1, 1 - Math.max(0, (f.until - tickNow) / FIRE_TICKS));
-        // Two frames up, then down and out by a third of the way through the burn.
-        const k = age < 0.07 ? age / 0.07 : Math.max(0, 1 - (age - 0.07) / 0.3);
+        // Two frames up, then down - but half as quickly as it was, so the light is still on
+        // the walls while the flames are at their biggest rather than being gone by then.
+        const k = age < 0.07 ? age / 0.07 : Math.max(0, 1 - (age - 0.07) / 0.6);
         if (k <= 0) continue;
         // The core is the bomb itself; an arm is fire that travelled, and dimmer for it.
         ctx.globalAlpha = BLAST_LIGHT_ALPHA * k * k * (f.kind === 'core' ? 1 : 0.7);
@@ -3710,7 +3711,7 @@ export function createRenderer(canvas, world) {
     // It saves and restores around its own transform, so the board transform survives the call.
     drawSays(ox, oy, zoom);
 
-    drawRadarRim(ox, oy, dtMs);
+    drawRadarRim(ox, oy, vw, vh, dtMs, zoom);
 
     /* A vignette that breathes with the music, drawn last so it sits over everything.
      *
@@ -3772,111 +3773,158 @@ export function createRenderer(canvas, world) {
    *   DAMAGE  the entire border goes red and beats for a second when something takes a shield or
    *           takes you. A hit is otherwise told by a flash that is over in a tenth of a second.
    */
-  const RIM_PX = 7.5;             // the dark band itself, two and a half times the old hairline
-  const RIM_LIT_PX = 190;         // how much of the border the slither covers, before the music
+  const RIM_PX = 6;               // the dark band, in CSS pixels, whatever the zoom
+  const RIM_RADIUS_PX = 8;        // the canvas's own corner radius; see canvas#game in style.css
+  const RIM_LIT_PX = 170;         // how much of the border your own slither covers, before music
+  const RIM_BLIP_PX = 54;         // and how much somebody else's does
+  const RIM_BLIPS = 3;            // never more than three of them
   const RIM_ALERT_S = 1.1;        // how long a hit keeps the border red
-  const RIM_STEPS = 26;           // segments the slither is drawn in; enough to turn a corner
+  const RIM_SAMPLES = 160;        // points the perimeter is sampled at, to find the nearest one
   let rimAlert = 0;               // 1 at the moment of the hit, decaying
-  let rimAt = -1;                 // where the slither is, in pixels along the perimeter
+  let rimAt = -1;                 // where your slither is, in pixels along the perimeter
 
-  function drawRadarRim(ox, oy, dtMs) {
-    if (!world.map) return;
-    const [lx, ly, lw, lh] = landBounds();
-    const x0 = ox + lx * TILE_PX, y0 = oy + ly * TILE_PX;
-    const x1 = ox + (lx + lw + 1) * TILE_PX, y1 = oy + (ly + lh + 1) * TILE_PX;
-    const w = x1 - x0, h = y1 - y0;
-    if (w <= 0 || h <= 0) return;
-    const perim = 2 * (w + h);
+  const rimCorner = (cx, cy, ang, r) => [cx + Math.cos(ang) * r, cy + Math.sin(ang) * r];
 
-    /* One number for a position on the frame: distance clockwise from the top-left corner.
-     * Corners stop being a special case the moment the border is one line rather than four. */
-    const pointAt = t => {
-      let d = ((t % perim) + perim) % perim;
-      if (d < w) return [x0 + d, y0];
-      d -= w;
-      if (d < h) return [x1, y0 + d];
-      d -= h;
-      if (d < w) return [x1 - d, y1];
-      return [x0, y1 - (d - w)];
+  /**
+   * A walk around a rounded rectangle: distance clockwise from the start of the top edge.
+   *
+   * The frame is the CANVAS, corners and all, so the maths has to know about the corners - a
+   * sharp-cornered perimeter laid over a rounded one puts the light outside the canvas at four
+   * places, which is precisely where it is most visible. Eight runs: four straight, four arcs.
+   */
+  function rimPath(x0, y0, w, h, r) {
+    const sw = w - 2 * r, sh = h - 2 * r;         // straight length of each side
+    const arc = (Math.PI / 2) * r;                // length of one quarter turn
+    const runs = [sw, arc, sh, arc, sw, arc, sh, arc];
+    const total = runs.reduce((n, v) => n + v, 0);
+    const at = t => {
+      let d = ((t % total) + total) % total;
+      let i = 0;
+      while (d > runs[i]) { d -= runs[i]; i++; }
+      const f = runs[i] ? d / runs[i] : 0;
+      switch (i) {
+        case 0: return [x0 + r + d, y0];
+        case 1: return rimCorner(x0 + w - r, y0 + r, -Math.PI / 2 + f * (Math.PI / 2), r);
+        case 2: return [x0 + w, y0 + r + d];
+        case 3: return rimCorner(x0 + w - r, y0 + h - r, f * (Math.PI / 2), r);
+        case 4: return [x0 + w - r - d, y0 + h];
+        case 5: return rimCorner(x0 + r, y0 + h - r, Math.PI / 2 + f * (Math.PI / 2), r);
+        case 6: return [x0, y0 + h - r - d];
+        default: return rimCorner(x0 + r, y0 + r, Math.PI + f * (Math.PI / 2), r);
+      }
     };
+    return { total, at };
+  }
+
+  function drawRadarRim(ox, oy, vw, vh, dtMs, zoom) {
+    const me = world.me();
+    // CSS pixels over the zoom, so the band is the same thickness on screen whether the board is
+    // scaled up on a big window or down at the zoom floor.
+    const bw = RIM_PX / zoom;
+    const r = RIM_RADIUS_PX / zoom;
+    const x0 = bw / 2, y0 = bw / 2, w = vw - bw, h = vh - bw;
+    if (w <= 2 * r || h <= 2 * r) return;
+    const rim = rimPath(x0, y0, w, h, r);
 
     if (rimAlert > 0) rimAlert = Math.max(0, rimAlert - (dtMs / 1000) / RIM_ALERT_S);
+    const dead = !!me && !me.alive;
 
-    // The dark band first. Stroked on the inside of the rect, so the lit part sits exactly on
-    // top of it rather than half a width out from it.
+    // The dark band first. Everything lit is drawn over it, so the band is what makes a faint
+    // blip legible at all - a glow on open sea has nothing to be brighter than.
     ctx.save();
-    ctx.lineJoin = 'miter';
-    ctx.lineWidth = RIM_PX;
-    ctx.strokeStyle = 'rgba(6,10,16,0.82)';
-    ctx.strokeRect(x0 + RIM_PX / 2, y0 + RIM_PX / 2, w - RIM_PX, h - RIM_PX);
-    ctx.restore();
+    ctx.lineWidth = bw;
+    ctx.strokeStyle = 'rgba(6,10,16,0.85)';
+    ctx.beginPath();
+    ctx.roundRect(x0, y0, w, h, r);
+    ctx.stroke();
 
-    const me = world.me();
-    if (!me) return;
+    /** One stretch of the border, lit, centred on `mid` and fading to nothing at both ends. */
+    const slither = (mid, halfLen, peak, colour, steps) => {
+      const step = (halfLen * 2) / steps;
+      ctx.strokeStyle = colour;
+      for (let i = 0; i < steps; i++) {
+        const k = 1 - Math.abs((i + 0.5) / steps * 2 - 1);
+        ctx.globalAlpha = peak * k * k;
+        const [ax, ay] = rim.at(mid - halfLen + i * step);
+        const [bx, by] = rim.at(mid - halfLen + (i + 1) * step);
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(bx, by);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    };
 
-    /* Where you are on that line: the nearest point of the frame, which is whichever side you
-     * are closest to, at your own offset along it. Eased, because the answer jumps the width of
-     * the island the moment you cross the diagonal between two sides, and a light that teleports
-     * reads as a fault. Eased ALONG the perimeter, taking the short way round, so going past a
-     * corner slides round it instead of crossing the board. */
-    const px = Math.min(Math.max(ox + (me.rx / UNITS_PER_TILE) * TILE_PX, x0), x1);
-    const py = Math.min(Math.max(oy + (me.ry / UNITS_PER_TILE) * TILE_PX, y0), y1);
-    const dLeft = px - x0, dRight = x1 - px, dTop = py - y0, dBottom = y1 - py;
-    const near = Math.min(dLeft, dRight, dTop, dBottom);
-    let want;
-    if (near === dTop) want = px - x0;
-    else if (near === dRight) want = w + (py - y0);
-    else if (near === dBottom) want = w + h + (x1 - px);
-    else want = 2 * w + h + (y1 - py);
+    /** Where on the border a point on the board is: the nearest sample, by brute force. */
+    const nearestAt = (wx, wy) => {
+      let best = 0, bestD = Infinity;
+      for (let i = 0; i < RIM_SAMPLES; i++) {
+        const t = (i / RIM_SAMPLES) * rim.total;
+        const [px, py] = rim.at(t);
+        const d = (px - wx) * (px - wx) + (py - wy) * (py - wy);
+        if (d < bestD) { bestD = d; best = t; }
+      }
+      return best;
+    };
 
-    if (rimAt < 0) rimAt = want;
-    else {
-      let delta = ((want - rimAt + perim * 1.5) % perim) - perim / 2;
-      rimAt = (rimAt + delta * (1 - Math.exp(-dtMs / 90)) + perim) % perim;
-    }
-
-    // The music. Longer and brighter with the level, a kick on the beat - the same two numbers
-    // the sea and the coast are already moving on.
-    const lift = 1 + mood.level * 0.35 + mood.beat * 0.25;
-    const half = Math.min(perim / 2, (RIM_LIT_PX / 2) * lift);
-    const beat = rimAlert > 0 ? 0.55 + 0.45 * Math.sin(seaT * 17) : 0;
-    const red = Math.min(1, rimAlert * 1.4);
-    const r = Math.round(237 + (255 - 237) * red);
-    const g = Math.round(194 + (54 - 194) * red);
-    const b = Math.round(78 + (48 - 78) * red);
-
-    ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     ctx.lineCap = 'butt';
-    ctx.lineWidth = RIM_PX;
-    const step = (half * 2) / RIM_STEPS;
-    for (let i = 0; i < RIM_STEPS; i++) {
-      const from = rimAt - half + i * step;
-      // Squared falloff from the middle of the slither: bright where you are, gone by its ends.
-      const k = 1 - Math.abs((i + 0.5) / RIM_STEPS * 2 - 1);
-      const a = (0.1 + 0.62 * k * k) * (0.7 + 0.3 * lift);
-      const [ax, ay] = pointAt(from);
-      const [bx, by] = pointAt(from + step);
-      ctx.strokeStyle = `rgba(${r},${g},${b},${a.toFixed(3)})`;
-      ctx.beginPath();
-      ctx.moveTo(ax, ay);
-      /* A segment that spans a corner has to go THROUGH it: a straight line from one side to
-       * the next cuts the corner off and leaves a chord floating inside the board. The sides
-       * change at these four distances, and a segment is short enough to contain at most one. */
-      for (const edge of [0, w, w + h, 2 * w + h]) {
-        const at = edge < from % perim ? edge + perim : edge;
-        const rel = at - (from % perim);
-        if (rel > 0 && rel < step) { const [kx, ky] = pointAt(edge); ctx.lineTo(kx, ky); }
+
+    /* Everybody else, quietly.
+     *
+     * Three at most, nearest first, at a fifth of your own brightness over a third of the
+     * length, in their own colour. They are a hint that somebody is over there, not a map: a
+     * border lit in sixteen places says nothing at all, and the one thing that has to survive
+     * on this frame is where YOU are.
+     */
+    if (me) {
+      const others = world.players
+        .filter(q => q && q.alive && q.i !== world.you)
+        .map(q => ({ q, d: Math.hypot(q.rx - me.rx, q.ry - me.ry) }))
+        .sort((m, n) => m.d - n.d)
+        .slice(0, RIM_BLIPS);
+      for (const { q } of others) {
+        const bx = ox + (q.rx / UNITS_PER_TILE) * TILE_PX;
+        const by = oy + (q.ry / UNITS_PER_TILE) * TILE_PX;
+        slither(nearestAt(bx, by), (RIM_BLIP_PX / 2) / zoom, 0.22, playerColor(q.i), 12);
       }
-      ctx.lineTo(bx, by);
-      ctx.stroke();
     }
 
-    // A hit lights the whole frame, not a side of it: what is being reported has no direction.
-    if (rimAlert > 0) {
-      ctx.strokeStyle = `rgba(255,54,48,${(0.5 * rimAlert * beat).toFixed(3)})`;
-      ctx.lineWidth = RIM_PX;
-      ctx.strokeRect(x0 + RIM_PX / 2, y0 + RIM_PX / 2, w - RIM_PX, h - RIM_PX);
+    if (me) {
+      const px = ox + (me.rx / UNITS_PER_TILE) * TILE_PX;
+      const py = oy + (me.ry / UNITS_PER_TILE) * TILE_PX;
+      const want = nearestAt(px, py);
+      // Eased ALONG the border, the short way round, so rounding a corner slides the light round
+      // it rather than throwing it across the frame.
+      if (rimAt < 0) rimAt = want;
+      else {
+        const delta = ((want - rimAt + rim.total * 1.5) % rim.total) - rim.total / 2;
+        rimAt = (rimAt + delta * (1 - Math.exp(-dtMs / 90)) + rim.total) % rim.total;
+      }
+
+      // The music: longer and brighter on the level, a lift on every beat. The same two numbers
+      // the sea and the coast move on, so the whole frame shares one pulse.
+      const lift = 1 + mood.level * 0.35 + mood.beat * 0.25;
+      const half = Math.min(rim.total / 2, ((RIM_LIT_PX / 2) * lift) / zoom);
+      slither(rimAt, half, 0.72 * (0.7 + 0.3 * lift), dead ? '#ff3b4e' : '#edc24e', 26);
+    }
+
+    /* A hit takes the whole frame, because what is being reported has no direction.
+     *
+     * Two states, different on purpose. A shield or a wound beats red for a second and goes.
+     * DEATH holds the frame in flat maroon for as long as you are down - the same maroon the
+     * death card and the banner are built from - so the glance that tells you that you are out
+     * of the round is the frame around it. */
+    ctx.globalCompositeOperation = 'source-over';
+    if (dead || rimAlert > 0) {
+      const beat = 0.55 + 0.45 * Math.sin(seaT * 17);
+      ctx.strokeStyle = dead
+        ? 'rgba(128,30,50,0.92)'
+        : 'rgba(214,40,46,' + (0.85 * rimAlert * beat).toFixed(3) + ')';
+      ctx.lineWidth = bw;
+      ctx.beginPath();
+      ctx.roundRect(x0, y0, w, h, r);
+      ctx.stroke();
     }
     ctx.restore();
     ctx.globalAlpha = 1;
