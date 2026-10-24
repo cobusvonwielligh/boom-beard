@@ -1,6 +1,6 @@
 # Boom Beard — Where We Stand
 
-Last updated: **2026-10-24**, at **v1.0.0**. Live on `bombvoyage.online`. 314 tests, all of which
+Last updated: **2026-10-24**, at **v1.0.0**. Live on `boombeard.co.za`. 314 tests, all of which
 now pass on Windows as well as in CI. The security check that went into 1.0 is
 [DEPLOY.md](DEPLOY.md) §12.
 
@@ -290,5 +290,5 @@ Accounts, payments, matchmaking, mobile, anti-cheat, a persistent world. Unchang
 - **Host commands:** `/restart`, `/godmode`, `/kick`, `/map`, `/gamespeed`, `/roundtime`. The host
   is the admin when present and the longest-standing human otherwise, so a room is never left
   without someone who can run it. The admin is the browser holding `[admin] key` from the
-  server's config.ini — open `https://bombvoyage.online/?admin=<key>` once, on each browser you
+  server's config.ini — open `https://boombeard.co.za/?admin=<key>` once, on each browser you
   host from.

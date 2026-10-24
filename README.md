@@ -1,11 +1,11 @@
 <p align="center">
-  <a href="https://bombvoyage.online">
+  <a href="https://boombeard.co.za">
     <img src="docs/readme/banner.svg" alt="Boom Beard: sixteen pirates, one island, light the fuse and run" width="100%">
   </a>
 </p>
 
 <p align="center">
-  <a href="https://bombvoyage.online"><img alt="Play now at bombvoyage.online" src="https://img.shields.io/badge/%E2%96%B6%20PLAY%20NOW-bombvoyage.online-edc24e?style=for-the-badge&labelColor=2a1018"></a>
+  <a href="https://boombeard.co.za"><img alt="Play now at boombeard.co.za" src="https://img.shields.io/badge/%E2%96%B6%20PLAY%20NOW-boombeard.co.za-edc24e?style=for-the-badge&labelColor=2a1018"></a>
   <img alt="Up to 16 players" src="https://img.shields.io/badge/players-up%20to%2016-c4683a?style=for-the-badge&labelColor=2a1018">
   <img alt="Runs in the browser, nothing to install" src="https://img.shields.io/badge/install-nothing-a83442?style=for-the-badge&labelColor=2a1018">
   <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-801e32?style=for-the-badge&labelColor=2a1018"></a>

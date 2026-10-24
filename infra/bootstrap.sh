@@ -3,8 +3,8 @@
 # re-running is exactly how you switch to a new domain.
 #
 #   scp -i key.pem infra/bootstrap.sh ec2-user@HOST:/tmp/
-#   ssh -i key.pem ec2-user@HOST 'HOST=bombvoyage.online \
-#                                 ALT_HOSTS="www.bombvoyage.online 15.240.88.189.sslip.io" \
+#   ssh -i key.pem ec2-user@HOST 'HOST=boombeard.co.za \
+#                                 ALT_HOSTS="www.boombeard.co.za 15.240.88.189.sslip.io" \
 #                                 EMAIL=you@example.com bash /tmp/bootstrap.sh'
 #
 # HOST is the canonical name. Everything in ALT_HOSTS is answered and then 301d to HOST, so the
@@ -22,7 +22,7 @@
 
 set -euo pipefail
 
-HOST="${HOST:?set HOST to the public hostname, e.g. bombvoyage.co.za}"
+HOST="${HOST:?set HOST to the public hostname, e.g. boombeard.co.za}"
 ALT_HOSTS="${ALT_HOSTS:-}"
 SKIP_TLS="${SKIP_TLS:-0}"
 EMAIL="${EMAIL:-}"

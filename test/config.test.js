@@ -10,14 +10,14 @@ test('ini parsing', async t => {
       # another
       [server]
       port = 443
-      public_host = bombvoyage.co.za
+      public_host = boombeard.co.za
 
       [deploy]
       token = abc=def=
       ssh_key = ~/Downloads/key.pem
     `);
     assert.equal(ini.server.port, '443');
-    assert.equal(ini.server.public_host, 'bombvoyage.co.za');
+    assert.equal(ini.server.public_host, 'boombeard.co.za');
     assert.equal(ini.deploy.token, 'abc=def=', 'only the first = separates key from value');
     assert.equal(ini.deploy.ssh_key, '~/Downloads/key.pem');
   });

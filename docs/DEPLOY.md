@@ -205,7 +205,7 @@ of truth.
 
 ---
 
-## 7. Moving to `bombvoyage.co.za`
+## 7. Moving to `boombeard.co.za`
 
 Everything is already parameterised. The whole switch:
 
@@ -220,7 +220,7 @@ Everything is already parameterised. The whole switch:
    not resolve to the box yet:
 
    ```bash
-   dig +short bombvoyage.co.za      # must print 15.240.88.189
+   dig +short boombeard.co.za      # must print 15.240.88.189
    ```
 
 3. **Re-run bootstrap** with the new names. It is idempotent, `--expand` adds them to the
@@ -229,7 +229,7 @@ Everything is already parameterised. The whole switch:
    ```bash
    scp -i ~/Downloads/bombs-away.pem infra/bootstrap.sh ec2-user@15.240.88.189:/tmp/
    ssh -i ~/Downloads/bombs-away.pem ec2-user@15.240.88.189 \
-     'HOST=bombvoyage.online ALT_HOSTS="www.bombvoyage.online 15.240.88.189.sslip.io" \
+     'HOST=boombeard.co.za ALT_HOSTS="www.boombeard.co.za 15.240.88.189.sslip.io" \
       EMAIL=you@example.com bash /tmp/bootstrap.sh'
    ```
 
@@ -237,7 +237,7 @@ Everything is already parameterised. The whole switch:
    `ALT_HOSTS` is covered by the same certificate, answered, and then **301d to `HOST`** by
    `server/canonical.js` — so one URL shows in the address bar and every old link still works.
 
-4. **Update the GitHub secret** `DEPLOY_URL` to `https://bombvoyage.online/deploy`.
+4. **Update the GitHub secret** `DEPLOY_URL` to `https://boombeard.co.za/deploy`.
 
 5. **Update your local `config.ini`** `[deploy] ssh_host` if you want to SSH by name.
 
