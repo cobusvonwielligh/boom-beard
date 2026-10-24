@@ -88,14 +88,18 @@ export const HITBOX_REDUCED_UNITS = 10 * (UNITS_PER_TILE / TILE_PX);
  * moving and another when being pushed is the kind of disagreement that ends in a desync.
  */
 export const DIAG_NUM = 181, DIAG_DEN = 256;
-export const CORNER_CUT_UNITS = 44;
+// 64 units, up from 44: eight pixels of chamfer on a twenty-pixel box rather than five and a
+// half. At 44 a diagonal past a block corner still caught often enough to notice, which is the
+// one thing the chamfer exists to stop.
+export const CORNER_CUT_UNITS = 64;
 
 // Fire forgives a sliver of the sprite. The hitboxes above are what geometry collides with; fire
 // kills on this fraction of them, so a player tucked behind a wall with two or three pixels of
 // shoulder past its edge lives. Without the grace the lethal box reached exactly as far as the
 // sprite, and the most careful hiding spot on the map was decided by one pixel of alignment.
-// 7/10 of 160 units is 112 - three pixels of mercy on each side. TUNE
-export const HITBOX_FIRE_NUM = 7, HITBOX_FIRE_DEN = 10;
+// 13/20 of 160 units is 104 - three and a half pixels of mercy on each side, a shade more than
+// the 7/10 it started at. TUNE
+export const HITBOX_FIRE_NUM = 13, HITBOX_FIRE_DEN = 20;
 
 // Slide toward a tile centre instead of stopping when the perpendicular offset is within this.
 // This is what makes movement feel like Bomberman rather than like a grid. Do not remove.

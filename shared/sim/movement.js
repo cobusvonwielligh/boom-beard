@@ -216,11 +216,12 @@ function bombSolid(state, p, tx, ty) {
      * clear of it, so there is nothing left to push out and the unstick never fires at all.
      * The rule stays observable from the bomb record alone, so both machines still agree.
      */
-    // Three quarters of the box, not all of it. At the full width the bomb only turned solid
-    // once you were completely clear, so there was never anything to push and stepping off one
-    // had no weight to it at all. At three quarters it firms up a few units early, which is a
-    // nudge you can feel and still nowhere near the third of a tile it used to shove you.
-    const half = (halfBox(p) * 3) >> 2;
+    // Five eighths of the box, not all of it. At the full width the bomb only turned solid once
+    // you were completely clear, so there was never anything to push and stepping off one had no
+    // weight to it at all. Five eighths firms it up a few units early - a nudge you can feel -
+    // and is a touch later than the three quarters it was, which was catching people who were
+    // still standing on the thing they had just placed.
+    const half = (halfBox(p) * 5) >> 3;
     const overlaps = ((p.x - half) >> 8) <= tx && ((p.x + half - 1) >> 8) >= tx
                   && ((p.y - half) >> 8) <= ty && ((p.y + half - 1) >> 8) >= ty;
     return !overlaps;
