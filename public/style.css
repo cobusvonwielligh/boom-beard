@@ -297,6 +297,11 @@ body {
   --bar: 52px;
   --side: 340px;
   --gap: 10px;
+  /* The landing title. See #title: the base is the size that fits the card, the scale is how far
+     past it the title goes, and the card's padding and the title's lift are both derived from
+     the pair so nothing can overlap. */
+  --titleBase: clamp(26px, 3.4vw, 44px);
+  --titleScale: 1.875;
 }
 
 /* Explicit width and height, not `auto` with four insets.
@@ -593,6 +598,28 @@ canvas#game {
 }
 #hud.on ~ #perf {
   display: flex;
+}
+/* A column of rows, each row a line of its own figures: the server above, this computer below.
+   Stacked rather than one long line because they are facts about two different machines, and a
+   single row of six numbers is a row nobody reads. */
+#perf {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+#perfServer,
+#perfLocal {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+/* The server's row, in the one colour nothing else in the badge uses: whatever it says is about
+   the box in Paris, not about the machine you are sitting at. Only the owner sees it at all. */
+#perfServer {
+  color: #7ad7ff;
+}
+#perfServer[hidden] {
+  display: none;
 }
 #perfFps {
   color: var(--gold);
@@ -2072,9 +2099,28 @@ body.dead #rank {
  * centred on the viewport sits noticeably off to one side of the thing you are actually looking
  * at, and the one moment it has to be read is the one moment you have no attention to spare. */
 
+/* The box both banners live in, and it is the BOARD, not the viewport.
+ *
+ * #deadBanner set this up for itself and the streak did not: it was left sitting wherever
+ * `#centre` happened to land in the flow, with a translateY(100px) nudging it back toward the
+ * middle by hand. Two announcements that appear in the same spot seconds apart have to use one
+ * piece of arithmetic, so the box moved up to the parent and YOU DIED's numbers are the ones
+ * that stayed. The streak keeps its own content-sized box inside this, which is what the band
+ * behind the type and the rule under it are measured from. */
+#centre {
+  position: fixed;
+  display: grid;
+  place-items: center;
+  z-index: 8;
+  top: calc(var(--bar) + var(--gap) * 2);
+  left: var(--gap);
+  width: calc(100vw - var(--side) - var(--gap) * 3);
+  height: calc(100vh - var(--bar) - var(--gap) * 3);
+  pointer-events: none;
+}
+
 #streak {
   grid-area: 1 / 1;
-  transform: translateY(100px);
   text-align: center;
   /* See @keyframes streakIn: letter-spacing is added after the LAST glyph too, so a centred
      line needs a matching text-indent or it sits half the spacing left of centre. */
@@ -2234,6 +2280,18 @@ body.dead #rank {
 
 /* The robot, inline, wherever a bot's name is written — the same head the live scoreboard
  * draws (`--robot`), in the colour of the text around it. */
+/* The gull beside whoever the raid took. Same size as the robot and on the other side of the
+   name, because they are two different facts about a player and a column of marks that swap
+   sides row to row cannot be read down. Gold, because it is a trophy of a sort. */
+.gullMark {
+  width: 1em;
+  height: 1em;
+  margin-left: 0.3em;
+  vertical-align: -0.14em;
+  fill: var(--gold);
+  opacity: 0.9;
+}
+
 .botIcon {
   display: inline-block;
   width: 0.95em;
@@ -3548,7 +3606,12 @@ body.intermission #dead {
      Width gives the control descriptions room; tighter vertical rhythm removes dead air without
      shrinking the readable type or the hit targets. */
   width: min(690px, calc(100vw - 32px));
-  padding: 26px 48px 18px;
+  /* Taller than it was, and the top padding is not a taste decision: the title is lifted half
+     its own height out of the card (see #titleWrap), so the card has to keep that much plus a
+     breath of its own, or the lower half of the lettering lands on the slogan. The bottom grew
+     by the same breath, because a card with a deep top and a tight bottom looks like it is
+     sliding off the screen. */
+  padding: calc(var(--titleBase) * var(--titleScale) * 0.5 + 22px) 48px 30px;
 }
 
 /* The kegs, standing on the top edge of the card.
@@ -3819,8 +3882,17 @@ h1 {
 #title {
   /* Sized so the longest word fits the card, and the box is grown to the text rather than the
      card. background-clip paints only inside the element box: a glyph that overflows it has no
-     background to clip, so an overflowing title loses its last letter entirely. */
-  font-size: clamp(26px, 3.4vw, 44px);
+     background to clip, so an overflowing title loses its last letter entirely.
+
+     --titleBase is the size that fits; --titleScale is how much bigger than that the title is
+     allowed to be, and it is ONE number because three other things are derived from it: how far
+     the title is lifted out of the card, how much top padding the card needs to catch its lower
+     half, and the lower bound on the card's height. A scale typed into one of those four places
+     and not the others is a title overlapping the slogan, which is exactly what the inline
+     `scale: 1.5` in index.html did before this. A transform is also the wrong tool here: it
+     would leave the untransformed box behind as a gap, and `background-clip` would still only
+     paint inside the ORIGINAL box, so the gold would be clipped off the enlarged glyphs. */
+  font-size: calc(var(--titleBase) * var(--titleScale));
   /* fit-content, then centred by its own margins. `text-align` alone would do nothing here: the
      box is only as wide as the word, so there is no slack inside it to centre against. */
   width: fit-content;
@@ -3873,10 +3945,15 @@ h1 {
   position: relative;
   width: fit-content;
   max-width: 100%;
-  /* 10px up — it was 15, then back down 5. A negative TOP margin rather than a transform, so
-     the slogan and the form below come up with it: a transform would move the title off its own
-     space and leave the gap it used to fill sitting there empty. */
-  margin: -10px auto 0;
+  /* Lifted until roughly half the title is above the card's top edge — the lettering sits ON the
+     panel rather than inside it, which is what makes it read as a sign rather than as a heading.
+     Half the type's own size, from the same two variables the type is built from, so the overlap
+     stays half whatever the title is scaled to.
+
+     A negative TOP margin rather than a transform, so the slogan and the form below come up with
+     it: a transform would move the title off its own space and leave the gap it used to fill
+     sitting there empty. */
+  margin: calc(var(--titleBase) * var(--titleScale) * -0.5) auto 0;
 }
 #version {
   position: absolute;

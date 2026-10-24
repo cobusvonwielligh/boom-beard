@@ -135,3 +135,15 @@ test('a bubble follows the player and is drawn in screen space', () => {
     'the bubble is not drawn in screen space');
   assert.match(render, /say\(i, text\)/, 'the renderer no longer exposes say()');
 });
+
+test('a censored word is speech, not an emote', () => {
+  // `***` has no letters, which under the old test made it an emote: emoji font, dark bubble,
+  // and no glyph for an asterisk — an empty black box over the speaker's head.
+  const isEmote = t => !/[\p{L}\p{N}]/u.test(t) && /\p{Extended_Pictographic}/u.test(t);
+  assert.equal(isEmote('***'), false);
+  assert.equal(isEmote('?!'), false);
+  assert.equal(isEmote('💀'), true);
+  assert.equal(isEmote('gg'), false);
+  assert.match(render, /Extended_Pictographic/u,
+    'render.js classifies emotes by what a string lacks again');
+});

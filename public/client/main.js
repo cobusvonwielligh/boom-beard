@@ -544,6 +544,31 @@ const net = createNet({
           } else sfx.playAtUnits('death', e.x, e.y, { theirs: true });
           break;
         }
+
+        /* The gull raid. Two events, about a second apart, and the gap IS the feature: the
+         * warning is what turns a death into a scene, because the room gets long enough to
+         * notice two birds coming in and work out who they are coming in for. */
+        case 'gullraid': {
+          sfx.playAtUnits('gullraid', e.x, e.y, { theirs: e.seat !== world.you });
+          // Over the victim's head, so sixteen people know who to watch.
+          renderer?.say(e.seat, '?!');
+          if (e.seat === world.you) renderer?.addShake(0.2);
+          break;
+        }
+
+        case 'gullkill': {
+          renderer?.addDeathDust(e.i, e.x, e.y);
+          sfx.playAtUnits('gullmug', e.x, e.y, { theirs: e.i !== world.you });
+          killFeed(`${nameOf(e.i)} was mugged by seagulls`, { youDied: e.i === world.you });
+          if (e.i === world.you) {
+            music.dip(0.7, 1.1);
+            renderer?.addFlash(0.6, '240,230,200');   // feathers, not blood
+            renderer?.addShake(0.6);
+            showDeadBanner('mugged by seagulls');
+            quips.gulled();
+          }
+          break;
+        }
       }
     }
   },
@@ -588,6 +613,10 @@ const net = createNet({
     }
     allTime = m.top || [];
     hostSeat = m.host ?? -1;
+    /* Who owns the server, if they are in the room. Only used to decide whether this client
+     * shows the server's vitals — every owner-only COMMAND is checked on the server. */
+    ownerSeat = m.owner ?? -1;
+    if (ownerSeat !== world.you) $('perfServer').hidden = true;
     // The renderer draws a crown over the host's head, so it needs the same fact. On the world
     // rather than passed in: `drawOne` runs sixteen times a frame and the renderer has no other
     // channel for per-round facts that arrive once a second.
@@ -871,21 +900,70 @@ let nextHiccupAt = 0;
 // rise is measured against.
 let kick = 0, lastBass = 0;
 
+/* The server's own vitals, for the owner only.
+ *
+ * The badge used to show these to everybody and label them CPU and RAM with no hint of whose —
+ * so fifteen people were reading the box's memory as their own. They are the server's, they are
+ * on their own line in their own colour, and the fetch does not even run for anybody else:
+ * /healthz is a public endpoint, but polling it every two seconds from sixteen clients to render
+ * something fifteen of them cannot act on is just traffic.
+ */
 function pollServerPerformance() {
+  if (ownerSeat < 0 || ownerSeat !== world.you) return;
   fetch('/healthz', { cache: 'no-store' })
     .then(r => r.ok ? r.json() : null)
     .then(h => {
       if (!h || !Number.isFinite(h.cpuPct) || !Number.isFinite(h.memoryPct)) return;
-      $('perfCpu').textContent = `CPU ${h.cpuPct.toFixed(1)}%`;
-      $('perfMem').textContent = `RAM ${h.memoryPct.toFixed(1)}%`;
+      $('perfServer').hidden = false;
+      $('perfSrvCpu').textContent = `SRV CPU ${h.cpuPct.toFixed(1)}%`;
+      $('perfSrvMem').textContent = `RAM ${h.memoryPct.toFixed(1)}%`;
+      $('perfSrvDisk').textContent = Number.isFinite(h.diskPct)
+        ? `DISK ${h.diskPct.toFixed(1)}%` : 'DISK --%';
     })
     .catch(() => {});
+}
+
+/* This computer, measured rather than guessed.
+ *
+ * CPU is the only honest number a browser can give: there is no API for process CPU, so what is
+ * reported is the share of wall-clock time the game's own frame work occupies on the main
+ * thread — every frame is timed from the top of `loop` to the bottom, summed, and divided by the
+ * elapsed window. At 100% the main thread never idles and the frame rate is whatever the work
+ * allows; at 20% there is four times the headroom. It is a real measurement of a real thing,
+ * which "estimated CPU" never is.
+ *
+ * RAM is `performance.memory`: the JS heap this tab is holding against the heap limit the
+ * browser will give it. Chromium only — Firefox and Safari expose nothing, and the badge says
+ * `--` rather than inventing a figure. It is the heap, not the tab's whole footprint: canvases,
+ * textures and audio buffers live outside it and no API counts them.
+ */
+let frameBusyMs = 0;
+
+function sampleLocalPerformance(elapsedMs) {
+  const cores = navigator.hardwareConcurrency || 1;
+  const pct = elapsedMs > 0 ? Math.min(100, (frameBusyMs / elapsedMs) * 100) : 0;
+  frameBusyMs = 0;
+  const cpu = $('perfCpu');
+  cpu.textContent = `CPU ${pct.toFixed(0)}%`;
+  cpu.title = `main-thread frame work, as a share of one of this machine's ${cores} cores`;
+
+  const mem = $('perfMem');
+  const m = performance.memory;
+  if (m && m.jsHeapSizeLimit) {
+    const used = m.usedJSHeapSize / 1048576;
+    mem.textContent = `RAM ${((m.usedJSHeapSize / m.jsHeapSizeLimit) * 100).toFixed(0)}%`;
+    mem.title = `${used.toFixed(0)} MB of JS heap, of a ${(m.jsHeapSizeLimit / 1048576).toFixed(0)} MB limit`;
+  } else {
+    mem.textContent = 'RAM --%';
+    mem.title = 'this browser does not report heap usage';
+  }
 }
 
 function startPerformanceMonitor() {
   clearInterval(perfTimer);
   perfAt = performance.now();
   perfFrames = 0;
+  frameBusyMs = 0;
   pollServerPerformance();
   perfTimer = setInterval(pollServerPerformance, 2000);
 }
@@ -958,15 +1036,29 @@ function idlePing(now) {
   sfx.play('ownSpawn');
 }
 
+/* The frame, wrapped in its own stopwatch.
+ *
+ * `frame` has several early exits — a hidden tab, a frame that arrived while not running — and
+ * the CPU figure has to count the work of every one of them, including the frames that do almost
+ * nothing. A wrapper with a `finally` is the only version of that which cannot drift as the
+ * frame grows more exits; a timer stopped by hand at the bottom of the function would have
+ * stopped being true the first time somebody added a `return`. */
 function loop(now) {
+  const from = performance.now();
+  try { frame(now); } finally { frameBusyMs += performance.now() - from; }
+}
+
+function frame(now) {
   // Bail before re-arming, so leaving genuinely stops the loop. Returning to the menu and
   // pressing play used to start a second one on top of the first: two simulation steps and two
   // input packets per tick, which is indistinguishable from the server lagging.
   if (!running) return;
   perfFrames++;
   if (now - perfAt >= 500) {
-    const fps = perfFrames * 1000 / (now - perfAt);
+    const span = now - perfAt;
+    const fps = perfFrames * 1000 / span;
     $('perfFps').textContent = `${Math.round(fps)} FPS`;
+    sampleLocalPerformance(span);
     perfAt = now;
     perfFrames = 0;
   }
@@ -1366,7 +1458,10 @@ function renderRoundTable(m) {
     const tr = document.createElement('tr');
     const you = p.i === world.you;
     placeCell(tr, n);
-    cell(tr, you ? `${p.name} (you)` : p.name, playerColor(p.i));
+    const nameCell = cell(tr, you ? `${p.name} (you)` : p.name, playerColor(p.i));
+    // The round's unlucky one. A bird beside the name on every board that shows the round, so
+    // the story survives the twenty seconds in which everybody is reading the standings.
+    if (p.gl) nameCell.append(gullMark());
     num(cell(tr, p.k));
     num(cell(tr, p.d));
     num(cell(tr, p.s)).classList.add('score');
@@ -1582,6 +1677,7 @@ function renderLive() {
     if (pos.dataset.n !== String(n)) { pos.dataset.n = n; pos.replaceChildren(placeMark(n)); }
     for (const k of [1, 2, 3]) li.classList.toggle(`p${k}`, n === k - 1);
     nm.textContent = p.name;
+    if (p.gulled) nm.append(gullMark());
     nm.style.color = playerColor(p.i);
     markPlayerHover(nm, { seat: p.i });
     // A robot beside anything that is not a person. `bot` comes from the scores broadcast, which
@@ -1602,6 +1698,7 @@ let scoresOpen = false;
 const ranks = new Map();        // seat -> {lifetime, rank, rankName, nextAt}
 let allTime = [];
 let hostSeat = -1;
+let ownerSeat = -1;
 
 function cell(tr, text, colour, dim) {
   const td = document.createElement('td');
@@ -1623,6 +1720,25 @@ const PLACES = ['1st', '2nd', '3rd'];
  * Drawn by CSS (`.medal.m1`–`m3` in style.css) so all four boards share one set of medals. It
  * keeps an accessible name, because a picture of a "1" is not a "1" to a screen reader.
  */
+/* The bird beside the name of whoever the gulls took. One builder, three boards.
+ *
+ * An <svg><use> of the sprite already in the page (#i-gull), not an emoji: the rest of the
+ * scoreboard's marks are that sheet, and a system emoji beside them looks like a paste. */
+function gullMark() {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+  use.setAttribute('href', '#i-gull');
+  svg.append(use);
+  svg.setAttribute('class', 'gullMark');
+  svg.setAttribute('role', 'img');
+  svg.setAttribute('aria-label', 'mugged by seagulls');
+  // Native tooltip: the icon is a joke, and a joke nobody can look up is just a bird.
+  const t = document.createElementNS('http://www.w3.org/2000/svg', 'title');
+  t.textContent = 'mugged by seagulls';
+  svg.append(t);
+  return svg;
+}
+
 function placeMark(n) {
   if (n > 2) return document.createTextNode(String(n + 1));
   const m = document.createElement('span');

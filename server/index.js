@@ -130,7 +130,19 @@ const started = Date.now();
 const guard = createGuard();
 let lastProcessSample = { at: process.hrtime.bigint(), usage: process.cpuUsage() };
 
-/** Lightweight process metrics for the in-game diagnostics badge. */
+/**
+ * Lightweight process metrics for the in-game diagnostics badge.
+ *
+ * Each number says exactly what it measures, because a vague one is worse than none:
+ *
+ *   cpuPct     this process's CPU time since the last sample, over the wall clock since the last
+ *              sample, as a percentage of ONE core. Over 100 on a busy multi-core box is real,
+ *              not a bug, so it is capped only because the badge is four characters wide.
+ *   memoryPct  resident set of this process against the machine's total memory. The game's
+ *              share of the box, not the box's own usage.
+ *   diskPct    how full the filesystem the app lives on is. `statfsSync` rather than shelling
+ *              out to df: no child process on a path that answers every two seconds.
+ */
 function processMetrics() {
   const at = process.hrtime.bigint();
   const usage = process.cpuUsage();
@@ -138,9 +150,17 @@ function processMetrics() {
   const cpuUs = (usage.user - lastProcessSample.usage.user)
     + (usage.system - lastProcessSample.usage.system);
   lastProcessSample = { at, usage };
+  let diskPct = null;
+  try {
+    const fsStat = fs.statfsSync(ROOT);
+    const total = fsStat.blocks, free = fsStat.bavail;
+    // bavail, not bfree: the space a non-root process can actually have.
+    if (total > 0) diskPct = +(((total - free) / total) * 100).toFixed(1);
+  } catch { /* not every platform has statfs; the badge simply omits it */ }
   return {
     cpuPct: elapsedUs > 0 ? Math.min(100, +(cpuUs / elapsedUs * 100).toFixed(1)) : 0,
     memoryPct: +((process.memoryUsage().rss / os.totalmem()) * 100).toFixed(1),
+    ...(diskPct === null ? null : { diskPct }),
   };
 }
 

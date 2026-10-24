@@ -543,10 +543,22 @@
   </div>
 </div>
 
+<!-- Two rows, and they are two different machines.
+     The bottom row is THIS computer: frame rate, how much of one core the game's own frame work
+     is using, and how much of the JS heap it is holding. Everybody sees it.
+     The top row is the SERVER, in its own colour, and only the owner's client ever unhides it —
+     a number nobody else can act on is noise on fifteen screens. -->
 <div id="perf" aria-label="performance diagnostics">
-  <span id="perfFps">-- FPS</span><span class="perfSep">·</span>
-  <span id="perfCpu">CPU --%</span><span class="perfSep">·</span>
-  <span id="perfMem">RAM --%</span>
+  <div id="perfServer" hidden>
+    <span id="perfSrvCpu">SRV CPU --%</span><span class="perfSep">·</span>
+    <span id="perfSrvMem">RAM --%</span><span class="perfSep">·</span>
+    <span id="perfSrvDisk">DISK --%</span>
+  </div>
+  <div id="perfLocal">
+    <span id="perfFps">-- FPS</span><span class="perfSep">·</span>
+    <span id="perfCpu">CPU --%</span><span class="perfSep">·</span>
+    <span id="perfMem">RAM --%</span>
+  </div>
 </div>
 
 <!-- Audio, bottom left, outside the HUD on purpose.
@@ -805,10 +817,6 @@
 
 <script type="module" src="/client/main.js"></script>
 <style>
-  #title {
-    scale: 1.5;
-  }
-
   /* ========================================
    IN-GAME AVATAR / FACE
    Shrink by 15% and move slightly up
