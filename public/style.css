@@ -3986,13 +3986,17 @@ h1 {
      sitting there empty. */
   margin: calc(var(--titleBase) * var(--titleScale) * -0.5) auto 0;
 }
+/* Top right of the PAGE, not of the title.
+   Hung off the title it had to be nudged with a -75px right offset to clear the lettering, and
+   every change to the title's size moved it again. Fixed to the viewport it is simply where
+   build numbers live, and it no longer cares how big the title is. */
 #version {
-  position: absolute;
-  right: -75px;
-  top: 100%;
-  margin-top: 6px;
+  position: fixed;
+  top: 8px;
+  right: 10px;
+  z-index: 12;
   font-family: var(--nums);
-  font-size: 7px;
+  font-size: 8px;
   letter-spacing: 0.14em;
   color: var(--dim);
   opacity: 0.5;
