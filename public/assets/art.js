@@ -362,8 +362,8 @@ function drawTileBody(c, type, tx = 0, ty = 0, dmg = 0) {
         c.beginPath();
         c.moveTo(x - f * 1.8, top);
         c.quadraticCurveTo(x + f * 0.6, (top + bot) / 2, x - f * 1.8, bot);
-        c.strokeStyle = 'rgba(42,24,12,0.3)';
-        c.lineWidth = 0.9;
+        c.strokeStyle = 'rgba(28,14,6,0.62)';
+        c.lineWidth = 1.15;
         c.stroke();
       }
       // Grain, deterministic per tile so a given keg always looks like itself.
@@ -375,13 +375,18 @@ function drawTileBody(c, type, tx = 0, ty = 0, dmg = 0) {
       // Iron hoops: ellipses, not bars. Two wide ones at the waist and a narrow one at each end,
       // which is how a cask is actually bound - and the ellipse is the whole reason the barrel
       // reads as round rather than as a cylinder sticker.
-      for (const [y, h, tone] of [[top + 3.4, 2.4, '#3f3026'], [bot - 3.4, 2.4, '#35281f'],
-        [top + 0.9, 1.5, '#463529'], [bot - 0.9, 1.5, '#2e231b']]) {
+      for (const [y, h, tone] of [[top + 3.4, 2.4, '#2a2019'], [bot - 3.4, 2.4, '#221a14'],
+        [top + 0.9, 1.5, '#302419'], [bot - 0.9, 1.5, '#1d1611']]) {
         const w = halfAt(y);
         c.beginPath();
         c.ellipse(cx, y, w, h, 0, 0, Math.PI * 2);
         c.fillStyle = tone;
         c.fill();
+        // A darker line round each band. Iron on wood is a hard edge, and at thirty-two pixels
+        // a band that only differs in brightness from the staves reads as a smudge on them.
+        c.strokeStyle = 'rgba(12,7,4,0.75)';
+        c.lineWidth = 0.7;
+        c.stroke();
         // The shine along the top of each band, which is what makes it iron and not paint.
         c.beginPath();
         c.ellipse(cx, y - h * 0.35, w * 0.92, h * 0.4, 0, Math.PI * 1.08, Math.PI * 1.92);
@@ -391,10 +396,22 @@ function drawTileBody(c, type, tx = 0, ty = 0, dmg = 0) {
       }
       c.restore();
 
+      /* The outline, last of the body work.
+       *
+       * Every other breakable on this board carries a dark edge - the crates, the stone, the
+       * ice - and the keg did not, so it sat on the sand as a brown shape among brown shapes.
+       * One dark line round the staves is what separates it from the floor at a glance, and it
+       * is the single biggest thing that makes the barrel READ as a barrel. */
+      body();
+      c.strokeStyle = 'rgba(20,10,4,0.85)';
+      c.lineWidth = 1.5;
+      c.stroke();
+
       // The top, seen from slightly above: a lid of two boards, darker than the staves because
       // it is facing the sky rather than the sun, with a rim of end-grain round it.
       c.beginPath(); c.ellipse(cx, top, endW, 2.9, 0, 0, Math.PI * 2);
       c.fillStyle = '#6b4123'; c.fill();
+      c.strokeStyle = 'rgba(20,10,4,0.8)'; c.lineWidth = 1.1; c.stroke();
       c.beginPath(); c.ellipse(cx, top, endW - 1.3, 2.1, 0, 0, Math.PI * 2);
       c.fillStyle = '#8a5b31'; c.fill();
       c.save();
@@ -409,16 +426,18 @@ function drawTileBody(c, type, tx = 0, ty = 0, dmg = 0) {
       c.save();
       c.lineCap = 'round';
       c.beginPath();
-      c.moveTo(cx - 4, 15); c.lineTo(cx + 4, 21);
-      c.moveTo(cx + 4, 15); c.lineTo(cx - 4, 21);
+      c.moveTo(cx - 5.2, 13.8); c.lineTo(cx + 5.2, 22.2);
+      c.moveTo(cx + 5.2, 13.8); c.lineTo(cx - 5.2, 22.2);
       // Classic maroon, and bigger than it was: this mark is the entire read at a glance - keg
       // or crate - and it was a small scratch between the hoops. Black underneath it, because a
       // maroon stroke on mid-brown staves has almost no luminance contrast on its own and goes
       // muddy the moment the board is zoomed out. The dark border is what keeps it legible.
-      c.strokeStyle = '#150b07'; c.lineWidth = 5.4; c.stroke();
-      c.strokeStyle = '#8f1f2b'; c.lineWidth = 3.2; c.stroke();
-      // A thin highlight down the middle of the stroke, so the paint has a surface.
-      c.strokeStyle = '#c0313a'; c.lineWidth = 1.2; c.stroke();
+      // Near-black underneath, maroon on top, one highlight down the middle. The border is not
+      // decoration: maroon on mid-brown staves has almost no luminance contrast of its own, so
+      // without it the mark goes muddy the moment the board is zoomed out.
+      c.strokeStyle = '#0d0603'; c.lineWidth = 6.6; c.stroke();
+      c.strokeStyle = '#8f1f2b'; c.lineWidth = 4.2; c.stroke();
+      c.strokeStyle = '#c93a42'; c.lineWidth = 1.6; c.stroke();
       c.restore();
 
       // The fuse, out of the lid: lit, so it reads as armed rather than as scenery.
