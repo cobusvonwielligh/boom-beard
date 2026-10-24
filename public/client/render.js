@@ -3754,93 +3754,129 @@ export function createRenderer(canvas, world) {
 
   /* ─── the rim ────────────────────────────────────────────────────────────────
    *
-   * The island's own border, used as a radar.
+   * The island's border, drawn dark, with one lit slither of it tracking the player.
    *
-   * The edge of the playing ground was a line that did nothing. It is the only part of the
-   * screen that is always visible, always in peripheral vision, and never has anything useful
-   * on it - so it carries two things now, and neither one asks you to look at it:
+   * The edge of the playing ground was a line that did nothing, and it is the only part of the
+   * screen that is always in peripheral vision. So it is a dark band now - a frame the board
+   * sits inside rather than a line it stops at - and exactly one short stretch of that band is
+   * lit: the stretch nearest you, fading out along the border in both directions.
    *
-   *   HEADING   the side you are moving toward lights up, brightest at the edge you are
-   *             nearest. On a board that does not fit on screen at the zoom floor, that is the
-   *             only cue for "which way is out" that does not involve reading the minimap you
-   *             do not have.
-   *   DAMAGE    it goes red and beats when something takes a shield or takes you. A hit is
-   *             currently told by a flash that is over in a tenth of a second and a card that
-   *             arrives afterwards; this is the part that is still there when you look up.
+   * It reads as a position rather than as a decoration, which is the point. Where the lit part
+   * sits IS where you are against the edge of the island, and at the zoom floor, with the board
+   * bigger than the window, that is the only thing on screen that says so.
    *
-   * Drawn in board pixels, inside the island's own bounds, so it is the ground's edge rather
-   * than a frame round the window.
+   * Two more things ride on it, and both are the same light rather than new furniture:
+   *   SOUND   the slither breathes with the music - longer and brighter on the level, a lift on
+   *           every beat. The sea and the coast already do this; the rim joining in costs one
+   *           multiply and keeps the whole frame on one pulse.
+   *   DAMAGE  the entire border goes red and beats for a second when something takes a shield or
+   *           takes you. A hit is otherwise told by a flash that is over in a tenth of a second.
    */
-  const RIM_PX = 30;              // how far the glow reaches inward
-  const RIM_ALERT_S = 1.1;        // how long a hit keeps the rim red
+  const RIM_PX = 7.5;             // the dark band itself, two and a half times the old hairline
+  const RIM_LIT_PX = 190;         // how much of the border the slither covers, before the music
+  const RIM_ALERT_S = 1.1;        // how long a hit keeps the border red
+  const RIM_STEPS = 26;           // segments the slither is drawn in; enough to turn a corner
   let rimAlert = 0;               // 1 at the moment of the hit, decaying
-  let rimHead = { x: 0, y: 0 };   // smoothed heading, so the lit side does not snap
+  let rimAt = -1;                 // where the slither is, in pixels along the perimeter
 
   function drawRadarRim(ox, oy, dtMs) {
-    const me = world.me();
-    if (!me) return;
+    if (!world.map) return;
     const [lx, ly, lw, lh] = landBounds();
     const x0 = ox + lx * TILE_PX, y0 = oy + ly * TILE_PX;
     const x1 = ox + (lx + lw + 1) * TILE_PX, y1 = oy + (ly + lh + 1) * TILE_PX;
-    const px = ox + (me.rx / UNITS_PER_TILE) * TILE_PX;
-    const py = oy + (me.ry / UNITS_PER_TILE) * TILE_PX;
+    const w = x1 - x0, h = y1 - y0;
+    if (w <= 0 || h <= 0) return;
+    const perim = 2 * (w + h);
 
-    // Heading, eased. The raw facing flips the instant a key does, and a rim that snaps from one
-    // side to the other reads as a fault rather than as a direction.
-    const v = [[1, 0], [0, -1], [-1, 0], [0, 1]][me.dir] ?? [0, 1];
-    const want = me.alive && me.moving ? v : [0, 0];
-    const k = 1 - Math.exp(-dtMs / 220);
-    rimHead.x += (want[0] - rimHead.x) * k;
-    rimHead.y += (want[1] - rimHead.y) * k;
+    /* One number for a position on the frame: distance clockwise from the top-left corner.
+     * Corners stop being a special case the moment the border is one line rather than four. */
+    const pointAt = t => {
+      let d = ((t % perim) + perim) % perim;
+      if (d < w) return [x0 + d, y0];
+      d -= w;
+      if (d < h) return [x1, y0 + d];
+      d -= h;
+      if (d < w) return [x1 - d, y1];
+      return [x0, y1 - (d - w)];
+    };
 
     if (rimAlert > 0) rimAlert = Math.max(0, rimAlert - (dtMs / 1000) / RIM_ALERT_S);
-    // The beat. Fast enough to read as an alarm, slow enough not to strobe.
-    const beat = rimAlert > 0 ? 0.55 + 0.45 * Math.sin(seaT * 17) : 0;
 
-    const span = Math.max(1, Math.max(x1 - x0, y1 - y0));
-    // side: [normal x, normal y, how far the player is from it]
-    const sides = [
-      [-1, 0, px - x0],          // left
-      [0, -1, py - y0],          // top
-      [1, 0, x1 - px],           // right
-      [0, 1, y1 - py],           // bottom
-    ];
+    // The dark band first. Stroked on the inside of the rect, so the lit part sits exactly on
+    // top of it rather than half a width out from it.
+    ctx.save();
+    ctx.lineJoin = 'miter';
+    ctx.lineWidth = RIM_PX;
+    ctx.strokeStyle = 'rgba(6,10,16,0.82)';
+    ctx.strokeRect(x0 + RIM_PX / 2, y0 + RIM_PX / 2, w - RIM_PX, h - RIM_PX);
+    ctx.restore();
+
+    const me = world.me();
+    if (!me) return;
+
+    /* Where you are on that line: the nearest point of the frame, which is whichever side you
+     * are closest to, at your own offset along it. Eased, because the answer jumps the width of
+     * the island the moment you cross the diagonal between two sides, and a light that teleports
+     * reads as a fault. Eased ALONG the perimeter, taking the short way round, so going past a
+     * corner slides round it instead of crossing the board. */
+    const px = Math.min(Math.max(ox + (me.rx / UNITS_PER_TILE) * TILE_PX, x0), x1);
+    const py = Math.min(Math.max(oy + (me.ry / UNITS_PER_TILE) * TILE_PX, y0), y1);
+    const dLeft = px - x0, dRight = x1 - px, dTop = py - y0, dBottom = y1 - py;
+    const near = Math.min(dLeft, dRight, dTop, dBottom);
+    let want;
+    if (near === dTop) want = px - x0;
+    else if (near === dRight) want = w + (py - y0);
+    else if (near === dBottom) want = w + h + (x1 - px);
+    else want = 2 * w + h + (y1 - py);
+
+    if (rimAt < 0) rimAt = want;
+    else {
+      let delta = ((want - rimAt + perim * 1.5) % perim) - perim / 2;
+      rimAt = (rimAt + delta * (1 - Math.exp(-dtMs / 90)) + perim) % perim;
+    }
+
+    // The music. Longer and brighter with the level, a kick on the beat - the same two numbers
+    // the sea and the coast are already moving on.
+    const lift = 1 + mood.level * 0.35 + mood.beat * 0.25;
+    const half = Math.min(perim / 2, (RIM_LIT_PX / 2) * lift);
+    const beat = rimAlert > 0 ? 0.55 + 0.45 * Math.sin(seaT * 17) : 0;
+    const red = Math.min(1, rimAlert * 1.4);
+    const r = Math.round(237 + (255 - 237) * red);
+    const g = Math.round(194 + (54 - 194) * red);
+    const b = Math.round(78 + (48 - 78) * red);
 
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    for (const [nx, ny, dist] of sides) {
-      // Half of it is "am I walking that way", half is "am I near it". Squared, so the near
-      // edge is clearly the one lit rather than all four being lukewarm.
-      const toward = Math.max(0, rimHead.x * nx + rimHead.y * ny);
-      const near = Math.max(0, 1 - dist / span);
-      const w = 0.55 * toward + 0.45 * near * near;
-      const lit = Math.max(w, rimAlert * beat);
-      if (lit <= 0.02) continue;
-
-      const vertical = nx !== 0;
-      const ex = vertical ? (nx < 0 ? x0 : x1) : 0;
-      const ey = vertical ? 0 : (ny < 0 ? y0 : y1);
-      const gx = vertical ? ex - nx * RIM_PX : 0;
-      const gy = vertical ? 0 : ey - ny * RIM_PX;
-      const grad = vertical
-        ? ctx.createLinearGradient(ex, 0, gx, 0)
-        : ctx.createLinearGradient(0, ey, 0, gy);
-      // Gold normally; a hit drags the whole rim to red, all four sides at once, because the
-      // thing being reported is not in a direction.
-      const red = Math.min(1, rimAlert * 1.4);
-      const r = Math.round(237 + (255 - 237) * red);
-      const g = Math.round(194 + (54 - 194) * red);
-      const b = Math.round(78 + (48 - 78) * red);
-      const a = (0.5 * lit) * (0.55 + 0.45 * red);
-      grad.addColorStop(0, `rgba(${r},${g},${b},${a.toFixed(3)})`);
-      grad.addColorStop(0.45, `rgba(${r},${g},${b},${(a * 0.35).toFixed(3)})`);
-      grad.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = grad;
-      if (vertical) {
-        ctx.fillRect(Math.min(ex, gx), y0, RIM_PX, y1 - y0);
-      } else {
-        ctx.fillRect(x0, Math.min(ey, gy), x1 - x0, RIM_PX);
+    ctx.lineCap = 'butt';
+    ctx.lineWidth = RIM_PX;
+    const step = (half * 2) / RIM_STEPS;
+    for (let i = 0; i < RIM_STEPS; i++) {
+      const from = rimAt - half + i * step;
+      // Squared falloff from the middle of the slither: bright where you are, gone by its ends.
+      const k = 1 - Math.abs((i + 0.5) / RIM_STEPS * 2 - 1);
+      const a = (0.1 + 0.62 * k * k) * (0.7 + 0.3 * lift);
+      const [ax, ay] = pointAt(from);
+      const [bx, by] = pointAt(from + step);
+      ctx.strokeStyle = `rgba(${r},${g},${b},${a.toFixed(3)})`;
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      /* A segment that spans a corner has to go THROUGH it: a straight line from one side to
+       * the next cuts the corner off and leaves a chord floating inside the board. The sides
+       * change at these four distances, and a segment is short enough to contain at most one. */
+      for (const edge of [0, w, w + h, 2 * w + h]) {
+        const at = edge < from % perim ? edge + perim : edge;
+        const rel = at - (from % perim);
+        if (rel > 0 && rel < step) { const [kx, ky] = pointAt(edge); ctx.lineTo(kx, ky); }
       }
+      ctx.lineTo(bx, by);
+      ctx.stroke();
+    }
+
+    // A hit lights the whole frame, not a side of it: what is being reported has no direction.
+    if (rimAlert > 0) {
+      ctx.strokeStyle = `rgba(255,54,48,${(0.5 * rimAlert * beat).toFixed(3)})`;
+      ctx.lineWidth = RIM_PX;
+      ctx.strokeRect(x0 + RIM_PX / 2, y0 + RIM_PX / 2, w - RIM_PX, h - RIM_PX);
     }
     ctx.restore();
     ctx.globalAlpha = 1;
