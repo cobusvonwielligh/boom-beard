@@ -3460,6 +3460,15 @@ export function createRenderer(canvas, world) {
     // Everything below works in world pixels; the transform turns them into device pixels.
     ctx.setTransform(view.dpr * zoom, 0, 0, view.dpr * zoom, 0, 0);
     ctx.imageSmoothingEnabled = view.smooth;
+    /* Start every frame from a known state.
+     *
+     * `setTransform` resets the transform and nothing else. A frame that throws part-way
+     * through - in a draw helper that had already called `save()` and set `lighter` - leaves
+     * the context on that blend with an unbalanced save stack, and every frame after it adds
+     * instead of painting: the board goes white within a few frames and the error that caused
+     * it is six frames back in the log. Two assignments make a thrown frame cost one frame. */
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
 
     const vw = view.w / zoom, vh = view.h / zoom;
     // The camera frames the ISLAND, not the grid: centring on the middle of the rectangle puts
@@ -3917,7 +3926,9 @@ export function createRenderer(canvas, world) {
       for (const { q } of others) {
         const bx = ox + (q.rx / UNITS_PER_TILE) * TILE_PX;
         const by = oy + (q.ry / UNITS_PER_TILE) * TILE_PX;
-        slither(nearestAt(bx, by), (RIM_BLIP_PX / 2) / zoom, 0.22, playerColor(q.i), 12);
+        // Their own colour, from the same shades the sprite is painted with - `playerShades` is
+        // what this module already has; `playerColor` lives in constants and is main.js's.
+        slither(nearestAt(bx, by), (RIM_BLIP_PX / 2) / zoom, 0.22, playerShades(q.i).base, 12);
       }
     }
 
