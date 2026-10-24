@@ -268,6 +268,8 @@ export function createRenderer(canvas, world) {
     rockSprites = null;
     rockSpritesFor = null;
     blastLight = null;
+    lightLayer = null;
+    lightCtx = null;
     rollCurrent();          // a new island sits in a different sea
   };
   const mapChanged = () => { recomputeZoom(); };
@@ -320,9 +322,11 @@ export function createRenderer(canvas, world) {
    * it would make the lethal window look longer than it is - the one thing the fire's own
    * drawing is responsible for saying. */
   const BLAST_LIGHT_PX = TILE_PX * 3.6;
-  // Per TILE, and every tile of a blast draws one. Nine arms at 0.5 each was a white board.
-  const BLAST_LIGHT_ALPHA = 0.22;
+  // How much of the finished light layer reaches the board. One number for a whole blast now,
+  // not per tile, because the pools are merged before they get here.
+  const BLAST_LIGHT_ALPHA = 0.55;
   let blastLight = null;
+  let lightLayer = null, lightCtx = null;
   /* Darker, and SOFT.
    *
    * 0.3 was a shadow you had to be told about. The thing that makes a stronger one look better
@@ -3625,47 +3629,67 @@ export function createRenderer(canvas, world) {
 
     /* The light first, then the flames. See BLAST_LIGHT_PX.
      *
-     * Additive, so it brightens whatever it lands on rather than painting over it - the grain of
-     * the sand and the faces of the blocks stay visible inside the pool of light, which is the
-     * difference between a lamp and a sticker. Under the flames themselves: the fire is the
-     * source, and a source drawn beneath its own light looks like it is behind glass.
+     * Built on its OWN layer, and that is the whole fix for the white-out.
+     *
+     * Every burning tile throws a pool of light, and a keg is twenty-nine burning tiles. Drawn
+     * straight onto the board with `lighter` those pools ADD: twenty-nine ambers on one patch of
+     * sand saturates red, then green, then blue, and a blast lit the entire canvas pure white.
+     * Lowering the alpha only moves the tile count at which it happens.
+     *
+     * So the pools are composited onto a scratch layer with `lighten`, which takes the brighter
+     * of the two rather than their sum - overlapping pools merge instead of stacking, and the
+     * brightest the layer can ever be is one pool. THAT is what is added to the board, once, at
+     * a fixed strength. A blast is now the same brightness whether it is one tile or a chain of
+     * forty, which is also simply more honest about what a fire looks like.
      */
     if (world.fires.length) {
       if (!blastLight) {
         blastLight = ctx.createRadialGradient(0, 0, TILE_PX * 0.1, 0, 0, BLAST_LIGHT_PX);
-        /* Firelight: warm amber through the body, out to nothing. Pure black at the rim
-         * matters under `lighter` - it is what "adds no light" looks like.
-         *
-         * Not white at the middle, and not near-opaque. A blast is nine or more burning tiles,
-         * each one of these pools three and a half tiles across, and under `lighter` they SUM:
-         * a near-white centre at 0.95 stacked nine deep is a white screen, which is exactly
-         * what the wider radius produced. The colour carries the firelight; the alpha stays low
-         * enough that nine of them overlapping is a warm room rather than a flashbang. */
-        blastLight.addColorStop(0, 'rgba(255,206,140,0.6)');
-        blastLight.addColorStop(0.3, 'rgba(255,160,66,0.3)');
-        blastLight.addColorStop(0.65, 'rgba(176,78,22,0.12)');
+        // Firelight: warm amber through the body, out to nothing. Pure black at the rim matters
+        // under both blends - it is what "adds no light" looks like.
+        blastLight.addColorStop(0, 'rgba(255,206,140,0.95)');
+        blastLight.addColorStop(0.3, 'rgba(255,160,66,0.5)');
+        blastLight.addColorStop(0.65, 'rgba(176,78,22,0.2)');
         blastLight.addColorStop(1, 'rgba(0,0,0,0)');
       }
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.fillStyle = blastLight;
+      // One scratch canvas, kept at the size of the real one.
+      if (!lightLayer || lightLayer.width !== canvas.width || lightLayer.height !== canvas.height) {
+        lightLayer = document.createElement('canvas');
+        lightLayer.width = canvas.width;
+        lightLayer.height = canvas.height;
+        lightCtx = lightLayer.getContext('2d');
+      }
+      const lc = lightCtx;
+      lc.setTransform(1, 0, 0, 1, 0, 0);
+      lc.clearRect(0, 0, lightLayer.width, lightLayer.height);
+      lc.setTransform(view.dpr * zoom, 0, 0, view.dpr * zoom, 0, 0);
+      lc.globalCompositeOperation = 'lighten';
+      lc.fillStyle = blastLight;
+      let lit = false;
       for (const f of world.fires) {
         const age = Math.min(1, 1 - Math.max(0, (f.until - tickNow) / FIRE_TICKS));
-        // Two frames up, then down - but half as quickly as it was, so the light is still on
-        // the walls while the flames are at their biggest rather than being gone by then.
+        // Two frames up, then down - half as quickly as it was, so the light is still on the
+        // walls while the flames are at their biggest rather than being gone by then.
         const k = age < 0.07 ? age / 0.07 : Math.max(0, 1 - (age - 0.07) / 0.6);
         if (k <= 0) continue;
+        lit = true;
         // The core is the bomb itself; an arm is fire that travelled, and dimmer for it.
-        ctx.globalAlpha = BLAST_LIGHT_ALPHA * k * k * (f.kind === 'core' ? 1 : 0.45);
-        ctx.save();
-        ctx.translate(ox + (f.tx + 0.5) * TILE_PX, oy + (f.ty + 0.5) * TILE_PX);
-        ctx.beginPath();
-        ctx.arc(0, 0, BLAST_LIGHT_PX, 0, 7);
-        ctx.fill();
-        ctx.restore();
+        lc.globalAlpha = k * k * (f.kind === 'core' ? 1 : 0.7);
+        lc.save();
+        lc.translate(ox + (f.tx + 0.5) * TILE_PX, oy + (f.ty + 0.5) * TILE_PX);
+        lc.beginPath();
+        lc.arc(0, 0, BLAST_LIGHT_PX, 0, 7);
+        lc.fill();
+        lc.restore();
       }
-      ctx.restore();
-      ctx.globalAlpha = 1;
+      if (lit) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = BLAST_LIGHT_ALPHA;
+        ctx.drawImage(lightLayer, 0, 0, vw, vh);
+        ctx.restore();
+        ctx.globalAlpha = 1;
+      }
     }
 
     // Fire over the bombs that made it, under the people it is about to kill.
