@@ -1530,13 +1530,19 @@ body.dead #rank {
   max-width: 320px;
   z-index: 60;
   pointer-events: none;
-  padding: 9px 14px;
-  border-radius: 12px;
-  background: #11161ef2;
-  border: 1.5px solid #edc24e66;
-  box-shadow: 0 10px 28px #000b;
+  /* Louder than it was. The mascot is the only voice in the game and at 14px in a thin gold
+     outline he was wallpaper — read once on the first round and never again. Bigger type, a
+     brighter rim with a little warmth thrown off it, and the first line in gold. */
+  padding: 11px 16px;
+  border-radius: 13px;
+  background: #11161ef7;
+  border: 2px solid #edc24ea6;
+  box-shadow:
+    0 10px 28px #000b,
+    0 0 22px #edc24e2e;
   color: var(--ink);
-  font-size: 14px;
+  font-size: 16px;
+  font-weight: 600;
   line-height: 1.35;
   text-wrap: balance;
   /* Hidden, not display:none: a transform animation needs a box to animate. Scaled from the
@@ -1555,9 +1561,9 @@ body.dead #rank {
   top: 50%;
   width: 12px;
   height: 12px;
-  background: #11161ef2;
-  border-right: 1.5px solid #edc24e66;
-  border-top: 1.5px solid #edc24e66;
+  background: #11161ef7;
+  border-right: 2px solid #edc24ea6;
+  border-top: 2px solid #edc24ea6;
   transform: translateY(-50%) rotate(45deg);
 }
 #say.show {
@@ -3820,12 +3826,14 @@ body.intermission #dead {
   position: absolute;
   bottom: calc(100% - 46px);
   left: calc(100% - 34px);
-  width: 232px;
-  padding: 12px 15px;
+  /* Wider and a size up: this is the last thing anybody reads before the round starts, and the
+     lines are hints now rather than flavour — a hint nobody can read is not one. */
+  width: 258px;
+  padding: 13px 16px;
   border-radius: 14px;
   background: #fbf7ec;
   color: #16202b;
-  font-size: 14.5px;
+  font-size: 16px;
   line-height: 1.35;
   font-weight: 600;
   text-wrap: balance;

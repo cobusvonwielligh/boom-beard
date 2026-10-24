@@ -29,6 +29,26 @@ export const QUIPS = [
   "{n}, treasure's under the explosions. Probably.",
   "A fine day for someone else's funeral.",
   "{n}, if you survive this one I'll be amazed and so will you.",
+  "Stay frosty, {n}.",
+  "Keep your powder dry and your wits drier, {n}.",
+  "{n}, that corner has eaten better pirates than you.",
+  "Walk it off, {n}. You've got legs for now.",
+  "The gulls are watching, {n}. They're always watching.",
+  "{n}, I've named a crater after you. Two, actually.",
+  "Breathe, {n}. Then run.",
+  "You call that a fuse? That's a suggestion.",
+  "{n}, the shortest way out is usually on fire.",
+  "Stand there a bit longer, {n}. See what happens.",
+  "I'm not saying you're unlucky, {n}. The island is.",
+  "{n}, bombs are patient. You are not.",
+  "Fortune favours the quick, {n}. Note the word.",
+  "{n}, I packed a second eye patch. For you.",
+  "Half a plan is still half a plan, {n}.",
+  "{n}, dead men tell no tales, but the kill feed does.",
+  "Every wall's a door if you're rude enough, {n}.",
+  "Still frosty, {n}? Good.",
+  "{n}, that was either genius or a mistake. Time will tell. Probably a mistake.",
+  "Aim for the gap, {n}, not the hope of one.",
 ];
 
 /**
@@ -38,21 +58,26 @@ export const QUIPS = [
  * before the round starts, so they are closer to advice than abuse.
  */
 export const MENU_QUIPS = [
-  'The trick is to be elsewhere when it goes off.',
-  'Corners kill. Mostly you.',
-  'Every wall is temporary. Including the one behind you.',
-  'Drop it, then leave. In that order.',
-  'The last pirate standing is usually the patient one.',
-  'Bombs are cheap. You are not.',
-  'If you can see the fuse, you are too close.',
-  'Dead ends are only dead for one of you.',
-  'Pick up everything. Apologise later.',
-  'Nobody wins standing still.',
-  'That bomb has a plan. Do you?',
-  'Fortune favours the bold. Statistics do not.',
-  'Blow up the walls, not the schedule.',
-  'There is no honour in the middle of a crossfire.',
-  'Press it. The worst that happens is everything.',
+  'Drop it and leave. That order, or you leave in pieces.',
+  'Corners kill. Mostly the pirate standing in one.',
+  'Hold two keys and go diagonal. Smooth as rum.',
+  'Boots are worth more than bombs. Running beats aiming.',
+  'Blast the crates, not your own escape route.',
+  'A dead end is only dead for one of you.',
+  'Patience wins rounds. Panic digs graves.',
+  'Catch a gull in a blast. The sky pays in gold.',
+  'Shield up and walk into the crossfire. Once.',
+  'Count the fuse, not your blessings.',
+  'If you can see the fuse, you are already too close.',
+  'Double-tap to slide. It is a plan, not a brake.',
+  'Chain the kegs. Let the island do the work.',
+  'Never bomb a corridor you still need.',
+  'Rum makes walls move. Walls disagree.',
+  'Watch the shadow, not the bird.',
+  'The last pirate standing is the one who stopped showing off.',
+  'Trap them in a lane. Lanes have no corners to hide in.',
+  'Pick up everything. Apologise never.',
+  'Stay frosty. The fuse does not wait for you.',
 ];
 
 /**
@@ -62,6 +87,8 @@ export const MENU_QUIPS = [
  */
 export const ON_RUM = [
   'Aye, you must be tipsy now!',
+  'Frosty, {n}. Not sloshed. There is a difference.',
+  "Rum's a plan now, is it?",
   "That's the good stuff, {n}.",
   'Steady, {n}. Walls move when you drink.',
   'Rum! Now try walking in a line.',
@@ -81,8 +108,14 @@ export const ON_GULLED = [
   'Two birds, one {n}.',
 ];
 
-export const ON_DEATH = ['Oof.', 'Oof!', 'Oof… that one hurt.'];
-export const ON_SPAWN = ["Let's go!", "Let's go, {n}!", 'Back at it!'];
+export const ON_DEATH = [
+  'Oof.', 'Oof!', 'Oof… that one hurt.', 'Well. That happened.',
+  'Walk it off. Oh. Right.', 'Noted, captain.', "I'll fetch a mop.",
+];
+export const ON_SPAWN = [
+  "Let's go!", "Let's go, {n}!", 'Back at it!', 'Stay frosty, {n}!',
+  'Round two. Or six.', 'Up you get, {n}.', 'Try the other way this time.',
+];
 
 /** How long a bubble stays up. Long enough to read a short line, short enough to not be furniture. */
 export const SHOW_MS = 7000;

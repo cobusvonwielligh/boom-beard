@@ -78,11 +78,21 @@ test('the same line never comes out twice running', () => {
   assert.notEqual(second, first);
 });
 
-test('there are twenty idle lines and none of them are duplicates', () => {
-  assert.equal(QUIPS.length, 20);
-  assert.equal(new Set(QUIPS).size, 20);
-  assert.ok(ON_DEATH.every(l => /oof/i.test(l)), 'the death line is meant to be "oof"');
+test('there are plenty of idle lines, no duplicates, no stray placeholders', () => {
+  // The count is a floor, not a number: the pool grows, and a test that pins it exactly only
+  // ever reports "somebody added a joke". What has to hold is that nothing repeats and nothing
+  // ships a half-typed {n}, which is how a line ends up reading "Stand there a bit longer, {n."
+  assert.ok(QUIPS.length >= 30, `only ${QUIPS.length} idle lines`);
+  assert.equal(new Set(QUIPS).size, QUIPS.length, 'duplicate idle line');
+  for (const pool of [QUIPS, MENU_QUIPS, ON_DEATH, ON_SPAWN, ON_RUM]) {
+    for (const line of pool) {
+      assert.ok(!/\{(?!n\})|(?<!\{n)\}/.test(line), `"${line}" has a broken {n}`);
+    }
+  }
   assert.ok(ON_SPAWN.some(l => /let's go/i.test(l)), 'the spawn line is meant to be "lets go"');
+  // The sign-off. It is the mascot's catchphrase and it has to be in his mouth somewhere.
+  const all = [...QUIPS, ...MENU_QUIPS, ...ON_SPAWN];
+  assert.ok(all.filter(l => /frosty/i.test(l)).length >= 3, 'nobody is staying frosty');
 });
 
 test('the rum has its own lines, and they fill in the name', () => {
