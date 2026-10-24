@@ -16,7 +16,7 @@ import {
   CONFUSED_NUM, CONFUSED_DEN,
   IN_RIGHT, IN_UP, IN_LEFT, IN_DOWN, IN_SLIDE, DIR_R, DIR_U, DIR_L, DIR_D, STATUS,
 } from '../constants.js';
-import { walkable, has, tileCentre } from './state.js';
+import { walkable, has, tileAt, tileCentre } from './state.js';
 
 const HALF_TILE = UNITS_PER_TILE >> 1;
 
@@ -186,6 +186,47 @@ const DIR_VEC = { [DIR_R]: [1, 0], [DIR_U]: [0, -1], [DIR_L]: [-1, 0], [DIR_D]: 
 
 const halfBox = p => (has(p, STATUS.REDUCTION) ? HITBOX_REDUCED_UNITS : HITBOX_UNITS) >> 1;
 
+/* The blocks drawn as square rocks have clipped corners in the art. Keep collision honest with
+ * that silhouette: the obstacle is an octagon, not a full tile-sized square. */
+const OCTAGON_BLOCKS = new Set([BLOCK.SOFT, BLOCK.REINFORCED, BLOCK.MONOLITH, BLOCK.IRON]);
+const ROCK_CORNER_CUT = 32; // four rendered pixels in simulation units
+
+/** True when the player's axis-aligned hitbox overlaps the octagon inside one rock tile. */
+function overlapsRock(x, y, tx, ty, h) {
+  const left = x - h, right = x + h - 1;
+  const top = y - h, bottom = y + h - 1;
+  const minX = tx * UNITS_PER_TILE, minY = ty * UNITS_PER_TILE;
+  const maxX = minX + UNITS_PER_TILE - 1, maxY = minY + UNITS_PER_TILE - 1;
+  if (right < minX || left > maxX || bottom < minY || top > maxY) return false;
+
+  // The four tile axes and the two diagonal axes of the clipped corners. Integer comparisons
+  // keep server simulation and client prediction bit-for-bit identical.
+  const sumMin = 2 * minX + ROCK_CORNER_CUT;
+  const sumMax = 2 * maxX - ROCK_CORNER_CUT;
+  const playerSumMin = left + top, playerSumMax = right + bottom;
+  if (playerSumMax < sumMin || playerSumMin > sumMax) return false;
+
+  const diffMin = minX - maxY + ROCK_CORNER_CUT;
+  const diffMax = maxX - minY - ROCK_CORNER_CUT;
+  const playerDiffMin = left - bottom, playerDiffMax = right - top;
+  if (playerDiffMax < diffMin || playerDiffMin > diffMax) return false;
+
+  return true;
+}
+
+/** Whether a blocked candidate is meeting one of the sloped rock corners. */
+function rockAhead(state, p, x, y) {
+  const h = halfBox(p);
+  const x0 = (x - h) >> 8, x1 = (x + h - 1) >> 8;
+  const y0 = (y - h) >> 8, y1 = (y + h - 1) >> 8;
+  for (let ty = y0; ty <= y1; ty++) {
+    for (let tx = x0; tx <= x1; tx++) {
+      if (OCTAGON_BLOCKS.has(tileAt(state.map, tx, ty))) return true;
+    }
+  }
+  return false;
+}
+
 /**
  * A bomb is solid to anyone whose centre is outside its tile — and to nobody who is already
  * standing on it, whoever placed it.
@@ -238,7 +279,10 @@ export function blocked(state, p, x, y, bombsCount = true) {
   const y0 = (y - h) >> 8, y1 = (y + h - 1) >> 8;
   for (let ty = y0; ty <= y1; ty++)
     for (let tx = x0; tx <= x1; tx++) {
-      if (!walkable(state.map, tx, ty, reduced)) return true;
+      const type = tileAt(state.map, tx, ty);
+      if (!walkable(state.map, tx, ty, reduced)) {
+        if (!OCTAGON_BLOCKS.has(type) || overlapsRock(x, y, tx, ty, h)) return true;
+      }
       if (bombsCount && bombSolid(state, p, tx, ty)) return true;
     }
   return false;
@@ -314,6 +358,32 @@ function moveAxis(state, p, ax, ay, speed) {
     p.x = cx; p.y = cy;
     return true;
   };
+
+  /* A clipped rock corner is a slope, not a square wall. Spend part of this tick moving along
+   * its tangent, away from the lane centre and around the corner. The candidate still goes
+   * through the exact collision test, so adjacent walls and narrow doorways remain authoritative.
+   */
+  if (wayBlocked && Math.abs(off) > CORNER_ASSIST_UNITS && rockAhead(state, p, nx, ny)) {
+    const sign = Math.sign(off);
+    const tangent = sign * Math.max(4, Math.min(speed, Math.abs(off) >> 2));
+    // First try an inclined step. If the corner is still too deep, use the same tangent as a
+    // short skirt along the face; this builds the needed clearance over several ticks instead of
+    // stopping dead or teleporting the player around the rock.
+    for (const amount of [tangent, sign * speed, sign * Math.min(speed * 2, Math.abs(off))]) {
+      const sx = horizontal ? nx : p.x + amount;
+      const sy = horizontal ? p.y + amount : ny;
+      if (!blocked(state, p, sx, sy)) {
+        p.x = sx; p.y = sy;
+        return true;
+      }
+    }
+    const skirtX = horizontal ? p.x : p.x + sign * speed;
+    const skirtY = horizontal ? p.y + sign * speed : p.y;
+    if (!blocked(state, p, skirtX, skirtY)) {
+      p.x = skirtX; p.y = skirtY;
+      return true;
+    }
+  }
 
   // Corner assist. You are heading for a gap you *are* lined up with, but your hitbox is clipping
   // the solid tile next to it. Straighten up and you fit. Beyond the window, you are genuinely

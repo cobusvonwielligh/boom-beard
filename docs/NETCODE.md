@@ -1,4 +1,4 @@
-# Bomb Voyage — Netcode
+# Boom Beard — Netcode
 
 Target: a player on a 180 ms link plays the same game as a player on a 20 ms link.
 

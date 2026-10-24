@@ -1,4 +1,4 @@
-# Bomb Voyage — Design
+# Boom Beard — Design
 
 Date: 2026-10-23
 Author: Cobus (with Claude)

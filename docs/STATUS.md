@@ -1,4 +1,4 @@
-# Bomb Voyage — Where We Stand
+# Boom Beard — Where We Stand
 
 Last updated: **2026-10-24**, at **v1.0.0**. Live on `bombvoyage.online`. 314 tests, all of which
 now pass on Windows as well as in CI. The security check that went into 1.0 is

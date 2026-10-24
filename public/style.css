@@ -1,4 +1,4 @@
-/* Bomb Voyage — all of the chrome.
+/* Boom Beard — all of the chrome.
  *
  * Split out of index.html once it outgrew a <style> block. Still one file, still no build step,
  * still no framework: the whole UI is a top bar, a chat panel, two overlays and a menu card.
@@ -3511,7 +3511,7 @@ h1 {
 
 /* The title on the landing page: one line, never wrapped, and always flowing.
  *
- * clamp() rather than a fixed size, because "Bomb Voyage" in a display face at a fixed 46px wraps
+ * clamp() rather than a fixed size, because "Boom Beard" in a display face at a fixed 46px wraps
  * the moment the card is a little narrower than the design — and a wrapped title with a
  * background-clip gradient on it looks like a rendering fault rather than a line break. */
 #title {

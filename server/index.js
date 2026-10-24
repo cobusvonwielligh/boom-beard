@@ -1,4 +1,4 @@
-// Bomb Voyage — process bootstrap: config, static files, health, TLS, self-update webhook.
+// Boom Beard — process bootstrap: config, static files, health, TLS, self-update webhook.
 // The WebSocket hub lives in net.js. See docs/ARCHITECTURE.md §7.
 
 import http from 'node:http';

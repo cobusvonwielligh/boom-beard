@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bomb Voyage — manual deploy. Pushes your working tree, including uncommitted work.
+# Boom Beard — manual deploy. Pushes your working tree, including uncommitted work.
 #
 #   npm run deploy            tests, then deploy
 #   npm run deploy:fast       skip the tests

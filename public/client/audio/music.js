@@ -1,4 +1,4 @@
-// Bomb Voyage — the music.
+// Boom Beard — the music.
 //
 // This module owns everything that counts as "the music": the theme, the three ambient beds in
 // ./ambient.js, and the cycling between them. They all sit behind one public surface, so main.js

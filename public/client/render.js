@@ -23,7 +23,7 @@ import { gullAt } from '/shared/sim/gulls.js';
 const CHUNK_PX = TILE_PX * CHUNK_TILES;
 
 export function createRenderer(canvas, world) {
-  const ctx = canvas.getContext('2d', { alpha: false });
+  let ctx = canvas.getContext('2d', { alpha: false });
   let chunks = new Map();          // "cx,cy" -> {canvas, dirty}
   let baked = null;
   const cam = { x: 0, y: 0 };
@@ -265,6 +265,8 @@ export function createRenderer(canvas, world) {
     chunks = new Map(); shore = null; splashes.length = 0;
     pools.clear(); ripples.length = 0; wisps.length = 0; shards.length = 0; pops.length = 0; poolFor = null;
     glow.length = 0; eqFor = null; eqLen.fill(0); smokes.length = 0;
+    rockSprites = null;
+    rockSpritesFor = null;
     rollCurrent();          // a new island sits in a different sea
   };
   const mapChanged = () => { recomputeZoom(); };
@@ -1454,6 +1456,7 @@ export function createRenderer(canvas, world) {
    */
   const SEA_ROCKS = 3;
   let rocksFor = null, rocksForView = 0, seaRocks = [];
+  let rockSprites = null, rockSpritesFor = null;
 
   /* Placed against the VIEW, not just against the island.
    *
@@ -1587,8 +1590,9 @@ export function createRenderer(canvas, world) {
     return seaRocks;
   }
 
-  function drawWaterRocks(ox, oy) {
+  function paintWaterRocks(ox, oy, only = null) {
     for (const k of waterRocks()) {
+      if (only && k !== only) continue;
       const x = ox + k.x, y = oy + k.y;
       ctx.save();
       // Everything below is drawn inside this one alpha, so the rock sits at the same distance
@@ -1766,6 +1770,28 @@ export function createRenderer(canvas, world) {
       ctx.restore();
       ctx.globalAlpha = 1;
     }
+  }
+
+  /* Water rocks are scenery, not animation. Their old implementation rebuilt every gradient,
+   * clip and facet on every frame, even though only the camera offset changed. Bake each rock
+   * once for the current viewport and blit the small sprites during gameplay. */
+  function drawWaterRocks(ox, oy) {
+    const rocks = waterRocks();
+    if (rockSpritesFor !== rocks) {
+      rockSprites = rocks.map(k => {
+        const margin = Math.ceil(k.r * 2 + SHADOW_LEN + 12);
+        const sprite = document.createElement('canvas');
+        sprite.width = sprite.height = margin * 2;
+        const previous = ctx;
+        ctx = sprite.getContext('2d');
+        ctx.translate(margin - k.x, margin - k.y);
+        paintWaterRocks(0, 0, k);
+        ctx = previous;
+        return { sprite, x: k.x - margin, y: k.y - margin };
+      });
+      rockSpritesFor = rocks;
+    }
+    for (const rock of rockSprites) ctx.drawImage(rock.sprite, ox + rock.x, oy + rock.y);
   }
 
   /* The island is the speaker.
@@ -3357,7 +3383,7 @@ export function createRenderer(canvas, world) {
       const ty = (me.ry / UNITS_PER_TILE) * TILE_PX - vh / 2;
       // Time-based, not per-frame: a fixed 0.25 factor makes the camera twice as laggy at
       // 120 Hz as at 60 Hz, which is exactly the kind of thing that reads as "it feels off".
-      const k = 1 - Math.exp(-dtMs / 60);
+      const k = 1 - Math.exp(-dtMs / 35);
       if (Math.abs(tx - cam.x) > vw || Math.abs(ty - cam.y) > vh) { cam.x = tx; cam.y = ty; }
       else { cam.x += (tx - cam.x) * k; cam.y += (ty - cam.y) * k; }
     }

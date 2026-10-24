@@ -61,6 +61,28 @@ test('movement', async t => {
     assert.ok(tileCentre(3) - p.x < UNITS_PER_TILE, 'ends up adjacent to the wall');
   });
 
+  await t.test('slides past the clipped corner of a square rock', () => {
+    const st = room(); const p = spawn(st, 2, 3);
+    setTile(st.map, 3, 2, BLOCK.SOFT);
+    // The hitbox overlaps the rock tile's old square corner, but not its octagonal body.
+    p.y = tileCentre(3) - 80;
+    const x0 = p.x;
+    for (let i = 0; i < 20; i++) step(st, p, IN_RIGHT);
+    assert.ok(p.x > x0 + speedOf(p) * 8, 'did not glide around the rock corner');
+    assert.ok(!blocked(st, p, p.x, p.y), 'glide entered the rock');
+  });
+
+  await t.test('inclines around a rock instead of stopping on its slope', () => {
+    const st = room(); const p = spawn(st, 2, 2);
+    setTile(st.map, 3, 2, BLOCK.SOFT);
+    p.y = tileCentre(2) + 120;
+    const y0 = p.y;
+    for (let i = 0; i < 24; i++) step(st, p, IN_RIGHT);
+    assert.ok(p.y > y0, 'did not take the tangent around the sloped corner');
+    assert.ok(p.x > tileCentre(2), 'did not continue moving while glancing off the rock');
+    assert.ok(!blocked(st, p, p.x, p.y), 'inclined movement entered the rock');
+  });
+
   // A doorway: solid above and below, gap straight ahead on your own row. Walking at it slightly
   // off-centre, your hitbox clips the jamb. This is the case that makes a grid game feel good or
   // awful, and it is what RULES.md §2 specifies.

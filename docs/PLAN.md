@@ -1,4 +1,4 @@
-# Bomb Voyage — Build Plan
+# Boom Beard — Build Plan
 
 Read [DESIGN.md](DESIGN.md) and [RULES.md](RULES.md) first. This document is the work breakdown,
 the dependency order, and the slice boundaries that let two people work in parallel without

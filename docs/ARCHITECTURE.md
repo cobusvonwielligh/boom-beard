@@ -1,4 +1,4 @@
-# Bomb Voyage — Architecture
+# Boom Beard — Architecture
 
 The organising principle: **two developers working as vertical slices must almost never edit the
 same file.** Everything below is shaped by that, not by architectural taste.

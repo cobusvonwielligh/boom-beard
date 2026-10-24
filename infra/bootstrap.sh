@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bomb Voyage — one-time server setup. Amazon Linux 2023. Idempotent: safe to re-run, and
+# Boom Beard — one-time server setup. Amazon Linux 2023. Idempotent: safe to re-run, and
 # re-running is exactly how you switch to a new domain.
 #
 #   scp -i key.pem infra/bootstrap.sh ec2-user@HOST:/tmp/
@@ -49,7 +49,7 @@ echo "==> sshd"
 # value wins, so this overrides the distribution's defaults without editing them. Validated
 # before the reload, because a broken sshd config on a box you reach only by SSH is a lockout.
 sudo tee /etc/ssh/sshd_config.d/00-bomb-voyage.conf >/dev/null <<'SSHD'
-# Bomb Voyage hardening. Files here are read before the main config, and the first value wins.
+# Boom Beard hardening. Files here are read before the main config, and the first value wins.
 PermitRootLogin no
 PasswordAuthentication no
 KbdInteractiveAuthentication no

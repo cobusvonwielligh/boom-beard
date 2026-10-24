@@ -1,4 +1,4 @@
-# Bomb Voyage — Art & Audio
+# Boom Beard — Art & Audio
 
 Slice: **ART**. Everything the game draws is code, not files — nothing to version, no CORS, no
 cache busting. The exceptions are all decoration or music: four landing-page PNGs, one font, and

@@ -1,4 +1,4 @@
-# Bomb Voyage — Wire Protocol v1
+# Boom Beard — Wire Protocol v1
 
 **This document is frozen on day 1.** Both developers build against it before either side exists.
 Changing it mid-sprint means coordinating a release; adding an optional field does not.

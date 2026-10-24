@@ -265,7 +265,7 @@ export function createWorld() {
         // already moving slowly and deliberately there, and a fast follow would reintroduce
         // exactly the flick the slow push exists to avoid.
         const pushed = blocked(w, p, p.x, p.y);
-        const k = 1 - Math.exp(-dtMs / (pushed ? 180 : 80));
+        const k = 1 - Math.exp(-dtMs / (pushed ? 180 : 18));
         const dx = p.x - p.rx, dy = p.y - p.ry;
         // A whole tile out means a respawn or a teleport, not a correction — just go.
         if (Math.abs(dx) > 256 || Math.abs(dy) > 256) teleport(p);

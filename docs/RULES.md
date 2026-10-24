@@ -1,4 +1,4 @@
-# Bomb Voyage — Game Rules
+# Boom Beard — Game Rules
 
 The single source of truth for mechanics. Every number here has a matching constant in
 `shared/constants.js`. **If a number appears in both places, `shared/constants.js` wins** — update

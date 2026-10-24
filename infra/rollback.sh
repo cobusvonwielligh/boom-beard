@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Bomb Voyage — undo the last deploy.
+# Boom Beard — undo the last deploy.
 #
 #   npm run rollback
 #

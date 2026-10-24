@@ -1,4 +1,4 @@
-// Bomb Voyage — configuration.
+// Boom Beard — configuration.
 //
 // Precedence: environment variable > config.ini > built-in default.
 // Env wins so CI and one-off runs (`LAG=200 npm start`) never need to touch a file.

@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://bombvoyage.online">
-    <img src="docs/readme/banner.svg" alt="Bomb Voyage: sixteen pirates, one island, light the fuse and run" width="100%">
+    <img src="docs/readme/banner.svg" alt="Boom Beard: sixteen pirates, one island, light the fuse and run" width="100%">
   </a>
 </p>
 
@@ -98,7 +98,7 @@ Levels keep going above Veteran. The rank stops there.
 
 ## <img src="docs/readme/icons/bolt.svg" width="20" align="center"> Run your own island
 
-Bomb Voyage is one small Node.js server with no database. To try it on your own machine:
+Boom Beard is one small Node.js server with no database. To try it on your own machine:
 
 ```bash
 npm install

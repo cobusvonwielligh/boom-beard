@@ -1,4 +1,4 @@
-// Bomb Voyage — tuning constants and enums.
+// Boom Beard — tuning constants and enums.
 //
 // FROZEN FILE. Both developers import this. Agree before changing it.
 // Every magic number in the project lives here; see docs/RULES.md for the rationale.

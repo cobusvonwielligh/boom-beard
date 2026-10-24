@@ -57,7 +57,7 @@ test('deployment spine', async t => {
     assert.equal(res.status, 200);
     assert.match(res.headers.get('content-type'), /text\/html/);
     assert.match(res.headers.get('content-security-policy'), /default-src 'self'/);
-    assert.match(await res.text(), /Bomb Voyage/);
+    assert.match(await res.text(), /Boom Beard/);
   });
 
   await t.test('serves shared modules to the browser', async () => {

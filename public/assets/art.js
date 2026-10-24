@@ -1,4 +1,4 @@
-// Bomb Voyage — art. Shapes, not pixels. No image files anywhere in this project.
+// Boom Beard — art. Shapes, not pixels. No image files anywhere in this project.
 //
 // Slice: ART. This is a working starter, not finished art — it exists so you can see the style,
 // check readability, and iterate in public/art-preview.html before the game exists.
