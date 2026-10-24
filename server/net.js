@@ -10,7 +10,7 @@ import {
 import { createRoom } from './room.js';
 import { createGuard, addressOf } from './guard.js';
 import { sameSecret } from './config.js';
-import { hasBlockedLanguage } from './names.js';
+import { hasBlockedLanguage, maskBlockedLanguage } from './names.js';
 
 // Open sessions — playing or watching — one browser may hold at once. See claimDevice.
 export const MAX_SESSIONS_PER_DEVICE = 2;
@@ -517,14 +517,14 @@ export function attachHub(server, config) {
             break;
           }
 
-          if (hasBlockedLanguage(said)) {
-            reply(ws, 'message blocked');
-            break;
-          }
-
           if (now - lastChat < CHAT_MIN_INTERVAL_MS) return;
           lastChat = now;
-          broadcast({ t: 'chat', i: seat, name: room.state.players[seat]?.name ?? '?', msg: said });
+          // Starred, not blocked. See maskBlockedLanguage — the sentence goes out, the slur does
+          // not, and ordinary swearing is untouched.
+          broadcast({
+            t: 'chat', i: seat, name: room.state.players[seat]?.name ?? '?',
+            msg: maskBlockedLanguage(said),
+          });
           break;
         }
 
