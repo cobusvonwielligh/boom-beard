@@ -300,28 +300,124 @@ function drawTileBody(c, type, tx = 0, ty = 0, dmg = 0) {
     // as scenery. Warm against a map of cold blues and greys — the one tile you want spotted
     // from across the island.
     case BLOCK.POWDER: {
+      /* A barrel, and barrels are not square.
+       *
+       * The old one was a rounded rectangle with three vertical lines in it, which read as a
+       * crate that had been told it was a keg. A barrel has exactly three tells and they are all
+       * curves: it BULGES at the waist, its staves follow that bulge, and from slightly above
+       * you see the elliptical top. Nothing else about it matters at 32 px — and with all three
+       * present it needs no outline to be recognisable, which is what makes it sit in the same
+       * world as the rock and the ice rather than on top of them.
+       *
+       * Everything below is built from one path (`body`) so the shading, the staves and the
+       * hoops cannot drift apart: the clip is the silhouette.
+       */
       px(c, 0, 0, S, S, PALETTE.floor);
-      rr(c, 5, 7, S - 10, S - 10, 5, '#7a4a22');
-      rr(c, 6, 8, S - 12, S - 12, 4, '#9c6230');
-      for (const x of [11, 16, 21]) px(c, x, 8, 1, S - 12, 'rgba(0,0,0,0.25)');
-      px(c, 5, 12, S - 10, 3, '#4a3524');            // hoops
-      px(c, 5, S - 11, S - 10, 3, '#4a3524');
-      px(c, 6, 8, S - 12, 2, 'rgba(255,255,255,0.18)');
-      // The powder mark. Small and red, dead centre between the hoops: the universal "this one
-      // is dangerous", and the one bit of pure red on an island of browns and blues.
+      const cx = 16, top = 6.5, bot = 29.5, endW = 7.4, midW = 11.2;
+      // Half-width at a given height: the bulge, as one cosine-ish curve the hoops reuse.
+      const halfAt = y => {
+        const k = ((y - top) / (bot - top)) * 2 - 1;        // -1 at the top, 1 at the bottom
+        return endW + (midW - endW) * (1 - k * k);
+      };
+      const body = () => {
+        c.beginPath();
+        c.moveTo(cx - endW, top);
+        c.bezierCurveTo(cx - midW - 1, top + 6, cx - midW - 1, bot - 6, cx - endW, bot);
+        c.lineTo(cx + endW, bot);
+        c.bezierCurveTo(cx + midW + 1, bot - 6, cx + midW + 1, top + 6, cx + endW, top);
+        c.closePath();
+      };
+
+      // What it stands in. A barrel is a heavy thing on sand, so the contact shadow is tight and
+      // dark under the staves and nowhere else.
+      c.save();
+      c.globalAlpha = 0.3;
+      c.beginPath(); c.ellipse(cx, bot - 0.5, endW + 1.5, 2.6, 0, 0, Math.PI * 2);
+      c.fillStyle = '#000'; c.fill();
+      c.restore();
+
+      // The staves, lit from the left like everything else on this island: a wooden cylinder is
+      // a gradient across, not a flat fill, and the dark edge on the right is what turns the
+      // silhouette into a round object.
+      body();
+      const stave = c.createLinearGradient(cx - midW, 0, cx + midW, 0);
+      stave.addColorStop(0, '#79492a');
+      stave.addColorStop(0.18, '#a8703c');
+      stave.addColorStop(0.42, '#b07c46');
+      stave.addColorStop(0.75, '#7e4c27');
+      stave.addColorStop(1, '#593318');
+      c.fillStyle = stave;
+      c.fill();
+
+      c.save();
+      body();
+      c.clip();
+      // Stave seams, bowing with the barrel. Spaced across the waist rather than evenly in x, so
+      // the ones near the edges crowd together the way they do on a real cylinder.
+      for (const f of [-0.72, -0.4, -0.08, 0.26, 0.6, 0.86]) {
+        const x = cx + f * midW;
+        c.beginPath();
+        c.moveTo(x - f * 1.8, top);
+        c.quadraticCurveTo(x + f * 0.6, (top + bot) / 2, x - f * 1.8, bot);
+        c.strokeStyle = 'rgba(42,24,12,0.3)';
+        c.lineWidth = 0.9;
+        c.stroke();
+      }
+      // Grain, deterministic per tile so a given keg always looks like itself.
+      for (let i = 0; i < 7; i++) {
+        const gy = top + 2 + hash(tx * 17 + i, ty * 7) * (bot - top - 4);
+        const gx = cx + (hash(ty * 13 + i, tx * 5) - 0.5) * midW * 1.4;
+        px(c, gx, gy, 2.4, 0.7, 'rgba(60,34,16,0.22)');
+      }
+      // Iron hoops: ellipses, not bars. Two wide ones at the waist and a narrow one at each end,
+      // which is how a cask is actually bound — and the ellipse is the whole reason the barrel
+      // reads as round rather than as a cylinder sticker.
+      for (const [y, h, tone] of [[top + 3.4, 2.4, '#3f3026'], [bot - 3.4, 2.4, '#35281f'],
+        [top + 0.9, 1.5, '#463529'], [bot - 0.9, 1.5, '#2e231b']]) {
+        const w = halfAt(y);
+        c.beginPath();
+        c.ellipse(cx, y, w, h, 0, 0, Math.PI * 2);
+        c.fillStyle = tone;
+        c.fill();
+        // The shine along the top of each band, which is what makes it iron and not paint.
+        c.beginPath();
+        c.ellipse(cx, y - h * 0.35, w * 0.92, h * 0.4, 0, Math.PI * 1.08, Math.PI * 1.92);
+        c.strokeStyle = 'rgba(214,224,236,0.3)';
+        c.lineWidth = 0.8;
+        c.stroke();
+      }
+      c.restore();
+
+      // The top, seen from slightly above: a lid of two boards, darker than the staves because
+      // it is facing the sky rather than the sun, with a rim of end-grain round it.
+      c.beginPath(); c.ellipse(cx, top, endW, 2.9, 0, 0, Math.PI * 2);
+      c.fillStyle = '#6b4123'; c.fill();
+      c.beginPath(); c.ellipse(cx, top, endW - 1.3, 2.1, 0, 0, Math.PI * 2);
+      c.fillStyle = '#8a5b31'; c.fill();
+      c.save();
+      c.beginPath(); c.ellipse(cx, top, endW - 1.3, 2.1, 0, 0, Math.PI * 2); c.clip();
+      px(c, cx - 1, top - 3, 0.9, 6, 'rgba(40,22,10,0.45)');
+      px(c, cx - endW, top - 0.4, endW * 2, 0.7, 'rgba(255,236,196,0.12)');
+      c.restore();
+
+      /* The powder mark. Small and red, between the waist hoops: the universal "this one is
+       * dangerous", and the one bit of pure red on an island of browns and blues. Drawn after
+       * the shading rather than under it, because a stencil is painted ON a barrel. */
       c.save();
       c.lineCap = 'round';
       c.beginPath();
-      c.moveTo(13, 15); c.lineTo(19, 21);
-      c.moveTo(19, 15); c.lineTo(13, 21);
+      c.moveTo(cx - 3.4, 15); c.lineTo(cx + 2.6, 21);
+      c.moveTo(cx + 2.6, 15); c.lineTo(cx - 3.4, 21);
       // Black underneath, red on top. The mark sits on mid-brown staves, and a bare red stroke
       // at this size has almost no luminance contrast against that — it goes muddy the moment
       // the board is zoomed out. The dark border is what keeps it legible.
       c.strokeStyle = '#140c08'; c.lineWidth = 4.2; c.stroke();
       c.strokeStyle = '#e03c2e'; c.lineWidth = 2.2; c.stroke();
       c.restore();
+
+      // The fuse, out of the lid: lit, so it reads as armed rather than as scenery.
       c.strokeStyle = '#d8c9a8'; c.lineWidth = 1.6; c.lineCap = 'round';
-      c.beginPath(); c.moveTo(20, 7); c.quadraticCurveTo(25, 3, 22, 1); c.stroke();
+      c.beginPath(); c.moveTo(cx + 3, top - 1.5); c.quadraticCurveTo(25, 3, 22, 1); c.stroke();
       c.beginPath(); c.arc(22, 1.5, 2.2, 0, 7); c.fillStyle = PALETTE.fireMid; c.fill();
       c.beginPath(); c.arc(22, 1.5, 1.1, 0, 7); c.fillStyle = PALETTE.fireCore; c.fill();
       break;

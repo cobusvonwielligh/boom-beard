@@ -267,6 +267,7 @@ export function createRenderer(canvas, world) {
     glow.length = 0; eqFor = null; eqLen.fill(0); smokes.length = 0;
     rockSprites = null;
     rockSpritesFor = null;
+    blastLight = null;
     rollCurrent();          // a new island sits in a different sea
   };
   const mapChanged = () => { recomputeZoom(); };
@@ -305,6 +306,22 @@ export function createRenderer(canvas, world) {
    * still one unbroken mass. STONE_RADIUS stays the crates' number. */
   const ROCK_RADIUS = Math.max(STONE_RADIUS, 6);
   const SHADOW_LEN = TILE_PX * 0.72;
+  /* The light a blast throws onto everything near it.
+   *
+   * A bomb going off is the brightest thing that ever happens on this board and until now it lit
+   * nothing: the flames were drawn and the sand, the crates and the rock beside them stayed
+   * exactly as dim as they were a frame earlier. One warm additive pool per burning tile fixes
+   * that for one gradient fill each — the floor under it warms, the faces of the blocks around
+   * it catch it, and a corridor two tiles away is briefly visible.
+   *
+   * Short. The light is the FLASH, not the fire: up in a couple of frames, most of the way gone
+   * by the time the flames are at their biggest, and over well before the embers. A glow that
+   * lasted as long as the fire would read as a coloured filter laid over the board, and worse,
+   * it would make the lethal window look longer than it is — the one thing the fire's own
+   * drawing is responsible for saying. */
+  const BLAST_LIGHT_PX = TILE_PX * 2.4;
+  const BLAST_LIGHT_ALPHA = 0.5;
+  let blastLight = null;
   /* Darker, and SOFT.
    *
    * 0.3 was a shadow you had to be told about. The thing that makes a stronger one look better
@@ -313,7 +330,11 @@ export function createRenderer(canvas, world) {
    * the sand. Baked into the chunk cache with everything else, so the blur is paid once per chunk
    * and never per frame — which is the only reason a canvas filter is affordable here at all.
    */
-  const SHADOW_ALPHA = 0.46;
+  // A third lighter than the 0.46 it was, on request: at 0.46 a board full of blocks spent more
+  // of its area in shade than in sun, and the shade is scenery — it was competing with fire,
+  // which is information. The blur and the length are unchanged, so it still reads as light not
+  // reaching the sand rather than as a flat grey mat.
+  const SHADOW_ALPHA = 0.31;
   const SHADOW_BLUR_PX = 3;
   let sunFor = null, sun = { dx: 0, dy: 0 };
 
@@ -1294,6 +1315,15 @@ export function createRenderer(canvas, world) {
   // what keeps it in the background is its COLOUR, which is mixed well down toward the deep
   // sea, not its transparency. Fading it out just made it look like a rendering fault.
   const ROCK_ALPHA = 0.88;
+  /* The shoal: the much wider mass each boulder is the tip of, lying under the surface.
+   *
+   * Twice the boulder's radius, darker than the deep sea and far fainter than the rock itself,
+   * and — the part that matters — drawn UNDER the two scrolling surface layers, so the ripples
+   * run across it. A submerged shape with the ripples on top of it is below the water; the same
+   * shape over them is a stain on the water. That layering is the only thing doing the work
+   * here, which is why this is its own pass inside drawSea rather than another lump in the
+   * rock's own sprite. */
+  const SHOAL_SPREAD = 2.1, SHOAL_ALPHA = 0.5;
   // Her centre sits this far outside the island's bounding box: half her beam plus the same
   // clearance from the coast she had at her old size, so growing her pushed her out to sea
   // rather than into the island. Still half past the edge of the board — present, cut off, and
@@ -1588,6 +1618,39 @@ export function createRenderer(canvas, world) {
       });
     }
     return seaRocks;
+  }
+
+  /**
+   * The shoal under every boulder: one soft dark mass, wider than the rock, below the surface.
+   *
+   * One radial fill per rock and the gradient is cached on the rock itself — `waterRocks()`
+   * rebuilds its objects whenever the view changes, so the cache is thrown away exactly when it
+   * would otherwise be stale. Squashed vertically because it is a shape seen through water from
+   * slightly above, the same foreshortening everything else on this board gets.
+   */
+  function drawRockShoals(ox, oy) {
+    for (const k of waterRocks()) {
+      if (!k.shoal) {
+        const g = ctx.createRadialGradient(0, 0, k.r * 0.25, 0, 0, k.r * SHOAL_SPREAD);
+        // Darker than the deep sea at the middle and gone by the edge: a submerged rock has no
+        // outline, it just stops being visible.
+        g.addColorStop(0, 'rgba(3,14,26,0.62)');
+        g.addColorStop(0.45, 'rgba(5,18,31,0.34)');
+        g.addColorStop(0.75, 'rgba(6,22,36,0.14)');
+        g.addColorStop(1, 'rgba(7,24,38,0)');
+        k.shoal = g;
+      }
+      ctx.save();
+      ctx.globalAlpha = SHOAL_ALPHA;
+      ctx.translate(ox + k.x, oy + k.y);
+      ctx.scale(1, 0.8);
+      ctx.fillStyle = k.shoal;
+      ctx.beginPath();
+      ctx.arc(0, 0, k.r * SHOAL_SPREAD, 0, 7);
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
   }
 
   function paintWaterRocks(ox, oy, only = null) {
@@ -2542,6 +2605,9 @@ export function createRenderer(canvas, world) {
     ctx.fillStyle = depth;
     ctx.fillRect(0, 0, vw, vh);
 
+    // The submerged mass under each boulder, before the ripples go over it. See SHOAL_SPREAD.
+    drawRockShoals(ox, oy);
+
     // Two layers drifting at different speeds and angles, the whole thing rotated to this map's
     // heading. Parallax between them is the reason a flat fill reads as moving water; the
     // rotation is the reason it is not the same sea on every map.
@@ -3053,21 +3119,35 @@ export function createRenderer(canvas, world) {
       span = Math.cos(beat * 1.01);
     }
     const fold = diving ? Math.min(1, (1 - now.alt) * 1.25) : 0;
+    /* Two heights, and they are not the same thing.
+     *
+     * `alt` is the dive — this bird's own height within its flight, 1 cruising and 0 at the
+     * bottom. `hi` is which layer of sky it is flying in at all, picked once when it spawned
+     * (see GULL_DEPTH_MIN). The dive makes a bird dip; the layer makes one bird further away
+     * than another. Multiplying them is what gives a sky of four gulls four distances in it.
+     */
+    const hi = g.hi || 1;
     return {
       x: (now.x / UNITS_PER_TILE) * TILE_PX, y: (now.y / UNITS_PER_TILE) * TILE_PX,
-      alt: now.alt, heading, span, fold, lean: Math.max(-1, Math.min(1, turn * 9)),
-      // Closer to the camera when high. The size change is the second half of the height cue —
-      // the first is the shadow.
-      scale: 0.78 + 0.4 * now.alt,
+      alt: now.alt, hi, heading, span, fold, lean: Math.max(-1, Math.min(1, turn * 9)),
+      // Closer to the camera when low, and smaller the higher its layer. The size change is the
+      // second half of the height cue — the first is the shadow.
+      scale: (0.78 + 0.4 * now.alt) / hi,
+      // Air between you and it. A bird three layers up is washed toward the colour of the sky,
+      // which from this camera is the only way height reads when it is not diving.
+      haze: 1 - 0.46 * (hi - 1),
     };
   }
 
-  /** How far the shadow sits from the bird: right under it at the bottom of a dive. */
-  function gullShadowOffset(alt) {
+  /**
+   * How far the shadow sits from the bird, and how soft: right under it and crisp at the bottom
+   * of a dive, a long soft way off for a bird cruising in the top layer.
+   */
+  function gullShadowOffset(alt, hi = 1) {
     const { dx, dy } = sunVec();
     const len = Math.hypot(dx, dy) || 1;
-    const reach = 3 + 44 * alt;
-    return { sx: (dx / len) * reach, sy: (dy / len) * reach };
+    const reach = (3 + 44 * alt) * hi;
+    return { sx: (dx / len) * reach, sy: (dy / len) * reach, soft: hi };
   }
 
   /* The shadows, on the ground, with the other shadows — before the players stand on them.
@@ -3082,13 +3162,15 @@ export function createRenderer(canvas, world) {
     for (const g of world.gulls) {
       if (gullSeen.get(g.id)?.gone) continue;
       const p = gullPose(g, t);
-      const { sx, sy } = gullShadowOffset(p.alt);
+      const { sx, sy, soft } = gullShadowOffset(p.alt, p.hi);
       ctx.save();
       ctx.fillStyle = '#000';
-      ctx.globalAlpha = 0.3 - 0.16 * p.alt;
+      // Higher up: fainter and spread wider, which is what a shadow does as the light leaving
+      // the bird has further to travel before it reaches the sand.
+      ctx.globalAlpha = (0.3 - 0.16 * p.alt) / soft;
       ctx.translate(ox + p.x + sx, oy + p.y + sy);
       ctx.rotate(p.heading);
-      ctx.scale(p.scale * 0.92, p.scale * 0.92);
+      ctx.scale(p.scale * 0.92 * soft, p.scale * 0.92 * soft);
       drawGull(ctx, { span: p.span, fold: p.fold, lean: p.lean, shadow: true });
       ctx.restore();
     }
@@ -3103,7 +3185,7 @@ export function createRenderer(canvas, world) {
     const vx = ((ahead.x - now.x) / UNITS_PER_TILE) * TILE_PX * 30;
     const vy = ((ahead.y - now.y) / UNITS_PER_TILE) * TILE_PX * 30;
     const px = (x / UNITS_PER_TILE) * TILE_PX, py = (y / UNITS_PER_TILE) * TILE_PX;
-    falls.push({ x: px, y: py, vx, vy, heading: p.heading, alt: p.alt, age: 0,
+    falls.push({ x: px, y: py, vx, vy, heading: p.heading, alt: p.alt, hi: p.hi, age: 0,
       spin: (Math.random() < 0.5 ? -1 : 1) * (7 + Math.random() * 4),
       coin: coin ? { x: (coin.cx + 0.5) * TILE_PX, y: (coin.cy + 0.5) * TILE_PX } : null });
     for (let i = 0; i < 14 && feathers.length < 60; i++) {
@@ -3261,16 +3343,21 @@ export function createRenderer(canvas, world) {
 
   function drawGulls(ox, oy, t, dtMs) {
     const dt = dtMs / 1000;
-    for (const g of world.gulls) {
-      if (gullSeen.get(g.id)?.gone) continue;
+    // Highest layer first, so a low bird crossing a high one passes in front of it. Four gulls
+    // in the sky and no order to them is four gulls at the same distance.
+    const flock = world.gulls.filter(g => !gullSeen.get(g.id)?.gone)
+      .sort((a, b) => (b.hi || 1) - (a.hi || 1));
+    for (const g of flock) {
       const p = gullPose(g, t);
       ctx.save();
+      ctx.globalAlpha = p.haze;
       ctx.translate(ox + p.x, oy + p.y);
       ctx.rotate(p.heading);
       ctx.scale(p.scale, p.scale);
       drawGull(ctx, p);
       ctx.restore();
     }
+    ctx.globalAlpha = 1;
 
     // The tumble: spinning, wings flailing, dropping out of the sky and shrinking as it goes.
     for (let i = falls.length - 1; i >= 0; i--) {
@@ -3289,8 +3376,9 @@ export function createRenderer(canvas, world) {
         if (f.coin) coinGlints.push({ x: f.coin.x, y: f.coin.y, life: 1, rot: Math.random() * 6 });
       }
       const alt = f.alt * (1 - k);
-      const scale = (0.78 + 0.4 * alt) * (1 - 0.25 * k);
-      const { sx, sy } = gullShadowOffset(alt);
+      const hi = f.hi || 1;
+      const scale = ((0.78 + 0.4 * alt) / hi) * (1 - 0.25 * k);
+      const { sx, sy } = gullShadowOffset(alt, hi);
       ctx.save();
       ctx.globalAlpha = f.age > FALL_S ? Math.max(0, 1 - (f.age - FALL_S) / FADE_S) : 1;
       ctx.save();
@@ -3532,6 +3620,44 @@ export function createRenderer(canvas, world) {
         t: seaT + b.id * 0.37,
       });
       ctx.restore();
+    }
+
+    /* The light first, then the flames. See BLAST_LIGHT_PX.
+     *
+     * Additive, so it brightens whatever it lands on rather than painting over it — the grain of
+     * the sand and the faces of the blocks stay visible inside the pool of light, which is the
+     * difference between a lamp and a sticker. Under the flames themselves: the fire is the
+     * source, and a source drawn beneath its own light looks like it is behind glass.
+     */
+    if (world.fires.length) {
+      if (!blastLight) {
+        blastLight = ctx.createRadialGradient(0, 0, TILE_PX * 0.1, 0, 0, BLAST_LIGHT_PX);
+        // Firelight: white-hot at the middle, orange through the body, out to nothing. Pure
+        // black at the rim matters under `lighter` — it is what "adds no light" looks like.
+        blastLight.addColorStop(0, 'rgba(255,236,196,0.95)');
+        blastLight.addColorStop(0.3, 'rgba(255,170,74,0.5)');
+        blastLight.addColorStop(0.65, 'rgba(188,86,24,0.2)');
+        blastLight.addColorStop(1, 'rgba(0,0,0,0)');
+      }
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = blastLight;
+      for (const f of world.fires) {
+        const age = Math.min(1, 1 - Math.max(0, (f.until - tickNow) / FIRE_TICKS));
+        // Two frames up, then down and out by a third of the way through the burn.
+        const k = age < 0.07 ? age / 0.07 : Math.max(0, 1 - (age - 0.07) / 0.3);
+        if (k <= 0) continue;
+        // The core is the bomb itself; an arm is fire that travelled, and dimmer for it.
+        ctx.globalAlpha = BLAST_LIGHT_ALPHA * k * k * (f.kind === 'core' ? 1 : 0.7);
+        ctx.save();
+        ctx.translate(ox + (f.tx + 0.5) * TILE_PX, oy + (f.ty + 0.5) * TILE_PX);
+        ctx.beginPath();
+        ctx.arc(0, 0, BLAST_LIGHT_PX, 0, 7);
+        ctx.fill();
+        ctx.restore();
+      }
+      ctx.restore();
+      ctx.globalAlpha = 1;
     }
 
     // Fire over the bombs that made it, under the people it is about to kill.
@@ -4387,15 +4513,22 @@ export function createRenderer(canvas, world) {
    * speck and a fully booted one leaves a trail. Nothing at all while standing still — the dust
    * is the movement, not the pirate.
    */
-  function footDust(p, ox, oy, dt) {
+  /* BOARD space, not screen space — see drawDust, which adds the board offset itself.
+   *
+   * This is the "my dust is over there" bug: the foot and slide particles were spawned with the
+   * offset already added and then drawn with it added again, so every mote appeared one board
+   * origin away from the heel that kicked it up. It moved as the offset moved (a resize, a zoom,
+   * a different map size), which is why it looked intermittent rather than simply wrong — and
+   * why the death dust, the only emitter that stored board coordinates, always landed right. */
+  function footDust(p, dt) {
     if (!p.alive || !p.moving) return;
     // A couple a second at base pace, a dozen fully booted. Below that it is invisible; above it,
     // sixteen players turn the board into a sandstorm.
     const rate = 2 + (p.speed || 0) * 2.6;
     const n = Math.floor(rate * dt) + (Math.random() < (rate * dt) % 1 ? 1 : 0);
     if (!n) return;
-    const px = ox + (p.rx / UNITS_PER_TILE) * TILE_PX;
-    const py = oy + (p.ry / UNITS_PER_TILE) * TILE_PX + TILE_PX * 0.3;
+    const px = (p.rx / UNITS_PER_TILE) * TILE_PX;
+    const py = (p.ry / UNITS_PER_TILE) * TILE_PX + TILE_PX * 0.3;
     // Thrown BACKWARD from the way they are going, which is what makes it read as being kicked
     // up rather than as a cloud the player is standing in.
     const v = [[1, 0], [0, -1], [-1, 0], [0, 1]][p.dir] ?? [0, 1];
@@ -4415,9 +4548,11 @@ export function createRenderer(canvas, world) {
       const was = slideSeen.get(p.i) || 0;
       const now = p.alive ? (p.slideV || 0) : 0;
       slideSeen.set(p.i, now);
-      if (!now) { footDust(p, ox, oy, dt); continue; }
-      const px = ox + (p.rx / UNITS_PER_TILE) * TILE_PX;
-      const py = oy + (p.ry / UNITS_PER_TILE) * TILE_PX;
+      if (!now) { footDust(p, dt); continue; }
+      // Board space for everything that goes into a particle pool; the streaks below are the
+      // only thing here drawn straight to the context, and they add the offset themselves.
+      const px = (p.rx / UNITS_PER_TILE) * TILE_PX;
+      const py = (p.ry / UNITS_PER_TILE) * TILE_PX;
       // Which way the slide is going, in screen pixels.
       const v = [[1, 0], [0, -1], [-1, 0], [0, 1]][p.slideDir] ?? [0, 1];
 
@@ -4450,7 +4585,7 @@ export function createRenderer(canvas, world) {
       ctx.lineWidth = 1.6;
       ctx.lineCap = 'round';
       for (const s of [-1, 1]) {
-        const offx = -v[1] * s * TILE_PX * 0.22, offy = v[0] * s * TILE_PX * 0.22;
+        const offx = ox - v[1] * s * TILE_PX * 0.22, offy = oy + v[0] * s * TILE_PX * 0.22;
         const len = TILE_PX * (0.5 + 0.5 * Math.min(1, now / 60));
         ctx.beginPath();
         ctx.moveTo(px + offx, py + offy);
@@ -4625,8 +4760,14 @@ export function createRenderer(canvas, world) {
      */
     say(i, text) {
       const t = String(text).slice(0, 24);
-      // Nothing but symbols: an emote. A letter or a digit anywhere makes it speech.
-      const emoji = !/[\p{L}\p{N}]/u.test(t);
+      /* An emote has to actually contain a picture.
+       *
+       * "No letters or digits" was the old test and it caught `***` — a censored word — which
+       * then got the emoji font and the dark bubble, and the asterisks have no glyph in an emoji
+       * font, so the room saw an empty black box over somebody's head. A letter or digit still
+       * makes it speech; so does anything else that is not pictographic.
+       */
+      const emoji = !/[\p{L}\p{N}]/u.test(t) && /\p{Extended_Pictographic}/u.test(t);
       says.set(i, { text: t, emoji, until: performance.now() + SAY_MS });
     },
     /** Where the sea gets its music from: `dtMs => analysis`, called once a frame. */
