@@ -70,6 +70,26 @@ export const SLOWDOWN_NUM = 1, SLOWDOWN_DEN = 2; // speed * 1/2, integer divisio
 export const HITBOX_UNITS = 20 * (UNITS_PER_TILE / TILE_PX); // 20 px → 160 units
 export const HITBOX_REDUCED_UNITS = 10 * (UNITS_PER_TILE / TILE_PX);
 
+/* Diagonals, and the corners they have to get round.
+ *
+ * Holding two keys moves you on BOTH axes in the same tick, each at 181/256 of your pace — the
+ * integer 1/√2, so a diagonal covers the same ground per tick as a straight line and is not a
+ * free speed boost. (181/256 = 0.7070; √½ = 0.7071.)
+ *
+ * The corner cut is what makes it feel like anything. A square hitbox walked diagonally past the
+ * corner of a square block catches on it: both shapes have a 90° corner and the two meet at a
+ * single point, so there is nothing to slide along and you stop dead a pixel into the turn. So
+ * the box's own corners are chamfered — a tile is only solid to you if you are into it by more
+ * than this on BOTH axes at once, which turns the hitbox into an octagon and the catch into a
+ * glance. 44 units is about five and a half pixels of chamfer on a twenty-pixel box.
+ *
+ * It lives in `blocked`, not in the diagonal code, so the shape is the same shape for everything
+ * that asks — walking, the unstick, bomb solidity, spawn safety. A hitbox that is one shape when
+ * moving and another when being pushed is the kind of disagreement that ends in a desync.
+ */
+export const DIAG_NUM = 181, DIAG_DEN = 256;
+export const CORNER_CUT_UNITS = 44;
+
 // Fire forgives a sliver of the sprite. The hitboxes above are what geometry collides with; fire
 // kills on this fraction of them, so a player tucked behind a wall with two or three pixels of
 // shoulder past its edge lives. Without the grace the lethal box reached exactly as far as the
@@ -269,7 +289,7 @@ export const POWDER_GUARANTEE_TICK = Math.round(0.6 * 10 * 60 * TICK_HZ);
  * for and not enough to carry you into a blast you were standing clear of. */
 /* Seagulls.
  *
- * Now and then a gull crosses the island — one at a time usually, two at most — on a straight
+ * Now and then a gull crosses the island — a couple at a time usually, four at most — on a straight
  * line with a lazy weave in it, entering and leaving well outside the board. It is scenery right
  * up until somebody catches one in a blast, and then it drops a gold coin.
  *
@@ -288,9 +308,24 @@ export const GULL_FIRST_TICK = 25 * TICK_HZ;         // the first one comes earl
 // Twice as often as it was, which was 40-90 s. At that spacing most rounds saw three or four
 // birds and a player who wanted to try the shot had to wait a minute for a second attempt; a
 // trick shot nobody gets to practise is a trick shot nobody lands.
-export const GULL_GAP_MIN_TICKS = 20 * TICK_HZ;      // one every 20-45 s
-export const GULL_GAP_MAX_TICKS = 45 * TICK_HZ;
-export const GULL_MAX = 2;
+export const GULL_GAP_MIN_TICKS = 10 * TICK_HZ;      // one every 10-22 s
+export const GULL_GAP_MAX_TICKS = 22 * TICK_HZ;
+// Twice the birds, and the gap above is halved to match — the cap alone would only have meant
+// four gulls arriving at the old spacing, which is the same sky with a longer queue.
+export const GULL_MAX = 4;
+/* Each bird gets its own height, and that is where the depth comes from.
+ *
+ * Looking straight down, height has only three tells: how big the bird is, how far its shadow
+ * sits from it, and how fast it seems to cross. One altitude for every gull spends all three at
+ * once and the sky reads as a sticker sheet. A band does the opposite: a low bird is big, sharp,
+ * quick, with its shadow close; a high one is small, hazy, slow, trailing a soft shadow a long
+ * way off. Same flight description, four layers of sky.
+ *
+ * Purely presentational — nothing about the shot changes, because the hit rule stopped caring
+ * about altitude when GULL_LOW_ALT stopped being a defence. A high bird is exactly as catchable
+ * as a low one; it just looks further away.
+ */
+export const GULL_DEPTH_MIN = 0.8, GULL_DEPTH_MAX = 1.3;
 // A fifth slower than the 34 it was: about three tiles a second. Speed was doing too much of the
 // difficulty on its own — at four tiles a second the window over any one tile was shorter than a
 // fuse, so the only way to land it was to have already had a bomb there.
@@ -325,6 +360,24 @@ export const GULL_LOW_ALT = 0.22;
  * reward. A blast with no owner — a powder keg — still leaves a coin on the floor; see gulls.js.
  */
 export const GULL_COINS = 3;
+/* The raid: once a round, two gulls pick somebody and kill them.
+ *
+ * Late in the round, two birds come in fast and low from opposite sides, cross over one player
+ * and that player is dead. No shield saves them, nothing they can do about it, nobody gets the
+ * kill. It is the island's own joke at somebody's expense, and the scoreboard remembers who.
+ *
+ * Why it is fair even though it cannot be dodged: it is ONE death, at the far end of the round,
+ * credited to nobody, and everyone in the room watches it happen. A death you could have avoided
+ * is a mistake; this is weather. Both are funny, and only one of them is your fault.
+ *
+ * Only a real person — a bot being mugged by seagulls is nobody's story. Between 70% and 90% of
+ * the round, so it always lands while people are still playing but never at the whistle, where
+ * it would read as a bug in the scoring rather than as a bird.
+ */
+export const GULL_RAID_AT_MIN = 0.7, GULL_RAID_AT_MAX = 0.9;
+export const GULL_RAID_SPEED_UNITS = 105;            // about four times a cruising gull
+export const GULL_RAID_RUN_TILES = 11;               // how far out they turn and start the run
+export const GULL_RAID_RETRY_TICKS = 20;             // nobody alive to pick on: look again shortly
 
 export const ICE_CHANCE = 0.05;
 export const PUDDLE_TICKS = 8 * TICK_HZ;

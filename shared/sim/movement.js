@@ -15,6 +15,7 @@ import {
   SLIDE_MAX_TICKS, SLIDE_STAMINA_COST, SLIDE_COOLDOWN_TICKS,
   CONFUSED_NUM, CONFUSED_DEN,
   IN_RIGHT, IN_UP, IN_LEFT, IN_DOWN, IN_SLIDE, DIR_R, DIR_U, DIR_L, DIR_D, STATUS,
+  DIAG_NUM, DIAG_DEN, CORNER_CUT_UNITS,
 } from '../constants.js';
 import { walkable, has, tileCentre } from './state.js';
 
@@ -238,8 +239,24 @@ export function blocked(state, p, x, y, bombsCount = true) {
   const y0 = (y - h) >> 8, y1 = (y + h - 1) >> 8;
   for (let ty = y0; ty <= y1; ty++)
     for (let tx = x0; tx <= x1; tx++) {
-      if (!walkable(state.map, tx, ty, reduced)) return true;
-      if (bombsCount && bombSolid(state, p, tx, ty)) return true;
+      const solid = !walkable(state.map, tx, ty, reduced)
+        || (bombsCount && bombSolid(state, p, tx, ty));
+      if (!solid) continue;
+      /* The chamfer. See CORNER_CUT_UNITS.
+       *
+       * A tile the box only touches with a CORNER — it is in the first or last column of the
+       * overlap AND the first or last row, with more than one of each — is forgiven while the
+       * bite out of it is shallow on both axes. That is exactly the case that makes rounding a
+       * block diagonally feel like catching on a nail, and the only case: anything you are
+       * properly into fails the depth test and is as solid as it ever was.
+       */
+      if (tx !== x0 && tx !== x1) return true;
+      if (ty !== y0 && ty !== y1) return true;
+      if (x0 === x1 || y0 === y1) return true;        // flush against a face, not a corner
+      // How far into the tile the box reaches, on each axis.
+      const intoX = tx === x0 ? (tx + 1) * UNITS_PER_TILE - (x - h) : (x + h) - tx * UNITS_PER_TILE;
+      const intoY = ty === y0 ? (ty + 1) * UNITS_PER_TILE - (y - h) : (y + h) - ty * UNITS_PER_TILE;
+      if (intoX > CORNER_CUT_UNITS || intoY > CORNER_CUT_UNITS) return true;
     }
   return false;
 }
@@ -273,7 +290,7 @@ const laneWalkable = (state, horizontal, primaryTile, laneTile, reduced) =>
  * That last case is what makes the assist possible: never pull someone away from an opening
  * they might be aiming for.
  */
-function moveAxis(state, p, ax, ay, speed) {
+function moveAxis(state, p, ax, ay, speed, assist = true) {
   const horizontal = ax !== 0;
   const dir = horizontal ? ax : ay;
   const half = halfBox(p);
@@ -318,12 +335,20 @@ function moveAxis(state, p, ax, ay, speed) {
   // Corner assist. You are heading for a gap you *are* lined up with, but your hitbox is clipping
   // the solid tile next to it. Straighten up and you fit. Beyond the window, you are genuinely
   // aiming at a wall and deserve to stop.
-  if (wayBlocked && off !== 0 && Math.abs(off) <= CORNER_ASSIST_UNITS) {
+  /* Both assists are off while moving diagonally, and that is not a shortcut.
+   *
+   * They are sideways drifts, and sideways on one axis of a diagonal is backwards along the
+   * other: centring would spend every tick undoing the travel the other axis just made, so a
+   * clean diagonal would crab and stutter. The chamfer in `blocked` is what gets a diagonal
+   * round a corner now, and it does it by letting the move happen rather than by steering.
+   */
+  if (assist && wayBlocked && off !== 0 && Math.abs(off) <= CORNER_ASSIST_UNITS) {
     if (straighten(true)) return true;
   }
 
   if (!wayBlocked) {
     p.x = nx; p.y = ny;
+    if (!assist) return true;
     // Corridor centring: drift onto the centre line, but only where there is nothing beside you
     // to aim at. On open ground, leave the player exactly where they put themselves — pulling
     // them around would fight every attempt to line up with a gap.
@@ -522,41 +547,42 @@ export function step(state, p, mask) {
     }
   }
 
-  /* Diagonals: one axis a tick, but the one that WORKS.
+  /* Diagonals: both axes, in the same tick, at 1/√2 each.
    *
-   * Movement stays axis-locked — that is what keeps a tile game feeling like a tile game, and
-   * what lets the remote interpolation draw an L instead of a diagonal. What changes is which
-   * axis is chosen when you are holding two.
+   * It used to be one axis a tick — whichever of the two was open, preferring your facing — so
+   * holding two keys walked you in a straight line and the second key was only ever a fallback
+   * for when the first was walled. That is cheap to interpolate and it is not what anybody
+   * pressing two keys is asking for.
    *
-   * Before, it committed to whichever way you were already facing and stopped dead if that way
-   * was blocked: holding down-left against a wall below you did nothing at all, even though
-   * left was wide open. Now the preferred axis is tried first and the other is the fallback, so
-   * holding a diagonal into any obstacle slides you along it. Pressed against a corner where
-   * neither works you stop, which is correct.
+   * Now the step is a real diagonal: both axes move, each at DIAG_NUM/DIAG_DEN of your pace, so
+   * the distance covered is the same as walking straight and holding two keys is not a speed
+   * exploit. Each axis is still its own `moveAxis` call, which is what keeps every existing
+   * rule — the flush-to-wall slide, bomb solidity, reduction — exactly as it was, and what
+   * makes a diagonal into a wall slide ALONG it: the blocked axis contributes nothing and the
+   * open one carries you.
    *
-   * The preference is still the way you are facing, so holding a diagonal down a clear corridor
-   * does not stutter between the two axes.
+   * Assists are off for both calls (see moveAxis) and the corner chamfer in `blocked` takes
+   * over: rounding the corner of a block diagonally is a glance off it rather than a catch.
+   *
+   * Facing stays with the axis you were already on when both are travelling, so the sprite does
+   * not flip back and forth every tick down a clear diagonal.
    */
   if (dx && dy) {
+    const pace = Math.max(1, ((speed * DIAG_NUM) / DIAG_DEN) | 0);
     const facingH = p.dir === DIR_L || p.dir === DIR_R;
-    let first = facingH ? [dx, 0] : [0, dy];
-    let second = facingH ? [0, dy] : [dx, 0];
+    // The facing axis goes first. Which of the two moves first is observable — the second call
+    // sees the position the first one left — so the order has to be a rule, not an accident.
+    const first = facingH ? [dx, 0] : [0, dy];
+    const second = facingH ? [0, dy] : [dx, 0];
 
-    /* Swap when the preferred axis is walled and the other is not.
-     *
-     * The test has to be "is the full step legal", not "did moveAxis return true" — moveAxis
-     * reports success for sliding flush against a wall, which is movement but not progress. A
-     * player holding down-left against a floor below them would spend every tick re-seating
-     * themselves against that floor and never go left at all.
-     */
-    const open = ([ax, ay]) => !blocked(state, p, p.x + ax * speed, p.y + ay * speed);
-    if (!open(first) && open(second)) [first, second] = [second, first];
+    const wentFirst = moveAxis(state, p, first[0], first[1], pace, false);
+    const wentSecond = moveAxis(state, p, second[0], second[1], pace, false);
 
-    // Face the axis actually travelled, so the sprite and the next tick's preference agree with
-    // what happened rather than with what was asked for.
     const faceOf = ([ax, ay]) => (ax > 0 ? DIR_R : ax < 0 ? DIR_L : ay < 0 ? DIR_U : DIR_D);
-    if (moveAxis(state, p, first[0], first[1], speed)) { p.dir = faceOf(first); return; }
-    if (moveAxis(state, p, second[0], second[1], speed)) p.dir = faceOf(second);
+    // Face whatever actually moved. With both moving that is the axis already being faced, so
+    // nothing changes; with one walled it turns you along the wall you are sliding down.
+    if (wentFirst) p.dir = faceOf(first);
+    else if (wentSecond) p.dir = faceOf(second);
     return;
   }
 

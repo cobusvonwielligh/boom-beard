@@ -7,7 +7,7 @@ import { createState, createPlayer, setTile, tileCentre, hashState } from '../sh
 import { step, blocked, speedOf } from '../shared/sim/movement.js';
 import {
   BLOCK, IN_RIGHT, IN_LEFT, IN_DOWN, IN_UP, UNITS_PER_TILE, CORNER_ASSIST_UNITS,
-  SPEED_UNITS_PER_TICK, STATUS, DIR_R, DIR_D, DIR_L, BLOCK_HP,
+  SPEED_UNITS_PER_TICK, STATUS, DIR_R, DIR_D, DIR_L, BLOCK_HP, DIAG_NUM, DIAG_DEN,
 } from '../shared/constants.js';
 import { applyStatus } from '../shared/sim/state.js';
 
@@ -190,14 +190,21 @@ test('a held diagonal slides along whatever is in the way', async t => {
     assert.ok((p.x >> 8) === 4 && (p.y >> 8) === 4, 'left the tile it was boxed into');
   });
 
-  await t.test('a clear diagonal does not stutter between the two axes', () => {
-    // One axis a tick is the rule; what must not happen is alternating every tick, which halves
-    // your speed in both directions and looks like a limp.
+  await t.test('a clear diagonal travels on both axes, at the same pace as a straight line', () => {
+    // Both axes every tick at DIAG_NUM/DIAG_DEN, so the ground covered matches walking straight.
+    // What must not happen is either axis losing ticks to the other, or the pair of them adding
+    // up to more than a straight walk — which would make holding two keys a speed perk.
     const st = room();
     const p = spawn(st, 4, 4);
     p.dir = DIR_R;
-    const x0 = p.x;
-    for (let i = 0; i < 10; i++) step(st, p, IN_RIGHT | IN_DOWN);
-    assert.ok(p.x - x0 >= speedOf(p) * 9, 'the preferred axis lost ticks to the other one');
+    const x0 = p.x, y0 = p.y;
+    const TICKS = 10;
+    for (let i = 0; i < TICKS; i++) step(st, p, IN_RIGHT | IN_DOWN);
+    const pace = Math.max(1, ((speedOf(p) * DIAG_NUM) / DIAG_DEN) | 0);
+    assert.equal(p.x - x0, pace * TICKS, 'the x axis lost ticks to the y axis');
+    assert.equal(p.y - y0, pace * TICKS, 'the y axis lost ticks to the x axis');
+    const travelled = Math.hypot(p.x - x0, p.y - y0);
+    assert.ok(Math.abs(travelled - speedOf(p) * TICKS) < speedOf(p),
+      `a diagonal covered ${travelled | 0} units where a straight line covers ${speedOf(p) * TICKS}`);
   });
 });

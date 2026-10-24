@@ -77,6 +77,7 @@ export function createWorld() {
     p.slideDir = wire.sd ?? p.dir;
     p.slideFor = wire.sf ?? 0;
     p.slideCool = wire.sc ?? 0;
+    p.gulled = !!wire.gl;
     if (wire.name) p.name = wire.name;
     p.rx ??= p.x; p.ry ??= p.y;        // rendered position, smoothed for remotes
     p.trail ??= [];
@@ -294,19 +295,32 @@ export function createWorld() {
         if (Math.abs(dx) > 512 || Math.abs(dy) > 512) {
           teleport(p);                    // p.x is already b.x — hydrate ran before this
         } else {
-          // Movement is axis-locked: step() only ever moves on one axis per tick. So interpolate
-          // along an L rather than along the diagonal — a straight lerp between two snapshots
-          // that turned a corner cuts through the corner block, which is the "players walk
-          // through walls" everyone sees first. Which arm of the L comes first is unknowable
-          // from two samples, so try x-first and fall back to y-first when the x-first elbow is
-          // solid. One of the two is always the path actually taken.
-          const t = (Math.abs(dx) + Math.abs(dy)) * f;
-          const xFirst = !blocked(w, p, b.x, a.y);
-          const [u, v] = xFirst ? [dx, dy] : [dy, dx];
-          const pu = a[xFirst ? 'x' : 'y'] + Math.sign(u) * Math.min(Math.abs(u), t);
-          const pv = a[xFirst ? 'y' : 'x'] + Math.sign(v) * Math.max(0, Math.min(Math.abs(v), t - Math.abs(u)));
-          p.rx = xFirst ? pu : pv;
-          p.ry = xFirst ? pv : pu;
+          /* A straight lerp if the straight line is legal, an L if it is not.
+           *
+           * Movement can now travel on both axes in one tick (see the diagonal block in
+           * sim/movement.js), so between two snapshots a remote player may genuinely have moved
+           * diagonally — and interpolating THAT along an L is the stutter the L was invented to
+           * prevent, just transposed. The old reason for the L has not gone away either: a lerp
+           * across a corner TURN cuts through the corner block, which is the "players walk
+           * through walls" everyone sees first.
+           *
+           * The test tells the two apart with no extra state: is the interpolated point legal?
+           * A real diagonal passes, a corner turn does not. Failing that, the L as before — and
+           * which arm comes first is unknowable from two samples, so x-first, falling back to
+           * y-first when the x-first elbow is solid. One of the two is always the path taken.
+           */
+          const sx = a.x + dx * f, sy = a.y + dy * f;
+          if (dx && dy && !blocked(w, p, sx, sy)) {
+            p.rx = sx; p.ry = sy;
+          } else {
+            const t = (Math.abs(dx) + Math.abs(dy)) * f;
+            const xFirst = !blocked(w, p, b.x, a.y);
+            const [u, v] = xFirst ? [dx, dy] : [dy, dx];
+            const pu = a[xFirst ? 'x' : 'y'] + Math.sign(u) * Math.min(Math.abs(u), t);
+            const pv = a[xFirst ? 'y' : 'x'] + Math.sign(v) * Math.max(0, Math.min(Math.abs(v), t - Math.abs(u)));
+            p.rx = xFirst ? pu : pv;
+            p.ry = xFirst ? pv : pu;
+          }
           // Walking is whether the drawn position is actually changing. The wire has no `moving`
           // flag, and without this every remote player slid around in their standing frame.
           p.moving = Math.abs(dx) + Math.abs(dy) > 2 && f < 1;
