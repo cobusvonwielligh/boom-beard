@@ -3710,6 +3710,8 @@ export function createRenderer(canvas, world) {
     // It saves and restores around its own transform, so the board transform survives the call.
     drawSays(ox, oy, zoom);
 
+    drawRadarRim(ox, oy, dtMs);
+
     /* A vignette that breathes with the music, drawn last so it sits over everything.
      *
      * Two jobs at once, which is why it earns the fill. Flat, it does what every vignette does:
@@ -3748,6 +3750,100 @@ export function createRenderer(canvas, world) {
     } else flash = 0;
 
     if (performance.now() - redrawWindow > 1000) { redrawWindow = performance.now(); redrawsThisSecond = 0; }
+  }
+
+  /* ─── the rim ────────────────────────────────────────────────────────────────
+   *
+   * The island's own border, used as a radar.
+   *
+   * The edge of the playing ground was a line that did nothing. It is the only part of the
+   * screen that is always visible, always in peripheral vision, and never has anything useful
+   * on it — so it carries two things now, and neither one asks you to look at it:
+   *
+   *   HEADING   the side you are moving toward lights up, brightest at the edge you are
+   *             nearest. On a board that does not fit on screen at the zoom floor, that is the
+   *             only cue for "which way is out" that does not involve reading the minimap you
+   *             do not have.
+   *   DAMAGE    it goes red and beats when something takes a shield or takes you. A hit is
+   *             currently told by a flash that is over in a tenth of a second and a card that
+   *             arrives afterwards; this is the part that is still there when you look up.
+   *
+   * Drawn in board pixels, inside the island's own bounds, so it is the ground's edge rather
+   * than a frame round the window.
+   */
+  const RIM_PX = 30;              // how far the glow reaches inward
+  const RIM_ALERT_S = 1.1;        // how long a hit keeps the rim red
+  let rimAlert = 0;               // 1 at the moment of the hit, decaying
+  let rimHead = { x: 0, y: 0 };   // smoothed heading, so the lit side does not snap
+
+  function drawRadarRim(ox, oy, dtMs) {
+    const me = world.me();
+    if (!me) return;
+    const [lx, ly, lw, lh] = landBounds();
+    const x0 = ox + lx * TILE_PX, y0 = oy + ly * TILE_PX;
+    const x1 = ox + (lx + lw + 1) * TILE_PX, y1 = oy + (ly + lh + 1) * TILE_PX;
+    const px = ox + (me.rx / UNITS_PER_TILE) * TILE_PX;
+    const py = oy + (me.ry / UNITS_PER_TILE) * TILE_PX;
+
+    // Heading, eased. The raw facing flips the instant a key does, and a rim that snaps from one
+    // side to the other reads as a fault rather than as a direction.
+    const v = [[1, 0], [0, -1], [-1, 0], [0, 1]][me.dir] ?? [0, 1];
+    const want = me.alive && me.moving ? v : [0, 0];
+    const k = 1 - Math.exp(-dtMs / 220);
+    rimHead.x += (want[0] - rimHead.x) * k;
+    rimHead.y += (want[1] - rimHead.y) * k;
+
+    if (rimAlert > 0) rimAlert = Math.max(0, rimAlert - (dtMs / 1000) / RIM_ALERT_S);
+    // The beat. Fast enough to read as an alarm, slow enough not to strobe.
+    const beat = rimAlert > 0 ? 0.55 + 0.45 * Math.sin(seaT * 17) : 0;
+
+    const span = Math.max(1, Math.max(x1 - x0, y1 - y0));
+    // side: [normal x, normal y, how far the player is from it]
+    const sides = [
+      [-1, 0, px - x0],          // left
+      [0, -1, py - y0],          // top
+      [1, 0, x1 - px],           // right
+      [0, 1, y1 - py],           // bottom
+    ];
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const [nx, ny, dist] of sides) {
+      // Half of it is "am I walking that way", half is "am I near it". Squared, so the near
+      // edge is clearly the one lit rather than all four being lukewarm.
+      const toward = Math.max(0, rimHead.x * nx + rimHead.y * ny);
+      const near = Math.max(0, 1 - dist / span);
+      const w = 0.55 * toward + 0.45 * near * near;
+      const lit = Math.max(w, rimAlert * beat);
+      if (lit <= 0.02) continue;
+
+      const vertical = nx !== 0;
+      const ex = vertical ? (nx < 0 ? x0 : x1) : 0;
+      const ey = vertical ? 0 : (ny < 0 ? y0 : y1);
+      const gx = vertical ? ex - nx * RIM_PX : 0;
+      const gy = vertical ? 0 : ey - ny * RIM_PX;
+      const grad = vertical
+        ? ctx.createLinearGradient(ex, 0, gx, 0)
+        : ctx.createLinearGradient(0, ey, 0, gy);
+      // Gold normally; a hit drags the whole rim to red, all four sides at once, because the
+      // thing being reported is not in a direction.
+      const red = Math.min(1, rimAlert * 1.4);
+      const r = Math.round(237 + (255 - 237) * red);
+      const g = Math.round(194 + (54 - 194) * red);
+      const b = Math.round(78 + (48 - 78) * red);
+      const a = (0.5 * lit) * (0.55 + 0.45 * red);
+      grad.addColorStop(0, `rgba(${r},${g},${b},${a.toFixed(3)})`);
+      grad.addColorStop(0.45, `rgba(${r},${g},${b},${(a * 0.35).toFixed(3)})`);
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      if (vertical) {
+        ctx.fillRect(Math.min(ex, gx), y0, RIM_PX, y1 - y0);
+      } else {
+        ctx.fillRect(x0, Math.min(ey, gy), x1 - x0, RIM_PX);
+      }
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
   }
 
   // One coloured pip per active status, above the head. Statuses are contagious, so knowing at a
@@ -4748,6 +4844,14 @@ export function createRenderer(canvas, world) {
     frame, resize, invalidateAll, invalidateTile, mapChanged, addMelt, gullHit, addSmoke,
     /** Somebody died here: the figure comes apart and blows away. See addDeathDust. */
     addDeathDust,
+    /**
+     * Something just hit you. Turns the island's rim red and beats it for a second.
+     *
+     * Called for a lost shield as well as a death, because the rim is the one place a hit can be
+     * reported that is still saying so when you look up. See drawRadarRim.
+     */
+    alertRim(strength = 1) { rimAlert = Math.max(rimAlert, Math.min(1, strength)); },
+
     /** Hooks for the gulls' sounds, in tiles: `onGullCry(tx, ty)` and `onGullDown(tx, ty)`. */
     onGullCry: null, onGullDown: null,
 

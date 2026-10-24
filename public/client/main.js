@@ -530,6 +530,7 @@ const net = createNet({
             : `${nameOf(e.by)} bombed ${nameOf(e.i)}`,
           { youDied: e.i === world.you, youKilled: e.by === world.you && e.i !== world.you });
           if (e.i === world.you) {
+            renderer?.alertRim(1);
             sfx.play('ownDeath');
             // Deeper and slower than a blast: this is the one moment the music should get out
             // of the way completely and come back as you read the card.
@@ -561,6 +562,7 @@ const net = createNet({
           sfx.playAtUnits('gullmug', e.x, e.y, { theirs: e.i !== world.you });
           killFeed(`${nameOf(e.i)} was mugged by seagulls`, { youDied: e.i === world.you });
           if (e.i === world.you) {
+            renderer?.alertRim(1);
             music.dip(0.7, 1.1);
             renderer?.addFlash(0.6, '240,230,200');   // feathers, not blood
             renderer?.addShake(0.6);
@@ -583,6 +585,20 @@ const net = createNet({
      * The consolation is deliberately not sad. Most rounds are losing rounds for fifteen out of
      * sixteen people, and a sound you hear that often had better not be one you learn to dread.
      */
+    /* The death card gives way immediately.
+     *
+     * Both cards are the same element, and dying held it back for four and a half seconds while
+     * the banner ran (see DEAD_DIALOG_DELAY_TICKS). Die in the last seconds of a round and that
+     * hold outlived the round: the whistle went, the standings were ready, and what was on
+     * screen was still a respawn countdown for a round that no longer existed — counting down
+     * to a button that would do nothing. Dying is over the moment the round is.
+     */
+    diedAtTick = -1;
+    document.body.classList.remove('dead');
+    $('deadBanner').classList.remove('show');
+    $('streak').classList.remove('show');
+    $('respawn').disabled = true;
+
     const won = (m.standings || [])[0]?.i === world.you;
     $('deadTitle').textContent = won ? 'you won the round' : 'round over';
     $('dead').firstElementChild.classList.toggle('won', won);
@@ -899,6 +915,8 @@ let nextHiccupAt = 0;
 // The mascot's reaction to the music: see syncMeter. `kick` decays, `lastBass` is what the
 // rise is measured against.
 let kick = 0, lastBass = 0;
+// Your own shield count last frame; see the rim alert in the loop.
+let lastShields = 0;
 
 /* The server's own vitals, for the owner only.
  *
@@ -1177,6 +1195,17 @@ function frame(now) {
     world.interpolate(net.serverTickNow(), dt);
     renderer.frame(dt);
   }
+
+  /* A shield going is a hit, and nothing on screen said so.
+   *
+   * There is no event for it — the server spends the shield inside the death check and carries
+   * on — but the count is in every snapshot, so watching it is both free and exactly as
+   * authoritative as the shield itself. Only ever downward: picking one up is not a hit. */
+  const mine = world.me();
+  if (mine && mine.alive) {
+    if (lastShields > mine.shields) renderer?.alertRim(0.8);
+    lastShields = mine.shields;
+  } else if (mine) lastShields = mine.shields;
 
   // Five times a second is plenty for a clock, a loadout and a track name, and it keeps a
   // pile of DOM writes out of the frame that has to draw sixteen players.
@@ -1832,6 +1861,12 @@ function medalTally(counts) {
 // A player name has to be held deliberately before this opens. The delay prevents the live
 // scoreboard becoming a minefield of popovers as the pointer crosses it during play.
 const PLAYER_HOVER_DELAY_MS = 2500;
+/* The scoreboard is a different situation to the live list.
+ *
+ * The long delay exists so the side panel does not sprout popovers while the pointer crosses it
+ * mid-fight. Nothing is crossing the Tab board by accident — it is open because somebody opened
+ * it to read it — so there it answers in half a second. */
+const BOARD_HOVER_DELAY_MS = 500;
 let playerHoverTimer = 0;
 let playerHoverTarget = null;
 
@@ -1900,8 +1935,6 @@ function showPlayerHover(target) {
   $('phName').style.color = d.colour;
   $('phBadge').textContent = d.badge;
   $('phRank').textContent = d.rank;
-  $('phRoundScore').textContent = Number.isFinite(d.roundScore) ? d.roundScore.toLocaleString() : d.roundScore;
-  $('phRoundKd').textContent = `${d.roundKills} / ${d.roundDeaths}`;
   $('phXp').textContent = Number(d.xp || 0).toLocaleString();
   $('phLifeKd').textContent = `${d.lifeKills} / ${d.lifeDeaths}`;
   $('phCoins').textContent = Number(d.lifeCoins || 0).toLocaleString();
@@ -1924,10 +1957,31 @@ function schedulePlayerHover(target) {
   if (target === playerHoverTarget) return;
   hidePlayerHover();
   playerHoverTarget = target;
+  const delay = scoresOpen ? BOARD_HOVER_DELAY_MS : PLAYER_HOVER_DELAY_MS;
   playerHoverTimer = setTimeout(() => {
     playerHoverTimer = 0;
-    showPlayerHover(target);
-  }, PLAYER_HOVER_DELAY_MS);
+    showPlayerHover(playerHoverTarget || target);
+  }, delay);
+}
+
+/* The row under the cursor was rebuilt, so point at the new one.
+ *
+ * This is why the card never opened on the Tab board. The scoreboard is rebuilt from scratch
+ * every time the scores broadcast lands — once a second — so the element the hover was waiting
+ * on was detached before the delay was up, `showPlayerHover` found it disconnected and gave up,
+ * and nothing re-fired because the pointer had not moved. Same name, same seat, new element:
+ * follow it. */
+function reanchorPlayerHover() {
+  const old = playerHoverTarget;
+  if (!old || old.isConnected) return;
+  const sel = old.dataset.seat !== undefined
+    ? `.playerHoverTarget[data-seat="${CSS.escape(old.dataset.seat)}"]`
+    : `.playerHoverTarget[data-all-time="${CSS.escape(old.dataset.allTime ?? '')}"]`;
+  const next = document.querySelector(sel);
+  if (!next) return hidePlayerHover();
+  playerHoverTarget = next;
+  // Already open: move it onto the new row rather than making the reader wait again.
+  if ($('playerHover').classList.contains('show')) showPlayerHover(next);
 }
 
 document.addEventListener('pointerover', e => {
@@ -2017,6 +2071,7 @@ function renderScores() {
     best.append(tr);
   }
   $('allTime').style.display = allTime.length ? '' : 'none';
+  reanchorPlayerHover();
 }
 
 function leave() {

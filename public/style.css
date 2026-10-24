@@ -149,10 +149,14 @@
    * falling from the top left. Separately they are invisible; together they stop a flat #11161e
    * rectangle reading as a hole cut in the screen, which is what large unbroken fills do on a
    * dark page. Nothing here costs a request or a decode. */
+  /* The weave on every panel, a fifth more visible than it was — 05/03/0a became 06/04/0c.
+     At the old values it was there in the file and not on the screen: a texture nobody can see
+     is a texture that is not doing its job, which is stopping a large dark panel reading as a
+     flat rectangle. Still well under the type, which is what it has to stay under. */
   --weave:
-    repeating-linear-gradient(45deg, #ffffff05 0 1px, #00000000 1px 4px),
-    repeating-linear-gradient(-45deg, #ffffff03 0 1px, #00000000 1px 5px),
-    radial-gradient(120% 90% at 12% 0%, #ffffff0a, #ffffff00 58%);
+    repeating-linear-gradient(45deg, #ffffff06 0 1px, #00000000 1px 4px),
+    repeating-linear-gradient(-45deg, #ffffff04 0 1px, #00000000 1px 5px),
+    radial-gradient(120% 90% at 12% 0%, #ffffff0c, #ffffff00 58%);
 
   --crown: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 12h12l1-7-3.5 2.5L8 3 4.5 7.5 1 5z'/%3E%3Crect x='2' y='13' width='12' height='2'/%3E%3C/svg%3E");
 
@@ -2732,6 +2736,9 @@ body.dead #rank {
   z-index: 40;
   width: 310px;
   padding: 18px;
+  /* The same corner every other dialog on the site has. It was square, which made it read as a
+     browser tooltip sitting on top of the game rather than as part of it. */
+  border-radius: 16px;
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
