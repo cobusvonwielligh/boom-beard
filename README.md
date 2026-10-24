@@ -12,15 +12,12 @@
 </p>
 
 <p align="center">
-  <b>Sixteen pirates, one island, and a great many bombs.</b> Open the link, pick a name, you are
-  in. No install, no launcher, no account.
-  <br>
-  In the line of <b>Bomberman</b>, <b>Game of Bombs</b> and <b>Crazy Arcade</b>.
+  Inspired by: <b>Bomberman</b>, <b>Game of Bombs</b> and <b>Crazy Arcade</b>.
 </p>
 
 <br>
 
-## <img src="docs/readme/icons/bomb.svg" width="20" align="center"> How it goes
+## <img src="docs/readme/icons/bomb.svg" width="20" align="middle"> How it Works
 
 Ten minutes a round, five islands in rotation. Drop a bomb, get clear, be standing at the whistle.
 
@@ -38,32 +35,32 @@ Fire runs in a cross and stops at walls. It sets off any bomb it touches, and ch
 rounds are decided. Your own fire kills you at exactly the speed everyone else's does. A death
 costs you fifteen seconds, which is long enough to watch how the fight you just left turns out.
 
-## <img src="docs/readme/icons/fire.svg" width="20" align="center"> On the island
+## <img src="docs/readme/icons/fire.svg" width="20" align="middle"> On the island
 
 | | | |
 |---|---|---|
-| <img src="docs/readme/icons/bomb.svg" width="18"> | **Bombs and fire** | A cross, stopped by walls, handed on to any bomb it reaches. |
-| <img src="docs/readme/icons/keg.svg" width="18"> | **Powder kegs** | Rare barrels. Break one and it takes the neighbourhood with it. One a round, at least. |
-| <img src="docs/readme/icons/bolt.svg" width="18"> | **Stamina** | Ten seconds of sprint, then you limp. Stopping to breathe is a real decision. |
-| <img src="docs/readme/icons/boot.svg" width="18"> | **Perks** | More bombs, longer fire, boots, a shield, stim, and rum — which saves you from everything except the tile the bomb was on, and steers like a shopping trolley. |
-| <img src="docs/readme/icons/ice.svg" width="18"> | **Ice** | Melts to a puddle when it is hit. Half pace, and you keep going after you let go. |
-| <img src="docs/readme/icons/coin.svg" width="18"> | **Gold** | The rarest thing on the floor. Worth nothing in the round, worth a lot on the board. |
-| <img src="docs/readme/icons/gull.svg" width="18"> | **Seagulls** | Scenery, until you catch one in a blast — then it pays. Once a round, two of them pick a player and settle it themselves. |
-| <img src="docs/readme/icons/skull.svg" width="18"> | **Kill streaks** | Double, triple, ultra, rampage, and an **ACE** for taking the whole island in one run. |
+| <img src="docs/readme/icons/bomb.svg" width="18" align="middle"> | **Bombs and fire** | A cross, stopped by walls, handed on to any bomb it reaches. |
+| <img src="docs/readme/icons/keg.svg" width="18" align="middle"> | **Powder kegs** | Rare barrels. Break one and it takes the neighbourhood with it. One a round, at least. |
+| <img src="docs/readme/icons/bolt.svg" width="18" align="middle"> | **Stamina** | Ten seconds of sprint, then you limp. Stopping to breathe is a real decision. |
+| <img src="docs/readme/icons/boot.svg" width="18" align="middle"> | **Perks** | More bombs, longer fire, boots, a shield, stim, and rum — which saves you from everything except the tile the bomb was on, and steers like a shopping trolley. |
+| <img src="docs/readme/icons/ice.svg" width="18" align="middle"> | **Ice** | Melts to a puddle when it is hit. Half pace, and you keep going after you let go. |
+| <img src="docs/readme/icons/coin.svg" width="18" align="middle"> | **Gold** | The rarest thing on the floor. Worth nothing in the round, worth a lot on the board. |
+| <img src="docs/readme/icons/gull.svg" width="18" align="middle"> | **Seagulls** | Scenery, until you catch one in a blast — then it pays. Once a round, two of them pick a player and settle it themselves. |
+| <img src="docs/readme/icons/skull.svg" width="18" align="middle"> | **Kill streaks** | Double, triple, ultra, rampage, and an **ACE** for taking the whole island in one run. |
 
-## <img src="docs/readme/icons/medal-gold.svg" width="18" align="center"> Medals
+## <img src="docs/readme/icons/medal-gold.svg" width="18" align="middle"> Medals
 
 A medal is a podium finish. Handed out at the whistle, kept for good.
 
 | | | |
 |---|---|---|
-| <img src="docs/readme/icons/medal-gold.svg" width="22"> | **Gold** | First |
-| <img src="docs/readme/icons/medal-silver.svg" width="22"> | **Silver** | Second |
-| <img src="docs/readme/icons/medal-bronze.svg" width="22"> | **Bronze** | Third |
+| <img src="docs/readme/icons/medal-gold.svg" width="22" align="middle"> | **Gold** | First |
+| <img src="docs/readme/icons/medal-silver.svg" width="22" align="middle"> | **Silver** | Second |
+| <img src="docs/readme/icons/medal-bronze.svg" width="22" align="middle"> | **Bronze** | Third |
 
 Coins are their own thing — picked up off the floor mid-round, counted next to the medals.
 
-## <img src="docs/readme/icons/coin.svg" width="20" align="center"> Score
+## <img src="docs/readme/icons/coin.svg" width="20" align="middle"> Score
 
 Round score resets at the whistle. Lifetime score sits in one small file on the server and feeds
 the all-time board, alongside kills, deaths, medals and coins.
@@ -77,7 +74,7 @@ the all-time board, alongside kills, deaths, medals and coins.
 | Block | +2 |
 | Suicide | &minus;25 |
 
-## <img src="docs/readme/icons/crown.svg" width="20" align="center"> Ranks
+## <img src="docs/readme/icons/crown.svg" width="20" align="middle"> Ranks
 
 Lifetime score is your XP, so anything that scores also levels you. A good hour is about 12,000.
 Level 1 takes a minute. Veteran takes about a hundred hours.
@@ -93,7 +90,7 @@ Level 1 takes a minute. Veteran takes about a hundred hours.
 
 Levels carry on past Veteran. The rank does not.
 
-## <img src="docs/readme/icons/bolt.svg" width="20" align="center"> Run your own island
+## <img src="docs/readme/icons/bolt.svg" width="20" align="middle"> Run your own island
 
 One Node.js server, no database.
 
@@ -132,7 +129,7 @@ itself when they leave.
 
 </details>
 
-## <img src="docs/readme/icons/gh.svg" width="20" align="center"> Under the hood
+## <img src="docs/readme/icons/gh.svg" width="20" align="middle"> Under the hood
 
 - Vanilla JavaScript in the browser, Node.js on the server. No framework, no build step, two
   runtime dependencies.
@@ -152,7 +149,7 @@ itself when they leave.
 | [Architecture](docs/ARCHITECTURE.md) · [Protocol](docs/PROTOCOL.md) | For developers |
 | [Status](docs/STATUS.md) | Built, and next |
 
-## <img src="docs/readme/icons/bug.svg" width="20" align="center"> Credits
+## <img src="docs/readme/icons/bug.svg" width="20" align="middle"> Credits
 
 In the line of **Bomberman**, **Game of Bombs** and **Crazy Arcade**. None of their art is used —
 everything here is original.
