@@ -28,7 +28,7 @@ SKIP_TLS="${SKIP_TLS:-0}"
 EMAIL="${EMAIL:-}"
 # SSH form, because the repo is private. The box authenticates with a read-only deploy key that
 # this script generates; add the printed public key under GitHub > Settings > Deploy keys.
-REPO="${REPO:-git@github.com:cobusvonwielligh/bomb-voyage.git}"
+REPO="${REPO:-git@github.com:cobusvonwielligh/boom-beard.git}"
 [ "$SKIP_TLS" = 1 ] || : "${EMAIL:?set EMAIL for certificate expiry notices}"
 
 APP_DIR=/opt/bomb-voyage
@@ -109,7 +109,7 @@ if [ ! -d "$APP_DIR/.git" ]; then
   else
     GIT_OK=0
     echo "    !! clone failed. Add this public key as a read-only deploy key at"
-    echo "       https://github.com/cobusvonwielligh/bomb-voyage/settings/keys/new"
+    echo "       https://github.com/cobusvonwielligh/boom-beard/settings/keys/new"
     echo
     sed 's/^/       /' "$SSH_DIR/deploy_key.pub"
     echo
