@@ -40,6 +40,18 @@ export function createState(mapDef, seed = mapDef.seed) {
     nextGullId: 1,
     nextGullAt: GULL_FIRST_TICK,
     gullNext: rng(seed ^ 0x6a09e667),
+    /* The gull raid; see GULL_RAID_AT_MIN. `roundTicks` is filled in by the room, because the
+     * simulation does not otherwise know or care how long a round is — with it zero (a test, a
+     * bot bench) there is simply no raid.
+     *
+     * `raidAt` is the tick the birds launch and goes to -1 once they have, `raidStrike` the tick
+     * they cross their victim, and `gulled` is who it was: kept on the state as well as on the
+     * player so the end-of-round table can say so even for somebody who left. */
+    roundTicks: 0,
+    raidAt: 0,
+    raidSeat: -1,
+    raidStrike: 0,
+    gulled: -1,
     events: [],
   };
 }
@@ -86,6 +98,8 @@ export function createPlayer(i, name) {
     slideFor: 0,
     slideCool: 0,
     respawnAt: 0,
+    // Mugged by seagulls this round. Carried on the wire so every scoreboard can say so.
+    gulled: false,
   };
 }
 

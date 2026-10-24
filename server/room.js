@@ -504,7 +504,10 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     between = true;
     const standings = state.players
       .filter(Boolean)
-      .map(p => ({ i: p.i, name: p.name, s: p.score, k: p.kills, d: p.deaths }))
+      // `gl`: the one the gulls picked. The standings are what the round-over table and the
+      // after-game card both read, so the bird follows them onto both without a second path.
+      .map(p => ({ i: p.i, name: p.name, s: p.score, k: p.kills, d: p.deaths,
+        ...(p.gulled ? { gl: 1 } : null) }))
       .sort((a, b) => b.s - a.s || b.k - a.k);
 
     // Survivors are paid BEFORE the banking, not after. The bonus used to be added on the line
@@ -581,6 +584,9 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
       (s ? { ...s, inputs: new Map(), mask: 0, goneSince: 0, lastAckTick: 0, lastInputAt: 0,
              banked: null } : null));
     state = createState(MAPS[mapIndex]);
+    // The only thing the simulation is told about the clock, and only the gull raid reads it:
+    // see GULL_RAID_AT_MIN. Everything else that cares about the end of the round is up here.
+    state.roundTicks = roundTicks + countIn;
     for (let i = 0; i < maxPlayers; i++) {
       seats[i] = carried[i];
       streaks[i] = newStreak();
@@ -624,6 +630,10 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
      * re-launched or cut short every time a snapshot landed mid-slide. */
     ...(p.slideV ? { sv: p.slideV, sd: p.slideDir, sf: p.slideFor } : null),
     ...(p.slideCool ? { sc: p.slideCool } : null),
+    // Mugged by seagulls. One player a round at most, so it is absent for everybody nearly
+    // always — and it has to be in the snapshot, not only in the event, or a client that joined
+    // after the raid would have no idea why the table says what it says.
+    ...(p.gulled ? { gl: 1 } : null),
   });
 
   function emitSnapshot() {
@@ -689,7 +699,14 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
         ...progressFor(lifetime),
       });
     }
-    onBroadcast({ t: 'scores', ranks, host: hostSeat(), top: leaderboard.top(5) });
+    /* `owner` is the seat that owns the server, where one is sitting.
+     *
+     * Not a privilege on the wire — every owner-gated command is checked server-side and always
+     * will be (see isOwner in server/net.js). It is here so the client can show the OWNER the
+     * server's own vitals and show nobody else a number they cannot act on.
+     */
+    const owner = state.players.findIndex((p, i) => p && isAdminSeat(i));
+    onBroadcast({ t: 'scores', ranks, host: hostSeat(), owner, top: leaderboard.top(5) });
   }
 
   const welcomePayloadBase = () => ({
@@ -960,6 +977,9 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     const m = Math.round(Number(minutes) * 10) / 10;
     if (!Number.isFinite(m) || m < ROUNDTIME_MIN_MIN || m > ROUNDTIME_MAX_MIN) return null;
     roundTicks = Math.max(1, Math.round(m * 60 * TICK_HZ));
+    // A shorter round moves the raid with it, unless the birds have already gone.
+    state.roundTicks = roundTicks + countIn;
+    if (state.raidAt > 0) state.raidAt = 0;
     onBroadcast({ t: 'roundtime', endsAtTick: roundTicks, minutes: m });
     return m;
   }
@@ -1010,6 +1030,19 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
 
   const roundInfo = () => ({ tick: state.tick, endsAt: roundTicks, between, map: state.map.id });
 
+  /**
+   * Is this seat the REAL admin — the key-holder, or the configured admin name where no key is
+   * set? Not the same question as `hostSeat`, which falls back to the longest-standing player
+   * so that a room is never without somebody who can add bots.
+   *
+   * The dangerous commands check this one. See `isOwner` in server/net.js.
+   */
+  function isAdminSeat(seat) {
+    const s = seats[seat];
+    if (!s || s.isBot) return false;
+    return !!s.admin || (!!adminName && (s.name ?? '').toLowerCase() === adminName);
+  }
+
   return {
     start, stop, join, disconnect, input, requestRespawn, welcomeFor, roundInfo, stats,
     setBots, botCount, restartRound, toggleGod, logout, hostSeat,
@@ -1020,18 +1053,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     respawn,
     roundMinutes: () => Math.round((roundTicks / TICK_HZ / 60) * 10) / 10,
     isBot: seat => !!seats[seat]?.isBot,
-    /**
-     * Is this seat the REAL admin — the key-holder, or the configured admin name where no key is
-     * set? Not the same question as `hostSeat`, which falls back to the longest-standing player
-     * so that a room is never without somebody who can add bots.
-     *
-     * The dangerous commands check this one. See `isOwner` in server/net.js.
-     */
-    isAdminSeat(seat) {
-      const s = seats[seat];
-      if (!s || s.isBot) return false;
-      return !!s.admin || (!!adminName && (s.name ?? '').toLowerCase() === adminName);
-    },
+    isAdminSeat,
     /** Whether the room is topping bots up by itself right now. See AUTO_BOTS_MIN. */
     get autoBots() { return autoBots; },
     maps: () => MAPS.map(m => m.id),

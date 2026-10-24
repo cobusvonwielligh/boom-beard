@@ -69,6 +69,18 @@ export const ON_RUM = [
   'One for the sea, three for {n}.',
 ];
 
+/* The gull raid, and the bar is high: this is the funniest thing that happens in a round and the
+ * mascot gets exactly one line to be equal to it. Short, deadpan, and never sympathetic. */
+export const ON_GULLED = [
+  'Birds got {n}. Birds. Plural.',
+  '{n}, that was a bird. Just so we are clear.',
+  "I'd avenge you, {n}, but they can fly.",
+  'Death by seagull. Put it on the stone, {n}.',
+  'The sky picked {n}. The sky is undefeated.',
+  '{n} was not killed. {n} was collected.',
+  'Two birds, one {n}.',
+];
+
 export const ON_DEATH = ['Oof.', 'Oof!', 'Oof… that one hurt.'];
 export const ON_SPAWN = ["Let's go!", "Let's go, {n}!", 'Back at it!'];
 
@@ -128,6 +140,7 @@ export function createQuips({ el, nameOf, now = () => performance.now(), random 
       return null;
     },
     died() { return say(ON_DEATH, { force: true }); },
+    gulled() { return say(ON_GULLED, { force: true }); },
     rum() { return say(ON_RUM, { force: true }); },
     spawned() { return say(ON_SPAWN, { force: true }); },
     tick() {

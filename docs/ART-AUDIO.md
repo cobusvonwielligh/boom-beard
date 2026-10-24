@@ -178,6 +178,10 @@ mirror spot, a yellow bill with the red gonys spot.
   down, the wings tuck back. It leans into its weave.
 - **Height** is the shadow, which slides in under the bird and sharpens at the bottom of a dive
   — the only moment it can be hit — plus a size change of about a third.
+- **Depth** is a second height, picked once per bird (`hi`, see `GULL_DEPTH_MIN`) and carried in
+  the snapshot: which layer of sky it is in. It scales size, shadow reach, shadow softness, haze
+  and apparent pace together, and the flock is drawn highest-first so a low bird passes in front
+  of a high one. Presentation only — every gull is equally catchable.
 - **Hit:** a tumble that spins and shrinks to the ground and lands with a ring, fourteen feathers
   thrown out and rocking as they drift, and a gold ring and star where the coin lands.
 - **Sound:** `gull` is the long call — a hoarse sawtooth through a nasal and a body resonance,

@@ -28,6 +28,7 @@ const MAX_PER_FRAME = {
   // A keg is loud enough that two at once is already a wall. Chat and pickups are one a frame
   // because more than one is never information.
   kegboom: 2, chat: 1, mention: 1, glug: 1, hiccup: 1, ready: 1, gull: 1, gullhit: 1,
+  gullraid: 1, gullmug: 1,
 };
 const DEFAULT_MAX_PER_FRAME = 4;
 
@@ -941,6 +942,98 @@ export function createSfx({ listener }) {
         b.connect(bg);
         b.start(at); b.stop(at + 0.6);
       }
+    },
+
+    /**
+     * Two gulls committing to a run: the warning, about a second before it lands.
+     *
+     * Ordinary gull calls, but stacked, fast and RISING — the same voice as the scenery bird so
+     * the ear knows what is coming, played in a way no scenery bird ever does. That is the whole
+     * trick: it is not a new sound to learn, it is a familiar one behaving wrong.
+     */
+    gullraid(c, out, t, level = 1) {
+      for (const [i, rel] of [1, 1.12, 1.26, 1.44].entries()) {
+        const at = t + i * 0.1;
+        const g = voiceGain(c, out, at, { a: 0.012, d: 0.16, peak: 0.1 * level, send: 0.34 });
+        const o = c.createOscillator();
+        o.type = 'sawtooth';
+        const f0 = 900 * rel;
+        o.frequency.setValueAtTime(f0 * 0.8, at);
+        o.frequency.exponentialRampToValueAtTime(f0 * 1.3, at + 0.07);
+        o.frequency.exponentialRampToValueAtTime(f0 * 0.95, at + 0.16);
+        const wob = c.createOscillator();
+        const depth = c.createGain();
+        wob.frequency.value = jit(44, 0.1);
+        depth.gain.value = 40;
+        wob.connect(depth); depth.connect(o.frequency);
+        const nasal = c.createBiquadFilter();
+        nasal.type = 'bandpass'; nasal.frequency.value = 1900; nasal.Q.value = 3;
+        o.connect(nasal); nasal.connect(g);
+        o.start(at); o.stop(at + 0.2);
+        wob.start(at); wob.stop(at + 0.2);
+      }
+    },
+
+    /**
+     * The mugging itself, and it is meant to be funny.
+     *
+     * Four parts, in the order the joke needs them: a flurry of wingbeats, one indignant squawk
+     * cut off mid-note, a slide whistle going down because that is the law, and a flat little
+     * splat at the bottom. Nothing here is frightening on purpose — the round just lost somebody
+     * to birds, and the sound has to agree that this is ridiculous.
+     */
+    gullmug(c, out, t, level = 1) {
+      // Wingbeats: filtered noise bursts, speeding up.
+      for (let i = 0; i < 5; i++) {
+        const at = t + i * (0.075 - i * 0.006);
+        const g = voiceGain(c, out, at, { a: 0.006, d: 0.07, peak: 0.075 * level });
+        const n = noiseSource();
+        const bp = c.createBiquadFilter();
+        bp.type = 'bandpass'; bp.frequency.value = jit(420, 0.12); bp.Q.value = 1.1;
+        n.connect(bp); bp.connect(g);
+        n.start(at); n.stop(at + 0.09);
+      }
+      // The squawk, strangled.
+      const sq = t + 0.12;
+      const g = voiceGain(c, out, sq, { a: 0.004, d: 0.2, peak: 0.19 * level, send: 0.25 });
+      const o = c.createOscillator();
+      o.type = 'sawtooth';
+      o.frequency.setValueAtTime(jit(1250, 0.06), sq);
+      o.frequency.exponentialRampToValueAtTime(jit(1850, 0.06), sq + 0.05);
+      o.frequency.exponentialRampToValueAtTime(jit(540, 0.06), sq + 0.2);
+      const nasal = c.createBiquadFilter();
+      nasal.type = 'bandpass'; nasal.frequency.value = 1750; nasal.Q.value = 2.4;
+      o.connect(nasal); nasal.connect(g);
+      o.start(sq); o.stop(sq + 0.24);
+      // The slide whistle. A sine down two octaves with a breathy top, which is the cartoon.
+      const sw = t + 0.3;
+      const wg = voiceGain(c, out, sw, { a: 0.02, d: 0.42, peak: 0.13 * level, send: 0.3 });
+      const w = c.createOscillator();
+      w.type = 'sine';
+      w.frequency.setValueAtTime(1500, sw);
+      w.frequency.exponentialRampToValueAtTime(330, sw + 0.4);
+      const vib = c.createOscillator();
+      const vd = c.createGain();
+      vib.frequency.value = 6.5; vd.gain.value = 22;
+      vib.connect(vd); vd.connect(w.frequency);
+      w.connect(wg);
+      w.start(sw); w.stop(sw + 0.45);
+      vib.start(sw); vib.stop(sw + 0.45);
+      // Splat.
+      const sp = t + 0.72;
+      const pg = voiceGain(c, out, sp, { a: 0.001, d: 0.12, peak: 0.16 * level });
+      const thud = c.createOscillator();
+      thud.type = 'triangle';
+      thud.frequency.setValueAtTime(190, sp);
+      thud.frequency.exponentialRampToValueAtTime(58, sp + 0.11);
+      thud.connect(pg);
+      thud.start(sp); thud.stop(sp + 0.14);
+      const dust = voiceGain(c, out, sp, { a: 0.002, d: 0.22, peak: 0.07 * level });
+      const dn = noiseSource();
+      const lp = c.createBiquadFilter();
+      lp.type = 'lowpass'; lp.frequency.value = 900;
+      dn.connect(lp); lp.connect(dust);
+      dn.start(sp); dn.stop(sp + 0.26);
     },
 
     /** You, drunk. A small involuntary noise, occasionally, while the rum is on you. */

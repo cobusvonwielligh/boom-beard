@@ -5,10 +5,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   GULL_FIRST_TICK, GULL_MAX, GULL_LOW_ALT, GULL_COINS, FIRE_TICKS, PERK, AUTO_BOTS_MIN,
-  UNITS_PER_TILE, SCORE,
+  UNITS_PER_TILE, SCORE, BLOCK, GULL_RAID_AT_MIN, GULL_RAID_AT_MAX,
 } from '../shared/constants.js';
 import { MAPS } from '../shared/maps.js';
-import { createState, createPlayer } from '../shared/sim/state.js';
+import { createState, createPlayer, tileAt, tileCentre } from '../shared/sim/state.js';
 import { gulls, gullAt, gullAltitude } from '../shared/sim/gulls.js';
 import { rng } from '../shared/util/rng.js';
 import { createRoom } from '../server/room.js';
@@ -133,6 +133,75 @@ test('height is no longer a defence, but embers and bots are not shots', () => {
     kind: 'core', rot: 0, until: t + FIRE_TICKS, owner: 5 }];
   gulls(s);
   assert.equal(s.gulls.length, 0, 'a cruising gull survived a live blast under it');
+});
+
+// ─── the raid ─────────────────────────────────────────────────────────────────
+
+/** A round's worth of gull ticks, with one person and one bot standing on floor. */
+function raidRound({ person = true } = {}) {
+  const s = fresh();
+  s.roundTicks = 60 * 30;
+  let at = null;
+  for (let ty = 1; ty < s.map.h - 1 && !at; ty++) {
+    for (let tx = 1; tx < s.map.w - 1; tx++) {
+      if (tileAt(s.map, tx, ty) === BLOCK.FLOOR) { at = { tx, ty }; break; }
+    }
+  }
+  const stand = (i, name, isBot) => {
+    const p = createPlayer(i, name);
+    p.alive = true; p.shields = 2;
+    p.x = tileCentre(at.tx); p.y = tileCentre(at.ty);
+    if (isBot) p.isBot = true;
+    s.players[i] = p;
+    return p;
+  };
+  const p = person ? stand(1, 'cobus', false) : null;
+  const bot = stand(2, 'Charles', true);
+
+  const raids = [], kills = [];
+  for (s.tick = 0; s.tick < s.roundTicks; s.tick++) {
+    s.events.length = 0;
+    gulls(s);
+    for (const e of s.events) {
+      if (e.e === 'gullraid') raids.push({ tick: s.tick, seat: e.seat });
+      if (e.e === 'gullkill') kills.push({ tick: s.tick, seat: e.i });
+    }
+    // Back on their feet, so a second raid in the same round would have somebody to take.
+    for (const q of [p, bot]) if (q && !q.alive && s.tick >= q.respawnAt) q.alive = true;
+  }
+  return { s, p, bot, raids, kills };
+}
+
+test('once a round, two gulls take a real person and kill them', () => {
+  const { s, p, bot, raids, kills } = raidRound();
+  assert.equal(raids.length, 1, `the raid fired ${raids.length} times in one round`);
+  assert.equal(kills.length, 1);
+  assert.equal(raids[0].seat, p.i, 'the gulls went for the bot');
+  assert.equal(bot.gulled, false, 'a bot was mugged by seagulls, which is nobody\'s story');
+
+  const when = raids[0].tick / s.roundTicks;
+  assert.ok(when >= GULL_RAID_AT_MIN && when <= GULL_RAID_AT_MAX,
+    `the raid landed at ${(when * 100).toFixed(1)}% of the round`);
+  assert.ok(kills[0].tick > raids[0].tick, 'the kill landed with no warning at all');
+  assert.equal(p.gulled, true, 'the scoreboard will not know who it was');
+  assert.equal(s.gulled, p.i);
+  assert.equal(p.shields, 0, 'a shield saved them from a bird');
+  assert.equal(p.deaths, 1);
+});
+
+test('two gulls, crossing, and no shot credited to anybody', () => {
+  const { raids, kills } = raidRound();
+  assert.equal(kills[0].seat, raids[0].seat);
+  // The kill event carries no `by`: this one is nobody's, which is what makes it funny rather
+  // than a thing to be annoyed at somebody about.
+  assert.equal(Object.hasOwn(kills[0], 'by'), false);
+});
+
+test('a room of nothing but bots is never raided', () => {
+  const { raids, kills, bot } = raidRound({ person: false });
+  assert.equal(raids.length, 0, 'the gulls raided a bot');
+  assert.equal(kills.length, 0);
+  assert.equal(bot.gulled, false);
 });
 
 // ─── bots ─────────────────────────────────────────────────────────────────────
