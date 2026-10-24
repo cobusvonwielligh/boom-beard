@@ -8,6 +8,7 @@ import {
   IN_BOMB, SCORE, STATUS, HITBOX_UNITS,
   HITBOX_REDUCED_UNITS, START_BOMBS, START_RADIUS, RESPAWN_DELAY_TICKS,
   FIRE_TICKS, FIRE_LETHAL_TICKS, SHIELD_GRACE_TICKS,
+  HITBOX_FIRE_NUM, HITBOX_FIRE_DEN,
 } from '../constants.js';
 import { expireStatuses, has, toTile } from './state.js';
 import { stepAll } from './movement.js';
@@ -85,7 +86,9 @@ function killInFire(state) {
     if (!p || !p.alive) continue;
     if (has(p, STATUS.INVULN)) continue;
 
-    const half = (has(p, STATUS.REDUCTION) ? HITBOX_REDUCED_UNITS : HITBOX_UNITS) >> 1;
+    // The lethal box is smaller than the sprite. See HITBOX_FIRE_NUM.
+    const box = has(p, STATUS.REDUCTION) ? HITBOX_REDUCED_UNITS : HITBOX_UNITS;
+    const half = ((box * HITBOX_FIRE_NUM / HITBOX_FIRE_DEN) | 0) >> 1;
     // Drunk: only the tile the bomb itself was on. Everything else in the blast is survivable.
     const lethal = has(p, STATUS.DRUNK) ? cores : fresh;
     if (!lethal.length || !burns(lethal, p.x, p.y, half)) continue;

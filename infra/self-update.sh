@@ -19,11 +19,16 @@ cd "$APP"
 exec >>"$DATA/self-update.log" 2>&1
 echo "=== $(date -Is) self-update ==="
 
-git fetch --quiet origin main
+git fetch --quiet --tags origin main   # tags too: .version below is `git describe --tags`
 BEFORE=$(git rev-parse --short HEAD)
 git reset --hard --quiet origin/main
 AFTER=$(git rev-parse --short HEAD)
 echo "$BEFORE -> $AFTER"
+
+# Stamp the release on disk, same string infra/deploy.sh writes. /version reads the tag out of
+# this, so without it a self-updated box reports the stale number in package.json.
+git describe --tags --always 2>/dev/null > .version || git rev-parse --short HEAD > .version
+echo "version $(cat .version)"
 
 if [ "$BEFORE" != "$AFTER" ] || [ ! -d node_modules ]; then
   npm ci --omit=dev --silent

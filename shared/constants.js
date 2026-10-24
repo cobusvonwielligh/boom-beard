@@ -70,6 +70,13 @@ export const SLOWDOWN_NUM = 1, SLOWDOWN_DEN = 2; // speed * 1/2, integer divisio
 export const HITBOX_UNITS = 20 * (UNITS_PER_TILE / TILE_PX); // 20 px → 160 units
 export const HITBOX_REDUCED_UNITS = 10 * (UNITS_PER_TILE / TILE_PX);
 
+// Fire forgives a sliver of the sprite. The hitboxes above are what geometry collides with; fire
+// kills on this fraction of them, so a player tucked behind a wall with two or three pixels of
+// shoulder past its edge lives. Without the grace the lethal box reached exactly as far as the
+// sprite, and the most careful hiding spot on the map was decided by one pixel of alignment.
+// 7/10 of 160 units is 112 — three pixels of mercy on each side. TUNE
+export const HITBOX_FIRE_NUM = 7, HITBOX_FIRE_DEN = 10;
+
 // Slide toward a tile centre instead of stopping when the perpendicular offset is within this.
 // This is what makes movement feel like Bomberman rather than like a grid. Do not remove.
 // Widened from 0.375 to 0.44 of a tile after playtesting: at the old window you could be visibly

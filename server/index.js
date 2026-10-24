@@ -284,10 +284,20 @@ function range416(res, size) {
   res.end('range not satisfiable');
 }
 
-/** The semantic version, read once out of package.json. `npm run tag` is what moves it. */
+/**
+ * The semantic version, taken from the release tag the running code was built from.
+ *
+ * The tag is the truth, not package.json: package.json goes stale the moment anyone tags without
+ * `npm version`, and it did — it said 1.0.0 while v1.0.2 was live. `.version` is stamped from
+ * `git describe --tags` on every deploy (infra/deploy.sh and infra/self-update.sh), so the
+ * leading `v1.0.2` of `v1.0.2-1-g0aa8364` is the release actually on disk. package.json is the
+ * fallback for a plain `node server/index.js` in a tree nobody has deployed.
+ */
 let cachedPkg;
 function pkgVersion() {
   if (cachedPkg !== undefined) return cachedPkg;
+  cachedPkg = /^v?(\d+\.\d+\.\d+)/.exec(version() || '')?.[1] || null;
+  if (cachedPkg) return cachedPkg;
   try {
     cachedPkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8')).version || null;
   } catch { cachedPkg = null; }
