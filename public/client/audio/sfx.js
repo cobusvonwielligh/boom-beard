@@ -29,6 +29,9 @@ const MAX_PER_FRAME = {
   // because more than one is never information.
   kegboom: 2, chat: 1, mention: 1, glug: 1, hiccup: 1, ready: 1, gull: 1, gullhit: 1,
   gullraid: 1, gullmug: 1,
+  // Two placements a frame. Four people bombing on the same tick is four of these, and past two
+  // they stop being distinguishable and start being a thud; see `place`.
+  place: 2,
 };
 const DEFAULT_MAX_PER_FRAME = 4;
 
@@ -107,15 +110,26 @@ export function createSfx({ listener }) {
     const dx = tx - me.tx, dy = ty - me.ty;
     const d = Math.sqrt(dx * dx + dy * dy);
     if (d > SFX_MAX_DISTANCE_TILES) return null;
+    /* Half again as much of everything that says "over there", on request.
+     *
+     * All three cues move together, because they are one perception: a sound that is panned
+     * further but just as loud reads as a mixing error, not as distance. The spread is 1.5x,
+     * the rolloff takes 1.5x as much level by the edge of earshot, and the lowpass closes 1.5x
+     * further. The only one with a hard limit is level — it bottoms out at a tenth rather than
+     * going silent, because a bomb you cannot hear at all is information lost, and information
+     * is what this whole mix is for.
+     */
+    const SPREAD = 1.5;
+    const k = d / SFX_MAX_DISTANCE_TILES;
     return {
       // Three times the spread for the sounds whose whole job is direction. Everything else keeps
       // the gentle version: a map where every footstep is hard left or hard right is a headache.
-      pan: Math.max(-1, Math.min(1, (dx / SFX_MAX_DISTANCE_TILES) * (wide ? 3 : 1))),
+      pan: Math.max(-1, Math.min(1, (dx / SFX_MAX_DISTANCE_TILES) * SPREAD * (wide ? 3 : 1))),
       // Linear rolloff, not inverse-square. Inverse-square is physically right and sounds wrong
       // here, because a bomb four tiles away matters nearly as much as one at your feet.
-      level: 1 - 0.75 * (d / SFX_MAX_DISTANCE_TILES),
+      level: Math.max(0.1, 1 - 0.75 * SPREAD * k),
       // Far-away sounds also lose their top end, which is what actually reads as distance.
-      cutoff: 2000 + 14000 * (1 - d / SFX_MAX_DISTANCE_TILES),
+      cutoff: Math.max(900, 2000 + 14000 * (1 - k * SPREAD)),
     };
   }
 
@@ -173,14 +187,50 @@ export function createSfx({ listener }) {
 
   const VOICES = {
     /** Short square blip. The sound you hear most, so it stays deliberately out of the way. */
+    /**
+     * Setting a bomb down and lighting it. Three parts in 200 ms, and it is the sound you hear
+     * more than any other in the game, so it has to stay sweet at the hundredth time of asking.
+     *
+     *   the set-down  a soft low triangle, the keg touching sand. Weight, not a click.
+     *   the strike    a short band-passed noise burst sweeping up — a match catching. This is
+     *                 the part that says "lit", and it is the quietest of the three: hiss is
+     *                 what the ear finds abrasive, so there is just enough to read as a fuse.
+     *   the spark     two tiny sine blips a fourth apart, rising. The sweetness, and the reason
+     *                 the sound reads as "armed" rather than as "dropped".
+     *
+     * Every pitch is jittered, which is what keeps a handful of bombs from stacking into one
+     * loud phase-locked thud: four at once should sound like four, not like a mistake. The
+     * per-frame cap in MAX_PER_FRAME is the other half of that.
+     */
     place(c, out, t, level) {
-      const g = voiceGain(c, out, t, { a: 0.002, d: 0.06, peak: 0.13 * level });
+      const g = voiceGain(c, out, t, { a: 0.002, d: 0.07, peak: 0.1 * level });
       const o = c.createOscillator();
-      o.type = 'square';
-      o.frequency.setValueAtTime(jit(220, 0.04), t);
-      o.frequency.exponentialRampToValueAtTime(jit(180, 0.04), t + 0.06);
+      o.type = 'triangle';
+      o.frequency.setValueAtTime(jit(164, 0.05), t);
+      o.frequency.exponentialRampToValueAtTime(jit(104, 0.05), t + 0.07);
       o.connect(g);
       o.start(t); o.stop(t + 0.1);
+
+      const hs = t + 0.015;
+      const hg = voiceGain(c, out, hs, { a: 0.004, d: 0.1, peak: 0.045 * level, send: 0.2 });
+      const n = noiseSource();
+      const bp = c.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.Q.value = 1.6;
+      bp.frequency.setValueAtTime(jit(2600, 0.08), hs);
+      bp.frequency.exponentialRampToValueAtTime(jit(5200, 0.08), hs + 0.1);
+      n.connect(bp); bp.connect(hg);
+      n.start(hs); n.stop(hs + 0.13);
+
+      for (const [i, f] of [1397, 1865].entries()) {       // F6, A#6
+        const at = t + 0.05 + i * 0.045;
+        const sg = voiceGain(c, out, at, { a: 0.003, d: 0.055, peak: 0.05 * level, send: 0.25 });
+        const s = c.createOscillator();
+        s.type = 'sine';
+        s.frequency.value = jit(f, 0.02);
+        s.connect(sg);
+        s.start(at); s.stop(at + 0.09);
+      }
     },
 
     /**

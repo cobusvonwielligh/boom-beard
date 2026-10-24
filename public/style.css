@@ -2379,21 +2379,39 @@ body.dead #rank {
 #deadBanner.show {
   animation: deadIn 4.4s ease-out forwards;
 }
+/* The dim is INSTANT, and the pop belongs to the type.
+ *
+ * The backdrop and the lettering used to share one animation, which faded the whole element in
+ * from nothing over the first 5% of 4.4 s. Two hundred milliseconds is not long, and it was
+ * exactly the two hundred milliseconds in which you are trying to work out what just killed
+ * you: the board stayed bright and legible for a beat after you died, and the card arrived
+ * afterwards, so dying read as two events. The dark now lands on the same frame as the death.
+ *
+ * The scale-down punch moved to #deadBanner .big — it is a typographic effect, and on the
+ * backdrop it was also scaling a dim rectangle 50% past the edges of the board. */
 @keyframes deadIn {
-  0% {
-    opacity: 0;
-    transform: scale(1.5);
-  }
-  5% {
-    opacity: 1;
-    transform: scale(1);
-  }
+  0%,
   90% {
     opacity: 1;
-    transform: scale(0.98);
   }
   100% {
     opacity: 0;
+  }
+}
+#deadBanner.show .big {
+  animation: deadPunch 4.4s ease-out forwards;
+}
+@keyframes deadPunch {
+  0% {
+    transform: scale(1.5);
+  }
+  5% {
+    transform: scale(1);
+  }
+  90% {
+    transform: scale(0.98);
+  }
+  100% {
     transform: scale(0.96);
   }
 }
@@ -3606,12 +3624,15 @@ body.intermission #dead {
      Width gives the control descriptions room; tighter vertical rhythm removes dead air without
      shrinking the readable type or the hit targets. */
   width: min(690px, calc(100vw - 32px));
-  /* Taller than it was, and the top padding is not a taste decision: the title is lifted half
-     its own height out of the card (see #titleWrap), so the card has to keep that much plus a
-     breath of its own, or the lower half of the lettering lands on the slogan. The bottom grew
-     by the same breath, because a card with a deep top and a tight bottom looks like it is
-     sliding off the screen. */
-  padding: calc(var(--titleBase) * var(--titleScale) * 0.5 + 22px) 48px 30px;
+  /* The top padding is not a taste decision: the title is lifted half its own height out of the
+     card (see #titleWrap), so the card has to keep that much plus a breath of its own, or the
+     lower half of the lettering lands on the slogan. The breath is 10px rather than the 22 it
+     was first drawn with — the card came out taller than it needed to be once the title was
+     overlapping rather than sitting inside it.
+
+     No `overflow` here, deliberately: the title hangs half out of the top of this box, and any
+     overflow value other than visible would clip it off or hand the card a scrollbar. */
+  padding: calc(var(--titleBase) * var(--titleScale) * 0.5 + 10px) 48px 22px;
 }
 
 /* The kegs, standing on the top edge of the card.
