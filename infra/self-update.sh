@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Pull the latest main and restart. Triggered by POST /deploy. Runs detached from the request
-# that started it, because it restarts that process. Requires /opt/bomb-voyage to be a git clone.
+# that started it, because it restarts that process. Requires /opt/boom-beard to be a git clone.
 
 set -euo pipefail
 
-APP=/opt/bomb-voyage
-DATA=/var/lib/bomb-voyage
+APP=/opt/boom-beard
+DATA=/var/lib/boom-beard
 
 # This script is spawned by the server, so it inherits the unit's sandbox — and the unit sets
 # ProtectHome=true. /home is therefore invisible: ssh cannot read ~/.ssh and npm cannot write

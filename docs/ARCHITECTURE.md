@@ -89,7 +89,7 @@ public/
     audio/*.mp3                theme, drift, suspend, undertow — named after their slots
 
 infra/
-  bootstrap.sh deploy.sh rollback.sh logs.sh bomb-voyage.service
+  bootstrap.sh deploy.sh rollback.sh logs.sh boom-beard.service
 
 test/                          23 files, 201 tests, node --test
 ```

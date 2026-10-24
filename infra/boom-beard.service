@@ -6,8 +6,8 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=ec2-user
-WorkingDirectory=/opt/bomb-voyage
-# All configuration lives in /opt/bomb-voyage/config.ini, which is gitignored and never rsynced.
+WorkingDirectory=/opt/boom-beard
+# All configuration lives in /opt/boom-beard/config.ini, which is gitignored and never rsynced.
 ExecStart=/usr/bin/node server/index.js
 Restart=always
 RestartSec=2
@@ -28,11 +28,11 @@ ProtectKernelModules=true
 ProtectControlGroups=true
 RestrictSUIDSGID=true
 LockPersonality=true
-ReadWritePaths=/var/lib/bomb-voyage /opt/bomb-voyage
+ReadWritePaths=/var/lib/boom-beard /opt/boom-beard
 
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=bomb-voyage
+SyslogIdentifier=boom-beard
 
 [Install]
 WantedBy=multi-user.target

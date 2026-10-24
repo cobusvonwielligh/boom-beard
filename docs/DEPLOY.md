@@ -17,10 +17,10 @@ Two requirements shape all of this:
 ```
                     ┌──────────────────────────────────┐
   browser ──443──►  │ EC2 t3.micro · af-south-1        │
-   wss://           │  systemd: bomb-voyage.service    │
+   wss://           │  systemd: boom-beard.service    │
    https://         │   node server/index.js           │
                     │   :443 HTTPS + WSS  :80 redirect │
-                    │  /var/lib/bomb-voyage/           │
+                    │  /var/lib/boom-beard/           │
                     │    certs/ · leaderboard.json     │
                     └──────────────────────────────────┘
 ```
@@ -102,7 +102,7 @@ ssh -i ~/Downloads/bombs-away.pem ec2-user@15.240.88.189 \
 ```
 
 `bootstrap.sh` is idempotent — re-run it any time. It installs Node, creates
-`/opt/bomb-voyage` and `/var/lib/bomb-voyage`, issues the certificate, installs a deploy hook
+`/opt/boom-beard` and `/var/lib/boom-beard`, issues the certificate, installs a deploy hook
 that copies the cert somewhere the unprivileged service can read it, and arms a weekly renewal
 timer for 03:00 Sunday.
 
@@ -122,7 +122,7 @@ rounds.
 
 All settings and secrets live in **`config.ini`**, which is gitignored and never rsynced, so a
 deploy can never clobber it and a secret can never reach GitHub. `config.example.ini` is the
-committed template. On the server the real file is `/opt/bomb-voyage/config.ini`, written by
+committed template. On the server the real file is `/opt/boom-beard/config.ini`, written by
 `bootstrap.sh`.
 
 Precedence is **environment variable > `config.ini` > built-in default**, so a one-off like
@@ -260,8 +260,8 @@ bounces. `/healthz` and `/deploy` are exempt from the bounce, because the deploy
 | TLS | Let's Encrypt on the box | ACM certificate on an ALB; the app drops to plain HTTP by unsetting `TLS_CERT` |
 | Hostname | `15.240.88.189.sslip.io` | `game.<eezi domain>` in Route 53 |
 | Access | Public internet | VPC + VPN or an internal ALB — **then IT does not need to unblock anything at all** |
-| Data | `/var/lib/bomb-voyage/` | EFS mount, same path |
-| Config | `/etc/bomb-voyage.env` | Task definition env or SSM Parameter Store |
+| Data | `/var/lib/boom-beard/` | EFS mount, same path |
+| Config | `/etc/boom-beard.env` | Task definition env or SSM Parameter Store |
 
 Three properties make this a config change rather than a project:
 
@@ -276,7 +276,7 @@ when it happens and nothing today gets easier by guessing now.
 
 ## 9. Operations
 
-**Logs.** `sudo journalctl -u bomb-voyage -f`, or `--since 1h` to debug a Friday session.
+**Logs.** `sudo journalctl -u boom-beard -f`, or `--since 1h` to debug a Friday session.
 systemd rotates them. No log shipping.
 
 **Health.** `https://<host>/healthz` → `{ ok, players, maxPlayers, lag, uptimeS }`. Check it by
@@ -289,7 +289,7 @@ seconds and a reboot comes back unattended. On SIGTERM the server closes sockets
 is ever lost, everyone's lifetime score resets and we live.
 
 **Certificates.** Renewed by `certbot-renew.timer` at 03:00 Sunday. The deploy hook copies the
-new pair into `/var/lib/bomb-voyage/certs` and restarts the service. Check with
+new pair into `/var/lib/boom-beard/certs` and restarts the service. Check with
 `systemctl list-timers certbot-renew`.
 
 ---
@@ -314,14 +314,14 @@ Free for a year, about $12/month after.
 |---|---|
 | **CI deploy returns 404** | Wrong `DEPLOY_TOKEN`, or `config.ini` on the server has no `[deploy] token`. The endpoint answers 404 to anything it does not like, on purpose. |
 | **CI deploy returns 429** | Two deploys within 10 s. The workflow `concurrency` group should prevent it; check for a manual `curl`. |
-| **Deploy accepted but version never changes** | `sudo journalctl -u bomb-voyage` plus `/var/lib/bomb-voyage/self-update.log`. Usually the deploy key cannot fetch — re-run `bootstrap.sh`. |
+| **Deploy accepted but version never changes** | `sudo journalctl -u boom-beard` plus `/var/lib/boom-beard/self-update.log`. Usually the deploy key cannot fetch — re-run `bootstrap.sh`. |
 | **Nobody has host commands, including you** | Your browser has no admin key yet, or an old one. Open `https://<host>/?admin=<key>` once; the key is `[admin] key` in the server's `config.ini`. |
-| **Server came up on 8080 without TLS** | `config.ini` is missing or has blank `tls_cert`. The service reads only that file now; `/etc/bomb-voyage.env` is no longer used. |
+| **Server came up on 8080 without TLS** | `config.ini` is missing or has blank `tls_cert`. The service reads only that file now; `/etc/boom-beard.env` is no longer used. |
 | **No music in the browser** | Autoplay is blocked until a gesture. The page arms a one-shot click/keypress listener; if it still fails, check the console for an AudioContext error. |
 | **All ports time out** (22, 80, 443) | Security group does not have the rule, *or* the Elastic IP is not associated with a running instance. A timeout means the packet was dropped; a *refused* would mean it arrived and nothing was listening. |
 | Port 22 times out, 443 works | SSH rule source is a different IP than yours now. EC2 → Security Groups → Edit inbound → set **My IP** again. Do not reopen 22 to `0.0.0.0/0`. |
 | `certbot` fails with a connection error | Port 80 not open, or DNS not yet pointing at the box. `dig +short <host>` must return the Elastic IP. |
-| Service dies on start | `journalctl -u bomb-voyage -n 50`. Usually a cert path or a port permission — check `AmbientCapabilities` survived in the unit file. |
+| Service dies on start | `journalctl -u boom-beard -n 50`. Usually a cert path or a port permission — check `AmbientCapabilities` survived in the unit file. |
 | Page loads, WebSocket does not | Mixed content (page on https, socket on ws). The client derives the scheme from `location.protocol`; if you hardcoded one, that is the bug. |
 
 ---
@@ -333,7 +333,7 @@ What stands between the internet and the box, checked end to end on 2026-10-24 f
 | Layer | What it does |
 |---|---|
 | **Security group** | 443 and 80 to the world, 22 to one address. sshd logged no attempt from anywhere else in the three days checked. |
-| **sshd** | Keys only, no root login, no X11, three tries per connection — `/etc/ssh/sshd_config.d/00-bomb-voyage.conf`, written by `bootstrap.sh`. |
+| **sshd** | Keys only, no root login, no X11, three tries per connection — `/etc/ssh/sshd_config.d/00-boom-beard.conf`, written by `bootstrap.sh`. |
 | **The service** | Runs as `ec2-user` with `NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome` and a private `/tmp`. `ec2-user` can sudo anything, so `NoNewPrivileges` is the line that keeps a hole in the game from becoming root. |
 | **HTTP** | Per-address token bucket (40/s, burst 200) on both listeners; headers must arrive within 10 s; `GET /%`-style junk is a 404, never an exception. CSP `default-src 'self'`, `frame-ancestors 'none'`, HSTS, `nosniff`. |
 | **Sockets** | WebSocket *and* WebTransport share the per-address limits: 90 connects a minute (burst 40), 64 open at once, 120 messages a second per socket, 4 KB per message. A socket that keeps flooding is closed. |

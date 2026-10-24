@@ -369,7 +369,7 @@ if (usingTls) {
 }
 
 server.listen(config.port, () => {
-  console.log(`bomb-voyage listening on ${usingTls ? 'https' : 'http'}://${config.publicHost}:${config.port}`);
+  console.log(`boom-beard listening on ${usingTls ? 'https' : 'http'}://${config.publicHost}:${config.port}`);
   console.log(`config: ${config.iniPath || 'defaults + environment only'}`);
   if (config.lag) console.log(`LAG SHIM ACTIVE: ${config.lag}ms +/-${config.jitter}ms`);
   if (config.deployToken) console.log('self-update webhook enabled at POST /deploy');

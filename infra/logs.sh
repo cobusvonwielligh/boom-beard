@@ -13,4 +13,4 @@ KEY="${KEY/#\~/$HOME}"
 ARGS=("$@")
 [ ${#ARGS[@]} -eq 0 ] && ARGS=(-f -n 40)
 exec ssh -t -i "$KEY" -o StrictHostKeyChecking=accept-new "${SSH_USER:-ec2-user}@$SSH_HOST" \
-  sudo journalctl -u bomb-voyage --no-pager "${ARGS[@]}"
+  sudo journalctl -u boom-beard --no-pager "${ARGS[@]}"

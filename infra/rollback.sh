@@ -3,7 +3,7 @@
 #
 #   npm run rollback
 #
-# infra/deploy.sh snapshots the tree to /opt/bomb-voyage.prev before every sync, using hardlinks,
+# infra/deploy.sh snapshots the tree to /opt/boom-beard.prev before every sync, using hardlinks,
 # so this is a directory swap rather than a transfer. One level deep: rolling back twice returns
 # you to where you started.
 
@@ -19,12 +19,12 @@ KEY="${KEY/#\~/$HOME}"
 
 ssh -i "$KEY" -o StrictHostKeyChecking=accept-new "$SSH_USER@$SSH_HOST" bash -s <<'REMOTE'
 set -euo pipefail
-APP=/opt/bomb-voyage
-PREV=/var/lib/bomb-voyage/prev
+APP=/opt/boom-beard
+PREV=/var/lib/boom-beard/prev
 [ -d "$PREV" ] || { echo "no snapshot to roll back to — deploy at least once first"; exit 1; }
 
 # Swap, keeping what we are leaving as the new snapshot, so rollback is its own undo.
-SWAP=/var/lib/bomb-voyage/swap
+SWAP=/var/lib/boom-beard/swap
 rm -rf "$SWAP"
 rsync -a --delete --exclude node_modules --exclude config.ini --link-dest="$APP/" "$APP/" "$SWAP/"
 rsync -a --delete --exclude node_modules --exclude config.ini --exclude .git "$PREV/" "$APP/"
@@ -33,7 +33,7 @@ mv "$SWAP" "$PREV"
 
 cd "$APP"
 [ -d node_modules ] || npm ci --omit=dev --silent
-sudo -n /usr/bin/systemctl restart bomb-voyage
+sudo -n /usr/bin/systemctl restart boom-beard
 sleep 1
 curl -sfk https://localhost/healthz || curl -sf http://localhost:8080/healthz
 echo

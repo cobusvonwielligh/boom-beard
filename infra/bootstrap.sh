@@ -16,7 +16,7 @@
 #   EMAIL      required unless SKIP_TLS=1. For certificate expiry notices.
 #   SKIP_TLS=1 provision everything except the certificate; serve plain HTTP on 8080. Use this
 #              before DNS has propagated, or behind a load balancer that terminates TLS.
-#   REPO       git remote to clone if /opt/bomb-voyage is not already a clone.
+#   REPO       git remote to clone if /opt/boom-beard is not already a clone.
 #
 # Note: no apostrophes inside ${VAR:?msg} — bash parses them as a quote and dies at EOF.
 
@@ -31,10 +31,10 @@ EMAIL="${EMAIL:-}"
 REPO="${REPO:-git@github.com:cobusvonwielligh/boom-beard.git}"
 [ "$SKIP_TLS" = 1 ] || : "${EMAIL:?set EMAIL for certificate expiry notices}"
 
-APP_DIR=/opt/bomb-voyage
-DATA_DIR=/var/lib/bomb-voyage
+APP_DIR=/opt/boom-beard
+DATA_DIR=/var/lib/boom-beard
 CERT_DIR="$DATA_DIR/certs"
-UNIT=/etc/systemd/system/bomb-voyage.service
+UNIT=/etc/systemd/system/boom-beard.service
 
 echo "==> packages"
 # `npm` pulls in nodejs18 as a dependency and wins the alternatives link, so install 22
@@ -48,7 +48,7 @@ echo "==> sshd"
 # Keys only, no root, no X11. Files in sshd_config.d are read before the main config and the first
 # value wins, so this overrides the distribution's defaults without editing them. Validated
 # before the reload, because a broken sshd config on a box you reach only by SSH is a lockout.
-sudo tee /etc/ssh/sshd_config.d/00-bomb-voyage.conf >/dev/null <<'SSHD'
+sudo tee /etc/ssh/sshd_config.d/00-boom-beard.conf >/dev/null <<'SSHD'
 # Boom Beard hardening. Files here are read before the main config, and the first value wins.
 PermitRootLogin no
 PasswordAuthentication no
@@ -58,9 +58,9 @@ MaxAuthTries 3
 LoginGraceTime 30
 X11Forwarding no
 SSHD
-sudo chmod 600 /etc/ssh/sshd_config.d/00-bomb-voyage.conf
+sudo chmod 600 /etc/ssh/sshd_config.d/00-boom-beard.conf
 if sudo sshd -t; then sudo systemctl reload sshd; else
-  sudo rm -f /etc/ssh/sshd_config.d/00-bomb-voyage.conf; echo "    !! sshd rejected it; left as it was"
+  sudo rm -f /etc/ssh/sshd_config.d/00-boom-beard.conf; echo "    !! sshd rejected it; left as it was"
 fi
 
 echo "==> directories"
@@ -73,11 +73,11 @@ echo "==> deploy key"
 SSH_DIR="$DATA_DIR/ssh"
 mkdir -p "$SSH_DIR"
 if [ ! -f "$SSH_DIR/deploy_key" ]; then
-  if [ -f ~/.ssh/bomb_voyage_deploy ]; then
+  if [ -f ~/.ssh/boom_beard_deploy ]; then
     # Reuse a key already registered on GitHub rather than making the user add a second one.
-    cp ~/.ssh/bomb_voyage_deploy "$SSH_DIR/deploy_key"
+    cp ~/.ssh/boom_beard_deploy "$SSH_DIR/deploy_key"
   else
-    ssh-keygen -t ed25519 -N "" -C "bomb-voyage deploy key (read-only)" -f "$SSH_DIR/deploy_key" -q
+    ssh-keygen -t ed25519 -N "" -C "boom-beard deploy key (read-only)" -f "$SSH_DIR/deploy_key" -q
   fi
 fi
 chmod 700 "$SSH_DIR"; chmod 600 "$SSH_DIR/deploy_key"
@@ -125,14 +125,14 @@ cd "$APP_DIR"
 # Used by infra/deploy.sh over SSH. The service itself cannot sudo at all: the unit sets
 # NoNewPrivileges, and self-update.sh restarts by signalling the server instead.
 echo "==> sudoers for deploys (three exact commands, nothing broader)"
-sudo tee /etc/sudoers.d/bomb-voyage >/dev/null <<SUDO
-Cmnd_Alias BOMB_VOYAGE = /usr/bin/systemctl restart bomb-voyage, \\
+sudo tee /etc/sudoers.d/boom-beard >/dev/null <<SUDO
+Cmnd_Alias BOOM_BEARD = /usr/bin/systemctl restart boom-beard, \\
                          /usr/bin/systemctl daemon-reload, \\
-                         /usr/bin/cp $APP_DIR/infra/bomb-voyage.service $UNIT
-ec2-user ALL=(root) NOPASSWD: BOMB_VOYAGE
+                         /usr/bin/cp $APP_DIR/infra/boom-beard.service $UNIT
+ec2-user ALL=(root) NOPASSWD: BOOM_BEARD
 SUDO
-sudo chmod 440 /etc/sudoers.d/bomb-voyage
-sudo visudo -c -f /etc/sudoers.d/bomb-voyage >/dev/null
+sudo chmod 440 /etc/sudoers.d/boom-beard
+sudo visudo -c -f /etc/sudoers.d/boom-beard >/dev/null
 
 # config.ini is never in git and never rsynced, so a deploy cannot clobber it. Preserve an
 # existing deploy token across re-runs — regenerating it would silently break CI.
@@ -173,10 +173,10 @@ CFG
 }
 
 install_unit() {
-  sudo cp "$APP_DIR/infra/bomb-voyage.service" "$UNIT"
+  sudo cp "$APP_DIR/infra/boom-beard.service" "$UNIT"
   sudo systemctl daemon-reload
-  sudo systemctl enable --now bomb-voyage
-  sudo systemctl restart bomb-voyage
+  sudo systemctl enable --now boom-beard
+  sudo systemctl restart boom-beard
 }
 
 if [ "$SKIP_TLS" = 1 ]; then
@@ -196,7 +196,7 @@ if [ ! -x /opt/certbot/bin/certbot ]; then
 fi
 
 # Certbot standalone binds :80, so the game server must be out of the way for the moment it runs.
-sudo systemctl stop bomb-voyage 2>/dev/null || true
+sudo systemctl stop boom-beard 2>/dev/null || true
 
 DOMAIN_ARGS=(-d "$HOST")
 for h in $ALT_HOSTS; do DOMAIN_ARGS+=(-d "$h"); done
@@ -211,15 +211,15 @@ sudo /opt/certbot/bin/certbot certonly --standalone --non-interactive --agree-to
 # Node runs unprivileged and cannot read /etc/letsencrypt. Copy the pair somewhere it can,
 # on issue and on every renewal.
 echo "==> certificate deploy hook"
-sudo tee /etc/letsencrypt/renewal-hooks/deploy/bomb-voyage.sh >/dev/null <<HOOK
+sudo tee /etc/letsencrypt/renewal-hooks/deploy/boom-beard.sh >/dev/null <<HOOK
 #!/usr/bin/env bash
 set -eu
 install -o ec2-user -g ec2-user -m 0644 "/etc/letsencrypt/live/$HOST/fullchain.pem" "$CERT_DIR/fullchain.pem"
 install -o ec2-user -g ec2-user -m 0600 "/etc/letsencrypt/live/$HOST/privkey.pem"  "$CERT_DIR/privkey.pem"
-systemctl restart bomb-voyage || true
+systemctl restart boom-beard || true
 HOOK
-sudo chmod +x /etc/letsencrypt/renewal-hooks/deploy/bomb-voyage.sh
-sudo /etc/letsencrypt/renewal-hooks/deploy/bomb-voyage.sh || true
+sudo chmod +x /etc/letsencrypt/renewal-hooks/deploy/boom-beard.sh
+sudo /etc/letsencrypt/renewal-hooks/deploy/boom-beard.sh || true
 
 echo "==> renewal timer (03:00 Sunday — nobody is playing)"
 sudo tee /etc/systemd/system/certbot-renew.service >/dev/null <<'UNIT'
@@ -227,7 +227,7 @@ sudo tee /etc/systemd/system/certbot-renew.service >/dev/null <<'UNIT'
 Description=Renew TLS certificates
 [Service]
 Type=oneshot
-ExecStart=/opt/certbot/bin/certbot renew --quiet --standalone --pre-hook "systemctl stop bomb-voyage" --post-hook "systemctl start bomb-voyage"
+ExecStart=/opt/certbot/bin/certbot renew --quiet --standalone --pre-hook "systemctl stop boom-beard" --post-hook "systemctl start boom-beard"
 UNIT
 sudo tee /etc/systemd/system/certbot-renew.timer >/dev/null <<'UNIT'
 [Unit]

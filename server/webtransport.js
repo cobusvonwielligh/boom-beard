@@ -114,7 +114,7 @@ export async function startWebTransport({ port, cert, privKey, path = '/wt', onS
     // IPv4 any-address. Binding '::' relies on dual-stack being enabled, which is a per-kernel
     // setting, and when it is not the listener silently answers nothing on IPv4 — which is every
     // player.
-    server = new Http3Server({ port, host: '0.0.0.0', secret: 'bomb-voyage', cert, privKey });
+    server = new Http3Server({ port, host: '0.0.0.0', secret: 'boom-beard', cert, privKey });
     // The session reader has to exist before any client arrives: sessions that show up with
     // nobody reading the stream are dropped, and it looks exactly like a failed handshake.
     sessions = server.sessionStream(path).getReader();

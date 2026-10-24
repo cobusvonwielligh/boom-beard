@@ -8,7 +8,7 @@
 // few seconds, so an edit made underneath it is overwritten almost at once. This refuses to run
 // while anything answers on the configured port:
 //
-//   sudo systemctl stop bomb-voyage && node server/medals.js ... && sudo systemctl start bomb-voyage
+//   sudo systemctl stop boom-beard && node server/medals.js ... && sudo systemctl start boom-beard
 //
 // Writes through the leaderboard module itself, so it gets the same fsync, the same `.bak` of
 // the previous board and the same refusal to touch an unreadable file as the server does.

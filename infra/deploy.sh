@@ -2,7 +2,7 @@
 # Boom Beard — manual deploy. Pushes your working tree, including uncommitted work.
 #
 #   npm run deploy            tests, then deploy
-#   npm run deploy:fast       skip the tests
+#   npm run deploy:fast       skip the full suite (the boot preflight still runs)
 #   npm run rollback          back to the previous deploy
 #   npm run logs              follow the server journal
 #
@@ -25,9 +25,9 @@ KEY="${KEY:-$(ini deploy ssh_key)}"
 SSH_USER="${SSH_USER:-ec2-user}"
 KEY="${KEY/#\~/$HOME}"
 
-APP=/opt/bomb-voyage
+APP=/opt/boom-beard
 # Under /var/lib, not beside the app: /opt is root-owned and ec2-user cannot create there.
-PREV=/var/lib/bomb-voyage/prev
+PREV=/var/lib/boom-beard/prev
 CTRL="/tmp/bv-%r@%h:%p"
 SSH_OPTS="-i $KEY -o StrictHostKeyChecking=accept-new -o ControlMaster=auto -o ControlPath=$CTRL -o ControlPersist=120"
 # shellcheck disable=SC2086
@@ -46,8 +46,16 @@ trap cleanup EXIT INT TERM
 
 step() { printf '\033[2m%6ss\033[0m %s\n' "$(( $(date +%s) - START ))" "$1"; }
 
+# Never let the fast path bypass the check that proves the shared simulation can load.  This is
+# deliberately before the SSH connection and snapshot: a missing runtime import must fail while
+# production is still untouched.  Keep it narrower than the full suite so deploy:fast remains a
+# genuinely fast iteration path.
+step "preflight"
+node --input-type=module -e \
+  "await import('./shared/sim/movement.js'); await import('./server/room.js')"
+
 if [ "${SKIP_TESTS:-0}" != 1 ]; then
-  step "tests"
+  step "full tests"
   npm test --silent >/dev/null
 fi
 
@@ -100,7 +108,7 @@ fi
 # an hour) and the result stashed outside the app directory. npm ci blows node_modules away,
 # which would silently drop the server back to WebSocket-only on the next deploy that touches
 # the lockfile — silently, because the transport is additive and nothing would look broken.
-STASH=/var/lib/bomb-voyage/webtransport.node
+STASH=/var/lib/boom-beard/webtransport.node
 DEST=$APP/node_modules/@fails-components/webtransport-transport-http3-quiche/build_linux_x64/Release
 if [ -f "\$STASH" ]; then
   if [ ! -f "\$DEST/webtransport.node" ] || ! cmp -s "\$STASH" "\$DEST/webtransport.node"; then
@@ -108,9 +116,9 @@ if [ -f "\$STASH" ]; then
     echo "       restored the QUIC addon"
   fi
 fi
-sudo -n /usr/bin/cp $APP/infra/bomb-voyage.service /etc/systemd/system/bomb-voyage.service
+sudo -n /usr/bin/cp $APP/infra/boom-beard.service /etc/systemd/system/boom-beard.service
 sudo -n /usr/bin/systemctl daemon-reload
-sudo -n /usr/bin/systemctl restart bomb-voyage
+sudo -n /usr/bin/systemctl restart boom-beard
 REMOTE
 
 step "health"
@@ -125,5 +133,5 @@ for i in $(seq 1 60); do
 done
 
 echo "health check never answered — last 40 log lines:" >&2
-ssh_ "sudo journalctl -u bomb-voyage -n 40 --no-pager" >&2
+ssh_ "sudo journalctl -u boom-beard -n 40 --no-pager" >&2
 exit 1

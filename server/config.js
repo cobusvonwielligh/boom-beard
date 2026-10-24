@@ -4,7 +4,7 @@
 // Env wins so CI and one-off runs (`LAG=200 npm start`) never need to touch a file.
 //
 // config.ini is gitignored and holds anything secret or machine-specific. config.example.ini
-// is the committed template. On the server the real file lives at /opt/bomb-voyage/config.ini
+// is the committed template. On the server the real file lives at /opt/boom-beard/config.ini
 // and is excluded from rsync, so a deploy never overwrites it.
 
 import crypto from 'node:crypto';
