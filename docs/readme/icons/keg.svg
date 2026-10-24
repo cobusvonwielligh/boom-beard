@@ -1,18 +1,40 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="18" height="18">
+<!-- A barrel, not a box. Three things carry that at sixteen pixels and all three are
+     curves: the staves BULGE at the waist, the hoops bow with them, and the lid is an
+     ellipse because you are looking at it slightly from above - the same angle everything
+     on the board is drawn at. The silhouette is one flat colour like every other icon in
+     the sheet; the interior is the usual black at low opacity, and the one pop of colour
+     is the powder mark, in the same maroon the real keg carries. -->
 <path
-        fill="#edc24e"
-        d="M4.2 2h7.6c.5 2 .8 3.9.8 6s-.3 4-.8 6H4.2c-.5-2-.8-3.9-.8-6s.3-4 .8-6z"
-      />
-      <path
-        d="M3.6 5.2h8.8M3.6 10.8h8.8"
-        stroke="#000"
-        stroke-opacity=".35"
-        stroke-width="1.3"
-      />
-      <path
-        d="M6 6.2l4 3.6M10 6.2l-4 3.6"
-        stroke="#a83442"
-        stroke-width="1.6"
-        stroke-linecap="round"
-      />
+  fill="#edc24e"
+  d="M5 2.5h6c1.2 2 1.8 3.6 1.8 5.5S11.2 11.5 11 13.5H5c-1.2-2-1.8-3.6-1.8-5.5S3.8 4.5 5 2.5z"
+/>
+<ellipse
+  cx="8"
+  cy="2.6"
+  rx="3"
+  ry="1.05"
+  fill="#000"
+  fill-opacity=".28"
+/>
+<path
+  d="M3.5 5.1q4.5 1 9 0M3.5 10.9q4.5 1 9 0"
+  fill="none"
+  stroke="#000"
+  stroke-opacity=".38"
+  stroke-width="1.15"
+/>
+<path
+  d="M6.1 3.2q-.5 4.8 0 9.6M9.9 3.2q.5 4.8 0 9.6"
+  fill="none"
+  stroke="#000"
+  stroke-opacity=".16"
+  stroke-width=".8"
+/>
+<path
+  d="M6.3 6.6l3.4 3M9.7 6.6l-3.4 3"
+  stroke="#a83442"
+  stroke-width="1.7"
+  stroke-linecap="round"
+/>
 </svg>

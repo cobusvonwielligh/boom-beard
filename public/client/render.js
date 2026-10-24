@@ -4042,7 +4042,7 @@ export function createRenderer(canvas, world) {
         const pulse = 0.55 + 0.45 * Math.sin(ph);
         const sound = 0.45 + mood.beat * 0.8 + mood.level * 0.4;
         slither(nearestAt(bx, by), ((RIM_BLIP_PX / 2) / zoom) * (0.85 + 0.3 * pulse),
-          Math.min(0.5, 0.2 * pulse * sound), '#dceeff', 12);
+          Math.min(0.5, 0.2 * pulse * sound), '#8fc4ff', 12);
       }
     }
 
@@ -4071,7 +4071,15 @@ export function createRenderer(canvas, world) {
       // the sea and the coast move on, so the whole frame shares one pulse.
       const lift = 1 + mood.level * 0.35 + mood.beat * 0.25;
       const half = Math.min(rim.total / 2, ((RIM_LIT_PX / 2) * lift) / zoom);
-      slither(rimAt, half, 0.72 * (0.7 + 0.3 * lift), dead ? '#ff3b4e' : '#edc24e', 26);
+      /* White, with the blue of the sea in it - not gold.
+       *
+       * Gold is the interface's colour and it is all over the HUD, the title and the medals, so
+       * a gold light on the frame read as another piece of chrome. A cold white one reads as an
+       * instrument, which is what it is, and it is also the only thing on screen that is not
+       * either fire-orange or sea-blue, so it cannot be mistaken for either. Yours is near
+       * white; the blips are further toward blue and far dimmer, so the two are never confused.
+       */
+      slither(rimAt, half, 0.72 * (0.7 + 0.3 * lift), dead ? '#ff3b4e' : '#eaf6ff', 26);
     }
 
     /* A hit takes the whole frame, because what is being reported has no direction.
