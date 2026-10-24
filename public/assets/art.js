@@ -33,6 +33,7 @@ export const PALETTE = {
   sash: '#e8dcc0', belt: '#3a2f22',
   boot: '#4a3728', bootDark: '#2f231a',
   cuff: '#e8dcc0', grin: '#f4f1e8',
+  beard: '#282329', beardLit: '#4a3a38',
 
   // The sea, and the rock the island is made of. The rock is brown-grey boulder, not the blue
   // slate the walls are: the coast has to read as a different material from the level.
@@ -57,6 +58,7 @@ const PIRATE = {
   sash: PALETTE.sash, belt: PALETTE.belt,
   boot: PALETTE.boot, bootDark: PALETTE.bootDark,
   cuff: PALETTE.cuff, grin: PALETTE.grin,
+  beard: PALETTE.beard, beardLit: PALETTE.beardLit,
 };
 
 /** 16 maximally distinct player colours, plus their light/dark shades. Slots come from
@@ -726,6 +728,11 @@ export function drawPlayer(c, { dir = 3, frame = 0, colorIndex = 0, dead = false
       px(c, 4, 6 + bob, 4, 1, PIRATE.grin);              // grin
       px(c, 7, 6 + bob, 1, 1, PALETTE.treasure);         // the gold tooth, same as the mascot
     }
+    // A compact charcoal beard keeps the tiny player silhouette aligned with the Boom Beard
+    // mascot. It sits below the grin so the tooth and expression remain readable at tile scale.
+    px(c, 4, 7 + bob, 4, 1, PIRATE.beard);
+    px(c, 3, 8 + bob, 2, 1, PIRATE.beardLit);
+    px(c, 7, 8 + bob, 2, 1, PIRATE.beardLit);
   }
 
   c.restore();
