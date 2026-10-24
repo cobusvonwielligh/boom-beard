@@ -403,15 +403,15 @@ function drawTileBody(c, type, tx = 0, ty = 0, dmg = 0) {
        * One dark line round the staves is what separates it from the floor at a glance, and it
        * is the single biggest thing that makes the barrel READ as a barrel. */
       body();
-      c.strokeStyle = 'rgba(20,10,4,0.85)';
-      c.lineWidth = 1.5;
+      c.strokeStyle = 'rgba(8,4,2,0.96)';
+      c.lineWidth = 1.7;
       c.stroke();
 
       // The top, seen from slightly above: a lid of two boards, darker than the staves because
       // it is facing the sky rather than the sun, with a rim of end-grain round it.
       c.beginPath(); c.ellipse(cx, top, endW, 2.9, 0, 0, Math.PI * 2);
       c.fillStyle = '#6b4123'; c.fill();
-      c.strokeStyle = 'rgba(20,10,4,0.8)'; c.lineWidth = 1.1; c.stroke();
+      c.strokeStyle = 'rgba(8,4,2,0.92)'; c.lineWidth = 1.2; c.stroke();
       c.beginPath(); c.ellipse(cx, top, endW - 1.3, 2.1, 0, 0, Math.PI * 2);
       c.fillStyle = '#8a5b31'; c.fill();
       c.save();
@@ -426,8 +426,8 @@ function drawTileBody(c, type, tx = 0, ty = 0, dmg = 0) {
       c.save();
       c.lineCap = 'round';
       c.beginPath();
-      c.moveTo(cx - 5.2, 13.8); c.lineTo(cx + 5.2, 22.2);
-      c.moveTo(cx + 5.2, 13.8); c.lineTo(cx - 5.2, 22.2);
+      c.moveTo(cx - 4.4, 14.6); c.lineTo(cx + 4.4, 21.4);
+      c.moveTo(cx + 4.4, 14.6); c.lineTo(cx - 4.4, 21.4);
       // Classic maroon, and bigger than it was: this mark is the entire read at a glance - keg
       // or crate - and it was a small scratch between the hoops. Black underneath it, because a
       // maroon stroke on mid-brown staves has almost no luminance contrast on its own and goes
@@ -435,16 +435,17 @@ function drawTileBody(c, type, tx = 0, ty = 0, dmg = 0) {
       // Near-black underneath, maroon on top, one highlight down the middle. The border is not
       // decoration: maroon on mid-brown staves has almost no luminance contrast of its own, so
       // without it the mark goes muddy the moment the board is zoomed out.
-      c.strokeStyle = '#0d0603'; c.lineWidth = 6.6; c.stroke();
-      c.strokeStyle = '#8f1f2b'; c.lineWidth = 4.2; c.stroke();
-      c.strokeStyle = '#c93a42'; c.lineWidth = 1.6; c.stroke();
+      c.strokeStyle = '#0d0603'; c.lineWidth = 5.8; c.stroke();
+      c.strokeStyle = '#8f1f2b'; c.lineWidth = 3.6; c.stroke();
+      c.strokeStyle = '#c93a42'; c.lineWidth = 1.4; c.stroke();
       c.restore();
 
-      // The fuse, out of the lid: lit, so it reads as armed rather than as scenery.
-      c.strokeStyle = '#d8c9a8'; c.lineWidth = 1.6; c.lineCap = 'round';
-      c.beginPath(); c.moveTo(cx + 2.6, top - 2); c.quadraticCurveTo(24, 4, 22, 1.8); c.stroke();
-      c.beginPath(); c.arc(22, 1.8, 2.2, 0, 7); c.fillStyle = PALETTE.fireMid; c.fill();
-      c.beginPath(); c.arc(22, 1.8, 1.1, 0, 7); c.fillStyle = PALETTE.fireCore; c.fill();
+      /* No fuse.
+       *
+       * It was there to say "armed", and a lit fuse on a thing that only goes off when somebody
+       * blows it up says the wrong thing - it reads as a countdown that is already running. The
+       * powder mark carries the warning on its own, and the lid is cleaner without a spark
+       * hanging off the corner of the tile into its neighbour. */
       break;
     }
     /* Ice: a block of real ice, sitting on the floor and starting to melt.
