@@ -685,13 +685,15 @@
            final letter whatever the clamp() has done to the font size. -->
       <div id="titleWrap">
         <h1 id="title" class="cast">Boom&nbsp;Beard</h1>
-        <span id="version">v0.14</span>
+        <span id="version">v1.0.2</span>
       </div>
       <!-- Three beats, and each one does a job: the number tells you the scale, the island
            tells you there is nowhere to go, and the last tells you what you actually DO. The
            old line opened with "Online multiplayer", which is a category rather than a hook —
            and the PLAY button two inches below it already says that. -->
-      <p class="sub">Sixteen pirates. One island. Light the fuse and run.</p>
+      <p class="sub" style="margin-top: 5px">
+        Sixteen pirates. One island. Light the fuse and run.
+      </p>
       <div class="playerid-group">
         <label for="name">PLAYER ID:</label>
         <input
@@ -803,6 +805,10 @@
 
 <script type="module" src="/client/main.js"></script>
 <style>
+  #title {
+    scale: 1.5;
+  }
+
   /* ========================================
    IN-GAME AVATAR / FACE
    Shrink by 15% and move slightly up

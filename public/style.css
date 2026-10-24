@@ -3880,14 +3880,14 @@ h1 {
 }
 #version {
   position: absolute;
-  right: 0;
+  right: -75px;
   top: 100%;
-  margin-top: -3px;
+  margin-top: 6px;
   font-family: var(--nums);
-  font-size: 8px;
+  font-size: 7px;
   letter-spacing: 0.14em;
   color: var(--dim);
-  opacity: 0.72;
+  opacity: 0.5;
   pointer-events: none;
   white-space: nowrap;
 }
