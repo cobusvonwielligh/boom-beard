@@ -270,6 +270,8 @@ export function createRenderer(canvas, world) {
     blastLight = null;
     lightLayer = null;
     lightCtx = null;
+    lampLayer = null;
+    lampCtx = null;
     rollCurrent();          // a new island sits in a different sea
   };
   const mapChanged = () => { recomputeZoom(); };
@@ -327,6 +329,7 @@ export function createRenderer(canvas, world) {
   const BLAST_LIGHT_ALPHA = 0.55;
   let blastLight = null;
   let lightLayer = null, lightCtx = null;
+  let lampLayer = null, lampCtx = null;
   /* Darker, and SOFT.
    *
    * 0.3 was a shadow you had to be told about. The thing that makes a stronger one look better
@@ -3638,59 +3641,151 @@ export function createRenderer(canvas, world) {
 
     /* The light first, then the flames. See BLAST_LIGHT_PX.
      *
-     * Built on its OWN layer, and that is the whole fix for the white-out.
+     * It travels, and it stops at walls.
      *
-     * Every burning tile throws a pool of light, and a keg is twenty-nine burning tiles. Drawn
-     * straight onto the board with `lighter` those pools ADD: twenty-nine ambers on one patch of
-     * sand saturates red, then green, then blue, and a blast lit the entire canvas pure white.
-     * Lowering the alpha only moves the tile count at which it happens.
+     * Each burning tile is a light. Its pool is drawn into a small scratch canvas, the SHADOW of
+     * every solid tile within reach is punched out of that pool - a quad extruded away from the
+     * light, the standard 2D shadow - and the face of each of those tiles that is turned toward
+     * the light gets a warm line along it, which is the bounce. Then the finished light is
+     * merged into the frame's light layer with `lighten`.
      *
-     * So the pools are composited onto a scratch layer with `lighten`, which takes the brighter
-     * of the two rather than their sum - overlapping pools merge instead of stacking, and the
-     * brightest the layer can ever be is one pool. THAT is what is added to the board, once, at
-     * a fixed strength. A blast is now the same brightness whether it is one tile or a chain of
-     * forty, which is also simply more honest about what a fire looks like.
+     * Three things come out of that and all three are the point:
+     *   - a corridor lights up along its length and the rooms either side of it stay dark;
+     *   - a wall between you and a blast means you see the glow on ITS face and nothing past it;
+     *   - the pools MERGE rather than stack. `lighten` takes the brighter of the two, so a keg -
+     *     twenty-nine burning tiles - is as bright as one tile and no brighter, where adding
+     *     them saturated the whole canvas to white.
      */
     if (world.fires.length) {
       if (!blastLight) {
         blastLight = ctx.createRadialGradient(0, 0, TILE_PX * 0.1, 0, 0, BLAST_LIGHT_PX);
-        // Firelight: warm amber through the body, out to nothing. Pure black at the rim matters
-        // under both blends - it is what "adds no light" looks like.
+        // Firelight: warm amber through the body, out to nothing. Pure black at the rim is what
+        // "adds no light" looks like under both blends.
         blastLight.addColorStop(0, 'rgba(255,206,140,0.95)');
         blastLight.addColorStop(0.3, 'rgba(255,160,66,0.5)');
         blastLight.addColorStop(0.65, 'rgba(176,78,22,0.2)');
         blastLight.addColorStop(1, 'rgba(0,0,0,0)');
       }
-      // One scratch canvas, kept at the size of the real one.
+      // Two scratch canvases: the frame's light layer, and one light's worth.
       if (!lightLayer || lightLayer.width !== canvas.width || lightLayer.height !== canvas.height) {
         lightLayer = document.createElement('canvas');
         lightLayer.width = canvas.width;
         lightLayer.height = canvas.height;
         lightCtx = lightLayer.getContext('2d');
       }
-      const lc = lightCtx;
+      const lampPx = Math.ceil(BLAST_LIGHT_PX * 2 * view.dpr * zoom) + 4;
+      if (!lampLayer || lampLayer.width !== lampPx) {
+        lampLayer = document.createElement('canvas');
+        lampLayer.width = lampPx;
+        lampLayer.height = lampPx;
+        lampCtx = lampLayer.getContext('2d');
+      }
+      const lc = lightCtx, mc = lampCtx;
       lc.setTransform(1, 0, 0, 1, 0, 0);
       lc.clearRect(0, 0, lightLayer.width, lightLayer.height);
       lc.setTransform(view.dpr * zoom, 0, 0, view.dpr * zoom, 0, 0);
       lc.globalCompositeOperation = 'lighten';
-      lc.fillStyle = blastLight;
+
+      const map = world.map;
+      const R = BLAST_LIGHT_PX;
+      const reach = Math.ceil(R / TILE_PX);
       let lit = false;
       for (const f of world.fires) {
         const age = Math.min(1, 1 - Math.max(0, (f.until - tickNow) / FIRE_TICKS));
-        // Two frames up, then down - half as quickly as it was, so the light is still on the
-        // walls while the flames are at their biggest rather than being gone by then.
-        const k = age < 0.07 ? age / 0.07 : Math.max(0, 1 - (age - 0.07) / 0.6);
+        // Two frames up, then down. Slower than the flames, so the walls are still warm as the
+        // fire thins out rather than going dark under it.
+        const k = age < 0.07 ? age / 0.07 : Math.max(0, 1 - (age - 0.07) / 0.69);
         if (k <= 0) continue;
+        // Board coordinates for the geometry, screen for where the finished lamp lands.
+        const cx = (f.tx + 0.5) * TILE_PX, cy = (f.ty + 0.5) * TILE_PX;
+        const sx = ox + cx, sy = oy + cy;
+        // Off-screen lights cost the same to build as on-screen ones and show nothing.
+        if (sx < -R || sy < -R || sx > vw + R || sy > vh + R) continue;
         lit = true;
-        // The core is the bomb itself; an arm is fire that travelled, and dimmer for it.
-        lc.globalAlpha = k * k * (f.kind === 'core' ? 1 : 0.7);
-        lc.save();
-        lc.translate(ox + (f.tx + 0.5) * TILE_PX, oy + (f.ty + 0.5) * TILE_PX);
-        lc.beginPath();
-        lc.arc(0, 0, BLAST_LIGHT_PX, 0, 7);
-        lc.fill();
-        lc.restore();
+
+        // One light, in its own little canvas, centred.
+        mc.setTransform(1, 0, 0, 1, 0, 0);
+        mc.clearRect(0, 0, lampPx, lampPx);
+        mc.setTransform(view.dpr * zoom, 0, 0, view.dpr * zoom, 0, 0);
+        const mid = lampPx / (2 * view.dpr * zoom);
+        mc.save();
+        mc.translate(mid, mid);
+
+        mc.globalCompositeOperation = 'source-over';
+        mc.globalAlpha = k * k * (f.kind === 'core' ? 1 : 0.7);
+        mc.fillStyle = blastLight;
+        mc.beginPath();
+        mc.arc(0, 0, R, 0, 7);
+        mc.fill();
+
+        // The walls in range, as shadows and as lit faces.
+        for (let ty = f.ty - reach; ty <= f.ty + reach; ty++) {
+          for (let tx = f.tx - reach; tx <= f.tx + reach; tx++) {
+            if (tx === f.tx && ty === f.ty) continue;
+            if (tx < 0 || ty < 0 || tx >= map.w || ty >= map.h) continue;
+            const t = cellType(map.cells[ty * map.w + tx]);
+            if (BLOCK_WALKABLE(t, false) || t === BLOCK.WATER) continue;
+            // Tile corners, relative to the light.
+            const ax = tx * TILE_PX - cx, ay = ty * TILE_PX - cy;
+            const bx = ax + TILE_PX, by = ay + TILE_PX;
+            if (Math.hypot(ax + TILE_PX / 2, ay + TILE_PX / 2) > R + TILE_PX) continue;
+            const pts = [[ax, ay], [bx, ay], [bx, by], [ax, by]];
+            /* The silhouette: the two corners furthest apart by angle. Sorting by angle is the
+             * textbook way and it breaks across the -pi/pi seam; comparing every pair is sixteen
+             * comparisons on four points and has no seam at all. */
+            let p0 = pts[0], p1 = pts[1], widest = -1;
+            for (const u of pts) {
+              for (const v of pts) {
+                const cross = u[0] * v[1] - u[1] * v[0];
+                const dot = u[0] * v[0] + u[1] * v[1];
+                const ang = Math.abs(Math.atan2(cross, dot));
+                if (ang > widest) { widest = ang; p0 = u; p1 = v; }
+              }
+            }
+            const far = R * 2.4;
+            const ext = q => {
+              const d = Math.hypot(q[0], q[1]) || 1;
+              return [(q[0] / d) * far, (q[1] / d) * far];
+            };
+            const e0 = ext(p0), e1 = ext(p1);
+            mc.globalCompositeOperation = 'destination-out';
+            mc.globalAlpha = 1;
+            mc.fillStyle = '#000';
+            mc.beginPath();
+            mc.moveTo(p0[0], p0[1]);
+            mc.lineTo(e0[0], e0[1]);
+            mc.lineTo(e1[0], e1[1]);
+            mc.lineTo(p1[0], p1[1]);
+            mc.closePath();
+            mc.fill();
+
+            /* The bounce: the face turned toward the light, picked out warm.
+             *
+             * It is drawn ON the silhouette edge, which the shadow quad starts from rather than
+             * covers, so the wall itself reads as catching the light while everything behind it
+             * does not. This is the part that makes a blast round a corner look like a blast
+             * round a corner instead of a sticker of one. */
+            const dist = Math.hypot(ax + TILE_PX / 2, ay + TILE_PX / 2);
+            const bounce = Math.max(0, 1 - dist / R) * k;
+            if (bounce > 0.02) {
+              mc.globalCompositeOperation = 'lighter';
+              mc.globalAlpha = Math.min(0.5, bounce * 0.55);
+              mc.strokeStyle = 'rgba(255,182,96,0.9)';
+              mc.lineWidth = 3;
+              mc.beginPath();
+              mc.moveTo(p0[0], p0[1]);
+              mc.lineTo(p1[0], p1[1]);
+              mc.stroke();
+            }
+          }
+        }
+        mc.restore();
+
+        // Into the frame's layer, where it merges with every other light rather than adding.
+        lc.globalAlpha = 1;
+        lc.drawImage(lampLayer, sx - mid, sy - mid, mid * 2, mid * 2);
       }
+
       if (lit) {
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
