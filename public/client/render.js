@@ -3917,6 +3917,8 @@ export function createRenderer(canvas, world) {
   const RIM_SAMPLES = 160;        // points the perimeter is sampled at, to find the nearest one
   let rimAlert = 0;               // 1 at the moment of the hit, decaying
   let rimAt = -1;                 // where your slither is, in pixels along the perimeter
+  let rimBend = 0;                // 0 on a straight, 1 mid-corner; eased, drives the stretch
+  const RIM_CORNER_EASE = 26;     // how far either side of an arc the slow zone reaches
 
   const rimCorner = (cx, cy, ang, r) => [cx + Math.cos(ang) * r, cy + Math.sin(ang) * r];
 
@@ -4025,24 +4027,29 @@ export function createRenderer(canvas, world) {
         .map(q => ({ q, d: Math.hypot(q.rx - me.rx, q.ry - me.ry) }))
         .sort((m, n) => m.d - n.d)
         .slice(0, RIM_BLIPS);
-      for (const [n, { q }] of others.entries()) {
+      for (const [n, { q, d }] of others.entries()) {
         const bx = ox + (q.rx / UNITS_PER_TILE) * TILE_PX;
         const by = oy + (q.ry / UNITS_PER_TILE) * TILE_PX;
-        /* Cold white-blue, and it breathes hard.
+        /* A blip says how close they are, not who they are.
          *
-         * Not the player's own colour: sixteen hues on one dark band is a fruit salad, and half
-         * of them are the same orange as the fire. One cool tone instead, which reads as a
-         * radar return rather than as a person, and leaves gold meaning YOU and nothing else.
+         * Distance is the only thing about another player that is worth a light on the frame
+         * while you are busy, so it is what every property of the blip is wired to: the colour
+         * runs from cold blue at the far end of the island to alarm red inside two tiles, and
+         * the pulse speeds up as it reddens, so a near one is unmistakably agitated and a far
+         * one barely moves. Three at most, each a third of a cycle out of phase with the last,
+         * so three read as three rather than as one light drawn three times.
          *
-         * The pulse is the music, pushed much further than your own slither gets - a blip is a
-         * secondary thing on the frame and a secondary thing is better MOVING than bright. Each
-         * one is a third of a beat out of phase with the last, so three of them read as three
-         * rather than as one light drawn three times. */
-        const ph = seaT * 5.5 + n * 2.1;
+         * Not their own colour: sixteen hues on one dark band is a fruit salad, half of them
+         * are the orange of the fire, and "who" is a question the scoreboard answers. */
+        const tiles = d / UNITS_PER_TILE;
+        const near = Math.max(0, Math.min(1, 1 - (tiles - 2) / 9));
+        const ph = seaT * (4 + 9 * near) + n * 2.1;
         const pulse = 0.55 + 0.45 * Math.sin(ph);
         const sound = 0.45 + mood.beat * 0.8 + mood.level * 0.4;
-        slither(nearestAt(bx, by), ((RIM_BLIP_PX / 2) / zoom) * (0.85 + 0.3 * pulse),
-          Math.min(0.5, 0.2 * pulse * sound), '#8fc4ff', 12);
+        const mix = (far, close) => Math.round(far + (close - far) * near * near);
+        const colour = `rgb(${mix(143, 255)},${mix(196, 92)},${mix(255, 74)})`;
+        slither(nearestAt(bx, by), ((RIM_BLIP_PX / 2) / zoom) * (0.85 + 0.3 * pulse + 0.35 * near),
+          Math.min(0.55, (0.16 + 0.22 * near) * pulse * sound), colour, 12);
       }
     }
 
@@ -4055,31 +4062,42 @@ export function createRenderer(canvas, world) {
       if (rimAt < 0) rimAt = want;
       else {
         const delta = ((want - rimAt + rim.total * 1.5) % rim.total) - rim.total / 2;
-        /* Slower through the corners.
+        /* Much slower through the corners, and the zone starts before the corner does.
          *
-         * A corner is where the border changes direction fastest and where the light has the
-         * furthest to travel for the least movement from you - at the same follow rate it
-         * whips round the arc and snaps out the far side, which is the one place on the frame
-         * the eye is already watching. Three times the time constant while either end of the
-         * move is on an arc turns that whip into a glide; the straights keep the quick follow,
-         * which is what makes the light feel attached to you at all. */
-        const corner = rim.runAt(rimAt) % 2 === 1 || rim.runAt(want) % 2 === 1;
-        rimAt = (rimAt + delta * (1 - Math.exp(-dtMs / (corner ? 300 : 90))) + rim.total) % rim.total;
+         * A corner is where the border turns fastest and where the light travels furthest for
+         * the least movement from you, so at the straights' follow rate it whipped round the
+         * arc and snapped out the far side - in the one place on the frame the eye is already
+         * watching. Seven times the time constant takes that whip and makes it a long slide
+         * around the bend, and the zone reaches half a corner's length past each arc so the
+         * light is already slowing as it arrives rather than braking on the turn.
+         *
+         * The straights keep the quick follow. That contrast is the effect: quick where the
+         * border is a line, unhurried where it is a curve. */
+        const cornerNear = t => {
+          if (rim.runAt(t) % 2 === 1) return true;
+          const lead = rim.runAt(t + RIM_CORNER_EASE) % 2 === 1;
+          return lead || rim.runAt(t - RIM_CORNER_EASE) % 2 === 1;
+        };
+        const corner = cornerNear(rimAt) || cornerNear(want);
+        rimAt = (rimAt + delta * (1 - Math.exp(-dtMs / (corner ? 700 : 90))) + rim.total) % rim.total;
+        rimBend += ((corner ? 1 : 0) - rimBend) * (1 - Math.exp(-dtMs / 180));
       }
 
       // The music: longer and brighter on the level, a lift on every beat. The same two numbers
       // the sea and the coast move on, so the whole frame shares one pulse.
       const lift = 1 + mood.level * 0.35 + mood.beat * 0.25;
-      const half = Math.min(rim.total / 2, ((RIM_LIT_PX / 2) * lift) / zoom);
-      /* White, with the blue of the sea in it - not gold.
+      // And it stretches as it goes round: a light taking a long bend reads as being drawn
+      // out by the turn, where one that keeps its length reads as having stalled on it.
+      const half = Math.min(rim.total / 2, ((RIM_LIT_PX / 2) * lift * (1 + 0.45 * rimBend)) / zoom);
+      /* Your own colour, the one your pirate is painted in.
        *
-       * Gold is the interface's colour and it is all over the HUD, the title and the medals, so
-       * a gold light on the frame read as another piece of chrome. A cold white one reads as an
-       * instrument, which is what it is, and it is also the only thing on screen that is not
-       * either fire-orange or sea-blue, so it cannot be mistaken for either. Yours is near
-       * white; the blips are further toward blue and far dimmer, so the two are never confused.
+       * Sixteen players, sixteen colours, and yours is the one you have been looking at all
+       * round - so the light on the frame needs no explaining at all: that is me, over there.
+       * It is also the one hue on the frame that cannot be a blip, because the blips are a
+       * blue-to-red distance scale and nothing else. Red while you are down.
        */
-      slither(rimAt, half, 0.72 * (0.7 + 0.3 * lift), dead ? '#ff3b4e' : '#eaf6ff', 26);
+      const mine = playerShades(me.i).light;
+      slither(rimAt, half, 0.72 * (0.7 + 0.3 * lift), dead ? '#ff3b4e' : mine, 26);
     }
 
     /* A hit takes the whole frame, because what is being reported has no direction.
