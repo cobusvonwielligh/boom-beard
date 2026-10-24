@@ -17,7 +17,7 @@
 
 import {
   IN_RIGHT, IN_UP, IN_LEFT, IN_DOWN, IN_BOMB, BLOCK, FUSE_TICKS, FUSE_TICKS_FAST, FIRE_TICKS,
-  POWDER_RADIUS,
+  POWDER_RADIUS, DIAG_NUM, DIAG_DEN,
   UNITS_PER_TILE, SPEED_UNITS_PER_TICK, SLOWDOWN_NUM, SLOWDOWN_DEN, STATUS,
   SHRUB_RADIUS_PENALTY, HITBOX_UNITS, HITBOX_REDUCED_UNITS, PUDDLE_SPEED_NUM, PUDDLE_SPEED_DEN,
 } from '../shared/constants.js';
@@ -279,7 +279,7 @@ function flood(state, p, danger, extra, slack = 0) {
   const depth = new Map([[start, 0]]);
   const first = new Map([[start, -1]]);
   let head = 0;
-  let bestDir = -1, bestMargin = -Infinity;
+  let bestDir = -1, bestMargin = -Infinity, bestX = -1, bestY = -1;
 
   while (head < queue.length && depth.size < ESCAPE_NODES) {
     const key = queue[head++];
@@ -288,9 +288,9 @@ function flood(state, p, danger, extra, slack = 0) {
 
     if (d > 0) {
       const t = threatAt(danger, extra, tx, ty);
-      if (t === Infinity) return { dir: first.get(key), clear: true };
+      if (t === Infinity) return { dir: first.get(key), clear: true, gx: tx, gy: ty };
       const margin = t - d * perTile;
-      if (margin > bestMargin) { bestMargin = margin; bestDir = first.get(key); }
+      if (margin > bestMargin) { bestMargin = margin; bestDir = first.get(key); bestX = tx; bestY = ty; }
     }
 
     for (let i = 0; i < 4; i++) {
@@ -304,7 +304,7 @@ function flood(state, p, danger, extra, slack = 0) {
       queue.push(nk);
     }
   }
-  return { dir: bestDir, clear: false };
+  return { dir: bestDir, clear: false, gx: bestX, gy: bestY };
 }
 
 /**
@@ -326,6 +326,18 @@ function hypothetical(state, p, tx, ty) {
       extra.set(key, fuse);
       const b = state.bombs.find(o => o.tx === cx && o.ty === cy);
       if (b && !queue.some(q => q.tx === b.tx && q.ty === b.ty)) queue.push(b);
+      /* A keg in the blast is part of the blast.
+       *
+       * `dangerMap` lights kegs off the bombs already on the board; this layer is about a bomb
+       * that does not exist yet, and it used to stop at the keg's tile — so a bot checking its
+       * escape from its own bomb was told the keg beside it was a wall, planned a route four
+       * tiles long, and was still inside the radius-7 blast it had just set up when it went.
+       * Now the keg joins the queue and spreads at its own radius, exactly as `detonate` will.
+       */
+      if (tileAt(state.map, cx, cy) === BLOCK.POWDER
+        && !queue.some(q => q.tx === cx && q.ty === cy)) {
+        queue.push({ tx: cx, ty: cy, radius: POWDER_RADIUS });
+      }
     });
   }
   return extra;
@@ -347,6 +359,10 @@ function worthBombing(state, p, tx, ty) {
   for (const d of DIRS) {
     const t = tileAt(state.map, tx + d.dx, ty + d.dy);
     if (DESTRUCTIBLE.has(t)) return true;
+    // A keg is the best thing on the board to put a bomb next to: one fuse buys a radius-7
+    // blast. Safe to want, because `hypothetical` now chains kegs too — the escape is checked
+    // against the whole explosion, not just the little one the bot is lighting.
+    if (t === BLOCK.POWDER) return true;
   }
   for (const q of state.players) {
     if (!q || q === p || !q.alive) continue;
@@ -396,7 +412,19 @@ function chooseDir(state, p, brain, danger, tx, ty) {
     else if (threat > perTile * 3) risky.push(i);       // crossable, but do not loiter
   }
 
-  let options = safe.length ? safe : risky;
+  /* Dry ground first, when there is a choice.
+   *
+   * A puddle is half pace and it slides, which is the worst combination there is for something
+   * that has to be somewhere else before a fuse runs out. Only a PREFERENCE: water is still
+   * crossable, and a bot that refused to get its feet wet would stand in a blast rather than
+   * walk through a puddle. `safe` is already filtered for danger, so this never trades safety
+   * for dryness. */
+  const dry = list => {
+    const out = list.filter(i => !state.puddles?.some(q =>
+      q.tx === tx + DIRS[i].dx && q.ty === ty + DIRS[i].dy && q.until > state.tick));
+    return out.length ? out : list;
+  };
+  let options = dry(safe.length ? safe : risky);
   // Boxed in by danger. This only runs while our own tile is safe (the flee branch has it
   // otherwise), so the right move is none: keeping the old heading walked a bot that was standing
   // somewhere perfectly safe straight into the blast around it.
@@ -452,6 +480,50 @@ function steer(state, p, dir) {
   return off > 0 ? IN_LEFT : IN_RIGHT;
 }
 
+/* The second key.
+ *
+ * Movement travels on both axes in a tick now (see the diagonal block in sim/movement.js), and
+ * for a long time the bots were the only ones on the island who did not know: they pressed one
+ * key, walked the L, and took two legs over ground a person crossed in one. Escapes were the
+ * worst of it — a flee route round a corner is exactly the shape a diagonal shortens.
+ *
+ * So: having chosen a direction, add the perpendicular one when all three hold.
+ *
+ *   1. it points at the goal   — the safe tile the flood found, or whoever is being hunted.
+ *   2. the diagonal is open    — the corner tile is walkable, free of bombs, and the body fits.
+ *   3. it is no more dangerous — the corner's threat is at least the straight step's. A
+ *                                diagonal that shaves a corner into a blast is not a shortcut.
+ *
+ * Only ever an ADDITION to a direction the bot had already committed to, so every rule above it
+ * — the flee, the hold, the loop breaker — behaves exactly as it did.
+ */
+function withDiagonal(state, p, danger, mask, dir, gx, gy) {
+  if (dir < 0 || gx < 0) return mask;
+  const d = DIRS[dir];
+  const tx = toTile(p.x), ty = toTile(p.y);
+  // The axis we are NOT travelling on, and only if the goal is off it.
+  const sx = d.dx ? 0 : Math.sign(gx - tx);
+  const sy = d.dy ? 0 : Math.sign(gy - ty);
+  if (!sx && !sy) return mask;
+
+  const side = DIRS.findIndex(o => o.dx === sx && o.dy === sy);
+  if (side < 0) return mask;
+  const cx = tx + d.dx + sx, cy = ty + d.dy + sy;
+  const map = state.map;
+  if (!walkable(map, cx, cy) || danger.solid.has(cy * map.w + cx)) return mask;
+  if (!walkable(map, tx + sx, ty + sy)) return mask;        // the side step itself has to exist
+  // Hitbox, not tile: a corner the centre clears but the shoulders do not is a bot wedged in it.
+  const pace = Math.max(1, (speedOf(p) * DIAG_NUM / DIAG_DEN) | 0);
+  if (blocked(state, p, p.x + sx * pace, p.y + sy * pace)) return mask;
+
+  const straight = threatAt(danger, null, tx + d.dx, ty + d.dy);
+  if (threatAt(danger, null, cx, cy) < straight) return mask;
+  // Water is slow and it slides. Worth crossing to escape, never worth cutting a corner into.
+  if (state.puddles?.some(q => q.tx === cx && q.ty === cy && q.until > state.tick)) return mask;
+
+  return mask | DIRS[side].mask;
+}
+
 /**
  * @returns input bitmask for this bot this tick
  */
@@ -481,11 +553,12 @@ export function think(state, p, brain, danger) {
     }
     if (brain.surprised && here > SURPRISE_NOTICE_TICKS) return 0;
     if (brain.lapse > 0) { brain.lapse--; return 0; }
-    const { dir } = flood(state, p, danger, null);
+    const { dir, gx, gy } = flood(state, p, danger, null);
     if (dir >= 0) {
       brain.dir = dir;
       brain.hold = 3;
-      return steer(state, p, dir);
+      brain.aimX = gx; brain.aimY = gy;
+      return withDiagonal(state, p, danger, steer(state, p, dir), dir, gx, gy);
     }
     // Nowhere to go. Fall through and keep moving rather than standing still and accepting it.
   } else brain.inDanger = false;
@@ -549,5 +622,9 @@ export function think(state, p, brain, danger) {
   }
   brain.hold--;
 
-  return steer(state, p, brain.dir);
+  // Hunting is a heading, so it is also a diagonal whenever the corner is open.
+  const mark = nearestPlayer(state, p);
+  const aimX = mark ? toTile(mark.x) : brain.aimX ?? -1;
+  const aimY = mark ? toTile(mark.y) : brain.aimY ?? -1;
+  return withDiagonal(state, p, danger, steer(state, p, brain.dir), brain.dir, aimX, aimY);
 }

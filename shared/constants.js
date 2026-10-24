@@ -158,10 +158,14 @@ export const SLIDE_COOLDOWN_TICKS = 18;
 /* How long the client gives you between the two taps.
  *
  * Client-side only: the server is told "slide" by a bit in the mask and never sees the taps, which
- * is what keeps the gesture a matter of local feel rather than of latency. Long enough to be
- * comfortable, short enough that walking left-left-left in a corridor does not launch you.
+ * is what keeps the gesture a matter of local feel rather than of latency.
+ *
+ * 160 ms, down from 260. At the old window ordinary corridor play launched slides nobody asked
+ * for — tapping a direction twice while lining up a gap is a normal thing to do, and a quarter
+ * of a second is long enough to catch it. A slide should cost a deliberate gesture, because it
+ * costs a fifth of your wind and takes your steering away for half a second. Two quick taps.
  */
-export const SLIDE_DOUBLE_TAP_MS = 260;
+export const SLIDE_DOUBLE_TAP_MS = 160;
 
 // ─── Bombs & fire ─────────────────────────────────────────────────────────────
 
@@ -262,9 +266,12 @@ export const REGEN_CLEAR_RADIUS_TILES = 4;
  * special in the blast code — a keg IS a bomb, which is why it chains through other kegs, bombs
  * and walls exactly the way you would expect.
  */
-export const POWDER_MAX_PER_ROUND = 6;
+// Twelve a round, up from six, and the per-cycle chance doubles with it — the cap alone would
+// only have meant the same six kegs with room for more that never arrived. One every forty-five
+// seconds or so: enough that a keg is terrain you plan around rather than an event you remember.
+export const POWDER_MAX_PER_ROUND = 12;
 export const POWDER_RADIUS = 7;
-export const POWDER_CHANCE_PER_CYCLE = 0.36;
+export const POWDER_CHANCE_PER_CYCLE = 0.72;
 // Six minutes in, the first one stops being optional. A round must never pass without one.
 export const POWDER_GUARANTEE_TICK = Math.round(0.6 * 10 * 60 * TICK_HZ);
 
