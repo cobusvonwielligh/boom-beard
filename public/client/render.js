@@ -352,14 +352,16 @@ export function createRenderer(canvas, world) {
     const key = owner >= 0 ? owner % 16 : -1;
     const hit = blastLights.get(key);
     if (hit) return hit;
-    const h = key >= 0 ? fireTones(key).hue : 33;
+    const tones = key >= 0 ? fireTones(key) : { hue: 33, sat: 70 };
+    const h = tones.hue, sat = k => Math.round(tones.sat * k);
     const g = ctx.createRadialGradient(0, 0, TILE_PX * 0.1, 0, 0, BLAST_LIGHT_PX);
     /* Softer than the flame: light that has crossed a room has lost its colour on the way, and
      * the pool is three times the size of the fire that threw it - the same saturation over that
-     * area reads as a coloured lamp rather than as firelight with a hint of whose it is. */
-    g.addColorStop(0, `hsla(${h} 41% 86% / 0.95)`);
-    g.addColorStop(0.28, `hsla(${h} 49% 64% / 0.52)`);
-    g.addColorStop(0.62, `hsla(${h} 43% 44% / 0.24)`);
+     * area reads as a coloured lamp rather than as firelight with a hint of whose it is. Scaled
+     * from the owner's own saturation, like the flame, so a white player's light is white. */
+    g.addColorStop(0, `hsla(${h} ${sat(0.58)}% 86% / 0.95)`);
+    g.addColorStop(0.28, `hsla(${h} ${sat(0.7)}% 64% / 0.52)`);
+    g.addColorStop(0.62, `hsla(${h} ${sat(0.62)}% 44% / 0.24)`);
     g.addColorStop(1, 'rgba(0,0,0,0)');
     blastLights.set(key, g);
     return g;

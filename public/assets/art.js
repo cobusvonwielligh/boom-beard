@@ -10,7 +10,7 @@
 //   3. Terrain is muted; players are the only saturated things on screen.
 
 // `/shared` is mounted by the dev server alongside `public/` - see docs/ARCHITECTURE.md §7.
-import { BLOCK, TILE_PX, MAX_RADIUS, playerHue, playerHsl } from '/shared/constants.js';
+import { BLOCK, TILE_PX, MAX_RADIUS, playerHsl } from '/shared/constants.js';
 
 export const PALETTE = {
   void: '#0d1117',
@@ -79,7 +79,6 @@ const PIRATE = {
  *
  * Cached per seat: sixteen seats, three strings each, built once.
  */
-const FIRE_HUE = 24;                 // fire's own orange, in degrees
 /* How far toward the player's hue the ramp moves: 0.28, down from 0.4.
  *
  * The hue is the player's, near enough all of it - 0.8 - because the whole point is that YOUR
@@ -95,32 +94,39 @@ const FIRE_HUE = 24;                 // fire's own orange, in degrees
  * And then down another thirty percent: 41/49/50 rather than 58/70/72. At this point the colour
  * is nearly smoke-and-ember rather than paint, and the hue is doing the identifying almost on
  * its own - which is exactly what a real fire looks like when it is not the brightest thing in
- * the frame. Below about thirty the sixteen hues stop being distinguishable from each other. */
-const FIRE_PULL = 0.8;
+ * the frame. Below about thirty the sixteen hues stop being distinguishable from each other.
+ *
+ * ─── and then the pull went to 1: the hue is the character's, exactly ───
+ *
+ * 0.8 of the way from orange, the short way round, did not land on the player's colour - it
+ * landed on a NEIGHBOUR of it. Cyan's fire came out green (154°), blue's violet (256°), violet's
+ * magenta (286°), sky's teal, and white - fourteen percent saturation on the sprite - burned a
+ * strong cyan. Several seats' blasts looked like somebody else's. Now the hue is the seat's own,
+ * and the saturation is the seat's own scaled down by one factor per tone, so the restraint that
+ * keeps it fire survives (blue's body sits at 52%, where the flat 49% was) while a pale or
+ * greyish character gets a pale, greyish fire instead of a saturated one. The body's lightness
+ * leans halfway toward the character's too, so a light pink or sky player's fire is light. */
+const FIRE_SAT = { edge: 0.62, mid: 0.72, core: 0.55, cool: 0.5 };
 const fireToneCache = new Map();
 
 export function fireTones(i) {
   const seat = ((i % 16) + 16) % 16;
   const hit = fireToneCache.get(seat);
   if (hit) return hit;
-  const hue = playerHue(seat);
-  // Shortest way round the wheel, or a red player's fire would swing through green to get there.
-  let delta = ((hue - FIRE_HUE + 540) % 360) - 180;
-  const h = (FIRE_HUE + delta * FIRE_PULL + 360) % 360;
+  const { h, s, l } = playerHsl(seat);
+  const sat = k => Math.round(s * k);
   const tones = {
-    /* Same ramp fire always had - #e63f27, #ff9b3d, #fff4c2 - read back as hsl, and a few points
-     * of saturation off each one. A hue that has been pulled toward blue or green shows its
-     * saturation far more than the orange it came from does, so holding fire's exact numbers made
-     * the cool players look like paint and the warm ones look right. */
-    edge: `hsl(${h.toFixed(1)} 41% 48%)`,
-    mid: `hsl(${h.toFixed(1)} 49% 61%)`,
-    // The core keeps a quarter of the shift and nearly all of fire's own whiteness.
-    // The core leans their way too, and stays nearly white: hot things go white whatever is
-    // burning, and that is what keeps the middle of a blast looking like the middle of a blast.
-    core: `hsl(${(FIRE_HUE + delta * FIRE_PULL * 0.6 + 360) % 360} 50% 90%)`,
+    /* Same ramp fire always had - a dark edge, a bright body, a near-white core - in the
+     * character's own hue, at a fraction of the character's own saturation. */
+    edge: `hsl(${h} ${sat(FIRE_SAT.edge)}% 48%)`,
+    mid: `hsl(${h} ${sat(FIRE_SAT.mid)}% ${Math.round((61 + l) / 2)}%)`,
+    // The core stays nearly white: hot things go white whatever is burning, and that is what
+    // keeps the middle of a blast looking like the middle of a blast.
+    core: `hsl(${h} ${sat(FIRE_SAT.core)}% 90%)`,
     // What the smoke-stage body cools to, and the one the sparks fly in.
-    cool: `hsl(${h.toFixed(1)} 34% 42%)`,
+    cool: `hsl(${h} ${sat(FIRE_SAT.cool)}% 42%)`,
     hue: h,
+    sat: s,
   };
   fireToneCache.set(seat, tones);
   return tones;
