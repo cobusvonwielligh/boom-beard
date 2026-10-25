@@ -6,11 +6,11 @@ Warn the local player about nearby bombs on the radar rim while keeping bomb war
 
 ## Design
 
-Keep existing enemy blips unchanged: they remain maroon, elongated rim slithers with a pale center thread. Draw bombs as compact amber diamonds with a bright center and soft glow. Their smooth visual pulse accelerates as the fuse approaches detonation; do not add numeric countdown text or sound.
+Keep existing enemy blips unchanged: they remain maroon, elongated rim slithers with a pale center thread. Draw bombs as compact blood-red diamonds with a pale center and strong red glow. Show the fuse meter as a fill clipped inside the diamond instead of a separate bar. The filled area drains as detonation approaches, changing smoothly from green at placement to fully red by 80% of the fuse elapsed; it remains red while the last portion drains. The marker pulse also accelerates with the fuse. Do not add numeric countdown text or sound.
 
-For each frame, select bombs whose center is within six tiles of the local player's current position, regardless of intervening walls. Rank eligible bombs by distance and show no more than the three nearest. Position each marker by projecting the bomb center onto the radar rim using the existing rounded-rim projection. Existing player indicators and tracking behavior remain unchanged.
+For each frame, select bombs whose center is within a circular radius of ten tiles from the local player's current position, regardless of intervening walls. Rank eligible bombs by distance and show no more than the three nearest. Position each marker by projecting the bomb center onto the radar rim using the existing rounded-rim projection. Existing player indicators and tracking behavior remain unchanged.
 
-Use each bomb's existing ID, tile coordinates, and scheduled detonation tick (`at`), together with `world.tick`, for marker identity, position, and fuse progress. Remove a marker when the bomb is removed from `world.bombs` or bursts. Do not leave it visible during the explosion.
+Use each bomb's existing ID, tile coordinates, and scheduled detonation tick (`at`), together with `world.tick`, for marker identity, position, pulse rate, and fuse meter progress. The meter drains from full at placement to empty at detonation. Remove a marker when the bomb is removed from `world.bombs` or bursts. Do not leave it visible during the explosion.
 
 ## Implementation scope
 
@@ -20,10 +20,13 @@ Modify the radar rendering logic in `public/client/render.js`, reusing `rimPath`
 
 Add focused tests for:
 
-- Bombs at the six-tile boundary being eligible, and bombs beyond it being excluded.
+- Bombs at the ten-tile boundary being eligible, bombs beyond it being excluded, and diagonals using circular distance.
 - At most three eligible bombs being shown, selected by nearest distance.
 - Bomb pulse rate increasing as remaining fuse ticks decrease.
+- Interior fuse fill draining from full to empty, with green-to-red progression reaching red at 80% elapsed.
 - A bomb marker being removed when the bomb is removed or bursts.
 - Enemy blip rendering/state remaining independent of bomb indicators.
 
 Run the focused tests, `node --check public/client/render.js`, and the browser module graph test (`node --test test/client-modules.test.js`).
+
+The landing card should fit without vertical scrolling at 100% zoom at viewports at least 768 CSS px wide and 720 CSS px tall. On short supported screens, reflow the controls into two key/action pairs per row and make modest spacing reductions; below either minimum, retain the existing scroll fallback rather than clipping content or shrinking it excessively.
