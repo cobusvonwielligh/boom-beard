@@ -849,27 +849,66 @@ export const AUTO_BOTS_EMPTY_ROUNDS = 2;
 // into a maze nobody can cross.
 export const REGEN_MAX_FILL = 0.55;
 
-// 16 hues evenly spaced 22.5° apart, handed out in bit-reversed order so the first few joiners
-// get maximally separated colours. Adjacent hues also alternate lightness, so the two closest
-// hues always differ on a second axis too.
-// (The obvious golden-angle trick is worse here: for exactly 16 slots its minimum separation is
-// 12.4°, against 22.5° for this.)
-const HUE_ORDER = [0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15];
-export const playerHueSlot = i => HUE_ORDER[((i % 16) + 16) % 16];
+/* The sixteen player colours, by hand, each one a word somebody can say out loud.
+ *
+ * Sixteen hues evenly spaced is the mathematician's answer and it fails the only test that
+ * matters: "I am light green" has to mean something to the fifteen other people in the room. At
+ * 22.5° apart, four of the sixteen were greens nobody could name apart from each other, three
+ * were oranges, and a round with twelve players in it had several pairs that were simply "the
+ * two blue ones".
+ *
+ * So the spacing is uneven and deliberate, and the second and third axes do as much work as the
+ * hue. Three rules, and each one came from a confusable pair:
+ *
+ *   NAMEABLE   every entry is one of the sixteen words below and reads as that word on the sand
+ *              and on a dark panel. If it needs a qualifier beyond light/dark, it is out.
+ *   SEPARATED  where two names are hue neighbours - cyan, sky, blue - they are pulled apart on
+ *              lightness and saturation instead, which is how people tell them apart anyway: sky
+ *              is the pale one, blue is the deep one.
+ *   DESATURATED where it helps. Tan and white are the two that carry no hue identity at all, and
+ *              they are the easiest of the sixteen to name because of it.
+ *
+ * Lightness never goes below 45: these are read as a 20-pixel sprite against dark sand and as
+ * small text on a dark panel, and anything darker disappears into both.
+ *
+ * Handed out in an order that keeps the first joiners far apart, like the old bit-reversal did -
+ * a two-player round should be red and cyan, not red and orange.
+ */
+const PLAYER_PALETTE = [
+  { name: 'red', h: 2, s: 72, l: 56 },
+  { name: 'cyan', h: 186, s: 68, l: 58 },
+  { name: 'yellow', h: 48, s: 88, l: 62 },
+  { name: 'violet', h: 262, s: 62, l: 66 },
+  { name: 'green', h: 128, s: 50, l: 48 },
+  { name: 'pink', h: 334, s: 78, l: 72 },
+  { name: 'sky', h: 204, s: 82, l: 76 },
+  { name: 'tan', h: 26, s: 38, l: 52 },
+  { name: 'orange', h: 26, s: 92, l: 56 },
+  { name: 'blue', h: 224, s: 72, l: 52 },
+  { name: 'mint', h: 154, s: 58, l: 72 },
+  { name: 'magenta', h: 304, s: 66, l: 56 },
+  { name: 'lime', h: 84, s: 66, l: 60 },
+  { name: 'teal', h: 174, s: 54, l: 45 },
+  { name: 'purple', h: 282, s: 48, l: 47 },
+  { name: 'white', h: 210, s: 14, l: 82 },
+];
+
+const seatOf = i => ((i % 16) + 16) % 16;
 
 /* ONE definition of what colour a seat is, as three numbers.
  *
  * Everything that paints a player reads this: the name in the chat, the row on the scoreboard,
- * the sprite's three shades, the crown, the rim blip, the server's welcome. They all agreed
- * before - by all doing the same arithmetic in their own file - which is the kind of agreement
- * that holds until somebody adjusts one of them. A seat's colour is a fact about the seat, so
- * there is now exactly one place it comes from and the rest derive.
+ * the sprite's three shades, the crown, the rim blip, the fire its bombs make, the server's
+ * welcome. They all agreed before - by all doing the same arithmetic in their own file - which is
+ * the kind of agreement that holds until somebody adjusts one of them.
  */
-export const playerHsl = i => {
-  const slot = playerHueSlot(i);
-  return { h: slot * 22.5, s: 74, l: slot % 2 ? 52 : 64 };
-};
+export const playerHsl = i => PLAYER_PALETTE[seatOf(i)];
 export const playerColor = i => {
   const { h, s, l } = playerHsl(i);
   return `hsl(${h} ${s}% ${l}%)`;
 };
+/** What to call it. "You are light green" is the whole feature. */
+export const playerColorName = i => PLAYER_PALETTE[seatOf(i)].name;
+/** Kept for the fire's hue; see fireTones in art.js. */
+export const playerHue = i => PLAYER_PALETTE[seatOf(i)].h;
+

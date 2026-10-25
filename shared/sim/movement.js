@@ -267,6 +267,20 @@ export function blocked(state, p, x, y, bombsCount = true, chamfer = true) {
       if (tx !== x0 && tx !== x1) return true;
       if (ty !== y0 && ty !== y1) return true;
       if (x0 === x1 || y0 === y1) return true;        // flush against a face, not a corner
+      /* A LONE corner, or nothing.
+       *
+       * The chamfer exists so that rounding the corner of a block glances off it. It must not
+       * also open a pocket: with a solid tile beside the corner as well, the gap the cut reaches
+       * into is a dead end a tile deep, and a player who slid into it had a shoulder inside both
+       * walls at once with every way out blocked - wedged, and the unstick cannot help, because
+       * the position is legal by the very rule that produced it.
+       *
+       * So the forgiveness is withdrawn the moment the corner has company: if either tile between
+       * it and the one the player is standing in is solid too, this is a wall face or a nook, not
+       * a corner, and it is as solid as any other wall.
+       */
+      const cx = x >> 8, cy = y >> 8;
+      if (!walkable(state.map, tx, cy, reduced) || !walkable(state.map, cx, ty, reduced)) return true;
       // How far into the tile the box reaches, on each axis.
       const intoX = tx === x0 ? (tx + 1) * UNITS_PER_TILE - (x - h) : (x + h) - tx * UNITS_PER_TILE;
       const intoY = ty === y0 ? (ty + 1) * UNITS_PER_TILE - (y - h) : (y + h) - ty * UNITS_PER_TILE;

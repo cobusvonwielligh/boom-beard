@@ -10,7 +10,7 @@
 //   3. Terrain is muted; players are the only saturated things on screen.
 
 // `/shared` is mounted by the dev server alongside `public/` - see docs/ARCHITECTURE.md §7.
-import { BLOCK, TILE_PX, MAX_RADIUS, playerHueSlot, playerHsl } from '/shared/constants.js';
+import { BLOCK, TILE_PX, MAX_RADIUS, playerHue, playerHsl } from '/shared/constants.js';
 
 export const PALETTE = {
   void: '#0d1117',
@@ -103,7 +103,7 @@ export function fireTones(i) {
   const seat = ((i % 16) + 16) % 16;
   const hit = fireToneCache.get(seat);
   if (hit) return hit;
-  const hue = playerHueSlot(seat) * 22.5;
+  const hue = playerHue(seat);
   // Shortest way round the wheel, or a red player's fire would swing through green to get there.
   let delta = ((hue - FIRE_HUE + 540) % 360) - 180;
   const h = (FIRE_HUE + delta * FIRE_PULL + 360) % 360;
@@ -183,7 +183,18 @@ const bevel = (c, x, y, w, h, t = 2) => {
  * (CORNER_ASSIST_UNITS) has always let you round a corner you are nearly lined up with, and a
  * rounded corner is what that behaviour has always looked like from the inside.
  */
-export const STONE_RADIUS = 3;
+/* Six, not three, because the HITBOX is round now.
+ *
+ * The corner cut in movement.js is 96 units - twelve of a tile's thirty-two pixels - so a player
+ * glances off a block corner that is drawn as a right angle, and the eye reads that as the game
+ * being loose rather than as the corner being round. Six pixels is the biggest radius that still
+ * leaves a row of blocks touching along its edges: past that the joins open up and a wall reads
+ * as a row of lozenges with sand between them, which is both uglier and a lie about what you can
+ * walk through.
+ *
+ * It is drawing only, as it always was - the simulation is whole tiles - but it is now drawing
+ * that MATCHES what the collision does, which is the whole point of changing it. */
+export const STONE_RADIUS = 6;
 /* Which types get it: everything solid that sits ON the sand. Not FLOOR (it IS the sand), and
  * not the types that already draw their own shape on a floor of their own - a column, a keg and
  * a block of ice are objects, not cells, and they were never square to begin with. */

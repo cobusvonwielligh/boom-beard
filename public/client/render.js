@@ -312,7 +312,7 @@ export function createRenderer(canvas, world) {
    * the pixels and not in the picture. Six is a fifth of a tile: visibly a boulder, and still
    * nowhere near a circle. Only exposed corners get it (see the chunk pass), so a wall of rock is
    * still one unbroken mass. STONE_RADIUS stays the crates' number. */
-  const ROCK_RADIUS = Math.max(STONE_RADIUS, 6);
+  const ROCK_RADIUS = Math.max(STONE_RADIUS, 8);
   const SHADOW_LEN = TILE_PX * 0.72;
   /* The light a blast throws onto everything near it.
    *

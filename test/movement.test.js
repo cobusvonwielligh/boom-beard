@@ -146,6 +146,47 @@ test('movement', async t => {
   });
 });
 
+test('the corner chamfer cannot wedge you in a pocket', async t => {
+  /* The cut forgives a corner so a diagonal glances off it. A corner with a solid tile beside it
+   * is not that: it is a nook a tile deep, and forgiving it let a player slide in with a shoulder
+   * inside both walls and no legal way out - the position being legal by the very rule that
+   * produced it, so the unstick could not help either. */
+  await t.test('a lone block corner is still forgiven', () => {
+    const st = room();
+    const p = spawn(st, 4, 4);
+    setTile(st.map, 5, 5, BLOCK.SOFT, BLOCK_HP[BLOCK.SOFT]);
+    /* Clipping that corner by twenty units on both axes: the whole point of the chamfer.
+     * The box is 160 wide, so its edge reaches 80 past the centre - putting the centre 20 units
+     * short of the boundary means the SHOULDER is 20 units past it, which is the case being
+     * forgiven. Putting the centre itself past the boundary would be standing in the block. */
+    const x = tileCentre(4) + 68, y = tileCentre(4) + 68;
+    assert.equal(blocked(st, p, x, y), false, 'the chamfer stopped working');
+  });
+
+  await t.test('the same corner with a neighbour is solid', () => {
+    const st = room();
+    const p = spawn(st, 4, 4);
+    setTile(st.map, 5, 5, BLOCK.SOFT, BLOCK_HP[BLOCK.SOFT]);
+    setTile(st.map, 5, 4, BLOCK.SOFT, BLOCK_HP[BLOCK.SOFT]);   // beside it: now a nook
+    const x = tileCentre(4) + 68, y = tileCentre(4) + 68;
+    assert.equal(blocked(st, p, x, y), true, 'the cut opened a pocket to get wedged in');
+  });
+
+  await t.test('and walking a diagonal into a pocket never ends up stuck', () => {
+    const st = room();
+    const p = spawn(st, 4, 4);
+    setTile(st.map, 5, 5, BLOCK.SOFT, BLOCK_HP[BLOCK.SOFT]);
+    setTile(st.map, 5, 4, BLOCK.SOFT, BLOCK_HP[BLOCK.SOFT]);
+    setTile(st.map, 4, 5, BLOCK.SOFT, BLOCK_HP[BLOCK.SOFT]);
+    for (let i = 0; i < 30; i++) step(st, p, IN_RIGHT | IN_DOWN);
+    assert.ok(!blocked(st, p, p.x, p.y), 'ended up inside the geometry');
+    // And can still leave, which is the thing being wedged takes away.
+    const x0 = p.x;
+    for (let i = 0; i < 10; i++) step(st, p, IN_LEFT);
+    assert.ok(p.x < x0, 'wedged: could not walk back out');
+  });
+});
+
 test('a held diagonal slides along whatever is in the way', async t => {
   // Holding down-left with a wall below you used to do nothing at all: movement committed to
   // the axis you were facing and stopped dead when it was blocked, even with the other axis
