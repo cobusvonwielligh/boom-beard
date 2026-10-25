@@ -14,7 +14,7 @@ Use each bomb's existing ID, tile coordinates, and scheduled detonation tick (`a
 
 ## Implementation scope
 
-Modify only the radar rendering logic in `public/client/render.js`, reusing `rimPath`, `world.me()`, and `world.bombs`. Keep bomb tracking state separate from per-seat enemy-blip state so the two types cannot share or exchange pulse phases. Prune stale bomb state when bombs disappear, and keep the marker cap at three even when more nearby bombs are present.
+Modify the radar rendering logic in `public/client/render.js`, reusing `rimPath`, `world.me()`, and `world.bombs`. Put the pure bomb selection and fuse pulse-rate calculations in `public/client/radar.js` so their distance boundary, nearest-three cap, and fuse progression can be tested directly in Node. Keep bomb tracking state separate from per-seat enemy-blip state so the two types cannot share or exchange pulse phases. Prune stale bomb state when bombs disappear, and keep the marker cap at three even when more nearby bombs are present.
 
 ## Verification
 
