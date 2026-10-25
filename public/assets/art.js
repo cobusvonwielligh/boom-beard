@@ -179,13 +179,21 @@ function drawTileBody(c, type, tx = 0, ty = 0, dmg = 0) {
         px(c, gx, gy, 1, 1, g > 0.5 ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.045)');
       }
 
-      // Flagstones, on about one tile in six: the stone the sand has blown off.
+      /* Flagstones, on about one tile in six: the stone the sand has blown off.
+       *
+       * Every one used to be sixteen by thirteen, which at one tile in six meant the same
+       * rectangle repeating across the board in a dozen places - and a repeated shape is the one
+       * thing the eye finds faster than a repeated colour. Width, height and corner now all come
+       * off the tile's own hash, so a flagstone is between a half and two thirds of its tile and
+       * no two are the same. The highlight and the shade follow whatever it turned out to be. */
       if (hash(tx + 101, ty + 211) > 0.84) {
-        const sx = 3 + ((hash(tx, ty + 5) * 7) | 0);
-        const sy = 3 + ((hash(tx + 5, ty) * 7) | 0);
-        rr(c, sx, sy, 16, 13, 2, PALETTE.floorAccent);
-        px(c, sx, sy, 16, 1, 'rgba(255,255,255,0.05)');
-        px(c, sx, sy + 12, 16, 1, 'rgba(0,0,0,0.1)');
+        const sw = 11 + ((hash(tx * 7 + 3, ty + 19) * 10) | 0);
+        const sh = 8 + ((hash(tx + 23, ty * 7 + 5) * 9) | 0);
+        const sx = 2 + ((hash(tx, ty + 5) * (S - sw - 3)) | 0);
+        const sy = 2 + ((hash(tx + 5, ty) * (S - sh - 3)) | 0);
+        rr(c, sx, sy, sw, sh, 1.5 + hash(tx + 41, ty + 13) * 2.5, PALETTE.floorAccent);
+        px(c, sx, sy, sw, 1, 'rgba(255,255,255,0.05)');
+        px(c, sx, sy + sh - 1, sw, 1, 'rgba(0,0,0,0.1)');
       }
 
       // Pebbles and shell fragments.

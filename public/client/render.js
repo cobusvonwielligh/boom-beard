@@ -267,6 +267,9 @@ export function createRenderer(canvas, world) {
     glow.length = 0; eqFor = null; eqLen.fill(0); smokes.length = 0;
     rockSprites = null;
     rockSpritesFor = null;
+    perkSeen.clear();
+    perkGone.clear();
+    perkLive.clear();
     blastLight = null;
     lightLayer = null;
     lightCtx = null;
@@ -327,6 +330,13 @@ export function createRenderer(canvas, world) {
   // How much of the finished light layer reaches the board. One number for a whole blast now,
   // not per tile, because the pools are merged before they get here.
   const BLAST_LIGHT_ALPHA = 0.55;
+  /* Perks fading in and out. `perkSeen` is when this renderer first saw an id, `perkGone` is the
+   * last thing known about one, and `perkLive` is this frame's ids. See the note in the perk
+   * loop; a sixth of a second each way. */
+  const PERK_POP_MS = 170;
+  const perkSeen = new Map();
+  const perkGone = new Map();
+  const perkLive = new Set();
   let blastLight = null;
   let lightLayer = null, lightCtx = null;
   let lampLayer = null, lampCtx = null;
@@ -758,6 +768,13 @@ export function createRenderer(canvas, world) {
    */
   const MOSS_DARK = '58,74,45';
   const MOSS_LIT = '122,140,86';
+  /* And a third, for the creeping edge.
+   *
+   * Two tones made a patch that was dark in the middle and dark at the rim, which reads as a
+   * stain. Real growth is YOUNGEST at its edge - thinner, yellower, a little brighter than the
+   * mass behind it - so the frontier gets a tone of its own and the patch suddenly has a
+   * direction to it. It is the single cheapest thing that turns a blob into something growing. */
+  const MOSS_EDGE = '146,154,84';
 
   /* One blob per third of a tile, which is the resolution the pattern is actually drawn at.
    *
@@ -783,7 +800,7 @@ export function createRenderer(canvas, world) {
     c.fillRect(0, 0, R * 2, R * 2);
     return el;
   }
-  let mossDark = null, mossLit = null;
+  let mossDark = null, mossLit = null, mossEdge = null;
 
   /**
    * Moss over one chunk, after the blocks and their lighting, before the occlusion.
@@ -796,6 +813,7 @@ export function createRenderer(canvas, world) {
     const S = TILE_PX;
     mossDark ??= mossSprite(MOSS_DARK);
     mossLit ??= mossSprite(MOSS_LIT);
+    mossEdge ??= mossSprite(MOSS_EDGE);
 
     // The clip. One path for the whole chunk rather than a save/clip/restore per tile: it is the
     // thing that lets a blob straddle two tiles.
@@ -844,17 +862,37 @@ export function createRenderer(canvas, world) {
         const px = (tx - cx * CHUNK_TILES) * S + S / 2 + jx;
         const py = (ty - cy * CHUNK_TILES) * S + S / 2 + jy;
 
-        // Size varies with density as well as alpha, so the edge of a patch is made of smaller
-        // clumps rather than fainter ones of the same size.
-        const scale = 0.55 + m * 0.6;
+        /* Size varies with density AND with a field of its own.
+         *
+         * Density alone made every clump at a given thickness the same size, which at the heart
+         * of a patch is a field of identical circles - the eye finds that repetition long before
+         * it finds the colour. A second noise at half a tile breaks the sizes up, so a patch is
+         * built from clumps that differ from their neighbours the way real ones do.
+         */
+        const lump = noiseAt(tx * 3 + 31, ty * 3 + 7, 0.5, 0x1f5a3);
+        const scale = (0.5 + m * 0.6) * (0.72 + lump * 0.62);
         const w = R * 2 * scale;
         cc.globalAlpha = m * MOSS_MAX;
         cc.drawImage(mossDark, px - w / 2, py - w / 2, w, w);
 
+        /* The frontier, where the moss is thin: younger, yellower, brighter.
+         *
+         * Between 0.12 and 0.4 of thickness - the band a patch fades out through - and brightest
+         * in the middle of that band, so it reads as a rim following the outline rather than as
+         * a second patch inside the first. */
+        if (m > 0.12 && m < 0.42) {
+          const rim = 1 - Math.abs((m - 0.27) / 0.15);
+          if (rim > 0) {
+            cc.globalAlpha = rim * MOSS_MAX * 0.85;
+            const ew = w * 0.72;
+            cc.drawImage(mossEdge, px - ew / 2, py - ew / 2, ew, ew);
+          }
+        }
+
         // And the lit half, offset a little toward the light and only where the moss is thick.
         if (m > 0.45) {
           cc.globalAlpha = (m - 0.45) * MOSS_MAX * 1.1;
-          const lw = w * 0.6;
+          const lw = w * (0.45 + lump * 0.3);
           cc.drawImage(mossLit, px - lw / 2 - 1.5, py - lw / 2 - 2, lw, lw);
         }
       }
@@ -3570,7 +3608,25 @@ export function createRenderer(canvas, world) {
     // On the floor, under the perks, bombs and everybody standing in it.
     drawPuddles(ox, oy, dtMs);
 
+    /* In and out, both quick.
+     *
+     * A perk used to exist or not exist between two frames - it appeared the instant a crate
+     * broke, inside the dust of the blast that broke it, and it disappeared the instant somebody
+     * walked over it. Both are the same problem: nothing on this board should change state in
+     * one frame, because a thing that does cannot be seen to have changed at all. A sixth of a
+     * second of fade and overshoot on arrival reads as the thing being uncovered; the same on
+     * the way out reads as it being taken.
+     *
+     * Both are keyed off the id, which is unique and monotonic, so nothing has to be told
+     * anything - a perk is new because this renderer has not seen its id before, and gone
+     * because its id is no longer in the snapshot. A reconnect mid-fade shows the perk plainly,
+     * which is right: it is not new to the BOARD, only to this renderer.
+     */
+    const now = performance.now();
     for (const k of world.perks) {
+      if (!perkSeen.has(k.id)) perkSeen.set(k.id, now);
+      perkLive.add(k.id);
+      const inT = Math.min(1, (now - perkSeen.get(k.id)) / PERK_POP_MS);
       const bob = Math.sin((world.tick + k.id * 7) / 6) * 2;
       // Dying drops fade and shrink. `until` rides along in the snapshot, so this needs no event
       // and survives a reconnect - a perk half-faded when you dropped out is still half-faded
@@ -3600,11 +3656,21 @@ export function createRenderer(canvas, world) {
         ctx.fillRect(-TILE_PX, -TILE_PX, TILE_PX * 3, TILE_PX * 3);
       }
 
+      if (inT < 1) {
+        // Up through a small overshoot: a thing that arrives at exactly its final size looks
+        // placed, where one that goes a few percent past and settles looks uncovered.
+        const pop = 1 + Math.sin(inT * Math.PI) * 0.16;
+        ctx.globalAlpha = inT;
+        ctx.translate(TILE_PX / 2, TILE_PX / 2);
+        ctx.scale(pop * (0.6 + 0.4 * inT), pop * (0.6 + 0.4 * inT));
+        ctx.translate(-TILE_PX / 2, -TILE_PX / 2);
+      }
+
       if (fade < 1) {
         // A slow flicker on top of the ramp. The ramp alone is easy to miss in peripheral
         // vision; something blinking in the corner of your eye is not.
         const blink = 0.78 + 0.22 * Math.sin(world.tick / 2.2);
-        ctx.globalAlpha = fade * (fade < 0.45 ? blink : 1);
+        ctx.globalAlpha = fade * (fade < 0.45 ? blink : 1) * Math.min(1, inT);
         // Shrink about the tile's centre, so it sinks into the floor rather than drifting.
         const scale = 0.72 + 0.28 * fade;
         ctx.translate(TILE_PX / 2, TILE_PX / 2);
@@ -3614,6 +3680,36 @@ export function createRenderer(canvas, world) {
       drawPerk(ctx, { type: k.type, bob });
       ctx.restore();
     }
+
+    /* And the ones that have gone: taken, or burnt where they lay.
+     *
+     * Drawn from what was remembered of them for a sixth of a second - rising, shrinking and
+     * fading - after which the id is forgotten. Rising, because every other "this is yours now"
+     * on this board goes up: the pickup label, the coins, the score. */
+    for (const [id, at] of perkSeen) {
+      if (perkLive.has(id)) continue;
+      const ghost = perkGone.get(id);
+      if (!ghost) { perkSeen.delete(id); continue; }
+      const t = (now - ghost.at) / PERK_POP_MS;
+      if (t >= 1) { perkSeen.delete(id); perkGone.delete(id); continue; }
+      void at;
+      ctx.save();
+      ctx.globalAlpha = (1 - t) * 0.9;
+      ctx.translate(ox + ghost.tx * TILE_PX, oy + ghost.ty * TILE_PX + TILE_PX * -0.35 * t);
+      ctx.translate(TILE_PX / 2, TILE_PX / 2);
+      ctx.scale(1 - 0.35 * t, 1 - 0.35 * t);
+      ctx.translate(-TILE_PX / 2, -TILE_PX / 2);
+      drawPerk(ctx, { type: ghost.type, bob: 0 });
+      ctx.restore();
+    }
+    // What was on the board this frame becomes what to compare against next frame.
+    for (const k of world.perks) {
+      perkGone.set(k.id, { tx: k.tx, ty: k.ty, type: k.type, at: now });
+    }
+    for (const [id, ghost] of perkGone) {
+      if (!perkLive.has(id) && now - ghost.at > PERK_POP_MS * 2) perkGone.delete(id);
+    }
+    perkLive.clear();
 
     /* Bombs, counting down in real time.
      *
