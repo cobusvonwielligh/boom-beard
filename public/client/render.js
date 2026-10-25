@@ -2519,8 +2519,9 @@ export function createRenderer(canvas, world) {
   const ROCK_SHELF_BANDS = [
     [3, 0.08, SHELF_TONE],
     [2.2, 0.12, SHELF_TONE],
-    [1.5, 0.17, '#8f7548'],
-    [0.85, 0.2, '#a88b5a'],
+    [1.5, 0.17, "#8f7548"],
+    [0.85, 0.2, "#a88b5a"],
+    [0.25, COAST_RING_ALPHA, COAST_RING],
   ];
   let shallowsCanvas = null, shallowsFor = null;
   function shallowsLayer() {
