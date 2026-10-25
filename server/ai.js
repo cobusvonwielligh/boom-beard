@@ -37,17 +37,17 @@ const BACK = [2, 3, 0, 1];      // index of the opposite direction
 
 // Node budget for the escape flood. Fifteen of these have to fit inside a 30 Hz tick, and 48
 // nodes is a reach of roughly four tiles in open ground - further than any blast in the game.
-const ESCAPE_NODES = 48;
+const ESCAPE_NODES = 36;
 
-const TRAIL_LEN = 8;            // tile changes remembered, for loop detection
+const TRAIL_LEN = 7;            // tile changes remembered, for loop detection
 const CYCLE_TILES = 3;          // that many distinct tiles across the trail means a cycle
-const BORED_TICKS = 45;         // how long a noticed cycle suppresses the hunt bias
+const BORED_TICKS = 55;         // how long a noticed cycle suppresses the hunt bias
 /* How good the bots are, 0..1. Everything that makes them sharp is scaled by it: how often they
  * head for a player, how soon they bomb again, and how reliably they move the instant a blast
  * is coming. 0.9 is ten percent dumber than they were, on request. */
-export const BOT_SKILL = 0.45;
+export const BOT_SKILL = 0.25;
 const BOMB_COOLDOWN = Math.round(45 / BOT_SKILL);
-const HUNT_CHANCE = 0.65 * BOT_SKILL;
+const HUNT_CHANCE = 0.55 * BOT_SKILL;
 // A lapse: on noticing the floor is about to burn, sometimes they freeze for a moment first.
 const LAPSE_CHANCE = (1 - BOT_SKILL);
 const LAPSE_TICKS = 4;
@@ -63,8 +63,8 @@ const LAPSE_TICKS = 4;
  * Measured (a "human" bomb dropped beside a bot every four seconds, plus botbench): caught 17% →
  * 24% of the time, bot kills 0.37 → 0.60 a minute, suicides slightly down. Its own bombs keep
  * the short lapse: a bot knows where it just put one, and carelessness there buys suicides. */
-const SURPRISE_CHANCE = 0.5;
-const SURPRISE_NOTICE_TICKS = 14;    // 0.4 s: barely more than a tile at base speed
+const SURPRISE_CHANCE = 0.6;
+const SURPRISE_NOTICE_TICKS = 18;    // 0.4 s: barely more than a tile at base speed
 
 const DESTRUCTIBLE = new Set([BLOCK.SOFT, BLOCK.REINFORCED, BLOCK.MONOLITH, BLOCK.ICE]);
 const SHRUB = new Set([BLOCK.SHRUB_WALK, BLOCK.SHRUB_SOLID]);
