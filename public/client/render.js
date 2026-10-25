@@ -2482,7 +2482,7 @@ export function createRenderer(canvas, world) {
     [2.2, 0.1, SHELF_TONE],
     [1.6, 0.17, SHELF_TONE],
     [1.6, 0.16, PALETTE.seaMid],
-    [1, 0.42, PALETTE.seaLight],
+    [0.5, 0.42, PALETTE.seaLight],      // half a tile, like the island's
   ];
   let shallowsCanvas = null, shallowsFor = null;
   function shallowsLayer() {
@@ -2531,7 +2531,9 @@ export function createRenderer(canvas, world) {
         if (x < MW + P * Q && !land(x, y)) {
           for (const [dx, dy, d2] of offsets) {
             if (!land(x + dx, y + dy)) continue;
-            band = d2 <= Q * Q ? 1
+            // The pale band hard against the coast is half a tile, not a whole one: the light
+            // blue ring round the island was twice as thick as it needed to be to read.
+            band = d2 <= (Q / 2) * (Q / 2) ? 1
               : d2 <= (1.6 * Q) * (1.6 * Q) ? 2
                 : d2 <= (2.2 * Q) * (2.2 * Q) ? 3 : 4;
             break;
@@ -4246,7 +4248,22 @@ export function createRenderer(canvas, world) {
          * for a bright colour - but maroon added at partial alpha onto a near-black band comes
          * out as a slightly less black band, and the blips disappeared the moment they went
          * maroon. Normal blending at a high alpha makes them the maroon they are meant to be. */
-        const peak = Math.min(1, (0.78 + 0.22 * near) * pulse * sound) * b.vis;
+        /* Right next to your own light on the frame: a slow, deep pulse.
+         *
+         * Two lights side by side on the border are two pirates on the same stretch of the island,
+         * which is the one case the frame has to shout about - and a steady red beside your colour
+         * reads as one wide smear. A slow breath (about two and a half seconds) separates it from
+         * yours and says "close" without strobing. Eased in and out over a third of a second, so
+         * a blip sliding past your light does not blink on and off. */
+        let touching = 0;
+        if (rimAt >= 0) {
+          const gap = Math.abs(b.at - rimAt), along = Math.min(gap, rim.total - gap);
+          touching = along < ((RIM_LIT_PX / 2 + RIM_BLIP_PX) / zoom) ? 1 : 0;
+        }
+        b.touch = (b.touch ?? 0) + (touching - (b.touch ?? 0)) * (1 - Math.exp(-dtMs / 330));
+        const breath = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(seaT * 2.5 + b.ph));
+        const peak = Math.min(1, (0.78 + 0.22 * near) * pulse * sound) * b.vis
+          * (1 - b.touch + b.touch * breath);
         ctx.globalCompositeOperation = 'source-over';
         ctx.lineWidth = bw;
         slither(b.at, half, peak, colour, 16);
