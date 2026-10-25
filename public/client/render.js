@@ -4352,6 +4352,8 @@ export function createRenderer(canvas, world) {
    * the position is exact and eased along the border, membership fades rather than pops, and the
    * phase belongs to the seat. */
   const rimBlips = new Map();
+  // Everybody else, on the rim and round their sprite: one maroon. See drawEdge.
+  const FOE_RED = 'rgb(178,34,58)';
   let rimTotalWas = 0;
   let rimAlert = 0;               // 1 at the moment of the hit, decaying
   let rimAt = -1;                 // where your slither is, in pixels along the perimeter
@@ -4528,7 +4530,7 @@ export function createRenderer(canvas, world) {
         /* One colour for everybody else: maroon. Distance still drives brightness, length and
          * pulse, but not hue - a blue-to-red scale on the frame read as players' colours, and
          * "that is somebody else" is the one thing a blip has to say. */
-        const colour = 'rgb(178,34,58)';
+        const colour = FOE_RED;
         const half = ((RIM_BLIP_PX / 2) / zoom) * (1 + 0.3 * near);
         const peak = Math.min(0.9, (0.42 + 0.38 * near) * pulse * sound) * b.vis;
         ctx.lineWidth = bw;
@@ -4871,8 +4873,11 @@ export function createRenderer(canvas, world) {
    * sprite in the outline colour, drawn half a pixel out in each of the four directions behind
    * it, so only a hairline shows past the edge. The flat copies are made once per sprite and
    * colour and cached. Nothing while spectating, where nobody is an enemy. */
-  const ALLY_EDGE = 'rgba(255,255,255,0.95)', FOE_EDGE = 'rgba(255,64,64,0.95)';
-  const EDGE_PX = 0.5;
+  /* The foe edge is the same maroon as their blips on the rim (FOE_RED), so the red round a pirate
+   * and the red on the frame are visibly one signal. Both edges are 0.8 px now rather than half a
+   * pixel, and fully opaque: at half a pixel they vanished at the zoom floor. */
+  const ALLY_EDGE = '#ffffff', FOE_EDGE = FOE_RED;
+  const EDGE_PX = 0.8;
   const silhouettes = new Map();      // sprite canvas -> { [colour]: canvas }
   function silhouette(sprite, colour) {
     let set = silhouettes.get(sprite);
