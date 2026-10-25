@@ -4167,15 +4167,34 @@ label {
 #menuWrap .keys h2 {
   margin-bottom: 8px;
 }
+/* A table, with a rule under every row.
+ *
+ * It was two columns of floating text with a gap between them, and the eye had to measure its way
+ * across to work out which action belonged to which key - the classic two-column problem, and the
+ * reason every printed table has ever had rules in it. A hairline under each row ties the pair
+ * together; the keys sit at the left edge and the action at the right, so each row is read as one
+ * line with the mapping at its two ends rather than as two lists side by side.
+ *
+ * `gap: 0` because the rules ARE the separation now, and the padding below provides the air. */
 .keys dl {
   margin: 0;
   display: grid;
   grid-template-columns: max-content 1fr;
-  gap: 9px 20px;
+  gap: 0 20px;
   align-items: center;
 }
+.keys dt,
+.keys dd {
+  padding: 6px 0;
+  border-bottom: 1px solid #ffffff12;
+}
+/* The last row closes the table rather than leaving a line hanging under it. */
+.keys dl > dt:nth-last-of-type(1),
+.keys dl > dd:nth-last-of-type(1) {
+  border-bottom: 0;
+}
 #menuWrap .keys dl {
-  gap: 4px 24px;
+  gap: 0 24px;
 }
 #menuWrap .keys kbd {
   height: 24px;
@@ -4189,6 +4208,9 @@ label {
   margin: 0;
   color: var(--dim);
   font-size: 14px;
+  /* Hard against the right edge: with a rule under the row, the action reading from the right and
+     the keys from the left is what makes the pair unmistakable at a glance. */
+  text-align: right;
 }
 .keys .or {
   color: #5c6a7d;
