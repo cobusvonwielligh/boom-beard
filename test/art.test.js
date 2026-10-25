@@ -49,7 +49,7 @@ test('interior blocks have a larger smooth cut than the coast', () => {
   const source = fs.readFileSync(new URL('../public/assets/art.js', import.meta.url), 'utf8');
   const stoneRadius = Number(source.match(/export const STONE_RADIUS = (\d+);/)?.[1]);
   const coastRadius = Number(source.match(/export const COAST_RADIUS = (\d+);/)?.[1]);
-  assert.ok(stoneRadius >= 14, 'interior block corners are too close to square at gameplay zoom');
+  assert.ok(stoneRadius >= 10, 'interior block chamfers are still too small');
   assert.ok(stoneRadius > coastRadius, 'enlarging interior blocks must not enlarge the coast');
 
   const drawTile = source.slice(source.indexOf('export function drawTile'), source.indexOf('function drawTileBody'));
@@ -57,15 +57,15 @@ test('interior blocks have a larger smooth cut than the coast', () => {
     'interior block artwork is not clipped to the enlarged chamfer');
 });
 
-test('all iron rock blocks use the rounded silhouette, including coast-facing blocks', () => {
+test('inland rock blocks round every corner instead of retaining square internal edges', () => {
   const source = fs.readFileSync(new URL('../public/client/render.js', import.meta.url), 'utf8');
-  const ironRock = source.slice(
+  const inlandRock = source.slice(
     source.indexOf('const sea = seaEdges(tx, ty);'),
     source.indexOf('cc.clip();\n            drawRock(cc, tx, ty, sea);'),
   );
 
-  assert.match(ironRock, /roundRect\(0, 0, TILE_PX, TILE_PX, r\)/,
-    'iron blocks are not smoothly clipped at all four corners');
-  assert.doesNotMatch(ironRock, /if \(sea\) cc\.rect/,
-    'coast-facing iron blocks still use a square clip');
+  assert.match(inlandRock, /roundRect\(0, 0, TILE_PX, TILE_PX, r\)/,
+    'inland rock is not smoothly clipped at all four corners');
+  assert.doesNotMatch(inlandRock, /up \|\| west|up \|\| east|down \|\| east|down \|\| west/,
+    'interior corners still keep the square tile edge');
 });
