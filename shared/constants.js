@@ -30,6 +30,15 @@ export const ROUNDTIME_MAX_MIN = 60;
  * the far side of the shelf was the first thing the panel edge cut off - which is exactly the
  * part that makes the island look like it is standing in water rather than floating on it. */
 export const SEA_MARGIN_TILES = 3;
+/* How much of that the board is SCALED to fit, which is a tile less than it reaches.
+ *
+ * The two numbers do different jobs and used to be one. The margin above is how far the scenery
+ * goes - the shelf, the shallows, the boulders - and the fit is how much of it has to be on
+ * screen. They are not the same question: the far edge of the shelf is the faintest thing on the
+ * board, and spending a whole tile of scale on both sides of the island to guarantee it is in
+ * frame makes everything that matters smaller. The shelf is allowed to run off; the island and a
+ * clear two tiles of water around it are not. */
+export const SEA_FIT_MARGIN_TILES = 2;
 
 // The board is never drawn smaller than this, whatever the window. Below about two thirds a
 // 32-pixel tile is 21 pixels and a player is a smudge; past that point a camera that follows you

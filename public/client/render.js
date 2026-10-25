@@ -6,7 +6,8 @@
 
 import {
   TILE_PX, CHUNK_TILES, UNITS_PER_TILE, TRACER_SAMPLES, FUSE_TICKS, FIRE_TICKS, STATUS,
-  BLOCK, BLOCK_HP, SEA_MARGIN_TILES, SPAWN_POP_TICKS, SPAWN_POP_SCALE, MIN_ZOOM, MAX_ZOOM,
+  BLOCK, BLOCK_HP, SEA_MARGIN_TILES, SEA_FIT_MARGIN_TILES, SPAWN_POP_TICKS, SPAWN_POP_SCALE,
+  MIN_ZOOM, MAX_ZOOM,
   PERK_FADE_TICKS, STAMINA_SHOW_AT, STAMINA_LOW_AT, staminaMaxFor,
   PUDDLE_FADE_TICKS, TICK_MS, TICK_HZ,
   BLOCK_WALKABLE, MAX_SHIELDS,
@@ -212,10 +213,11 @@ export function createRenderer(canvas, world) {
 
   function recomputeZoom() {
     if (!world.map || !view.w) return;
-    const m = SEA_MARGIN_TILES * 2;
+    const m = SEA_FIT_MARGIN_TILES * 2;
     const [, , lw, lh] = landBounds();
-    // Fit the ISLAND plus its ocean margin, so the water starts SEA_MARGIN_TILES beyond the
-    // coast on every map, whatever shape the land is inside its grid.
+    // Fit the ISLAND plus two tiles of ocean, not the three the scenery reaches into: see
+    // SEA_FIT_MARGIN_TILES. The far edge of the sand shelf is the faintest thing on the board and
+    // it is not worth a tile of scale on every side to keep it in frame.
     const fit = Math.min(view.w / ((lw + m) * TILE_PX),
                          view.h / ((lh + m) * TILE_PX));
 
