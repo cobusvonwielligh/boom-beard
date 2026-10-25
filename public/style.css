@@ -2271,9 +2271,17 @@ body.dead #rank {
     whoFlow 1.1s linear infinite,
     whoGlow 0.55s ease-in-out infinite alternate;
 }
-/* The robot keeps its own colour inside the gradient text, or it would be invisible. */
+/* The robot keeps its own colour inside the gradient text, or it would be invisible.
+ *
+ * Three resets, and all three are needed: the parent clips its background to its own TEXT and
+ * paints no fill colour at all, which in WebKit takes the icon's background with it. Clipping it
+ * back to its own box and restoring the text fill puts the robot back on screen - one flat gold,
+ * not the gradient, because a two-colour robot at this size is a smudge. */
 #streak .who .botIcon {
   background: #ffe9a8;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+  -webkit-text-fill-color: #ffe9a8;
   width: 0.85em;
   height: 0.85em;
 }

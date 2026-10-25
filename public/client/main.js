@@ -601,8 +601,16 @@ const net = createNet({
 
     const won = (m.standings || [])[0]?.i === world.you;
     $('deadTitle').textContent = won ? 'you won the round' : 'round over';
-    $('dead').firstElementChild.classList.toggle('won', won);
-    $('dead').firstElementChild.classList.add('round');
+    /* The CARD, not `firstElementChild`.
+     *
+     * `#dead`'s first element child is the round visualiser canvas, which was added later - so
+     * `.round` and `.won` were being set on a canvas and the card never switched out of respawn
+     * mode. That is the bug where the respawn countdown sat there after the whistle: the
+     * standings table is hidden and the respawn button shown until this class lands, and it was
+     * landing on something that does not care. */
+    const deadCard = $('dead').querySelector('.card');
+    deadCard.classList.toggle('won', won);
+    deadCard.classList.add('round');
     $('dead').style.display = 'grid';
     sfx.play(won ? 'fanfare' : 'playoff');
     // Get the music out of the way of it, for as long as it runs.
@@ -668,7 +676,21 @@ const net = createNet({
     const big = el.querySelector('.big');
     const who = el.querySelector('.who');
     big.textContent = `${m.kind}!!`;
-    withBotIcons(who, m.i === world.you ? 'you' : m.name);
+    /* The robot comes from the SEAT here, not from matching the name.
+     *
+     * `withBotIcons` finds bot names inside a string, which is right for chat and the feed where
+     * a name is one word in a sentence. A streak banner IS the name, and the server has already
+     * told us whether that seat is a bot - so ask the thing that knows. The icon then survives a
+     * bot whose name has not reached `botNames` yet, which is the window right after it joins. */
+    who.textContent = '';
+    if (ranks.get(m.i)?.bot) {
+      const bot = document.createElement('span');
+      bot.className = 'botIcon';
+      bot.setAttribute('role', 'img');
+      bot.setAttribute('aria-label', 'bot');
+      who.append(bot);
+    }
+    who.append(m.i === world.you ? 'you' : m.name);
     el.className = tier;
     for (const part of [big, who]) {
       part.classList.add('rainbow');
@@ -1592,7 +1614,9 @@ function endIntermission() {
   $('dead').style.display = 'none';
   $('respawn').style.display = '';
   $('deadTitle').textContent = 'you died';
-  $('dead').firstElementChild.classList.remove('round', 'won');
+  $('dead').querySelector('.card').classList.remove('round', 'won');
+  // Cleared with it: onRoundEnd hides the button inline, and an inline style outlives a class.
+  $('respawn').style.display = '';
   $('roundRows').textContent = '';
   $('nextMapName').textContent = '';
   $('roundCountdown').textContent = '';
