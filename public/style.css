@@ -3665,7 +3665,10 @@ body.intermission #dead {
   /* Fifteen percent wider and roughly fifteen percent shorter than the old 600 x 772 card.
      Width gives the control descriptions room; tighter vertical rhythm removes dead air without
      shrinking the readable type or the hit targets. */
-  width: min(690px, calc(100vw - 32px));
+  /* 760 rather than 690, so the 660px controls table (see `.keys`) sits inside the padding with
+     the same breathing room the rest of the form has. Everything else on the card - the title
+     clamp, the player id row, both buttons - is width-relative and simply follows. */
+  width: min(760px, calc(100vw - 32px));
   /* The top padding is not a taste decision: the title is lifted half its own height out of the
      card (see #titleWrap), so the card has to keep that much plus a breath of its own, or the
      lower half of the lettering lands on the slogan. The breath is 10px rather than the 22 it
@@ -4158,11 +4161,13 @@ label {
 /* Narrower than the card, and centred in it.
  *
  * Full width put the keys hard against the left edge and the action hard against the right with
- * a hand's width of nothing between them, which is a long way for the eye to carry one fact. At
- * 440px the pair reads as a pair. Everything in the block - the top rule, the heading, every row
- * rule - shares that width, so the lines all start and stop together. */
+ * a hand's width of nothing between them, which is a long way for the eye to carry one fact. 440
+ * was the other way wrong - a column of keys down the middle of a wide card reads as a narrow
+ * strip of something unrelated. 660 is the pair reading as a pair AND filling the card it is in.
+ * Everything in the block - the top rule, the heading, every row rule - shares that width, so the
+ * lines all start and stop together. */
 .keys {
-  width: min(440px, 100%);
+  width: min(660px, 100%);
   margin: 24px auto 0;
   padding: 20px 0 0;
   border-top: 1px solid #ffffff14;
@@ -4216,8 +4221,11 @@ label {
 .keys dl > dd:nth-last-of-type(1) {
   border-bottom: 0;
 }
+/* Zero here too. The base rule sets `gap: 0` so the row rules are continuous, and this override
+   was still asking for 24px of column gap on the landing page - which is where the break in the
+   middle of every line was coming from. */
 #menuWrap .keys dl {
-  gap: 0 24px;
+  gap: 0;
 }
 #menuWrap .keys kbd {
   height: 24px;
