@@ -177,32 +177,9 @@ const bevel = (c, x, y, w, h, t = 2) => {
 
 // ─── terrain ──────────────────────────────────────────────────────────────────
 
-/* Blocks have rounded corners now, and the radius is deliberately small.
- *
- * Square blocks on a square grid make a map read as graph paper: every corner in the picture is
- * the same corner, so the eye gets no help telling the opening between two walls from the walls
- * themselves. Taking three pixels off each corner breaks that up - a corridor gains a visible
- * mouth, and a lone block reads as an object standing on the sand rather than as a filled cell.
- *
- * Three, not eight. At a large radius the blocks stop meeting each other and a solid wall turns
- * into a row of lozenges with sand showing through the joins, which is both uglier and a lie
- * about what you can walk through. At three the corner is softened and the edges still touch.
- *
- * It is drawing only: the simulation is whole tiles and the hitbox arithmetic in movement.js is
- * untouched. What it buys in play is honesty at the corners - the corner-assist slide
- * (CORNER_ASSIST_UNITS) has always let you round a corner you are nearly lined up with, and a
- * rounded corner is what that behaviour has always looked like from the inside.
- */
-/* Ten, not six, so the artwork has the same visibly rounded corners as the hitbox.
- *
- * The corner cut in movement.js is 96 units - twelve of a tile's thirty-two pixels - so a player
- * glances off a block corner that is drawn as a right angle, and the eye reads that as the game
- * being loose rather than as the corner being round. Ten pixels makes the cut visible at normal
- * play zoom while keeping a broad face on each block.
- *
- * It is drawing only, as it always was - the simulation is whole tiles - but it is now drawing
- * that MATCHES what the collision does, which is the whole point of changing it. */
-export const STONE_RADIUS = 10;
+/* A half-tile radius keeps block corners visibly rounded at fitted gameplay zoom. This affects
+ * artwork only; collision still uses whole tiles. */
+export const STONE_RADIUS = 16;
 /* Which types get it: everything solid that sits ON the sand. Not FLOOR (it IS the sand), and
  * not the types that already draw their own shape on a floor of their own - a column, a keg and
  * a block of ice are objects, not cells, and they were never square to begin with. */

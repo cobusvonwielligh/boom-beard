@@ -353,10 +353,8 @@ export function createRenderer(canvas, world) {
  * The length is deliberately short, about two thirds of a tile. Long shadows are prettier and
  * they obscure the floor, and the floor is where you walk.
  */
-  /* Inland rock uses the larger block radius; coast corners keep their own smaller radius.
-   *
-   * Only exposed corners get the larger radius (see the chunk pass), so a wall of rock stays one
-   * unbroken mass. STONE_RADIUS is also used for breakable blocks; COAST_RADIUS is independent. */
+  /* Rock tiles use the block radius, including at the coast; shoreline curves are drawn
+   * separately by the coast pass. */
   const ROCK_RADIUS = Math.max(STONE_RADIUS, 8);
   const SHADOW_LEN = TILE_PX * 0.72;
   /* The light a blast throws onto everything near it.
@@ -536,23 +534,15 @@ export function createRenderer(canvas, world) {
              * the same radius (see STONE_RADIUS in art.js) and a square rock standing in a row of
              * rounded crates is the one thing left on the board reading as a grid cell.
              *
-             * So an INLAND rock gets sand laid under it and a rounded clip, exactly like a crate.
-             * A COAST rock - anything with a side facing the sea - keeps the square clip and no
-             * sand: its corners are already shaped, in quarter-tile steps, by the coast pass
-             * below, and a rounded clip there would notch sea into the island or sand into the
-             * sea depending on which side it was on.
+             * Every rock gets a rounded clip and sand underneath, including coast-facing rocks.
+             * The coast pass below adds its larger-scale shoreline curves and outline over these
+             * individual rounded stones.
              */
             const sea = seaEdges(tx, ty);
+            const r = ROCK_RADIUS;
+            drawTile(cc, BLOCK.FLOOR, tx, ty, 0);
             cc.beginPath();
-            if (sea) cc.rect(0, 0, TILE_PX, TILE_PX);
-            else {
-              /* Inland boulders are individual rounded stones, not square tiles within a wall.
-               * Keep the base layer underneath their cut corners so neighbouring stones still
-               * read as one continuous rock mass instead of exposing transparent canvas. */
-              const r = ROCK_RADIUS;
-              drawTile(cc, BLOCK.FLOOR, tx, ty, 0);
-              cc.roundRect(0, 0, TILE_PX, TILE_PX, r);
-            }
+            cc.roundRect(0, 0, TILE_PX, TILE_PX, r);
             cc.clip();
             drawRock(cc, tx, ty, sea);
           } else drawTile(cc, type, tx, ty, dmg);
