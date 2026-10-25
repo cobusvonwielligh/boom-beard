@@ -2128,13 +2128,13 @@ export function createRenderer(canvas, world) {
    * four tiles out (SEA_MAX_MARGIN_TILES), so most of a seven-tile bar was off the board, and
    * what was left was its faint, faded tail. Pulled in, the whole bar - its bright root included
    * - is in the water right next to the island, where the eye already is. */
-  /* And then given a floor and a ceiling in tiles, on request: never under 1.5, never over 4.5.
+  /* And then given a floor and a ceiling in tiles, on request: never under 2, never over 4.5.
    *
    * Lengths used to fall out of the standing wave times the volume, which let a band sink to
    * nothing - a bare stretch of coast, which reads as that side of the island not listening -
    * and the boost then had no fixed top. Now the wave and the music only decide WHERE between
    * the two a bar sits. */
-  const EQ_MIN = 1.5;                                   // tiles: the shortest any bar gets
+  const EQ_MIN = 2;                                     // tiles: the shortest any bar gets
   const EQ_MAX = 4.5;                                   // tiles: the longest, loud and on a crest
   const EQ_SUB = 4;                                     // blocks per tile, outward
   // Half of what it was again - 0.15 and a 0.3 cap - at the user's request after a real round.
