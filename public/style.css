@@ -3665,10 +3665,14 @@ body.intermission #dead {
   /* Fifteen percent wider and roughly fifteen percent shorter than the old 600 x 772 card.
      Width gives the control descriptions room; tighter vertical rhythm removes dead air without
      shrinking the readable type or the hit targets. */
-  /* 760 rather than 690, so the 660px controls table (see `.keys`) sits inside the padding with
-     the same breathing room the rest of the form has. Everything else on the card - the title
-     clamp, the player id row, both buttons - is width-relative and simply follows. */
-  width: min(760px, calc(100vw - 32px));
+  /* A quarter narrower than it was, with less air at the sides.
+   *
+   * 760 was wide enough that the form sat in the middle of a field of panel, and the controls
+   * table - which is the tallest thing on the card - was stretched to fill it. At 570 with 34px
+   * of side padding the whole card is one column: the id field, the buttons and the table are all
+   * the same width, and that single edge down each side is what makes it read as a form rather
+   * than as a page. Everything on it is width-relative and simply follows. */
+  width: min(570px, calc(100vw - 32px));
   /* The top padding is not a taste decision: the title is lifted half its own height out of the
      card (see #titleWrap), so the card has to keep that much plus a breath of its own, or the
      lower half of the lettering lands on the slogan. The breath is 10px rather than the 22 it
@@ -3677,7 +3681,7 @@ body.intermission #dead {
 
      No `overflow` here, deliberately: the title hangs half out of the top of this box, and any
      overflow value other than visible would clip it off or hand the card a scrollbar. */
-  padding: calc(var(--titleBase) * var(--titleScale) * 0.5 + 10px) 48px 22px;
+  padding: calc(var(--titleBase) * var(--titleScale) * 0.5 + 10px) 34px 22px;
 }
 
 /* The kegs, standing on the top edge of the card.
