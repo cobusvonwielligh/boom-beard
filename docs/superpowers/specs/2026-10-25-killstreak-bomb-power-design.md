@@ -6,7 +6,7 @@ Make an active kill streak visibly and mechanically matter while keeping the res
 
 ## Killstreak behavior
 
-Reuse the existing streak rule: a player reaches an active streak on their second kill within `STREAK_WINDOW_TICKS` (six seconds), and remains active until more than six seconds pass after their most recent kill. Dying resets the streak. Apply the same rainbow styling already used by streak announcements to the streaking player's visible name, including the local HUD name and named player UI.
+Reuse the existing streak rule: a player reaches an active streak on their second kill within `STREAK_WINDOW_TICKS` (six seconds), and remains active until more than six seconds pass after their most recent kill. Dying resets the streak. Apply the same animated RGB/rainbow styling already used by streak announcements to the streaking player's visible name everywhere it appears: above their character (local and remote), in chat author names, in the live player list, and in both the scoreboard and Tab overlay. Styling must end as soon as the streak expires or the player dies.
 
 ## Bomb power and damage
 

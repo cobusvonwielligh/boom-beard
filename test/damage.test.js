@@ -24,8 +24,10 @@ function arena({ shields, hp = MAX_HP }) {
   p.alive = true; p.x = tileCentre(at.tx); p.y = tileCentre(at.ty); p.shields = shields; p.hp = hp;
   s.players[0] = p;
   for (const n of [5, 6]) { const q = createPlayer(n, `p${n}`); s.players[n] = q; }
-  const blast = (src, owner) =>
-    s.fires.push({ tx: at.tx, ty: at.ty, kind: 'arm', rot: 0, until: s.tick + FIRE_TICKS, owner, src });
+  const blast = (src, owner, streakPowered = false) =>
+    s.fires.push({
+      tx: at.tx, ty: at.ty, kind: 'arm', rot: 0, until: s.tick + FIRE_TICKS, owner, src, streakPowered,
+    });
   const step = () => tick(s, new Array(16).fill(0));
   const wait = () => { for (let i = 0; i < SHIELD_GRACE_TICKS; i++) step(); };
   return { s, p, blast, step, wait };
@@ -66,6 +68,25 @@ test('two blasts crossing on the same tick cost a shield and a half', () => {
   assert.equal(p.alive, true);
   assert.equal(p.shields, 0);
   assert.equal(p.hp, 1);
+});
+
+test('streak-powered blast costs two shield-first damage units', () => {
+  const { p, blast, step } = arena({ shields: 1 });
+  blast(101, 5, true);
+  step();
+
+  assert.equal(p.alive, true);
+  assert.equal(p.shields, 0);
+  assert.equal(p.hp, 1);
+});
+
+test('two-unit streak damage can kill and retains the blast owner', () => {
+  const { s, p, blast, step } = arena({ shields: 0 });
+  blast(101, 5, true);
+  step();
+
+  assert.equal(p.alive, false);
+  assert.equal(s.events.find(e => e.e === 'died').by, 5);
 });
 
 test('two blasts crossing on the same tick take both halves, and the second gets the kill', () => {

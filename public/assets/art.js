@@ -11,10 +11,11 @@
 
 // `/shared` is mounted by the dev server alongside `public/` - see docs/ARCHITECTURE.md §7.
 import { BLOCK, TILE_PX, MAX_RADIUS, playerHsl, paletteHsl, seatSlot } from '/shared/constants.js';
+import { rainbowFireTones } from '../client/fire.js';
 
 export const PALETTE = {
   void: '#0d1117',
-  floor: '#2c3442', floorAccent: '#313235',
+  floor: '#4d576b', floorAccent: '#515358',
   soft: '#8a6b4a', reinforced: '#6f7785', monolith: '#4b5362',
   iron: '#262c38', column: '#59627a', shrub: '#3f6b46',
   outline: '#161b24',
@@ -1272,7 +1273,9 @@ export function drawBomb(c, { phase = 0, colorIndex = 0 }) {
  *   sparks  the core throws embers outward while it is young
  *   smoke   the last third darkens, shrinks and lifts away as smoke - the part that no longer kills
  */
-export function drawFire(c, { kind = 'core', rot = 0, age = 0, t = 0, seed = 0, owner = -1 }) {
+export function drawFire(c, {
+  kind = 'core', rot = 0, age = 0, t = 0, seed = 0, owner = -1, streakPowered = false,
+}) {
   const S = TILE_PX;
   // Fixed per tile and per tongue - nothing here is re-rolled while the blast burns. Every bit
   // of motion below is a slow sine on `t`, so the fire flows rather than flickers.
@@ -1288,7 +1291,7 @@ export function drawFire(c, { kind = 'core', rot = 0, age = 0, t = 0, seed = 0, 
   c.globalAlpha = Math.max(0, 1 - ease(age) * 0.45 - smoke * 0.35);
 
   // Whose blast this is. Everything below draws from this ramp; see fireTones.
-  const tone = owner >= 0 ? fireTones(owner) : null;
+  const tone = streakPowered ? rainbowFireTones(t) : owner >= 0 ? fireTones(owner) : null;
   const EDGE = tone ? tone.edge : PALETTE.fireEdge;
   const MID = tone ? tone.mid : PALETTE.fireMid;
   const CORE = tone ? tone.core : PALETTE.fireCore;

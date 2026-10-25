@@ -71,6 +71,7 @@ export function createWorld() {
     p.alive = wire.st === 1;
     p.bombs = wire.b; p.radius = wire.f; p.speed = wire.sp; p.shields = wire.sh;
     p.score = wire.s; p.kills = wire.k; p.deaths = wire.dd; p.status = wire.stat;
+    p.streakCount = wire.sk ?? 0; p.streakLastKillTick = wire.skt ?? -1;
     p.coins = wire.c || 0;
     // Absent means whole; see MAX_HP and playerWire.
     p.hp = wire.hp ?? MAX_HP;
@@ -119,7 +120,9 @@ export function createWorld() {
       w.bombs,
     );
     const until = w.tick + FIRE_TICKS;
-    for (const c of cells) w.fires.push({ ...c, until, owner: bomb.o ?? bomb.owner });
+    for (const c of cells) w.fires.push({
+      ...c, until, owner: bomb.o ?? bomb.owner, streakPowered: !!bomb.streakPowered,
+    });
     w.bombs = w.bombs.filter(b => b.id !== bomb.id);
     w.onBoom?.(bomb, cells);
   };

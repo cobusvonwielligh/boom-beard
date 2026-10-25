@@ -10,7 +10,7 @@ import {
   FIRE_TICKS, FIRE_LETHAL_TICKS, SHIELD_GRACE_TICKS, MAX_HP,
   HITBOX_FIRE_NUM, HITBOX_FIRE_DEN,
 } from '../constants.js';
-import { expireStatuses, has, toTile } from './state.js';
+import { expireStatuses, has, toTile, recordStreakKill, resetStreak } from './state.js';
 import { stepAll } from './movement.js';
 import { place, detonate, expireFires } from './bombs.js';
 import { collect, scatterOnDeath } from './perks.js';
@@ -130,15 +130,16 @@ function killInFire(state) {
     let fatal = null;
     for (const f of newHits) {
       p.hitBy.push(f.src);
-      if (fatal) continue;
-      if (p.shields > 0) {
-        p.shields--;
-        state.events.push({ e: 'shield', tick: state.tick, i: p.i, left: p.shields });
-      } else if ((p.hp ?? MAX_HP) > 1) {
-        p.hp = (p.hp ?? MAX_HP) - 1;
-        state.events.push({ e: 'hurt', tick: state.tick, i: p.i, hp: p.hp, by: f.owner });
-      } else {
-        fatal = f;
+      for (let unit = 0; unit < (f.streakPowered ? 2 : 1) && !fatal; unit++) {
+        if (p.shields > 0) {
+          p.shields--;
+          state.events.push({ e: 'shield', tick: state.tick, i: p.i, left: p.shields });
+        } else if ((p.hp ?? MAX_HP) > 1) {
+          p.hp = (p.hp ?? MAX_HP) - 1;
+          state.events.push({ e: 'hurt', tick: state.tick, i: p.i, hp: p.hp, by: f.owner });
+        } else {
+          fatal = f;
+        }
       }
     }
     p.shieldGrace = state.tick + SHIELD_GRACE_TICKS;
@@ -167,6 +168,7 @@ function killInFire(state) {
 
     p.alive = false;
     p.deaths++;
+    resetStreak(p);
     p.shieldGrace = 0;
     p.bombs = START_BOMBS;
     p.radius = START_RADIUS;
@@ -181,9 +183,15 @@ function killInFire(state) {
       p.score = Math.max(0, p.score + SCORE.SUICIDE);
     } else {
       const k = state.players[killer];
-      if (k) { k.kills++; k.score += SCORE.KILL; }
+      if (k) {
+        k.kills++;
+        k.score += SCORE.KILL;
+        recordStreakKill(k, state.tick);
+      }
     }
-    state.events.push({ e: 'died', tick: state.tick, i: p.i, by: killer, x: p.x, y: p.y });
+    state.events.push({
+      e: 'died', tick: state.tick, i: p.i, by: killer, x: p.x, y: p.y,
+      streak: state.players[killer]?.streakCount ?? 0,
+    });
   }
 }
-

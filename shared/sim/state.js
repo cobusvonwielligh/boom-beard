@@ -3,7 +3,7 @@
 
 import {
   MAX_PLAYERS, START_BOMBS, START_RADIUS, UNITS_PER_TILE, DIR_D, STATUS, STATUS_TICKS,
-  STAMINA_MAX, GULL_FIRST_TICK, MAX_HP,
+  STAMINA_MAX, GULL_FIRST_TICK, MAX_HP, STREAK_WINDOW_TICKS,
 } from '../constants.js';
 import { buildMap, cellType, cellHp, packCell } from '../maps.js';
 import { BLOCK, BLOCK_WALKABLE } from '../constants.js';
@@ -76,6 +76,8 @@ export function createPlayer(i, name) {
     status: 0,         // bitmask
     statusUntil: {},   // STATUS bit -> tick
     score: 0, kills: 0, deaths: 0,
+    streakCount: 0,
+    streakLastKillTick: -1,
     /* Gold coins collected this life. Banked to the leaderboard like score and kills.
      *
      * `coins`, not `gold`. The leaderboard already had a `gold` - first-place finishes, one of
@@ -103,6 +105,26 @@ export function createPlayer(i, name) {
     // Mugged by seagulls this round. Carried on the wire so every scoreboard can say so.
     gulled: false,
   };
+}
+
+export function recordStreakKill(player, tick) {
+  if (player.streakCount === 0 || tick - player.streakLastKillTick > STREAK_WINDOW_TICKS) {
+    player.streakCount = 1;
+  } else {
+    player.streakCount++;
+  }
+  player.streakLastKillTick = tick;
+}
+
+export function resetStreak(player) {
+  player.streakCount = 0;
+  player.streakLastKillTick = -1;
+}
+
+export function streakActive(player, tick) {
+  return !!player && player.streakCount >= 2
+    && tick >= player.streakLastKillTick
+    && tick - player.streakLastKillTick <= STREAK_WINDOW_TICKS;
 }
 
 // ─── map helpers ──────────────────────────────────────────────────────────────
@@ -164,8 +186,12 @@ export function hashState(state) {
     mix(p.i); mix(p.x); mix(p.y); mix(p.dir);
     mix(p.alive ? 1 : 0); mix(p.bombs); mix(p.radius); mix(p.speed);
     mix(p.shields); mix(p.status); mix(p.score); mix(p.kills); mix(p.deaths); mix(p.hp | 0);
+    mix(p.streakCount ?? 0); mix(p.streakLastKillTick ?? -1);
   }
-  for (const b of state.bombs) { mix(b.id); mix(b.tx); mix(b.ty); mix(b.owner); mix(b.radius); mix(b.at); }
+  for (const b of state.bombs) {
+    mix(b.id); mix(b.tx); mix(b.ty); mix(b.owner); mix(b.radius); mix(b.at);
+    mix(b.fuseTicks ?? 0); mix(b.streakPowered ? 1 : 0);
+  }
   for (const k of state.perks) { mix(k.id); mix(k.tx); mix(k.ty); mix(k.type); }
   for (let i = 0; i < state.map.cells.length; i++) mix(state.map.cells[i]);
   return h >>> 0;

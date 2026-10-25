@@ -9,7 +9,7 @@ import { place, detonate, bombTile } from '../shared/sim/bombs.js';
 import { tick } from '../shared/sim/round.js';
 import { drop, maybeDrop } from '../shared/sim/perks.js';
 import {
-  BLOCK, BLOCK_HP, IN_BOMB, IN_RIGHT, FUSE_TICKS, STATUS, PERK, MAX_RADIUS, SCORE,
+  BLOCK, BLOCK_HP, IN_BOMB, IN_RIGHT, FUSE_TICKS, FUSE_TICKS_FAST, STATUS, PERK, MAX_RADIUS, SCORE,
   PERK_WEIGHTS, FIRE_LETHAL_TICKS, FIRE_TICKS, DIR_R, DIR_U, DIR_L, DIR_D,
 } from '../shared/constants.js';
 
@@ -117,6 +117,57 @@ test('bombs in the round loop', async t => {
     p.statusUntil[STATUS.PACIFISM] = 999;
     tap(st, p);
     assert.equal(st.bombs.length, 0);
+  });
+
+  await t.test('streak power and the selected fuse are captured when a bomb is placed', () => {
+    const st = room();
+    const p = spawn(st, 0, 3, 3);
+    p.streakCount = 2;
+    p.streakLastKillTick = st.tick;
+    p.status = STATUS.FAST_DET;
+
+    tap(st, p);
+
+    assert.equal(st.bombs[0].streakPowered, true);
+    assert.equal(st.bombs[0].fuseTicks, FUSE_TICKS_FAST);
+    assert.equal(st.bombs[0].at, st.tick + FUSE_TICKS_FAST);
+  });
+
+  await t.test('expired streaks do not empower newly placed bombs', () => {
+    const st = room();
+    const p = spawn(st, 0, 3, 3);
+    p.streakCount = 2;
+    p.streakLastKillTick = st.tick - 1000;
+
+    tap(st, p);
+
+    assert.equal(st.bombs[0].streakPowered, false);
+  });
+
+  await t.test('streak power carries through chained powder kegs and their fire', () => {
+    const st = room();
+    setTile(st.map, 4, 3, BLOCK.POWDER, BLOCK_HP[BLOCK.POWDER]);
+    st.bombs.push({
+      id: 1, tx: 3, ty: 3, owner: 0, radius: 1, at: st.tick, streakPowered: true,
+    });
+
+    detonate(st);
+
+    assert.ok(st.fires.some(f => f.tx === 4 && f.ty === 3));
+    assert.ok(st.fires.every(f => f.streakPowered));
+  });
+
+  await t.test('fuse duration and streak power participate in deterministic hashes', () => {
+    const normal = room();
+    const empowered = room();
+    const bombState = {
+      id: 1, tx: 3, ty: 3, owner: 0, radius: 1, at: FUSE_TICKS,
+      fuseTicks: FUSE_TICKS, streakPowered: false,
+    };
+    normal.bombs.push({ ...bombState });
+    empowered.bombs.push({ ...bombState, fuseTicks: FUSE_TICKS_FAST, streakPowered: true });
+
+    assert.notEqual(hashState(normal), hashState(empowered));
   });
 
   await t.test('explodes on its fuse tick, not before', () => {

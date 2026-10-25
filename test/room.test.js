@@ -81,6 +81,9 @@ test('room end to end', async t => {
     assert.notEqual(a.welcome.you, b.welcome.you);
     assert.ok(a.welcome.map.cells.length > 100, 'map arrived');
     assert.equal(a.welcome.map.spawns.length, 16);
+    const own = a.welcome.players.find(p => p.i === a.welcome.you);
+    assert.equal(own.sk, 0);
+    assert.equal(own.skt, -1);
     await wait(200);
     const names = a.snaps.at(-1).players.map(p => p.i).sort();
     assert.ok(names.length >= 2, 'both players present in snapshots');

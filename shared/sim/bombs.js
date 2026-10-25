@@ -4,7 +4,7 @@ import {
   FUSE_TICKS, FUSE_TICKS_FAST, FIRE_TICKS, CHAIN_CAP_PER_TICK, IN_BOMB, STATUS, MAX_RADIUS,
   BLOCK, POWDER_RADIUS, DIR_R, DIR_U, DIR_L, DIR_D,
 } from '../constants.js';
-import { has, toTile, tileAt } from './state.js';
+import { has, streakActive, toTile, tileAt } from './state.js';
 import { spread } from './fire.js';
 import { damage, melt } from './blocks.js';
 import { maybeDrop } from './perks.js';
@@ -105,6 +105,8 @@ export function place(state, p, mask) {
     o: p.i, owner: p.i,
     r: Math.min(p.radius, MAX_RADIUS), radius: Math.min(p.radius, MAX_RADIUS),
     at: state.tick + fuse,
+    fuseTicks: fuse,
+    streakPowered: streakActive(p, state.tick),
   };
   state.bombs.push(bomb);
   state.events.push({ e: 'bomb', tick: state.tick, id: bomb.id, x: tx, y: ty, o: p.i, r: bomb.radius, at: bomb.at });
@@ -148,6 +150,7 @@ export function detonate(state) {
     state.events.push({
       e: 'boom', tick: state.tick, id: bomb.id,
       x: bomb.tx, y: bomb.ty, o: bomb.owner, r: bomb.radius,
+      ...(bomb.streakPowered ? { streakPowered: true } : null),
     });
 
     for (const { tx, ty } of hits) {
@@ -160,6 +163,7 @@ export function detonate(state) {
         queue.push({
           id: state.nextBombId++, tx, ty,
           owner: bomb.owner, radius: POWDER_RADIUS, at: state.tick,
+          fuseTicks: 0, streakPowered: !!bomb.streakPowered,
         });
         continue;                                   // kegs hold powder, not pickups
       }
@@ -169,7 +173,10 @@ export function detonate(state) {
 
     for (const c of cells) {
       // `src` is which blast this is, so a hit can be counted once per blast - see killInFire.
-      state.fires.push({ tx: c.tx, ty: c.ty, kind: c.kind, rot: c.rot, until: state.tick + FIRE_TICKS, owner: bomb.owner, src: bomb.id });
+      state.fires.push({
+        tx: c.tx, ty: c.ty, kind: c.kind, rot: c.rot, until: state.tick + FIRE_TICKS,
+        owner: bomb.owner, src: bomb.id, streakPowered: !!bomb.streakPowered,
+      });
       // Anything caught in the blast goes off now, not on its own fuse.
       const neighbour = bombAt(state, c.tx, c.ty);
       if (neighbour && !burst.has(neighbour.id)) queue.push(neighbour);
