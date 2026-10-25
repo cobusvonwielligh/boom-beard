@@ -1,6 +1,6 @@
 # Boom Beard - Where We Stand
 
-Last updated: **2026-10-25**, at **v1.0.3+**. Live on `boombeard.co.za`. The full Node test suite
+Last updated: **2026-10-25**, at **v1.0.4**. Live on `boombeard.co.za`. The full Node test suite
 runs on Windows and in CI. The security check that went into 1.0 is
 [DEPLOY.md](DEPLOY.md) §12.
 
