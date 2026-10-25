@@ -4974,7 +4974,9 @@ export function createRenderer(canvas, world) {
   }
 
   /** Smoke off a scorched pirate's head, in world space so it rises straight up whatever he does. */
-  function drawSmoke(c, cx, top, seat) {
+  // Not `drawSmoke`: that name is the blast smoke's, further up, and a second function
+  // declaration silently replaced it - every frame then crashed calling the wrong one.
+  function drawHurtSmoke(c, cx, top, seat) {
     c.save();
     /* Two-tone puffs - a dark body with a pale cap offset toward the light - because the board
      * is both pale sand and dark stone, and a single grey vanishes into one or the other. */
@@ -5086,7 +5088,7 @@ export function createRenderer(canvas, world) {
       if (scorched) drawScorch(c, sprite, Math.round(px), Math.round(py), p.i);
     }
     c.globalAlpha = 1;
-    if (scorched) drawSmoke(c, px + TILE_PX / 2, py + TILE_PX / 2 - 9 * Math.abs(sy), p.i);
+    if (scorched) drawHurtSmoke(c, px + TILE_PX / 2, py + TILE_PX / 2 - 9 * Math.abs(sy), p.i);
 
     // Not while they are still landing at twenty times their size: the rings would sit inside.
     if (pop < 1.5) drawShields(c, p, px + TILE_PX / 2, py + TILE_PX / 2);
