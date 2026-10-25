@@ -2017,7 +2017,20 @@ document.addEventListener('pointerover', e => {
 });
 document.addEventListener('pointerout', e => {
   const target = e.target.closest?.('.playerHoverTarget');
-  if (target && !target.contains(e.relatedTarget)) hidePlayerHover();
+  if (!target || target.contains(e.relatedTarget)) return;
+  /* A row rebuilt under a stationary cursor is not the pointer leaving.
+   *
+   * This is why the card never opened on the Tab board. The scoreboard is rebuilt every time the
+   * scores broadcast lands - once a second - and removing the element under the cursor fires
+   * `pointerout` for it, which cancelled the pending hover. Every second. Forever. And nothing
+   * re-fired `pointerover`, because the pointer had not moved: a new element appearing under a
+   * stationary cursor generates no pointer events at all.
+   *
+   * A detached target means it was removed, not left. `reanchorPlayerHover` picks up the row
+   * that replaced it; the hover carries on as though nothing happened, which from where the
+   * person is sitting is exactly what happened. */
+  if (!target.isConnected) return;
+  hidePlayerHover();
 });
 document.addEventListener('focusin', e => {
   if (e.target.matches?.('.playerHoverTarget')) schedulePlayerHover(e.target);
