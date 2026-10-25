@@ -1382,10 +1382,14 @@ export function createRenderer(canvas, world) {
   // quarter. Left as the arithmetic rather than the product so the next round is one more
   // factor, not a number nobody can place.
   const SHIP_SCALE = 2 * 1.66 * 1.5 * 0.5 * 1.25 * 1.25;
-  // Solid enough to be a boat. At 0.42 she was a ghost of one: you could read the sea through
-  // her hull, which is the one thing a hull must not do. What keeps her in the background is
-  // being small, far out, and painted down into the sea's colour - not being see-through.
-  const SHIP_ALPHA = 0.72;
+  /* Solid enough to be a boat, and a fifth more so than that.
+   *
+   * At 0.42 she was a ghost of one: you could read the sea through her hull, which is the one
+   * thing a hull must not do. 0.72 fixed the hull and still left the sea faintly showing through
+   * her rigging and her sails; 0.86 is a boat with weather on it rather than a boat you can see
+   * through. What keeps her in the background is being small, far out, and painted down into the
+   * sea's own colour - never being see-through. */
+  const SHIP_ALPHA = 0.86;
   // The rings and the shadow under her were sized for a scale of 2; they grow with her.
   const SHIP_GROW = SHIP_SCALE / 2;
   // drawShip's own extent, in its units: the wake rings reach ±80 along and ±41 across.
