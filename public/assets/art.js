@@ -1186,7 +1186,7 @@ export function drawBomb(c, { phase = 0, colorIndex = 0 }) {
  *   sparks  the core throws embers outward while it is young
  *   smoke   the last third darkens, shrinks and lifts away as smoke - the part that no longer kills
  */
-export function drawFire(c, { kind = 'core', rot = 0, age = 0, t = 0, seed = 0 }) {
+export function drawFire(c, { kind = 'core', rot = 0, age = 0, t = 0, seed = 0, tint = null }) {
   const S = TILE_PX;
   // Fixed per tile and per tongue - nothing here is re-rolled while the blast burns. Every bit
   // of motion below is a slow sine on `t`, so the fire flows rather than flickers.
@@ -1236,6 +1236,37 @@ export function drawFire(c, { kind = 'core', rot = 0, age = 0, t = 0, seed = 0 }
       c.moveTo(Math.cos(a) * r0, Math.sin(a) * r0);
       c.lineTo(Math.cos(a) * (r0 + 4), Math.sin(a) * (r0 + 4));
       c.stroke();
+    }
+  }
+
+  /* Whose blast this is, said in the flames.
+   *
+   * A wash of the owner's own colour over the outer body of the fire - never the core, which
+   * stays white-hot the way fire does. It is deliberately a HINT: twenty percent at the start,
+   * fading as the blast cools, which at a glance reads as "that one is mine" and at no point
+   * reads as a blue fire. Sixteen players put sixteen blasts on one board in a bad second, and
+   * knowing which is yours - or whose keg just went off beside you - is worth a tint.
+   *
+   * `screen` rather than a flat fill: it lifts the hue into the flame without touching its
+   * brightness, so a dark player colour tints rather than darkens. The core is redrawn over the
+   * top afterwards, which is what keeps the middle of the blast the hottest thing on screen.
+   */
+  if (tint) {
+    const strength = 0.2 * Math.max(0, 1 - age * 0.8);
+    if (strength > 0.01) {
+      c.save();
+      c.globalCompositeOperation = 'screen';
+      c.globalAlpha = strength;
+      c.fillStyle = tint;
+      if (kind === 'tip') { c.beginPath(); c.arc(0, 0, w / 2 - 1, 0, 7); c.fill(); }
+      else rr(c, -w / 2, -w / 2, w, w, 4, tint);
+      c.restore();
+      // The core, back on top: a tinted middle is a cold blast, and the middle is the part that
+      // has to look like it will kill you.
+      if (coreIn * 2 < w - 2) {
+        c.globalAlpha = Math.max(0, 1 - ease(age) * 0.45 - smoke * 0.35) * 0.9;
+        band(coreIn, PALETTE.fireCore);
+      }
     }
   }
 

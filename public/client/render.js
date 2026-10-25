@@ -3813,6 +3813,21 @@ export function createRenderer(canvas, world) {
         mc.beginPath();
         mc.arc(0, 0, R, 0, 7);
         mc.fill();
+        /* And the light it throws carries the hue too, faintly.
+         *
+         * The flames say whose blast it is close up; this is the same fact at the other end of
+         * the room - the wall two tiles away warms in that player's colour. A tenth of the
+         * pool's own strength, over the middle of it only, because firelight is firelight and
+         * this is a hint about WHO rather than a coloured lamp. */
+        if (f.owner >= 0) {
+          mc.globalCompositeOperation = 'screen';
+          mc.globalAlpha = k * k * 0.1;
+          mc.fillStyle = playerShades(f.owner % 16).light;
+          mc.beginPath();
+          mc.arc(0, 0, R * 0.55, 0, 7);
+          mc.fill();
+          mc.globalCompositeOperation = 'source-over';
+        }
 
         // The walls in range, as shadows and as lit faces.
         for (let ty = f.ty - reach; ty <= f.ty + reach; ty++) {
@@ -3899,7 +3914,13 @@ export function createRenderer(canvas, world) {
       const age = Math.min(1, 1 - Math.max(0, (f.until - tickNow) / FIRE_TICKS));
       ctx.save();
       ctx.translate(ox + f.tx * TILE_PX, oy + f.ty * TILE_PX);
-      drawFire(ctx, { kind: f.kind, rot: f.rot, age, t: seaT, seed: f.tx * 7 + f.ty * 13 });
+      // Whose it is, in the flames. See the tint note in drawFire; a keg inherits the owner of
+      // whatever set it off, so a player's own keg burns in the player's own colour.
+      const owner = f.owner;
+      drawFire(ctx, {
+        kind: f.kind, rot: f.rot, age, t: seaT, seed: f.tx * 7 + f.ty * 13,
+        tint: owner >= 0 ? playerShades(owner % 16).light : null,
+      });
       ctx.restore();
     }
 

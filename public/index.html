@@ -494,90 +494,59 @@
     <div id="rulesPane">
       <h2 class="boardHead castSm">the rules, quickly</h2>
       <p class="rline">
-        Ten minutes a round, five islands in rotation. Fire runs in a cross and
-        stops at walls. It sets off any bomb it reaches, and chains are where
-        rounds are decided. Your own fire kills you at exactly the speed
-        everyone else's does.
+        Ten minutes a round, five islands. Fire runs in a cross, stops at walls,
+        sets off any bomb it reaches. Your own kills you too.
       </p>
       <dl class="rules">
         <dt>
           <svg><use href="#i-bomb" /></svg>bombs &amp; fire
         </dt>
-        <dd>
-          A cross, stopped by walls, handed on to any bomb it reaches. It lands
-          on the tile you are facing, not the one you are standing on.
-        </dd>
+        <dd>Lands on the tile you face. Burns in a cross, 2.4 s fuse.</dd>
         <dt>
           <svg><use href="#i-keg" /></svg>powder kegs
         </dt>
-        <dd>
-          Rare barrels. Break one and it takes the neighbourhood with it. One a
-          round, at least.
-        </dd>
+        <dd>Seven tiles of blast, and they chain.</dd>
         <dt>
           <svg><use href="#i-bolt" /></svg>stamina
         </dt>
-        <dd>
-          Thirteen seconds of running, then you limp. The bar under your boots
-          is what is left; the notch in it is what a slide costs. Stopping to
-          breathe is a real decision.
-        </dd>
+        <dd>Thirteen seconds of running, then you limp. Stopping refills it.</dd>
         <dt>
           <svg><use href="#i-boot" /></svg>the slide
         </dt>
         <dd>
-          Double-tap a direction: three and a half tiles in half a second, a
-          fifth of your wind, and no steering or bombs until it ends. Go through
-          somebody and they are left seeing stars - no bombs, a quarter
-          slower, for a moment.
+          Three and a half tiles, a fifth of your wind, no steering. Whoever you
+          hit is left confused.
         </dd>
         <dt>
           <svg><use href="#i-fire" /></svg>perks
         </dt>
         <dd>
-          More bombs, longer fire, boots, a shield, stim, and rum - which
-          saves you from everything except the tile the bomb was on, and steers
-          like a shopping trolley. Bombs and fire cap at five; the flames under
-          a bomb say how far it reaches.
+          Bombs, fire, boots, shield, stim. Rum saves you from everything but
+          the bomb's own tile. Bombs and fire cap at five.
         </dd>
         <dt>
           <svg><use href="#i-shield" /></svg>shields
         </dt>
-        <dd>
-          One blast each, and never two at once. A shield that saves you buys
-          half a second nothing can touch, so a chain costs one shield rather
-          than the pair.
-        </dd>
+        <dd>One blast each. A chain costs one, not both.</dd>
         <dt>
           <svg><use href="#i-ice" /></svg>ice
         </dt>
-        <dd>
-          Melts to a puddle when it is hit. Half pace, and you keep going after
-          you let go.
-        </dd>
+        <dd>Melts to a puddle. Half pace, and you slide.</dd>
         <dt>
           <svg><use href="#i-coin" /></svg>gold
         </dt>
-        <dd>
-          The rarest thing on the floor. Worth 400, and worth nothing at all
-          until the board is counted.
-        </dd>
+        <dd>Worth 400. Counted on the board, not in the round.</dd>
         <dt>
           <svg><use href="#i-gull" /></svg>seagulls
         </dt>
         <dd>
-          Catch one in a blast of yours and three coins fly straight to you.
-          They dawdle over the island, which is your window. Once a round two of
-          them come in fast and low for one player, and that player is finished
-          - the scoreboard remembers who.
+          Catch one in your blast: three coins. Once a round, two of them pick
+          somebody and kill them.
         </dd>
         <dt>
           <svg><use href="#i-skull" /></svg>streaks
         </dt>
-        <dd>
-          Double, triple, ultra, rampage, and an ACE for taking the whole island
-          in one run.
-        </dd>
+        <dd>Double, triple, ultra, rampage. ACE takes the whole island.</dd>
       </dl>
       <h2 class="boardHead castSm">scoring</h2>
       <ul class="score">
@@ -824,12 +793,12 @@
             ><kbd>&#8594;</kbd> <span class="or">or</span> <kbd>W</kbd
             ><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>
           </dt>
-          <dd>Move - hold two for a diagonal</dd>
+          <dd>Move</dd>
 
           <dt>
             <kbd>&#8592;</kbd><kbd>&#8592;</kbd> <span class="or">twice</span>
           </dt>
-          <dd>Slide that way. Fast, costly, and it knocks people confused</dd>
+          <dd>Slide</dd>
 
           <dt><kbd class="wide">Shift</kbd> + a direction</dt>
           <dd>Emote</dd>
@@ -838,22 +807,22 @@
             <kbd class="wide">Space</kbd> <span class="or">or</span>
             <kbd>K</kbd>
           </dt>
-          <dd>Bomb the tile you face, or get back up</dd>
+          <dd>Bomb, or respawn</dd>
 
           <dt><kbd class="wide">Enter</kbd></dt>
           <dd>Chat</dd>
 
           <dt><kbd>/</kbd></dt>
-          <dd>Commands, try <code>/help</code></dd>
+          <dd>Commands</dd>
 
           <dt><kbd class="wide">Tab</kbd></dt>
-          <dd>Scores, round and all-time</dd>
+          <dd>Scores</dd>
 
           <dt><kbd class="wide">Esc</kbd></dt>
           <dd>Back out</dd>
 
           <dt><code>/logout</code></dt>
-          <dd>Release your name</dd>
+          <dd>Sign out</dd>
         </dl>
       </div>
       <p class="menuFoot">

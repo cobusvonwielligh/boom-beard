@@ -1485,9 +1485,14 @@ function drawHud() {
   drawCabinet(mine?.medals);
   setValue($('vKills'), me.kills);
   setValue($('vDeaths'), me.deaths, { worse: true });
-  // Gold. Lifetime, not this round - it is the one stat here that accumulates, which is the
-  // whole point of it, and it is going to be a currency.
-  setValue($('vCoins'), me.coins || 0);
+  /* Gold. LIFETIME, which is what the line above always claimed and what the code never did.
+   *
+   * `me.coins` is this round's haul and resets with every round, so the number went back to zero
+   * every ten minutes - which reads exactly like "gold is not being saved". It is: the career
+   * figure comes back in the scores broadcast (see emitScores in server/room.js) and is banked to
+   * disk against the NAME, so it survives a round, a reconnect and a restart. Falls back to the
+   * round count for the second or two before the first broadcast lands. */
+  setValue($('vCoins'), mine?.lifeCoins ?? me.coins ?? 0);
   renderLive();
 
   // Every live perk as a pip, lit when you are carrying more than you started with. Shields used
