@@ -3,7 +3,7 @@
 // Your own player is predicted from your keys and corrected by replaying unacknowledged inputs.
 // Everyone else is drawn from snapshots, a little in the past. docs/NETCODE.md §2.
 
-import { INTERP_DELAY_TICKS, TRACER_SAMPLES, TRACER_EVERY_TICKS, FIRE_TICKS, setSeatColours } from '/shared/constants.js';
+import { INTERP_DELAY_TICKS, TRACER_SAMPLES, TRACER_EVERY_TICKS, FIRE_TICKS, setSeatColours, MAX_HP } from '/shared/constants.js';
 import { createPlayer, tileCentre } from '/shared/sim/state.js';
 import { decodeCells, packCell, cellType } from '/shared/maps.js';
 import { BLOCK, BLOCK_HP } from '/shared/constants.js';
@@ -73,7 +73,7 @@ export function createWorld() {
     p.score = wire.s; p.kills = wire.k; p.deaths = wire.dd; p.status = wire.stat;
     p.coins = wire.c || 0;
     // Absent means whole; see MAX_HP and playerWire.
-    p.hp = wire.hp ?? 2;
+    p.hp = wire.hp ?? MAX_HP;
     if (wire.sta !== undefined) { p.stamina = wire.sta; p.staminaLevel = wire.stl; p.tired = !!wire.tr; }
     p.slide = wire.sl ?? 0;
     // The deliberate slide: absent means not sliding, which is almost every tick. See playerWire.
@@ -202,6 +202,9 @@ export function createWorld() {
     me.bombs = wire.b; me.radius = wire.f; me.speed = wire.sp; me.shields = wire.sh;
     me.score = wire.s; me.kills = wire.k; me.deaths = wire.dd; me.status = wire.stat;
     me.coins = wire.c || 0;
+    // Health, which only the server decides. Missing from here once, so your own pirate never
+    // went to half on your own screen - the heart, the ghosting and the scorch all read this.
+    me.hp = wire.hp ?? MAX_HP;
     // Stamina is simulated locally too, so it is replayed with the inputs below rather than
     // simply trusted - the server's value is the one the replay starts from.
     if (wire.sta !== undefined) { me.stamina = wire.sta; me.staminaLevel = wire.stl; me.tired = !!wire.tr; }

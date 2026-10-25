@@ -670,8 +670,9 @@ canvas#game {
   box-shadow: 0 6px 28px #0009;
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 7px 14px;
+  /* 12, not 16: at 1366 wide the bar ran four pixels past its own edge and clipped LEAVE. */
+  gap: 12px;
+  padding: 7px 12px;
   font-size: 13px;
 }
 
@@ -739,7 +740,10 @@ canvas#game {
   min-width: 2.2ch;
 }
 #vMap {
-  min-width: 9ch;
+  /* Seven: the longest map name is "crossroads", and the ellipsis covers anything longer -
+     nine left a gap in front of the loadout on every map but that one. */
+  min-width: 7ch;
+  max-width: 11.5ch;                   /* "crossroads" whole, with the letter spacing */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -866,9 +870,11 @@ body.observing #who {
 }
 
 /* loadout */
+/* Tighter than it was (14px between pips, 7 inside one): heart to stim is one group and reads as
+   one, and the width it gave back is what lets the bar fit at 1366 without clipping LEAVE. */
 #gear {
   display: flex;
-  gap: 14px;
+  gap: 10px;
   align-items: center;
   position: relative;
 }
@@ -877,7 +883,7 @@ body.observing #who {
 .pip {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 4px;
   font-family: var(--nums);
   font-variant-numeric: tabular-nums;
   font-size: 13px;
@@ -886,8 +892,8 @@ body.observing #who {
 }
 /* 1.5x. These are the only pictures in the bar and they were losing to the text beside them. */
 .pip svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   display: block;
 }
 .pip .n {
@@ -915,82 +921,80 @@ body.observing #who {
 }
 
 /* ─── the heart: health in three states ───────────────────────────────────────
- * Whole: both halves solid gold, a slow warm pulse and a glint sweeping across it - bling.
- * Half: only the left half filled, no glow, no glint - the metal has gone dull.
- * Down: an empty gold outline. Three pictures, no number, because there are only three states. */
+ * Cast gold, the same metal as the name and the headings (`.castSm`): the same four-stop ramp,
+ * the same near-black edge round it and the same hard drop under it - no bloom, because at this
+ * size a glow is a smudge, and the cast type it sits beside does not glow either.
+ *
+ *   whole   both halves of metal, with the slow light sweep the cast type has travelling across
+ *   half    the left half of metal, the right half an empty dark socket, and no sweep: dull
+ *   down    an empty socket with a worn gold edge
+ *
+ * Three pictures and no number, because there are only three states. See MAX_HP. */
 .pip.heart {
   position: relative;
-  margin-right: 2px;
+  margin-right: 1px;
 }
 .pip.heart svg {
-  width: 22px;
-  height: 22px;
+  width: 19px;
+  height: 19px;
   overflow: visible;
+  filter: drop-shadow(0 1.5px 0 #000) drop-shadow(0 3px 5px #000a);
 }
 .pip.heart .hL,
 .pip.heart .hR {
   fill: url(#heartGold);
-  transition: opacity 0.25s;
 }
 .pip.heart .hO {
   fill: none;
-  stroke: #edc24e;
-  stroke-width: 1.1;
+  stroke: #140d02;
+  stroke-width: 1.15;
   stroke-linejoin: round;
 }
+/* The empty half is a socket, not a gap: dark metal, so the heart keeps its whole outline. */
 .pip.heart.half .hR,
 .pip.heart.empty .hL,
 .pip.heart.empty .hR {
-  opacity: 0;
+  fill: #2a1d08;
 }
-.pip.heart.half .hO {
-  stroke: #b8902f;
+.pip.heart.half .hL {
+  filter: saturate(0.75) brightness(0.88);
 }
 .pip.heart.empty .hO {
-  stroke: #8a7440;
-  stroke-dasharray: 2 1.4;
+  stroke: #8a6a2c;
 }
-.pip.heart.full svg {
-  animation: heartBling 2.4s ease-in-out infinite;
-}
-@keyframes heartBling {
-  0%, 100% { filter: drop-shadow(0 0 3px #edc24e88); }
-  50% { filter: drop-shadow(0 0 9px #ffd75acc) drop-shadow(0 0 2px #fff6c9); }
-}
-/* The glint: a white streak swept across the heart, masked to the heart's own shape. */
+/* The sweep: the cast type's travelling highlight, masked to the heart. Whole only. */
 .pip.heart .glint {
   position: absolute;
   left: 0;
   top: 50%;
-  width: 22px;
-  height: 22px;
+  width: 19px;
+  height: 19px;
   transform: translateY(-50%);
   pointer-events: none;
   display: none;
-  background: linear-gradient(115deg, #fff0 35%, #fffe 50%, #fff0 65%) no-repeat;
-  background-size: 300% 100%;
+  background: linear-gradient(104deg, #fff0 42%, #fff4c4d0 50%, #fff0 58%) no-repeat;
+  background-size: 260% 100%;
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 14.2S1.6 10.2 1.6 5.8a3.2 3.2 0 0 1 6.4-1.1 3.2 3.2 0 0 1 6.4 1.1c0 4.4-6.4 8.4-6.4 8.4z'/%3E%3C/svg%3E") center / contain no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 14.2S1.6 10.2 1.6 5.8a3.2 3.2 0 0 1 6.4-1.1 3.2 3.2 0 0 1 6.4 1.1c0 4.4-6.4 8.4-6.4 8.4z'/%3E%3C/svg%3E") center / contain no-repeat;
   mix-blend-mode: screen;
 }
 .pip.heart.full .glint {
   display: block;
-  animation: heartGlint 3.2s ease-in-out infinite;
+  animation: heartGlint 7s linear infinite;
 }
 @keyframes heartGlint {
-  0%, 55% { background-position: 120% 0; }
-  85%, 100% { background-position: -20% 0; }
+  from { background-position: 130% 0; }
+  to { background-position: -130% 0; }
 }
-/* The moment it changes: a knock, so losing half is felt in the corner of the eye. */
+/* The moment it drops: a knock, so losing half is felt in the corner of the eye. */
 .pip.heart.hit svg {
   animation: heartHit 0.45s ease-out;
 }
 @keyframes heartHit {
-  0% { transform: scale(1.45); filter: drop-shadow(0 0 10px #ff6a2a); }
+  0% { transform: scale(1.4); }
   100% { transform: scale(1); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .pip.heart.full svg,
   .pip.heart.full .glint,
   .pip.heart.hit svg {
     animation: none;
