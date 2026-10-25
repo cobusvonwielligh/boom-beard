@@ -62,6 +62,9 @@ server/
   room.js                      one round: the loop, seats, snapshots, hosts, respawn
   ai.js                        bot brains: danger map, pathing, fleeing
   bots.js                      headless clients for load testing
+  accounts.js                  password ownership + trusted-browser tokens
+  names.js                     canonical name keys + narrow language policy
+  guard.js                     request/message rate and size limits
   leaderboard.js               load/save JSON, XP and levels
   config.js                    config.ini + env overrides
   canonical.js                 hostname redirects
@@ -80,18 +83,18 @@ public/
     audio/
       engine.js                one AudioContext, buses, helpers
       sfx.js                   named one-shots
-      music.js                 the theme
-      ambient.js               the in-round beds
+      music.js                 produced-track player, sequencing and crossfades
+      ambient.js               synthesised theme/beds used as fallbacks
   assets/
     art.js                     everything in the game, drawn from shapes
-    img/*.png                  four decorative images: mascot, face, kegs, icon
+    img/*                      six decorative assets: mascot, face, kegs, icons and wordmark
     fonts/clegan.ttf           the display face, plus its licence
     audio/*.mp3                theme, drift, suspend, undertow - named after their slots
 
 infra/
   bootstrap.sh deploy.sh rollback.sh logs.sh boom-beard.service
 
-test/                          23 files, 201 tests, node --test
+test/                          39 test files, node --test
 ```
 
 ### As designed

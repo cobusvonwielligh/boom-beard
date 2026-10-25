@@ -1,8 +1,9 @@
 # Boom Beard - Design
 
-Date: 2026-10-23
+Date: 2026-10-23; implementation addendum updated 2026-10-25
 Author: Cobus (with Claude)
-Status: agreed, drives the plan in [PLAN.md](PLAN.md)
+Status: original intent plus current implementation. [RULES.md](RULES.md) and
+[STATUS.md](STATUS.md) are authoritative where the original plan changed.
 
 ---
 
@@ -15,7 +16,7 @@ your name, play.
 
 The success test is simple and social, not technical:
 
-> On a Friday, 10–12 of us open a link, pick names, and spend 16 minutes blowing each other up
+> On a Friday, 10–12 of us open a link, pick names, and spend ten minutes blowing each other up
 > without anyone saying "mine is lagging" or "how do I do the thing again".
 
 That second half matters. People who played Game of Bombs should not have to relearn anything.
@@ -29,7 +30,8 @@ close enough that muscle memory transfers.
 1. **16 concurrent players**, one shared arena, no lobbies or matchmaking.
 2. **Feels right at high latency.** Designed so a player on a 180 ms link plays essentially the
    same game as a player on a 20 ms link. See §5.
-3. **Zero-friction entry.** Type a name, press play. No email, no password, no confirmation.
+3. **Low-friction owned identity.** Type a name and claim it once with a password. A trusted-browser
+   token makes later visits one click; there is still no email, OAuth or account-recovery flow.
 4. **One IP, one port, one hostname.** An IT department unblocks a single thing and we are done.
 5. **Trivially portable.** It runs on a personal AWS account today and inside the eezi VPC later
    with a config change, not a rewrite.
@@ -40,12 +42,14 @@ close enough that muscle memory transfers.
 
 Explicitly out. Not "later" - out of this build.
 
-- Accounts, passwords, email, OAuth, social login.
-- Payments, plutonium, gold, shops, skins, the skin constructor.
+- Email, OAuth, social login, password recovery and public account profiles.
+- Payments, plutonium, shops, skins, the skin constructor. Gold exists only as an in-game
+  collectible and lifetime stat.
 - A persistent streaming world. We have three fixed arenas.
 - Mobile or touch controls.
 - Matchmaking, multiple rooms, multiple server regions.
-- Anti-cheat beyond a sanity check on reported position. This is a 12-person office game.
+- Competitive anti-cheat, moderation staff and appeals. The server is authoritative and validates
+  identity, movement inputs and game rules; this is still a small office game, not an esport.
 - Puzzles, iron chests, keys, locked gates, forts, warehouses, caches, soccer/goal mode, bosses,
   hamsters, the ball.
 - Observer camera scroll-wheel zoom.
@@ -96,16 +100,16 @@ These were chosen, not discovered. A builder may push back but should not quietl
 
 | Area | Decision |
 |---|---|
-| Server runtime | Node 20+. One dependency: `ws`. HTTP + WebSocket in the same process on the same port. |
-| Client | Vanilla ES modules served raw. jQuery for menu/HUD DOM only - never in the game loop. |
+| Server runtime | Node 20+. Two runtime dependencies. HTTPS + WebSocket in one process, with WebTransport/HTTP3 beside it on UDP 443. |
+| Client | Vanilla ES modules and DOM APIs served raw. No framework and no build step. |
 | Rendering | Canvas 2D. Static map drawn once into cached 8×8-tile chunk canvases, dirty-redrawn on change. Entities drawn per frame on top. Same approach Game of Bombs uses. |
 | Shared code | `shared/` directory, ES modules, imported unchanged by Node and the browser. The simulation is literally the same file on both sides. |
-| Wire format | JSON over WebSocket. Full snapshots at 15 Hz. Binary is a later optimisation with a stated trigger, not a day-one cost. |
+| Wire format | JSON snapshots at 15 Hz over WebTransport datagrams when available, WebSocket otherwise. |
 | Simulation | Fixed 30 Hz tick, integer fixed-point positions (1 tile = 256 units), fully deterministic. |
-| Art | Generated in code from shapes at boot into offscreen canvases. No image files. Per-player tint is free. |
-| Audio | WebAudio synthesis. No audio files. Music 25 % volume by default, SFX 75 %. |
+| Art | Board art is generated in code from shapes. A small PNG set is used for landing/HUD branding, including the generated bearded wordmark. |
+| Audio | Synthesised SFX plus four produced music files, with generated WebAudio fallbacks. Music 10 % by default, SFX 75 %. |
 | Persistence | A JSON file on disk, flushed every 30 s. Leaderboard only. No database. |
-| Identity | A name plus a `playerId` in `localStorage`. Name collisions get a numeric suffix. |
+| Identity | Password-owned name + revocable device token + `playerId`. Canonical names are unique across case, spacing and Unicode compatibility forms. |
 | Build | None. `node server/index.js`. |
 | Tests | `node --test`. No framework, no fixtures. |
 | Deployment | Single container, single port 443, TLS. Portable from personal EC2 to eezi VPC by changing environment variables. |
@@ -114,12 +118,12 @@ These were chosen, not discovered. A builder may push back but should not quietl
 
 Agreed in planning:
 
-- **Core**: movement, bombs, fire, destructible blocks, death, respawn, 16-minute round,
-  scoreboard, name entry, per-player random colour with a motion tracer, 3 maps.
-- **Perks**: Bomb +1, Fire +1, Roller-skates +1, Shield, Gift (random).
+- **Core**: movement, slides, bombs, owner-coloured fire, destructible blocks, safe respawn,
+  ten-minute rounds, scoreboards and player dossiers, five maps.
+- **Perks**: Bomb +1, Fire +1, Boots +1, Shield, Stim and Rum. Gift was removed.
 - **Statuses** (the contagious diseases): Invulnerability, Pacifism, Slowdown, Invisibility,
   Changeling, Reduction, Fast Detonation.
-- **Chat** (ENTER) and **observer mode** (TAB → click a name).
+- **Chat** (ENTER), narrow severe-language masking, and observer mode.
 - **Leaderboard** with the 16 Game of Bombs rank titles.
 
 Designed-for but **not built** in v1 - the architecture leaves explicit, named slots so adding
@@ -155,11 +159,5 @@ Deliberately unspecified - make the call, write it down in the PR:
 
 ## 10. Open questions
 
-- **Where the players sit.** Design assumes worst case. If everyone turns out to be in one
-  office in South Africa, moving the server to `af-south-1` drops RTT to ~15 ms and we get a
-  better game for free. Decide before the first real session; it is a config change, not a code
-  change. Note that `af-south-1` is not always covered by the EC2 free tier - check before
-  switching.
-- **Domain name.** Needed for TLS on 443. If there is no spare eezi domain, use a free
-  `*.duckdns.org` or `*.sslip.io` host - still one hostname, still one port, still free.
-  See [DEPLOY.md](DEPLOY.md).
+- **Resolved:** production is in `af-south-1`, and `https://boombeard.co.za` is the canonical
+  hostname. `15.240.88.189.sslip.io` remains a certificate-covered fallback that redirects to it.

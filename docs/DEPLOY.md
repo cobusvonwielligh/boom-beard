@@ -328,7 +328,7 @@ Free for a year, about $12/month after.
 
 ## 12. Security
 
-What stands between the internet and the box, checked end to end on 2026-10-24 for v1.0.0.
+What stands between the internet and the box, checked end to end on 2026-10-25 for v1.0.3+.
 
 | Layer | What it does |
 |---|---|
