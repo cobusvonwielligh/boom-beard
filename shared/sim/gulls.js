@@ -224,7 +224,9 @@ export function gulls(state) {
 
   // The same lethal window that kills players: smoke at the end of a blast is not fire.
   const deadline = state.tick + (FIRE_TICKS - FIRE_LETHAL_TICKS);
-  const fresh = state.fires.length ? state.fires.filter(f => f.until > deadline) : null;
+  const fresh = state.fires.length
+    ? state.fires.filter(f => f.until > deadline && (f.startsAt ?? 0) <= state.tick)
+    : null;
 
   for (let i = state.gulls.length - 1; i >= 0; i--) {
     const g = state.gulls[i];

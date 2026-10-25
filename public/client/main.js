@@ -25,6 +25,7 @@ import { createQuips, MENU_QUIPS } from './quips.js';
 import { createMenuViz } from './menuviz.js';
 import { store } from './store.js';
 import { placeable } from '/shared/sim/bombs.js';
+import { streakActive } from '/shared/sim/state.js';
 import { MAPS } from '/shared/maps.js';
 
 const $ = id => document.getElementById(id);
@@ -435,7 +436,10 @@ const net = createNet({
           // carried across from the bomb we already knew about so the sound can tell the two
           // apart - a blast before its own fuse ran out is a chain.
           const known = world.bombs.find(b => b.id === e.id);
-          world.burstBomb({ id: e.id, tx: e.x, ty: e.y, o: e.o, r: e.r, at: known?.at });
+          world.burstBomb({
+            id: e.id, tx: e.x, ty: e.y, o: e.o, r: e.r, at: known?.at,
+            streakPowered: e.streakPowered ?? known?.streakPowered,
+          }, e.tick);
           break;
         }
 
@@ -489,6 +493,7 @@ const net = createNet({
           if (p) sfx.playAtUnits('hurt', p.rx ?? p.x, p.ry ?? p.y, { theirs: e.i !== world.you });
           renderer?.markHurt(e.i);
           if (e.i === world.you) {
+            clearStreakGlow();
             renderer?.alertRim(1);
             renderer?.addFlash(0.45, '255,120,60');
             renderer?.addShake(0.35);
@@ -615,6 +620,7 @@ const net = createNet({
     document.body.classList.remove('dead');
     $('deadBanner').classList.remove('show');
     $('streak').classList.remove('show');
+    clearStreakGlow();
     $('respawn').disabled = true;
 
     const won = (m.standings || [])[0]?.i === world.you;
@@ -770,7 +776,10 @@ const net = createNet({
     const li = document.createElement('li');
     const who = document.createElement('b');
     withBotIcons(who, m.i === -1 ? '' : `${m.name}: `);
-    if (m.i >= 0) who.style.color = playerColor(m.i);
+    if (m.i >= 0) {
+      who.dataset.streakSeat = String(m.i);
+      styleStreakName(who, world.players[m.i], playerColor(m.i));
+    }
     li.append(who, withBotIcons(document.createElement('span'), m.msg));   // textContent only: never innerHTML
     /* Short lines also appear over the speaker's head.
      *
@@ -1307,6 +1316,12 @@ function streakGlow(flow) {
     (STREAK_WINDOW_TICKS / TICK_HZ) * 1000);
 }
 
+function clearStreakGlow() {
+  clearTimeout(streakGlowTimer);
+  $('who').classList.remove('rainbow');
+  $('who').style.removeProperty('--flow');
+}
+
 function setValue(el, text, { worse = false, calm = false } = {}) {
   if (!el || el.textContent === String(text)) return;
   // An em dash is the placeholder these start at; see the top bar in index.html. Arriving at a
@@ -1805,6 +1820,30 @@ function killFeed(text, { youDied = false, youKilled = false } = {}) {
   pushLine(li);
 }
 
+function streakFlow(count) {
+  const step = Math.min(1, Math.max(0, (count - 2) / 4));
+  return `${(2.2 - step * 1.7).toFixed(2)}s`;
+}
+
+function styleStreakName(el, player, colour) {
+  const active = streakActive(player, world.tick);
+  el.classList.toggle('rainbow', active);
+  if (active) {
+    el.style.removeProperty('color');
+    el.style.setProperty('--flow', streakFlow(player.streakCount));
+  } else {
+    el.style.removeProperty('--flow');
+    if (colour) el.style.color = colour;
+  }
+}
+
+function updateChatStreakNames() {
+  for (const el of $('chatList').querySelectorAll('[data-streak-seat]')) {
+    const player = world.players[Number(el.dataset.streakSeat)];
+    if (player) styleStreakName(el, player, playerColor(player.i));
+  }
+}
+
 /**
  * The standings in the side panel. Always up, because a scoreboard you have to hold a key for is
  * a scoreboard nobody reads in a game where letting go of the keys gets you killed.
@@ -1837,6 +1876,7 @@ function renderLive() {
     nm.textContent = p.name;
     if (p.gulled) nm.append(gullMark());
     nm.style.color = playerColor(p.i);
+    styleStreakName(nm, p, playerColor(p.i));
     markPlayerHover(nm, { seat: p.i });
     // A robot beside anything that is not a person. `bot` comes from the scores broadcast, which
     // is the only place the server says so - the snapshot has no idea what a bot is, and it
@@ -1850,6 +1890,7 @@ function renderLive() {
     li.classList.toggle('me', p.i === world.you);
     li.classList.toggle('out', !p.alive);
   }
+  updateChatStreakNames();
 }
 
 let scoresOpen = false;
@@ -2130,6 +2171,7 @@ function renderScores() {
     // size, same meaning. See `td.host` in style.css - it is one mask, so there is one crown in
     // the project and three places that show it.
     const nameCell = cell(tr, p.name, playerColor(p.i));
+    styleStreakName(nameCell, p, playerColor(p.i));
     markPlayerHover(nameCell, { seat: p.i });
     if (p.i === hostSeat) nameCell.classList.add('host');
     // The rank ladder is the thing returning Game of Bombs players recognise first, so it gets a

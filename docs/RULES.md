@@ -149,37 +149,39 @@ simulation, the client's prediction, the click sound, and the bots.
 Placing a bomb requires: you are alive, not Pacifism, and your live bomb count < your bomb stat.
 A bomb is placed at the **centre of the tile your hitbox centre is in**. One bomb per tile.
 
-**Explosion.** On the fuse tick the bomb produces fire in its own tile plus up to `radius` tiles
-in each of the four directions. The arm stops when it hits:
+**Explosion.** On the fuse tick the bomb produces fire in its own tile. The four arms advance
+one tile at a time, with tile `step` reached after `floor(step × 3 / 2)` ticks. This averages
+1.5 ticks per tile, 33% slower than advancing one tile per tick. The arm stops when it hits:
 
 - an indestructible block → stops **before** it,
-- a destructible block → damages it, fills that tile with fire, then stops,
+- a destructible block → damages it when reached, fills that tile with fire, then stops,
 - a shrub → passes through but **radius is reduced by 1** for the rest of that arm (no map
   generates shrubs any more; the rule stays, because the block type does),
-- another bomb → that bomb detonates **this same tick** (chain), and the arm stops,
+- another bomb → that bomb detonates when the wave reaches it (chain), and the arm stops,
 - a column → fire passes through, no reduction, arm continues.
 
-Fire is drawn for **15 ticks (0.5 s)** and lethal for the first **10**. The final five ticks are
-embers and smoke: visible, but harmless. Damage uses the smaller 104-unit box above, independent
-of the movement hitbox, so imperfect alignment behind a wall does not turn a hidden shoulder into
-a death. Every fire tile records its owner and is drawn in that player's colour.
+Each tile's fire is drawn for **15 ticks (0.5 s)** from when the wave reaches it and is lethal for
+the first **10**. The final five ticks are embers and smoke: visible, but harmless. Damage uses the
+smaller 104-unit box above, independent of the movement hitbox, so imperfect alignment behind a
+wall does not turn a hidden shoulder into a death. Every fire tile records its owner and is drawn
+in that player's colour.
 
-**Chains are same-tick and bounded.** Resolve chain detonations with a queue in a single tick,
-with a hard cap of 64 bombs per tick, so a 16-player bomb carpet cannot stall the loop.
+**Chains are wave-timed and bounded.** A bomb hit by a wave is rescheduled to detonate when the
+wave reaches it, then emits its own stepwise wave. Resolve detonations with a queue and a hard cap
+of 64 bombs per tick, so a 16-player bomb carpet cannot stall the loop.
 
-**Determinism rule (critical).** A bomb's explode tick is fixed at placement and sent to clients.
-Clients compute fire locally from the bomb list. Neither side may make explosion timing depend on
-wall-clock time, `Math.random()`, or iteration order of an unsorted collection. Iterate bombs in
-ascending `bombId` everywhere.
+**Determinism rule (critical).** A bomb's fuse tick is set at placement and sent to clients; a
+chain hit may move it earlier to the wave-arrival tick. Clients compute fire locally from the bomb
+list. Neither side may make explosion timing depend on wall-clock time, `Math.random()`, or
+iteration order of an unsorted collection. Iterate bombs in ascending `bombId` everywhere.
 
 ---
 
-**An arm stops at another bomb.** The tile still burns - so the bomb still chains and goes off
-this same tick with its own radius - but the arm does not continue past it. That is the
-difference between a bomb being a link in a chain and a bomb being transparent: a line of three
-bombs should propagate along itself, not have the first one's fire overshoot the other two and
-reach further than any of them could. It is a per-arm rule; the other three directions are
-unaffected.
+**An arm stops at another bomb.** The tile burns when reached, triggering that bomb's own wave,
+but the arm does not continue past it. That is the difference between a bomb being a link in a
+chain and a bomb being transparent: a line of three bombs should propagate along itself, not have
+the first one's fire overshoot the other two and reach further than any of them could. It is a
+per-arm rule; the other three directions are unaffected.
 
 ---
 
@@ -481,9 +483,9 @@ A rare destructible block that **detonates on the tick it breaks**, at radius 7 
 | HP | 1 - the point is the explosion, not a siege |
 | Drops | nothing. It holds powder. |
 
-A keg **is** a bomb as far as the blast code is concerned: on destruction it joins the same
-chain queue any caught bomb uses. Nothing in `fire.js` or `detonate()` knows kegs exist, and
-chaining keg → keg → bomb falls out for free rather than being coded for.
+A keg **is** a bomb as far as the blast code is concerned: when a fire wave destroys it, it joins
+the same wave-timed chain queue as a caught bomb and emits its own radius-7 wave. Keg → keg → bomb
+chains therefore follow the same deterministic arrival timing as ordinary bombs.
 
 Placement rides the wall-regrowth cycle, which already knows which tiles are quiet - a keg
 appearing next to somebody would be a free kill nobody could read coming. It runs *before* that

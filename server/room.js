@@ -10,7 +10,7 @@ import {
   paletteColor, COLOUR_PREFERENCE, DISTINCT_PLAYERS, isDistinctColour, encodeSeatColours,
   SCORE, ROUND_INTERMISSION_MS, MAX_HP,
   progressFor,
-  STREAK_WINDOW_TICKS, STREAK_NAMES, STREAK_ACE, GAMESPEED_MIN, GAMESPEED_MAX,
+  STREAK_NAMES, STREAK_ACE, GAMESPEED_MIN, GAMESPEED_MAX,
   IDLE_KICK_TICKS, AUTO_BOTS_EMPTY_ROUNDS, IN_MASK, COUNT_IN_TICKS,
 } from '../shared/constants.js';
 import { MAPS, encodeCells } from '../shared/maps.js';
@@ -20,7 +20,8 @@ import { burns } from '../shared/sim/fire.js';
 import { tick as simTick } from '../shared/sim/round.js';
 import { gullWire } from '../shared/sim/gulls.js';
 import { careerKey } from './leaderboard.js';
-import { createBrain, think, dangerMap } from './ai.js';
+import { createBrain, delayBotInput, think, dangerMap } from './ai.js';
+import { createBotEmoter } from './botEmotes.js';
 import { nameKey } from './names.js';
 
 // How long a seat is held for someone who vanished. A closed laptop lid, a wifi roam or a tunnel
@@ -33,7 +34,7 @@ const INPUT_BUFFER_TICKS = 64;
 // banner. See docs/RULES.md §13.
 const ACE_MIN_VICTIMS = 3;
 
-const newStreak = () => ({ count: 0, lastTick: -1e9, victims: new Set() });
+const newStreak = () => ({ victims: new Set() });
 
 // Bots go by people's names. Twenty-eight, more than the fifteen bot seats there can ever be.
 export const BOT_NAMES = [
@@ -61,6 +62,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
    * ARRIVE_DELAY_TICKS. Zero by default, like `minBots`, so a test room seats people exactly as
    * its test expects; the real server passes the constant in (server/net.js). */
   arriveIn = 0,
+  botEmoteRandom = Math.random,
 }) {
   // Start somewhere random rather than always on the first map. Rotation between rounds works
   // fine, but a server that restarts - a deploy, a crash, a reboot - always came back to Arena,
@@ -97,9 +99,9 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
   // who played eight minutes and left before the whistle was present.
   let humanThisRound = false;
 
-  // seat -> { count, lastTick, victims:Set }. Server-side presentation only: nothing in here is
-  // read by the simulation, so it cannot affect determinism.
+  // The simulation owns streak count and expiry; this set tracks only ACE victim coverage.
   const streaks = new Array(maxPlayers).fill(null).map(() => newStreak());
+  const botEmoter = createBotEmoter({ broadcast: onBroadcast, random: botEmoteRandom });
 
   // ─── seating ────────────────────────────────────────────────────────────────
 
@@ -405,9 +407,8 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
   /**
    * Read this tick's `died` events and escalate or reset.
    *
-   * Driven from events rather than from inside the simulation on purpose: streaks are pure
-   * presentation and the sim is shared with the browser, so keeping them out here means no new
-   * state to keep in step across the two environments.
+   * Streak count is authoritative simulation state; the room keeps only the victim set needed
+   * for ACE announcements.
    */
   function trackStreaks(from) {
     for (let n = from; n < state.events.length; n++) {
@@ -416,16 +417,15 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
 
       // Dying ends your own streak, whoever ended it. A suicide is only ever a death.
       const died = streaks[e.i];
-      if (died) { died.count = 0; died.lastTick = -1e9; died.victims.clear(); }
+      if (died) died.victims.clear();
       if (e.by === e.i) continue;
 
       const st = streaks[e.by];
       const killer = state.players[e.by];
       if (!st || !killer) continue;
 
-      if (e.tick - st.lastTick > STREAK_WINDOW_TICKS) { st.count = 0; st.victims.clear(); }
-      st.count++;
-      st.lastTick = e.tick;
+      const count = e.streak ?? killer.streakCount;
+      if (count <= 1) st.victims.clear();
       st.victims.add(e.i);
 
       /* `n` is the rung, and it rides along so the client never has to parse `kind`.
@@ -439,8 +439,8 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
       if (isAce(e.by, st)) {
         st.victims.clear();
         onBroadcast({ t: 'streak', i: e.by, name: killer.name, kind: STREAK_ACE, ace: true, n: 6 });
-      } else if (st.count >= 2) {
-        const n = Math.min(st.count, 5);
+      } else if (count >= 2) {
+        const n = Math.min(count, 5);
         onBroadcast({ t: 'streak', i: e.by, name: killer.name, kind: STREAK_NAMES[n], ace: false, n });
       }
     }
@@ -475,7 +475,8 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
       const s = seats[i];
       if (!s) continue;
       if (s.isBot) {
-        inputs[i] = counting ? 0 : think(state, state.players[i], s.brain, danger);
+        const planned = counting ? 0 : think(state, state.players[i], s.brain, danger);
+        inputs[i] = delayBotInput(s.brain, planned, { frozen: counting });
         s.lastAckTick = state.tick;
         continue;
       }
@@ -515,6 +516,9 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     placeArrivals();
     simTick(state, inputs, { onRespawn: respawn });
     trackStreaks(evFrom);
+    for (let i = evFrom; i < state.events.length; i++) {
+      botEmoter.react(state.events[i], seats, state.tick);
+    }
 
     const ms = performance.now() - t0;
     tickTimes.push(ms);
@@ -671,6 +675,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     // Arriving, not dead: off the board for a moment after joining. See holdArrival.
     ...(p.arriving ? { ar: 1 } : null),
     s: p.score, k: p.kills, dd: p.deaths, stat: p.status,
+    sk: p.streakCount || 0, skt: p.streakLastKillTick ?? -1,
     // Coins. One small integer that only ever goes up, and the only stat on the wire that is
     // not about this round - it is what the HUD counter reads. `c`, not `g`: `gold` on the
     // leaderboard means a first-place finish.

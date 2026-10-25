@@ -229,8 +229,8 @@ times a second, so carrying them would spend most of the bandwidth on a constant
 arrive in `welcome` and are refreshed by `scores` - see the note there.
 
 Bomb fields: `id` · `x`,`y` **tile** coords · `o` owner index · `r` radius at placement ·
-`at` the tick it explodes. **`at` is what makes client-side fire prediction work - it is
-authoritative and never changes.**
+`at` the authoritative fuse tick. A fire wave can move `at` earlier when it chains into a bomb;
+clients use the updated tick and derive the same delayed, tile-by-tile fire wave locally.
 
 Only **alive or observing** players appear in `players`. A disconnected player is removed and a
 `leave` event fires.

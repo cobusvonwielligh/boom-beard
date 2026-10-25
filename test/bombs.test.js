@@ -9,7 +9,7 @@ import { place, detonate, bombTile } from '../shared/sim/bombs.js';
 import { tick } from '../shared/sim/round.js';
 import { drop, maybeDrop } from '../shared/sim/perks.js';
 import {
-  BLOCK, BLOCK_HP, IN_BOMB, IN_RIGHT, FUSE_TICKS, STATUS, PERK, MAX_RADIUS, SCORE,
+  BLOCK, BLOCK_HP, IN_BOMB, IN_RIGHT, FUSE_TICKS, FUSE_TICKS_FAST, STATUS, PERK, MAX_RADIUS, SCORE,
   PERK_WEIGHTS, FIRE_LETHAL_TICKS, FIRE_TICKS, DIR_R, DIR_U, DIR_L, DIR_D,
 } from '../shared/constants.js';
 
@@ -95,6 +95,14 @@ test('fire spread', async t => {
     const b = JSON.stringify(spread(st.map, { tx: 7, ty: 7, radius: 4 }));
     assert.equal(a, b);
   });
+
+  await t.test('fire advances in steps with 33 percent slower-than-one-tile-per-tick progression', () => {
+    const st = room();
+    const { cells } = spread(st.map, { tx: 7, ty: 7, radius: 4 });
+    const delayAt = x => cells.find(c => c.tx === x && c.ty === 7)?.delayTicks;
+
+    assert.deepEqual([delayAt(8), delayAt(9), delayAt(10), delayAt(11)], [1, 3, 4, 6]);
+  });
 });
 
 test('bombs in the round loop', async t => {
@@ -117,6 +125,73 @@ test('bombs in the round loop', async t => {
     p.statusUntil[STATUS.PACIFISM] = 999;
     tap(st, p);
     assert.equal(st.bombs.length, 0);
+  });
+
+  await t.test('streak power and the selected fuse are captured when a bomb is placed', () => {
+    const st = room();
+    const p = spawn(st, 0, 3, 3);
+    p.streakCount = 2;
+    p.streakLastKillTick = st.tick;
+    p.status = STATUS.FAST_DET;
+
+    tap(st, p);
+
+    assert.equal(st.bombs[0].streakPowered, true);
+    assert.equal(st.bombs[0].fuseTicks, FUSE_TICKS_FAST);
+    assert.equal(st.bombs[0].at, st.tick + FUSE_TICKS_FAST);
+  });
+
+  await t.test('expired streaks do not empower newly placed bombs', () => {
+    const st = room();
+    const p = spawn(st, 0, 3, 3);
+    p.streakCount = 2;
+    p.streakLastKillTick = st.tick - 1000;
+
+    tap(st, p);
+
+    assert.equal(st.bombs[0].streakPowered, false);
+  });
+
+  await t.test('streak power carries through stepwise powder-keg chains and their fire', () => {
+    const st = room();
+    setTile(st.map, 4, 3, BLOCK.POWDER, BLOCK_HP[BLOCK.POWDER]);
+    st.bombs.push({
+      id: 1, tx: 3, ty: 3, owner: 0, radius: 1, at: st.tick, streakPowered: true,
+    });
+    for (let i = 0; i < 5; i++, st.tick++) detonate(st);
+
+    assert.ok(st.fires.some(f => f.tx === 4 && f.ty === 3));
+    assert.ok(st.fires.every(f => f.streakPowered));
+  });
+
+  await t.test('a destructible block is damaged only when the stepped fire reaches it', () => {
+    const st = room();
+    setTile(st.map, 5, 3, BLOCK.SOFT, 1);
+    st.bombs.push({ id: 1, tx: 3, ty: 3, owner: 0, radius: 3, at: st.tick });
+
+    detonate(st);
+    assert.equal(tileAt(st.map, 5, 3), BLOCK.SOFT, 'the distant wall broke instantly');
+
+    st.tick += 2;
+    detonate(st);
+    assert.equal(tileAt(st.map, 5, 3), BLOCK.SOFT, 'the wall broke before the flame arrived');
+
+    st.tick++;
+    detonate(st);
+    assert.equal(tileAt(st.map, 5, 3), BLOCK.FLOOR, 'the wall survived the arriving flame');
+  });
+
+  await t.test('fuse duration and streak power participate in deterministic hashes', () => {
+    const normal = room();
+    const empowered = room();
+    const bombState = {
+      id: 1, tx: 3, ty: 3, owner: 0, radius: 1, at: FUSE_TICKS,
+      fuseTicks: FUSE_TICKS, streakPowered: false,
+    };
+    normal.bombs.push({ ...bombState });
+    empowered.bombs.push({ ...bombState, fuseTicks: FUSE_TICKS_FAST, streakPowered: true });
+
+    assert.notEqual(hashState(normal), hashState(empowered));
   });
 
   await t.test('explodes on its fuse tick, not before', () => {
@@ -144,7 +219,7 @@ test('bombs in the round loop', async t => {
     assert.equal(tileAt(st.map, 4, 3), BLOCK.FLOOR, 'six does it');
   });
 
-  await t.test('a line of bombs chains in a single tick', () => {
+  await t.test('a line of bombs chains in stepped order', () => {
     const st = room(21, 9);
     const p = spawn(st, 0, 2, 4);
     p.bombs = 10; p.radius = 2;
@@ -154,8 +229,8 @@ test('bombs in the round loop', async t => {
       st.bombs.at(-1).at = st.tick + FUSE_TICKS + i * 10;   // wildly different fuses
     }
     assert.equal(st.bombs.length, 8);
-    run(st, FUSE_TICKS + 1);
-    assert.equal(st.bombs.length, 0, 'the first one set off all of them at once');
+    run(st, FUSE_TICKS + 8 * 3 + 1);
+    assert.equal(st.bombs.length, 0, 'the fire wave did not reach every bomb');
   });
 
   await t.test('fire kills, and credits the right player', () => {
@@ -166,7 +241,7 @@ test('bombs in the round loop', async t => {
     victim.hp = 1;                           // already scorched: this hit is the last one (MAX_HP)
     killer.dir = DIR_R;                      // bombs go where you are looking
     tap(st, killer);
-    run(st, FUSE_TICKS + 1);
+    run(st, FUSE_TICKS + 2);
     assert.equal(victim.alive, false);
     assert.equal(killer.kills, 1);
     assert.equal(victim.deaths, 1);
@@ -184,7 +259,7 @@ test('bombs in the round loop', async t => {
     const q = spawn(st2, 0, 3, 3);
     q.shields = 1;
     place(st2, q, IN_BOMB);
-    run(st2, FUSE_TICKS + 1);
+    run(st2, FUSE_TICKS + 2);
     assert.equal(q.alive, true, 'shield absorbed it');
     assert.equal(q.shields, 0, 'and was spent');
   });
@@ -327,14 +402,14 @@ test('a blast arm stops at another bomb', async t => {
     assert.ok(cells.some(c => c.tx === 8 && c.ty === 7), 'the blast stopped on itself');
   });
 
-  await t.test('a line of three still chains the whole way along', () => {
-    // The behaviour this rule must not break: stopping at a bomb is only acceptable because
-    // that bomb then goes off with its own radius and carries the blast on.
+  await t.test('a line of three carries the fire wave onward one step at a time', () => {
     const st = room();
     for (const [i, x] of [5, 7, 9].entries()) {
       st.bombs.push({ id: i + 1, tx: x, ty: 7, o: 0, owner: 0, r: 3, radius: 3, at: i === 0 ? 0 : 500 });
     }
     detonate(st);
+    assert.equal(st.events.filter(e => e.e === 'boom').length, 1, 'chain skipped the wave delay');
+    for (let i = 0; i < 7; i++, st.tick++) detonate(st);
     const booms = st.events.filter(e => e.e === 'boom');
     assert.equal(booms.length, 3, `only ${booms.length} of the three went off`);
     assert.equal(st.bombs.length, 0, 'a bomb survived the chain');
@@ -375,6 +450,29 @@ test('fire stops killing before it stops being drawn', () => {
   st.fires.push({ tx: 4, ty: 4, kind: 'core', rot: 0, until: st.tick + grace + 1, owner: 1 });
   tick(st, []);
   assert.equal(p.alive, false, 'live fire stopped killing');
+});
+
+test('fire scheduled for a later wave step does not damage a player early', () => {
+  const st = createState({ id: 't', name: 't', w: 9, h: 9, seed: 1, density: 0, reinforced: 0, shrubs: 0 });
+  for (let y = 0; y < 9; y++) for (let x = 0; x < 9; x++) {
+    setTile(st.map, x, y, (x === 0 || y === 0 || x === 8 || y === 8) ? BLOCK.IRON : BLOCK.FLOOR);
+  }
+  const p = createPlayer(0, 'p');
+  p.alive = true;
+  p.hp = 1;
+  p.x = tileCentre(4); p.y = tileCentre(4);
+  st.players[0] = p;
+  st.fires.push({
+    tx: 4, ty: 4, kind: 'arm', rot: 0,
+    startsAt: st.tick + 2, until: st.tick + 2 + FIRE_TICKS, owner: 1,
+  });
+
+  tick(st, []);
+  assert.equal(p.alive, true, 'the wave damaged the player before reaching this tile');
+  tick(st, []);
+  assert.equal(p.alive, true, 'the wave arrived one tick early');
+  tick(st, []);
+  assert.equal(p.alive, false, 'the fire did not damage the player when it arrived');
 });
 
 test('bombs land on the tile you are facing', async t => {

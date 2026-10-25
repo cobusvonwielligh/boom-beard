@@ -71,6 +71,7 @@ export function createWorld() {
     p.alive = wire.st === 1;
     p.bombs = wire.b; p.radius = wire.f; p.speed = wire.sp; p.shields = wire.sh;
     p.score = wire.s; p.kills = wire.k; p.deaths = wire.dd; p.status = wire.stat;
+    p.streakCount = wire.sk ?? 0; p.streakLastKillTick = wire.skt ?? -1;
     p.coins = wire.c || 0;
     // Absent means whole; see MAX_HP and playerWire.
     p.hp = wire.hp ?? MAX_HP;
@@ -108,9 +109,10 @@ export function createWorld() {
    * client computes the identical blast at the identical tick without being told. Nobody ever
    * dies to a blast that had not appeared on their screen. docs/NETCODE.md §1a.
    */
-  w.burstBomb = bomb => {
+  w.burstBomb = (bomb, ignitionTick = w.tick) => {
     if (!bomb || w.burst.has(bomb.id) || !w.map) return;
     w.burst.add(bomb.id);
+    const waveTick = Math.floor(ignitionTick);
     // Same bomb list the server used, from the same snapshot, so the derived blast matches -
     // including where its arms stop against other bombs.
     const { cells } = spread(
@@ -118,8 +120,15 @@ export function createWorld() {
       { id: bomb.id, tx: bomb.tx, ty: bomb.ty, radius: bomb.r ?? bomb.radius },
       w.bombs,
     );
-    const until = w.tick + FIRE_TICKS;
-    for (const c of cells) w.fires.push({ ...c, until, owner: bomb.o ?? bomb.owner });
+    for (const c of cells) {
+      const startsAt = waveTick + (c.delayTicks ?? 0);
+      w.fires.push({
+        ...c, startsAt, until: startsAt + FIRE_TICKS,
+        owner: bomb.o ?? bomb.owner, streakPowered: !!bomb.streakPowered,
+      });
+      const neighbour = w.bombs.find(b => b.id !== bomb.id && b.tx === c.tx && b.ty === c.ty);
+      if (neighbour) neighbour.at = Math.min(neighbour.at, startsAt);
+    }
     w.bombs = w.bombs.filter(b => b.id !== bomb.id);
     w.onBoom?.(bomb, cells);
   };

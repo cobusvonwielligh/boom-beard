@@ -21,7 +21,11 @@ import {
 } from '/assets/art.js';
 import { placeable } from '/shared/sim/bombs.js';
 import { gullAt } from '/shared/sim/gulls.js';
-import { radarBombPulseHz, selectRadarBombs } from './radar.js';
+import { streakActive } from '/shared/sim/state.js';
+import {
+  radarBombColor, radarBombFuseFraction, radarBombPulseAlpha, radarBombPulseHz,
+  radarBombSizePx, selectRadarBombs,
+} from './radar.js';
 
 const CHUNK_PX = TILE_PX * CHUNK_TILES;
 
@@ -508,38 +512,6 @@ export function createRenderer(canvas, world) {
       const map = world.map;
       const { dx: sdx, dy: sdy } = sunVec();
 
-      /* The shadow pass, first, so every tile paints over its neighbours' shadows.
-       *
-       * Baked into the chunk rather than drawn per frame: the sun does not move, so a block's
-       * shadow is as static as the block is, and a thousand offset rects a frame for something
-       * that never changes would be the most expensive thing on screen.
-       *
-       * It overruns the chunk edge by design. A shadow near the boundary spills into the next
-       * chunk and is simply clipped - the neighbouring chunk draws its own, so the only thing
-       * lost is the sliver one block casts across the seam. At 0.62 of a tile against an
-       * eight-tile chunk, that is a few pixels every sixty-four.
-       */
-      cc.save();
-      cc.globalAlpha = SHADOW_ALPHA;
-      cc.fillStyle = '#000';
-      // One blur for the whole pass rather than per shape, and skipped entirely where the browser
-      // does not have it - a hard shadow is the old look, not a broken one.
-      const canBlur = 'filter' in cc;
-      if (canBlur) cc.filter = `blur(${SHADOW_BLUR_PX}px)`;
-      for (let j = 0; j < CHUNK_TILES; j++) {
-        for (let i = 0; i < CHUNK_TILES; i++) {
-          const tx = cx * CHUNK_TILES + i, ty = cy * CHUNK_TILES + j;
-          if (tx < 0 || ty < 0 || tx >= map.w || ty >= map.h) continue;
-          const t = cellType(map.cells[ty * map.w + tx]);
-          if (!CASTS_SHADOW.has(t)) continue;
-          cc.beginPath();
-          cc.roundRect(i * TILE_PX + sdx, j * TILE_PX + sdy, TILE_PX, TILE_PX, 4);
-          cc.fill();
-        }
-      }
-      if (canBlur) cc.filter = 'none';
-      cc.restore();
-
       for (let j = 0; j < CHUNK_TILES; j++) {
         for (let i = 0; i < CHUNK_TILES; i++) {
           const tx = cx * CHUNK_TILES + i, ty = cy * CHUNK_TILES + j;
@@ -656,6 +628,46 @@ export function createRenderer(canvas, world) {
        * all per frame. That is the whole reason it can afford to exist at this quality.
        */
       aoPass(cc, cx, cy, map);
+
+      /* Project block shadows over the finished ground AND the tops of downstream blocks.
+       *
+       * Drawing this before the tiles made every block erase its own shadow, leaving only the
+       * part that landed on floor. Clip to land so the projection cannot paint over the sea;
+       * include the one-tile source border so shadows cross chunk seams without disappearing.
+       * It is still baked: the map and sun direction only change when a chunk is invalidated.
+       */
+      cc.save();
+      cc.beginPath();
+      for (let j = 0; j < CHUNK_TILES; j++) {
+        for (let i = 0; i < CHUNK_TILES; i++) {
+          const tx = cx * CHUNK_TILES + i, ty = cy * CHUNK_TILES + j;
+          if (tx >= 0 && ty >= 0 && tx < map.w && ty < map.h
+            && cellType(map.cells[ty * map.w + tx]) !== BLOCK.WATER) {
+            cc.rect(i * TILE_PX, j * TILE_PX, TILE_PX, TILE_PX);
+          }
+        }
+      }
+      cc.clip();
+      cc.globalAlpha = SHADOW_ALPHA;
+      cc.fillStyle = '#000';
+      const canBlur = 'filter' in cc;
+      if (canBlur) cc.filter = `blur(${SHADOW_BLUR_PX}px)`;
+      for (let ty = Math.max(0, cy * CHUNK_TILES - 1);
+        ty < Math.min(map.h, (cy + 1) * CHUNK_TILES + 1); ty++) {
+        for (let tx = Math.max(0, cx * CHUNK_TILES - 1);
+          tx < Math.min(map.w, (cx + 1) * CHUNK_TILES + 1); tx++) {
+          if (!CASTS_SHADOW.has(cellType(map.cells[ty * map.w + tx]))) continue;
+          cc.beginPath();
+          cc.roundRect(
+            (tx - cx * CHUNK_TILES) * TILE_PX + sdx,
+            (ty - cy * CHUNK_TILES) * TILE_PX + sdy,
+            TILE_PX, TILE_PX, 4,
+          );
+          cc.fill();
+        }
+      }
+      if (canBlur) cc.filter = 'none';
+      cc.restore();
 
       // The rounded coast, after every tile: a fillet paints over its neighbours' old outline.
       for (let j = 0; j < CHUNK_TILES; j++) {
@@ -856,7 +868,7 @@ export function createRenderer(canvas, world) {
    * stain. Real growth is YOUNGEST at its edge - thinner, yellower, a little brighter than the
    * mass behind it - so the frontier gets a tone of its own and the patch suddenly has a
    * direction to it. It is the single cheapest thing that turns a blob into something growing. */
-  const MOSS_EDGE = '132,170,78';
+  const MOSS_EDGE = '142,164,100';
 
   /* One blob per third of a tile, which is the resolution the pattern is actually drawn at.
    *
@@ -899,23 +911,24 @@ export function createRenderer(canvas, world) {
 
     // The clip. One path for the whole chunk rather than a save/clip/restore per tile: it is the
     // thing that lets a blob straddle two tiles.
-    const area = new Path2D();
-    let any = false;
+    const floorArea = new Path2D();
+    const wallArea = new Path2D();
+    let hasFloor = false, hasWall = false;
     for (let j = 0; j < CHUNK_TILES; j++) {
       for (let i = 0; i < CHUNK_TILES; i++) {
         const tx = cx * CHUNK_TILES + i, ty = cy * CHUNK_TILES + j;
         if (tx < 0 || ty < 0 || tx >= map.w || ty >= map.h) continue;
         const type = cellType(map.cells[ty * map.w + tx]);
         if (!MOSSY.has(type)) continue;
-        any = true;
         const r = type === BLOCK.FLOOR ? 0 : type === BLOCK.IRON ? ROCK_RADIUS : STONE_RADIUS;
-        area.roundRect(i * S, j * S, S, S, r);
+        (type === BLOCK.FLOOR ? floorArea : wallArea).roundRect(i * S, j * S, S, S, r);
+        if (type === BLOCK.FLOOR) hasFloor = true;
+        else hasWall = true;
       }
     }
-    if (!any) return;
+    if (!hasFloor && !hasWall) return;
 
     cc.save();
-    cc.clip(area);
 
     /* Sampled one tile WIDER than the chunk on every side.
      *
@@ -927,57 +940,66 @@ export function createRenderer(canvas, world) {
     const x1 = x0 + CHUNK_TILES + 2, y1 = y0 + CHUNK_TILES + 2;
     const R = mossDark.width / 2;
 
-    for (let ty = y0; ty <= y1; ty += MOSS_STEP) {
-      for (let tx = x0; tx <= x1; tx += MOSS_STEP) {
-        const m = mossAt(tx, ty);
-        if (m <= 0.04) continue;
+    for (const [area, intensity, present] of [
+      [floorArea, 1.4, hasFloor],
+      [wallArea, 0.58, hasWall],
+    ]) {
+      if (!present) continue;
+      cc.save();
+      cc.clip(area);
+      for (let ty = y0; ty <= y1; ty += MOSS_STEP) {
+        for (let tx = x0; tx <= x1; tx += MOSS_STEP) {
+          const m = mossAt(tx, ty);
+          if (m <= 0.04) continue;
 
-        /* Jittered off the sampling grid, by the field itself.
-         *
-         * Without this the blob centres sit on a lattice a third of a tile apart, and at the
-         * thin end of a patch - where only a few blobs survive the threshold - that lattice is
-         * visible as a dotted texture. The offset is deterministic in the sample position, so it
-         * is the same jitter forever.
-         */
-        const jx = (noiseAt(tx * 7 + 3, ty * 7 + 11, 0.5, 0x3a7c1) - 0.5) * S * 0.42;
-        const jy = (noiseAt(tx * 7 + 17, ty * 7 + 5, 0.5, 0x8b115) - 0.5) * S * 0.42;
-        const px = (tx - cx * CHUNK_TILES) * S + S / 2 + jx;
-        const py = (ty - cy * CHUNK_TILES) * S + S / 2 + jy;
+          /* Jittered off the sampling grid, by the field itself.
+           *
+           * Without this the blob centres sit on a lattice a third of a tile apart, and at the
+           * thin end of a patch - where only a few blobs survive the threshold - that lattice is
+           * visible as a dotted texture. The offset is deterministic in the sample position, so it
+           * is the same jitter forever.
+           */
+          const jx = (noiseAt(tx * 7 + 3, ty * 7 + 11, 0.5, 0x3a7c1) - 0.5) * S * 0.42;
+          const jy = (noiseAt(tx * 7 + 17, ty * 7 + 5, 0.5, 0x8b115) - 0.5) * S * 0.42;
+          const px = (tx - cx * CHUNK_TILES) * S + S / 2 + jx;
+          const py = (ty - cy * CHUNK_TILES) * S + S / 2 + jy;
 
-        /* Size varies with density AND with a field of its own.
-         *
-         * Density alone made every clump at a given thickness the same size, which at the heart
-         * of a patch is a field of identical circles - the eye finds that repetition long before
-         * it finds the colour. A second noise at half a tile breaks the sizes up, so a patch is
-         * built from clumps that differ from their neighbours the way real ones do.
-         */
-        const lump = noiseAt(tx * 3 + 31, ty * 3 + 7, 0.5, 0x1f5a3);
-        const scale = (0.5 + m * 0.6) * (0.72 + lump * 0.62);
-        const w = R * 2 * scale;
-        cc.globalAlpha = m * MOSS_MAX;
-        cc.drawImage(mossDark, px - w / 2, py - w / 2, w, w);
+          /* Size varies with density AND with a field of its own.
+           *
+           * Density alone made every clump at a given thickness the same size, which at the heart
+           * of a patch is a field of identical circles - the eye finds that repetition long before
+           * it finds the colour. A second noise at half a tile breaks the sizes up, so a patch is
+           * built from clumps that differ from their neighbours the way real ones do.
+           */
+          const lump = noiseAt(tx * 3 + 31, ty * 3 + 7, 0.5, 0x1f5a3);
+          const scale = (0.5 + m * 0.6) * (0.72 + lump * 0.62);
+          const w = R * 2 * scale;
+          cc.globalAlpha = m * MOSS_MAX * intensity;
+          cc.drawImage(mossDark, px - w / 2, py - w / 2, w, w);
 
-        /* The frontier, where the moss is thin: younger, yellower, brighter.
-         *
-         * Between 0.12 and 0.4 of thickness - the band a patch fades out through - and brightest
-         * in the middle of that band, so it reads as a rim following the outline rather than as
-         * a second patch inside the first. */
-        if (m > 0.12 && m < 0.42) {
-          const rim = 1 - Math.abs((m - 0.27) / 0.15);
-          if (rim > 0) {
-            cc.globalAlpha = rim * MOSS_MAX * 0.85;
-            const ew = w * 0.72;
-            cc.drawImage(mossEdge, px - ew / 2, py - ew / 2, ew, ew);
+          /* The frontier, where the moss is thin: younger, yellower, brighter.
+           *
+           * Between 0.12 and 0.4 of thickness - the band a patch fades out through - and brightest
+           * in the middle of that band, so it reads as a rim following the outline rather than as
+           * a second patch inside the first. */
+          if (m > 0.12 && m < 0.42) {
+            const rim = 1 - Math.abs((m - 0.27) / 0.15);
+            if (rim > 0) {
+              cc.globalAlpha = rim * MOSS_MAX * 0.85 * intensity;
+              const ew = w * 0.72;
+              cc.drawImage(mossEdge, px - ew / 2, py - ew / 2, ew, ew);
+            }
+          }
+
+          // And the lit half, offset a little toward the light and only where the moss is thick.
+          if (m > 0.45) {
+            cc.globalAlpha = (m - 0.45) * MOSS_MAX * 1.1 * intensity;
+            const lw = w * (0.45 + lump * 0.3);
+            cc.drawImage(mossLit, px - lw / 2 - 1.5, py - lw / 2 - 2, lw, lw);
           }
         }
-
-        // And the lit half, offset a little toward the light and only where the moss is thick.
-        if (m > 0.45) {
-          cc.globalAlpha = (m - 0.45) * MOSS_MAX * 1.1;
-          const lw = w * (0.45 + lump * 0.3);
-          cc.drawImage(mossLit, px - lw / 2 - 1.5, py - lw / 2 - 2, lw, lw);
-        }
       }
+      cc.restore();
     }
     cc.restore();
     cc.globalAlpha = 1;
@@ -2503,15 +2525,18 @@ export function createRenderer(canvas, world) {
   /* The shelf: the island's sand carrying on under the water.
    *
    * An island does not stop at the waterline, it slopes - and a board where the land ends in a
-   * hard edge against deep blue reads as a cutout on a background. Three tiles of it, in the same
-   * quarter-tile steps the coast is cut in, so it follows every bay and headland and never shows
-   * a square corner. SEA_MARGIN_TILES is three to keep the whole of it on screen.
+   * hard edge against deep blue reads as a cutout on a background. Four quarter-tile cells of
+   * sand beyond the shallow water, in the same steps the coast is cut in, so it follows every bay
+   * and headland and never shows a square corner. SEA_MARGIN_TILES is three to keep it on screen.
    *
    * The tone is a warm sand, two shades down from the beach itself because it is being seen
    * through water, and it is painted at a sixth of an alpha at most: what the eye reads is not
    * the colour, it is that the water gets warmer as it gets shallower. */
-  const SHELF_TILES = 3;
+  const COAST_RING_CELLS = 1, LIGHT_WATER_CELLS = 2, SAND_WATER_CELLS = 4;
+  const SHELF_CELLS = COAST_RING_CELLS + LIGHT_WATER_CELLS + SAND_WATER_CELLS;
   const SHELF_TONE = '#7d6843';
+
+  const COAST_RING = "#edc24e", COAST_RING_ALPHA = 0.5;
   /* The seabed round each sea boulder: [tiles out, alpha, colour], outermost first, each band
    * painted over the one beyond it and then the whole thing blurred into a slope (see
    * bakeRockShelf). Sand all the way in - darkest and faintest at the edge of the shelf, warmer
@@ -2522,7 +2547,7 @@ export function createRenderer(canvas, world) {
     [2.2, 0.12, SHELF_TONE],
     [1.5, 0.17, "#8f7548"],
     [0.85, 0.2, "#a88b5a"],
-    [0.25, COAST_RING_ALPHA, COAST_RING],
+    [0.5, 0.42, PALETTE.seaLight],
   ];
   let shallowsCanvas = null, shallowsFor = null;
   function shallowsLayer() {
@@ -2544,7 +2569,7 @@ export function createRenderer(canvas, world) {
      * of every outside corner and gave inside corners two coats. */
     const Q = 4, mask = coastMask(), MW = map.w * Q, MH = map.h * Q;
     const land = (x, y) => x >= 0 && y >= 0 && x < MW && y < MH && mask[y * MW + x] === 1;
-    const R = SHELF_TILES * Q;
+    const R = SHELF_CELLS;
     const offsets = [];
     for (let dy = -R; dy <= R; dy++) {
       for (let dx = -R; dx <= R; dx++) {
@@ -2554,6 +2579,8 @@ export function createRenderer(canvas, world) {
     }
     offsets.sort((a, b) => a[2] - b[2]);                 // nearest first: stop at the first land
     const q = COAST_Q;
+    const lightEdge = COAST_RING_CELLS + LIGHT_WATER_CELLS;
+    const innerSandEdge = lightEdge + SAND_WATER_CELLS / 2;
     // Runs per band: x, y, length, in quarter-tile cells. See the band assignment below.
     const near = [], far = [], shelfIn = [], shelfOut = [];
     const BANDS = [near, far, shelfIn, shelfOut];
@@ -2571,11 +2598,10 @@ export function createRenderer(canvas, world) {
         if (x < MW + P * Q && !land(x, y)) {
           for (const [dx, dy, d2] of offsets) {
             if (!land(x + dx, y + dy)) continue;
-            // The band hard against the coast is a quarter of a tile - one quarter-tile cell. It
-            // carried a pale ring, then a gold one; both are gone, so it only splits the bands.
-            band = d2 <= (Q / 4) * (Q / 4) ? 1
-              : d2 <= (1.6 * Q) * (1.6 * Q) ? 2
-                : d2 <= (2.2 * Q) * (2.2 * Q) ? 3 : 4;
+            // One cell at the coast for gold, two cells of light water, then four cells of sand.
+            band = d2 <= COAST_RING_CELLS * COAST_RING_CELLS ? 1
+              : d2 <= lightEdge * lightEdge ? 2
+                : d2 <= innerSandEdge * innerSandEdge ? 3 : 4;
             break;
           }
         }
@@ -2600,10 +2626,10 @@ export function createRenderer(canvas, world) {
     paint([...shelfOut], 0.07, SHELF_TONE);        // the last of the sand, almost gone
     paint([...shelfIn, ...shelfOut], 0.1, SHELF_TONE);
     paint([...near, ...far, ...shelfIn], 0.17, SHELF_TONE);
-    // The shallows themselves, over the top of it, exactly as they were.
+    // Two quarter-tile cells of light water beyond the one-cell coast ring.
     paint([...near, ...far], 0.16, PALETTE.seaMid);
-    // No gilt ring hard against the coast any more: removed on request (it read as a band of very
-    // yellow sand). The near band keeps only the pale water painted with `far` above.
+    paint([...near, ...far], 0.42, PALETTE.seaLight);
+    paint(near, COAST_RING_ALPHA, COAST_RING);
     shallowsCanvas = el; shallowsFor = map;
     return el;
   }
@@ -3845,6 +3871,7 @@ export function createRenderer(canvas, world) {
       const reach = Math.ceil(R / TILE_PX);
       let lit = false;
       for (const f of world.fires) {
+        if (tickNow < (f.startsAt ?? 0)) continue;
         const age = Math.min(1, 1 - Math.max(0, (f.until - tickNow) / FIRE_TICKS));
         // Two frames up, then down. Slower than the flames, so the walls are still warm as the
         // fire thins out rather than going dark under it.
@@ -3966,6 +3993,7 @@ export function createRenderer(canvas, world) {
     // On the smoothed tick, not the snapshot tick: world.tick moves two at a time, fifteen times a
     // second, which held every blast on the same picture for four frames at a time.
     for (const f of world.fires) {
+      if (tickNow < (f.startsAt ?? 0)) continue;
       const age = Math.min(1, 1 - Math.max(0, (f.until - tickNow) / FIRE_TICKS));
       ctx.save();
       ctx.translate(ox + f.tx * TILE_PX, oy + f.ty * TILE_PX);
@@ -3973,6 +4001,7 @@ export function createRenderer(canvas, world) {
       // set it off, so a player's own keg burns in the player's own fire.
       drawFire(ctx, {
         kind: f.kind, rot: f.rot, age, t: seaT, seed: f.tx * 7 + f.ty * 13, owner: f.owner ?? -1,
+        streakPowered: !!f.streakPowered,
       });
       ctx.restore();
     }
@@ -4339,24 +4368,30 @@ export function createRenderer(canvas, world) {
       marker.at = (marker.at + delta * bombFollow + rim.total) % rim.total;
       marker.phase = (marker.phase
         + (dtMs / 1000) * radarBombPulseHz(bomb, world.tick) * Math.PI * 2) % (Math.PI * 2);
-      const pulse = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(marker.phase));
+      const pulse = radarBombPulseAlpha(marker.phase);
       const [x, y] = rim.at(marker.at);
-      const size = 11 / zoom;
+      const size = radarBombSizePx(radarBombFuseFraction(bomb, world.tick)) / zoom;
+      const colour = radarBombColor(
+        radarBombFuseFraction(bomb, world.tick), bomb.owner ?? bomb.o,
+      );
+      const towardCenter = Math.atan2(y0 + h / 2 - y, x0 + w / 2 - x) + Math.PI / 2;
 
       ctx.save();
       ctx.translate(x, y);
-      ctx.rotate(Math.PI / 4);
-      ctx.globalAlpha = 0.72 + pulse * 0.28;
-      ctx.shadowColor = '#ff8b2d';
-      ctx.shadowBlur = (3 + pulse * 7) / zoom;
-      ctx.fillStyle = '#ff9d24';
-      ctx.strokeStyle = '#fff0a1';
-      ctx.lineWidth = 1.4 / zoom;
-      ctx.fillRect(-size / 2, -size / 2, size, size);
-      ctx.strokeRect(-size / 2, -size / 2, size, size);
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = '#fff5d6';
-      ctx.fillRect(-size * 0.16, -size * 0.16, size * 0.32, size * 0.32);
+      ctx.rotate(towardCenter);
+      ctx.globalAlpha = pulse;
+      ctx.shadowColor = colour;
+      ctx.shadowBlur = (4 + pulse * 8) / zoom;
+      ctx.fillStyle = colour;
+      ctx.strokeStyle = '#f4fff7';
+      ctx.lineWidth = 1.2 / zoom;
+      ctx.beginPath();
+      ctx.moveTo(0, -size * 0.62);
+      ctx.lineTo(size * 0.55, size * 0.46);
+      ctx.lineTo(-size * 0.55, size * 0.46);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
       ctx.restore();
     }
     ctx.globalAlpha = 1;
@@ -4702,6 +4737,7 @@ export function createRenderer(canvas, world) {
     const set = baked.playerShadows;
     if (!set || !set.length) return;
     const { dx, dy } = sunVec();
+    const shadowDx = dx * 0.45, shadowDy = dy * 0.45;
     ctx.save();
     clipToFloor(ox, oy);
     ctx.globalAlpha = SHADOW_ALPHA * 0.8;
@@ -4716,7 +4752,7 @@ export function createRenderer(canvas, world) {
       ctx.save();
       // Anchored at the feet - a shadow is attached to where the thing touches the ground, so
       // the squash has to happen about that point rather than about the sprite's middle.
-      ctx.translate(px + dx, py + TILE_PX * 0.72 + dy);
+      ctx.translate(px + shadowDx, py + TILE_PX * 0.72 + shadowDy);
       ctx.scale(1, 0.55);
       ctx.drawImage(img, 0, -TILE_PX * 0.72);
       ctx.restore();
@@ -4996,7 +5032,11 @@ export function createRenderer(canvas, world) {
     // fire and of the orange seat - so a red or blue pirate walked round under an orange name and
     // the label disagreed with the sprite it sat on. The rim, the chevrons and the spawn ring
     // already say which one is you; the name's job is to say what colour you are.
-    const label = nameLabel(p.name, playerShades(p.i).light, !!p.isBot, p.i === world.host);
+    const streak = streakActive(p, world.tick);
+    const rainbowPhase = streak ? Math.floor(seaT * 12) % 12 : -1;
+    const label = nameLabel(
+      p.name, playerShades(p.i).light, !!p.isBot, p.i === world.host, rainbowPhase,
+    );
     c.drawImage(label.el, px + TILE_PX / 2 - label.w / 2, py - 3 - LABEL_BASE, label.w, LABEL_H);
     if (isMe) drawArrival(c, p, px + TILE_PX / 2, py + TILE_PX / 2, false);
   }
@@ -5024,12 +5064,12 @@ export function createRenderer(canvas, world) {
     + 'M9.3 1.1a1.3 1.3 0 10-2.6 0 1.3 1.3 0 002.6 0zM0 6.6h1.3v3.8H0zM14.7 6.6H16v3.8h-1.3z') : null;
   const ROBOT_PX = 9;
 
-  function nameLabel(text, colour, bot = false, host = false) {
+  function nameLabel(text, colour, bot = false, host = false, rainbowPhase = -1) {
     const k = view.zoom * view.dpr;
-    const key = `${text}|${colour}|${k}|${bot ? 1 : 0}|${host ? 1 : 0}`;
+    const key = `${text}|${colour}|${k}|${bot ? 1 : 0}|${host ? 1 : 0}|${rainbowPhase}`;
     let l = labels.get(key);
     if (l) return l;
-    if (labels.size > 96) labels.clear();
+    if (labels.size > 256) labels.clear();
     const el = document.createElement('canvas');
     const font = '10px ui-monospace, monospace';
     const probe = el.getContext('2d');
@@ -5076,7 +5116,15 @@ export function createRenderer(canvas, world) {
     c.lineWidth = 3;
     c.strokeStyle = 'rgba(0,0,0,0.75)';
     c.strokeText(text, tx, LABEL_BASE);
-    c.fillStyle = colour;
+    if (rainbowPhase >= 0) {
+      const phase = rainbowPhase / 12;
+      const gradient = c.createLinearGradient(-phase * w * 2, 0, (2 - phase) * w, 0);
+      for (const [offset, stop] of [
+        [0, '#ff4d4d'], [0.16, '#ffb13c'], [0.32, '#ffe877'], [0.48, '#5ad18a'],
+        [0.64, '#4fc4ff'], [0.8, '#b36bff'], [1, '#ff4d4d'],
+      ]) gradient.addColorStop(offset, stop);
+      c.fillStyle = gradient;
+    } else c.fillStyle = colour;
     c.fillText(text, tx, LABEL_BASE);
     l = { el, w };
     labels.set(key, l);

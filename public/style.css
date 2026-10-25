@@ -4966,3 +4966,53 @@ kbd.wide {
     padding: 9px;
   }
 }
+
+/* At desktop/tablet widths, use two compact key/action pairs per control row on short screens.
+ * This preserves the readable form and buttons while reducing the controls section's height.
+ * Below either supported minimum, #menu keeps its vertical-scroll fallback rather than clipping
+ * the card or shrinking the controls to an unusable size. */
+@media (min-width: 768px) and (min-height: 720px) and (max-height: 850px) {
+  #menuWrap > .card {
+    padding-bottom: 12px;
+  }
+  #menuWrap .keys {
+    margin-top: 10px;
+    padding-top: 8px;
+  }
+  #menuWrap .keys h2 {
+    margin-bottom: 5px;
+  }
+  #menuWrap .keys dl {
+    grid-template-columns: max-content minmax(62px, 1fr) max-content minmax(62px, 1fr);
+    column-gap: 8px;
+  }
+  #menuWrap .keys dt,
+  #menuWrap .keys dd {
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+  #menuWrap .keys dt {
+    padding-right: 0;
+  }
+  #menuWrap .keys dd {
+    font-size: 11px;
+  }
+  #menuWrap .keys kbd {
+    min-width: 22px;
+    height: 20px;
+    padding: 0 4px;
+    font-size: 10px;
+    border-radius: 4px;
+  }
+  #menuWrap .keys kbd.wide {
+    min-width: 44px;
+  }
+  #menuWrap .keys .or {
+    font-size: 9px;
+    margin-inline: 0;
+  }
+  #menuWrap .menuFoot {
+    margin-top: 8px;
+    padding-top: 7px;
+  }
+}

@@ -23,6 +23,7 @@ import {
 } from '../shared/constants.js';
 import { tileAt, walkable, toTile, has } from '../shared/sim/state.js';
 import { bombTile } from '../shared/sim/bombs.js';
+import { fireDelayTicks } from '../shared/sim/fire.js';
 import { blocked, speedOf, inPuddle } from '../shared/sim/movement.js';
 
 const DIRS = [
@@ -83,14 +84,14 @@ const SHRUB = new Set([BLOCK.SHRUB_WALK, BLOCK.SHRUB_SOLID]);
  * dangerous makes a dense map look uniformly lethal with nowhere left to run to.
  */
 function reach(map, bomb, push) {
-  push(bomb.tx, bomb.ty);
+  push(bomb.tx, bomb.ty, 0);
   for (const d of DIRS) {
     let span = bomb.radius, step = 1, broken = 0;
     while (step <= span) {
       const tx = bomb.tx + d.dx * step, ty = bomb.ty + d.dy * step;
       const t = tileAt(map, tx, ty);
       if (t === BLOCK.IRON || t === BLOCK.WATER) break;
-      push(tx, ty);
+      push(tx, ty, step);
       if (DESTRUCTIBLE.has(t)) { if (++broken > 1) break; }
       else if (SHRUB.has(t)) span -= SHRUB_RADIUS_PENALTY;
       step++;
@@ -117,18 +118,26 @@ export const createBrain = () => ({
   bored: 0,
 });
 
+/** Delay a bot's chosen input by one fixed simulation tick (30 ms rounds up at 30 Hz). */
+export function delayBotInput(brain, input, { frozen = false } = {}) {
+  if (frozen) {
+    brain.pendingInput = 0;
+    return 0;
+  }
+  const delayed = brain.pendingInput ?? 0;
+  brain.pendingInput = input;
+  return delayed;
+}
+
 /**
  * Everything about to be on fire, how soon, and where a bomb is standing.
  *
  * Computed once per tick in room.js and shared by every bot - it is the same answer for all of
  * them, and `spread` per bomb is the most expensive thing in here.
  *
- * A bomb's own fuse is not when it goes off. Anything caught in a blast detonates that same tick,
- * so a bomb due in sixty ticks fires NOW if a neighbour's arm reaches it - and that was most of
- * what was killing these bots. A fuse read straight off `at` told them a carpet of bombs was
- * sixty ticks of safety, and the first link in the chain took the lot with it before they had
- * taken a step. So every bomb's effective time is the soonest anything in its chain fires,
- * propagated the same way `detonate` resolves it, only in advance.
+ * A bomb's own fuse is not always when it goes off. A bomb in a blast is triggered when the
+ * stepwise fire wave reaches its tile, so danger times follow each arm's travel delay through
+ * chains and powder kegs rather than treating the whole chain as simultaneous.
  */
 export function dangerMap(state) {
   const w = state.map.w, h = state.map.h;
@@ -163,7 +172,9 @@ export function dangerMap(state) {
   for (let i = 0; i < n; i++) {
     const b = sources[i];
     const keys = [];
-    reach(state.map, b, (tx, ty) => keys.push(ty * w + tx));
+    reach(state.map, b, (tx, ty, step) => {
+      keys.push({ key: ty * w + tx, delayTicks: fireDelayTicks(step) });
+    });
     cells[i] = keys;
     left[i] = b.at === null ? Infinity : Math.max(0, b.at - state.tick);
     const key = b.ty * w + b.tx;
@@ -178,12 +189,13 @@ export function dangerMap(state) {
   const cap = n * 8 + 64;
   for (let head = 0; head < queue.length && head < cap; head++) {
     const i = queue[head];
-    for (const key of cells[i]) {
-      const j = byTile.get(key);
+    for (const cell of cells[i]) {
+      const j = byTile.get(cell.key);
       // `>=` rather than `>`: two sources on the same tick are already settled, and a keg at
       // Infinity always loses to a real time, which is how it gets lit.
-      if (j === undefined || j === i || left[i] >= left[j]) continue;
-      left[j] = left[i];
+      const arrival = left[i] + cell.delayTicks;
+      if (j === undefined || j === i || arrival >= left[j]) continue;
+      left[j] = arrival;
       queue.push(j);
     }
   }
@@ -191,13 +203,19 @@ export function dangerMap(state) {
   const ticks = new Map();      // tile key -> ticks until this tile is on fire
   for (let i = 0; i < n; i++) {
     if (left[i] === Infinity) continue;   // an unlit keg threatens nothing
-    for (const key of cells[i]) {
+    for (const { key, delayTicks } of cells[i]) {
+      const arrival = left[i] + delayTicks;
       const prev = ticks.get(key);
-      if (prev === undefined || left[i] < prev) ticks.set(key, left[i]);
+      if (prev === undefined || arrival < prev) ticks.set(key, arrival);
     }
   }
   // Fire already burning is maximally dangerous.
-  for (const f of state.fires) ticks.set(f.ty * w + f.tx, 0);
+  for (const f of state.fires) {
+    const key = f.ty * w + f.tx;
+    const arrival = Math.max(0, (f.startsAt ?? state.tick) - state.tick);
+    const prev = ticks.get(key);
+    if (prev === undefined || arrival < prev) ticks.set(key, arrival);
+  }
 
   return { w, ticks, solid };
 }
@@ -310,22 +328,29 @@ function flood(state, p, danger, extra, slack = 0) {
 /**
  * The blast a bomb placed here would make, as a second danger layer for the flood.
  *
- * Follows the chain: a bomb whose reach touches one of ours sets it off, that one's reach sets
- * off the next, and the whole lot lands on the same tick. Leaving that out is how a bot with
- * eight bombs in hand walks confidently to a tile that one of its own earlier bombs covers.
+ * Follows the stepwise chain: each bomb or keg is triggered when the advancing wave reaches it,
+ * then its own fire spreads from that later time.
  */
 function hypothetical(state, p, tx, ty) {
   const w = state.map.w;
   const fuse = has(p, STATUS.FAST_DET) ? FUSE_TICKS_FAST : FUSE_TICKS;
   const extra = new Map();
-  const queue = [{ tx, ty, radius: p.radius }];
+  const queue = [{ tx, ty, radius: p.radius, at: fuse }];
 
   for (let head = 0; head < queue.length && head < 16; head++) {
-    reach(state.map, queue[head], (cx, cy) => {
+    const source = queue[head];
+    reach(state.map, source, (cx, cy, step) => {
       const key = cy * w + cx;
-      extra.set(key, fuse);
+      const arrival = source.at + fireDelayTicks(step);
+      const previous = extra.get(key);
+      if (previous === undefined || arrival < previous) extra.set(key, arrival);
       const b = state.bombs.find(o => o.tx === cx && o.ty === cy);
-      if (b && !queue.some(q => q.tx === b.tx && q.ty === b.ty)) queue.push(b);
+      if (b) {
+        const chainAt = Math.min(arrival, Math.max(0, b.at - state.tick));
+        if (!queue.some(q => q.tx === b.tx && q.ty === b.ty && q.at <= chainAt)) {
+          queue.push({ ...b, at: chainAt });
+        }
+      }
       /* A keg in the blast is part of the blast.
        *
        * `dangerMap` lights kegs off the bombs already on the board; this layer is about a bomb
@@ -335,8 +360,8 @@ function hypothetical(state, p, tx, ty) {
        * Now the keg joins the queue and spreads at its own radius, exactly as `detonate` will.
        */
       if (tileAt(state.map, cx, cy) === BLOCK.POWDER
-        && !queue.some(q => q.tx === cx && q.ty === cy)) {
-        queue.push({ tx: cx, ty: cy, radius: POWDER_RADIUS });
+        && !queue.some(q => q.tx === cx && q.ty === cy && q.at <= arrival)) {
+        queue.push({ tx: cx, ty: cy, radius: POWDER_RADIUS, at: arrival });
       }
     });
   }
