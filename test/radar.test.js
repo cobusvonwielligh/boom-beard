@@ -2,8 +2,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { FUSE_TICKS, UNITS_PER_TILE, playerColor } from '../shared/constants.js';
 import {
-  radarBombColor, radarBombFuseFraction, radarBombPulseAlpha, radarBombPulseHz,
-  radarBombSizePx, selectRadarBombs,
+  radarBombColor, radarBombDiamondAngle, radarBombFuseFraction, radarBombPulseAlpha, radarBombPulseHz,
+  radarBombSizePx, radarBombWidthPx, selectRadarBombs,
 } from '../public/client/radar.js';
 
 const me = { rx: UNITS_PER_TILE / 2, ry: UNITS_PER_TILE / 2 };
@@ -66,6 +66,23 @@ test('marker grows smoothly from 9 to 17 pixels through the fuse', () => {
   assert.ok(radarBombSizePx(0.5) > 9 && radarBombSizePx(0.5) < 17);
 });
 
+test('marker width is two-thirds of its unchanged height', () => {
+  for (const remaining of [1, 0.5, 0]) {
+    assert.equal(radarBombWidthPx(remaining), radarBombSizePx(remaining) * 2 / 3);
+  }
+});
+
+test('radar bomb diamonds point across the rim so they straddle its line', () => {
+  for (const [before, after, angle] of [
+    [[0, 0], [1, 0], 0],
+    [[0, 0], [1, 1], Math.PI / 4],
+    [[0, 0], [0, 1], Math.PI / 2],
+    [[0, 0], [-1, 0], Math.PI],
+  ]) {
+    assert.equal(radarBombDiamondAngle(before, after), angle);
+  }
+});
+
 test('marker starts in its owner color, turns red at 80 percent, then white at 90 percent', () => {
   const owner = 3;
   assert.equal(radarBombColor(1, owner), playerColor(owner));
@@ -79,6 +96,14 @@ test('marker pulse never disappears between flashes', () => {
   const alphas = Array.from({ length: 101 }, (_, i) => radarBombPulseAlpha(i * 2 * Math.PI / 100));
   assert.ok(Math.min(...alphas) >= 0.45);
   assert.ok(Math.max(...alphas) <= 1);
+});
+
+test('fuse fraction reaches zero at the scheduled explosion tick', () => {
+  const b = bomb(1, 1, 0, 72);
+  assert.equal(radarBombFuseFraction(b, 0), 1);
+  assert.equal(radarBombFuseFraction(b, 36), 0.5);
+  assert.equal(radarBombFuseFraction(b, 72), 0);
+  assert.equal(radarBombFuseFraction(b, 80), 0);
 });
 
 test('a removed bomb is absent from the next frame selection', () => {

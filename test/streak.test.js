@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { BLOCK, FIRE_TICKS, STREAK_WINDOW_TICKS } from '../shared/constants.js';
+import { BLOCK, FIRE_TICKS, STREAK_WINDOW_TICKS, TICK_HZ } from '../shared/constants.js';
 import {
   createPlayer, recordStreakKill, resetStreak, streakActive, tileAt, tileCentre,
 } from '../shared/sim/state.js';
@@ -12,6 +12,10 @@ test('a streak starts on the second kill within the configured window', () => {
   assert.equal(streakActive(player, 10), false);
   recordStreakKill(player, 10 + STREAK_WINDOW_TICKS);
   assert.equal(streakActive(player, 10 + STREAK_WINDOW_TICKS), true);
+});
+
+test('a streak remains alive for 11 seconds after the latest kill', () => {
+  assert.equal(STREAK_WINDOW_TICKS, 11 * TICK_HZ);
 });
 
 test('a streak expires after the window and death resets its count', () => {

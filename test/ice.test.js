@@ -30,9 +30,9 @@ const ROOM = {
 const meltAt = (s, tx, ty) => {
   setTile(s.map, tx, ty, BLOCK.ICE, BLOCK_HP[BLOCK.ICE]);
   s.bombs.push({ id: s.nextBombId++, tx: tx - 2, ty, owner: 0, radius: 3, at: s.tick });
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 6; i++) {
     detonate(s);
-    if (i < 3) s.tick++;
+    if (i < 5) s.tick++;
   }
 };
 

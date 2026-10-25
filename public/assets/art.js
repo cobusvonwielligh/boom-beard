@@ -193,18 +193,16 @@ const bevel = (c, x, y, w, h, t = 2) => {
  * (CORNER_ASSIST_UNITS) has always let you round a corner you are nearly lined up with, and a
  * rounded corner is what that behaviour has always looked like from the inside.
  */
-/* Six, not three, because the HITBOX is round now.
+/* Ten, not six, so the artwork has the same visibly rounded corners as the hitbox.
  *
  * The corner cut in movement.js is 96 units - twelve of a tile's thirty-two pixels - so a player
  * glances off a block corner that is drawn as a right angle, and the eye reads that as the game
- * being loose rather than as the corner being round. Six pixels is the biggest radius that still
- * leaves a row of blocks touching along its edges: past that the joins open up and a wall reads
- * as a row of lozenges with sand between them, which is both uglier and a lie about what you can
- * walk through.
+ * being loose rather than as the corner being round. Ten pixels makes the cut visible at normal
+ * play zoom while keeping a broad face on each block.
  *
  * It is drawing only, as it always was - the simulation is whole tiles - but it is now drawing
  * that MATCHES what the collision does, which is the whole point of changing it. */
-export const STONE_RADIUS = 6;
+export const STONE_RADIUS = 10;
 /* Which types get it: everything solid that sits ON the sand. Not FLOOR (it IS the sand), and
  * not the types that already draw their own shape on a floor of their own - a column, a keg and
  * a block of ice are objects, not cells, and they were never square to begin with. */
@@ -2182,18 +2180,16 @@ export function drawRock(c, tx, ty, edges) {
 
 // ─── rounded coast ────────────────────────────────────────────────────────────
 
-/* The island's outer corners, rounded in quarter-tile steps.
+/* Convex outside corners use smooth arcs; concave water-side fillets remain quarter-tile steps.
  *
- * Square rock corners made every island read as a grid with a coastline drawn on it. Smoothing
- * them properly would be the one curved thing in a world of pixels, so they are stepped instead:
- * a quarter circle one tile across, at a quarter-tile resolution - two quarters off the first
- * row, one off the second. Convex corners lose that much rock; concave ones gain it, as a fillet
- * drawn into the corner of the water tile. render.js builds the sea's shallows from the same
- * steps, so the water follows the rounded rock rather than the square one.
+ * Convex outside corners are cut with antialiased arcs to match the rounded inland blocks.
+ * Concave corners are filled into the water tile using a shared quarter-tile mask, which also
+ * supplies the coast shape for the shallows in render.js.
  */
 export const COAST_EDGE = '#241c14';
 export const COAST_STEPS = [2, 1];          // quarters taken from each row, from the corner in
 export const COAST_Q = TILE_PX / 4;
+export const COAST_RADIUS = 8;
 /** The four corners: which sea-edge bits make each one, and the mirroring that maps it to top-left. */
 export const COAST_CORNERS = [
   { bits: 2 | 4, sx: 1, sy: 1 },            // top-left: up and left face the sea
@@ -2235,14 +2231,30 @@ function outlineCells(c, inside, T) {
 }
 
 /**
- * Cut convex corners out of a rock tile already drawn here, and outline the steps they leave.
- * Worked from the cell mask rather than corner by corner, so a tile rounded on two or three
- * corners - a spit of rock - gets one clean outline and no step lines left floating in the sea.
+ * Smoothly cut exposed convex corners out of a rock tile and outline each curved edge.
  */
 export function carveRockCorners(c, corners) {
-  const q = COAST_Q, cut = cornerCells(corners);
-  for (let i = 0; i < 16; i++) if (cut[i]) c.clearRect((i & 3) * q, (i >> 2) * q, q, q);
-  outlineCells(c, (x, y) => !cut[y * 4 + x], 2);
+  const r = COAST_RADIUS;
+  for (const k of corners) {
+    c.save();
+    c.translate(k.sx > 0 ? 0 : TILE_PX, k.sy > 0 ? 0 : TILE_PX);
+    c.scale(k.sx, k.sy);
+    c.globalCompositeOperation = 'destination-out';
+    c.beginPath();
+    c.moveTo(0, 0);
+    c.lineTo(r, 0);
+    c.arc(r, r, r, -Math.PI / 2, -Math.PI, true);
+    c.closePath();
+    c.fill();
+
+    c.globalCompositeOperation = 'source-over';
+    c.beginPath();
+    c.arc(r, r, r, -Math.PI / 2, -Math.PI, true);
+    c.strokeStyle = COAST_EDGE;
+    c.lineWidth = 2;
+    c.stroke();
+    c.restore();
+  }
 }
 
 /**

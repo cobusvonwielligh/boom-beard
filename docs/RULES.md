@@ -150,8 +150,9 @@ Placing a bomb requires: you are alive, not Pacifism, and your live bomb count <
 A bomb is placed at the **centre of the tile your hitbox centre is in**. One bomb per tile.
 
 **Explosion.** On the fuse tick the bomb produces fire in its own tile. The four arms advance
-one tile at a time, with tile `step` reached after `floor(step × 3 / 2)` ticks. This averages
-1.5 ticks per tile, 33% slower than advancing one tile per tick. The arm stops when it hits:
+one tile at a time. Travel intervals for the first five tiles are 15% longer than the base
+exponential schedule; later intervals are 50% faster. Arrivals for tiles 1–10 are
+**2, 5, 9, 14, 21, 27, 35, 47, 65, 91** ticks after the source. The arm stops when it hits:
 
 - an indestructible block → stops **before** it,
 - a destructible block → damages it when reached, fills that tile with fire, then stops,
@@ -335,6 +336,8 @@ Fire hurts you unless you are Invulnerable. **Two hits kill.**
   half and dull, or an empty socket while you are down - and the mascot in the corner smoulders.
 - **Death** drops your stats to the starting values (1 bomb, radius 1, 0 boots) and clears all
   statuses.
+- **Kill streaks** continue when you get another kill within **11 seconds**; dying or letting that
+  window expire ends the run. Streak text cycles through RGB colours while active.
 - On death you drop **up to 3 perks** on nearby free tiles, so a good kill is rewarded.
 - You respawn by pressing **SPACE** after a **13.5-second** cooldown, with **90 ticks (3 s)**
   Invulnerability.

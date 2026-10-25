@@ -165,10 +165,10 @@ test('the zoom frames the island, not the grid it is drawn in', () => {
 test('the sea boulders are placed against the view, with a visibility guarantee', () => {
   // Dropping them a fixed distance beyond the island put them off the frame entirely on a wide
   // window and on top of the coast on a narrow one. The rule is now explicit: one entirely on
-  // screen, the rest at least a fifth on screen.
+  // screen, the rest at least 30% on screen.
   const render = read('public/client/render.js');
   assert.match(render, /const ROCK_FULLY_VISIBLE = 1;/);
-  assert.match(render, /const ROCK_MIN_VISIBLE = 0\.2;/);
+  assert.match(render, /const ROCK_MIN_VISIBLE = 0\.3;/);
   assert.match(render, /const SEA_ROCKS = 3;/, 'never more than three');
   // The fully-visible one must take the axis with the most room, or the guarantee fails the
   // moment the window is wider than it is tall.

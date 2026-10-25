@@ -13,8 +13,15 @@ const DIRS = [[1, 0], [0, -1], [-1, 0], [0, 1]];   // right, up, left, down - ma
 const DESTRUCTIBLE = new Set([BLOCK.SOFT, BLOCK.REINFORCED, BLOCK.MONOLITH, BLOCK.POWDER, BLOCK.ICE]);
 const SHRUB = new Set([BLOCK.SHRUB_WALK, BLOCK.SHRUB_SOLID]);
 
-// 1.5 ticks per tile averages a 33% slower wave than one tile each tick.
-export const fireDelayTicks = step => Math.floor(step * 3 / 2);
+// Slow the first five intervals by 15%; the remaining exponential intervals run 50% faster.
+export function fireDelayTicks(step) {
+  let arrival = 0;
+  for (let interval = 0; interval < step; interval++) {
+    const base = Math.ceil(1.5 ** interval);
+    arrival += interval < 5 ? Math.ceil(base * 1.15) : Math.ceil(base / 1.5);
+  }
+  return arrival;
+}
 
 /**
  * @param bombs every live bomb, so an arm can stop at one. Optional - omit it and arms pass

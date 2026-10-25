@@ -96,12 +96,15 @@ test('fire spread', async t => {
     assert.equal(a, b);
   });
 
-  await t.test('fire advances in steps with 33 percent slower-than-one-tile-per-tick progression', () => {
-    const st = room();
-    const { cells } = spread(st.map, { tx: 7, ty: 7, radius: 4 });
+  await t.test('fire is 15% slower through five tiles and 50% faster afterwards', () => {
+    const st = room(25, 15);
+    const { cells } = spread(st.map, { tx: 10, ty: 7, radius: 10 });
     const delayAt = x => cells.find(c => c.tx === x && c.ty === 7)?.delayTicks;
 
-    assert.deepEqual([delayAt(8), delayAt(9), delayAt(10), delayAt(11)], [1, 3, 4, 6]);
+    const arrivals = [11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map(delayAt);
+    assert.deepEqual(arrivals, [2, 5, 9, 14, 21, 27, 35, 47, 65, 91]);
+    assert.deepEqual(arrivals.slice(1).map((tick, i) => tick - arrivals[i]),
+      [3, 4, 5, 7, 6, 8, 12, 18, 26]);
   });
 });
 
@@ -178,6 +181,14 @@ test('bombs in the round loop', async t => {
 
     st.tick++;
     detonate(st);
+    assert.equal(tileAt(st.map, 5, 3), BLOCK.SOFT, 'the wall broke before the flame arrived');
+
+    st.tick++;
+    detonate(st);
+    assert.equal(tileAt(st.map, 5, 3), BLOCK.SOFT, 'the wall broke before the flame arrived');
+
+    st.tick++;
+    detonate(st);
     assert.equal(tileAt(st.map, 5, 3), BLOCK.FLOOR, 'the wall survived the arriving flame');
   });
 
@@ -229,7 +240,7 @@ test('bombs in the round loop', async t => {
       st.bombs.at(-1).at = st.tick + FUSE_TICKS + i * 10;   // wildly different fuses
     }
     assert.equal(st.bombs.length, 8);
-    run(st, FUSE_TICKS + 8 * 3 + 1);
+    run(st, FUSE_TICKS + 8 * 5 + 1);
     assert.equal(st.bombs.length, 0, 'the fire wave did not reach every bomb');
   });
 
@@ -241,7 +252,7 @@ test('bombs in the round loop', async t => {
     victim.hp = 1;                           // already scorched: this hit is the last one (MAX_HP)
     killer.dir = DIR_R;                      // bombs go where you are looking
     tap(st, killer);
-    run(st, FUSE_TICKS + 2);
+    run(st, FUSE_TICKS + 3);
     assert.equal(victim.alive, false);
     assert.equal(killer.kills, 1);
     assert.equal(victim.deaths, 1);
@@ -252,14 +263,14 @@ test('bombs in the round loop', async t => {
     const p = spawn(st, 0, 3, 3);
     p.status = STATUS.INVULN; p.statusUntil[STATUS.INVULN] = 9999;
     tap(st, p);
-    run(st, FUSE_TICKS + 1);
+    run(st, FUSE_TICKS + 2);
     assert.equal(p.alive, true, 'invulnerable');
 
     const st2 = room();
     const q = spawn(st2, 0, 3, 3);
     q.shields = 1;
     place(st2, q, IN_BOMB);
-    run(st2, FUSE_TICKS + 2);
+    run(st2, FUSE_TICKS + 3);
     assert.equal(q.alive, true, 'shield absorbed it');
     assert.equal(q.shields, 0, 'and was spent');
   });
@@ -286,7 +297,7 @@ test('bombs in the round loop', async t => {
     tap(st, p);
     assert.equal(st.bombs.length, 1);
     assert.deepEqual([st.bombs[0].tx, st.bombs[0].ty], [3, 3], 'no fallback to the tile underfoot');
-    run(st, FUSE_TICKS + 2);
+    run(st, FUSE_TICKS + 3);
     assert.equal(tileAt(st.map, 4, 3), BLOCK.FLOOR, 'the wall survived a bomb placed beside it');
   });
 
@@ -409,7 +420,7 @@ test('a blast arm stops at another bomb', async t => {
     }
     detonate(st);
     assert.equal(st.events.filter(e => e.e === 'boom').length, 1, 'chain skipped the wave delay');
-    for (let i = 0; i < 7; i++, st.tick++) detonate(st);
+    for (let i = 0; i < 11; i++, st.tick++) detonate(st);
     const booms = st.events.filter(e => e.e === 'boom');
     assert.equal(booms.length, 3, `only ${booms.length} of the three went off`);
     assert.equal(st.bombs.length, 0, 'a bomb survived the chain');

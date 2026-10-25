@@ -866,7 +866,7 @@ export const SFX_MAX_DISTANCE_TILES = 12;
 // ─── Kill streaks ─────────────────────────────────────────────────────────────
 // Kills inside this window, without dying, escalate. ACE is separate: everyone else, no deaths.
 
-export const STREAK_WINDOW_TICKS = 6 * TICK_HZ;   // 6 s between kills to keep a streak alive
+export const STREAK_WINDOW_TICKS = 11 * TICK_HZ;  // 11 s between kills to keep a streak alive
 export const STREAK_NAMES = { 2: 'DOUBLE KILL', 3: 'TRIPLE KILL', 4: 'ULTRA KILL', 5: 'RAMPAGE' };
 export const STREAK_ACE = 'ACE';
 
@@ -1011,4 +1011,3 @@ export const playerColor = i => {
 export const playerColorName = i => playerHsl(i).name;
 /** Kept for the fire's hue; see fireTones in art.js. */
 export const playerHue = i => playerHsl(i).h;
-

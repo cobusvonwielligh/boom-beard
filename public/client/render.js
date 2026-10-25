@@ -24,7 +24,7 @@ import { gullAt } from '/shared/sim/gulls.js';
 import { streakActive } from '/shared/sim/state.js';
 import {
   radarBombColor, radarBombFuseFraction, radarBombPulseAlpha, radarBombPulseHz,
-  radarBombSizePx, selectRadarBombs,
+  radarBombDiamondAngle, radarBombSizePx, radarBombWidthPx, selectRadarBombs,
 } from './radar.js';
 
 const CHUNK_PX = TILE_PX * CHUNK_TILES;
@@ -353,13 +353,10 @@ export function createRenderer(canvas, world) {
  * The length is deliberately short, about two thirds of a tile. Long shadows are prettier and
  * they obscure the floor, and the floor is where you walk.
  */
-  /* Rock is rounded harder than a crate: six pixels against three.
+  /* Inland rock uses the larger block radius; coast corners keep their own smaller radius.
    *
-   * A crate is a made object with real edges, so a hint is right. Rock is worn, and at the
-   * crate's radius it simply read as a square with the corners filed - the change was there in
-   * the pixels and not in the picture. Six is a fifth of a tile: visibly a boulder, and still
-   * nowhere near a circle. Only exposed corners get it (see the chunk pass), so a wall of rock is
-   * still one unbroken mass. STONE_RADIUS stays the crates' number. */
+   * Only exposed corners get the larger radius (see the chunk pass), so a wall of rock stays one
+   * unbroken mass. STONE_RADIUS is also used for breakable blocks; COAST_RADIUS is independent. */
   const ROCK_RADIUS = Math.max(STONE_RADIUS, 8);
   const SHADOW_LEN = TILE_PX * 0.72;
   /* The light a blast throws onto everything near it.
@@ -1712,14 +1709,14 @@ export function createRenderer(canvas, world) {
    *
    * So the band is measured and the rocks are placed inside it, with a guarantee rather than a
    * hope: the first is positioned to be **entirely** on screen, and the other two to be **at
-   * least a fifth** on screen - those two are allowed to run off the edge, which is what stops
+   * least 30%** on screen - those two are allowed to run off the edge, which is what stops
    * the set looking arranged.
    *
    * Re-rolled when the map changes or when the window resizes enough to move the band, because
    * a rock that was fully visible before you resized should still be.
    */
   const ROCK_FULLY_VISIBLE = 1;
-  const ROCK_MIN_VISIBLE = 0.2;
+  const ROCK_MIN_VISIBLE = 0.3;
   // How much bigger than its band the set is drawn, in rounds of the user asking: the largest
   // doubled, then +75%, then halved back; the others +70% and then +50% and left there. The
   // small ones staying put is the point - the set reads as a set because they differ.
@@ -4370,15 +4367,17 @@ export function createRenderer(canvas, world) {
         + (dtMs / 1000) * radarBombPulseHz(bomb, world.tick) * Math.PI * 2) % (Math.PI * 2);
       const pulse = radarBombPulseAlpha(marker.phase);
       const [x, y] = rim.at(marker.at);
-      const size = radarBombSizePx(radarBombFuseFraction(bomb, world.tick)) / zoom;
+      const fuse = radarBombFuseFraction(bomb, world.tick);
+      const size = radarBombSizePx(fuse) / zoom;
+      const width = radarBombWidthPx(fuse) / zoom;
       const colour = radarBombColor(
-        radarBombFuseFraction(bomb, world.tick), bomb.owner ?? bomb.o,
+        fuse, bomb.owner ?? bomb.o,
       );
-      const towardCenter = Math.atan2(y0 + h / 2 - y, x0 + w / 2 - x) + Math.PI / 2;
+      const before = rim.at(marker.at - 0.5), after = rim.at(marker.at + 0.5);
 
       ctx.save();
       ctx.translate(x, y);
-      ctx.rotate(towardCenter);
+      ctx.rotate(radarBombDiamondAngle(before, after));
       ctx.globalAlpha = pulse;
       ctx.shadowColor = colour;
       ctx.shadowBlur = (4 + pulse * 8) / zoom;
@@ -4386,12 +4385,22 @@ export function createRenderer(canvas, world) {
       ctx.strokeStyle = '#f4fff7';
       ctx.lineWidth = 1.2 / zoom;
       ctx.beginPath();
-      ctx.moveTo(0, -size * 0.62);
-      ctx.lineTo(size * 0.55, size * 0.46);
-      ctx.lineTo(-size * 0.55, size * 0.46);
+      ctx.moveTo(0, -size / 2);
+      ctx.lineTo(width / 2, 0);
+      ctx.lineTo(0, size / 2);
+      ctx.lineTo(-width / 2, 0);
       ctx.closePath();
       ctx.fill();
       ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#fff0f3';
+      ctx.beginPath();
+      ctx.moveTo(0, -size * 0.16);
+      ctx.lineTo(width * 0.16, 0);
+      ctx.lineTo(0, size * 0.16);
+      ctx.lineTo(-width * 0.16, 0);
+      ctx.closePath();
+      ctx.fill();
       ctx.restore();
     }
     ctx.globalAlpha = 1;

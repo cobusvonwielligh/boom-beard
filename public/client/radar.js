@@ -39,6 +39,14 @@ export function radarBombSizePx(remaining) {
   return RADAR_BOMB_MIN_SIZE + (RADAR_BOMB_MAX_SIZE - RADAR_BOMB_MIN_SIZE) * progress;
 }
 
+export function radarBombWidthPx(remaining) {
+  return radarBombSizePx(remaining) * 2 / 3;
+}
+
+export function radarBombDiamondAngle(before, after) {
+  return Math.atan2(after[1] - before[1], after[0] - before[0]);
+}
+
 export function radarBombColor(remaining, owner) {
   const elapsed = 1 - Math.max(0, Math.min(1, remaining));
   if (elapsed === 0) return playerColor(owner);
