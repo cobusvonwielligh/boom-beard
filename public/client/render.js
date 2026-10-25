@@ -4343,6 +4343,8 @@ export function createRenderer(canvas, world) {
   const RIM_ALERT_S = 1.1;        // how long a hit keeps the border red
   const RIM_BLIP_FOLLOW_MS = 140; // how fast a blip follows its player along the border
   const RIM_BLIP_FADE_MS = 220;   // how fast a blip fades in or out of the nearest few
+  const RIM_TRACK_PAD = 0.5;      // tiles between the island's edge and the radar track
+  const RIM_TRACK_RADIUS = 3.5;   // the track's corner radius, in tiles - a racetrack, not a frame
   /* Per-seat blip state: where it is along the border, how visible, and its own pulse phase.
    *
    * State, because a blip computed fresh every frame jittered. Its position came from the nearest
@@ -4433,19 +4435,48 @@ export function createRenderer(canvas, world) {
     const r = RIM_RADIUS_PX / zoom;
     const x0 = bw / 2, y0 = bw / 2, w = vw - bw, h = vh - bw;
     if (w <= 2 * r || h <= 2 * r) return;
-    const rim = rimPath(x0, y0, w, h, r);
 
     if (rimAlert > 0) rimAlert = Math.max(0, rimAlert - (dtMs / 1000) / RIM_ALERT_S);
     const dead = !!me && !me.alive;
 
-    // The dark band first. Everything lit is drawn over it, so the band is what makes a faint
-    // blip legible at all - a glow on open sea has nothing to be brighter than.
+    // The dark band: the frame of the board, exactly where and what it always was. It is still
+    // what carries the hit and death states below - only the moving lights left it.
     ctx.save();
     ctx.lineWidth = bw;
     ctx.strokeStyle = 'rgba(6,10,16,0.85)';
     ctx.beginPath();
     ctx.roundRect(x0, y0, w, h, r);
     ctx.stroke();
+
+    /* ─── the track: the radar, moved in to hug the island ───
+     *
+     * The lights used to run round the CANVAS, which on a wide window is a long way from the
+     * fight - two or three tiles of open sea between the coast and the frame, so glancing from
+     * your pirate to "where is he" crossed all of it. Now they run on a track of their own, laid
+     * through the shallows half a tile off the coast, with corners rounded to RIM_TRACK_RADIUS -
+     * a racetrack round the island rather than a picture frame round the screen. Closer to every
+     * player, and the big radius means a light slides round a corner instead of turning on it.
+     *
+     * Nothing about the board changes: the frame band stays, the sea and coast are untouched,
+     * and the track itself is only a hairline so the lights have something to run along. Where
+     * the island is bigger than the window (the zoom floor) the track is clamped inside the
+     * canvas, and the radar falls back to riding the edge - which is the only place it can be. */
+    const [lx, ly, lw, lh] = landBounds();
+    const pad = TILE_PX * RIM_TRACK_PAD, inset = bw * 1.5;
+    const tx0 = Math.max(inset, ox + lx * TILE_PX - pad);
+    const ty0 = Math.max(inset, oy + ly * TILE_PX - pad);
+    const tx1 = Math.min(vw - inset, ox + (lx + lw) * TILE_PX + pad);
+    const ty1 = Math.min(vh - inset, oy + (ly + lh) * TILE_PX + pad);
+    const tw = tx1 - tx0, th = ty1 - ty0;
+    const tr = Math.min(TILE_PX * RIM_TRACK_RADIUS, tw / 2 - 1, th / 2 - 1);
+    if (tw <= 2 * tr || th <= 2 * tr || tr <= 0) { ctx.restore(); return; }
+    const rim = rimPath(tx0, ty0, tw, th, tr);
+    ctx.lineWidth = Math.max(1, bw * 0.25);
+    ctx.strokeStyle = 'rgba(6,10,16,0.32)';
+    ctx.beginPath();
+    ctx.roundRect(tx0, ty0, tw, th, tr);
+    ctx.stroke();
+    ctx.lineWidth = bw;
 
     /** One stretch of the border, lit, centred on `mid` and fading to nothing at both ends. */
     const slither = (mid, halfLen, peak, colour, steps) => {
@@ -4466,8 +4497,15 @@ export function createRenderer(canvas, world) {
 
     /** Where on the border a point on the board is: its exact nearest point. See rimPath. */
     const nearestAt = (wx, wy) => rim.project(wx, wy);
-    // A resize changes the perimeter, and every stored distance along it with it.
-    if (Math.abs(rim.total - rimTotalWas) > 1) { rimBlips.clear(); rimAt = -1; rimTotalWas = rim.total; }
+    /* The track's length changes with a resize, and - while it is clamped to the canvas - as the
+     * camera follows you. Stored positions are rescaled rather than thrown away: clearing them
+     * whenever the length moved would wipe every blip on every frame the camera did. */
+    if (rimTotalWas > 0 && rim.total !== rimTotalWas) {
+      const k = rim.total / rimTotalWas;
+      for (const b of rimBlips.values()) b.at = (b.at * k) % rim.total;
+      if (rimAt >= 0) rimAt = (rimAt * k) % rim.total;
+    }
+    rimTotalWas = rim.total;
 
     ctx.globalCompositeOperation = 'lighter';
     ctx.lineCap = 'butt';
