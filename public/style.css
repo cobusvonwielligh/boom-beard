@@ -4522,15 +4522,114 @@ kbd.wide {
    ======================================== */
 #pwGroup {
   margin-top: 10px;
+  /* Opens rather than appears. The box arrives in the middle of a form somebody is already
+     looking at, and a field that pops into existence makes them lose their place; a short slide
+     and fade puts it where their eye already is. */
+  animation: pwOpen 0.22s cubic-bezier(0.2, 1.3, 0.4, 1) both;
 }
 #pwGroup[hidden] {
   display: none;
 }
+@keyframes pwOpen {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+/* The field, the eye and the meter in one box. */
+.pwField {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+.pwField input {
+  /* Room for the eye, so a long password never runs under it. */
+  padding-right: 42px;
+}
+
+/* Reveal. A real button: tabbable, pressable, and it says which state it is in.
+   Held rather than toggled would be better on a phone and worse with a keyboard; a toggle is the
+   one that works with both. */
+.pwEye {
+  position: absolute;
+  right: 6px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--dim);
+  cursor: pointer;
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+.pwEye svg {
+  width: 17px;
+  height: 17px;
+}
+.pwEye:hover,
+.pwEye:focus-visible {
+  color: var(--gold);
+  background: #edc24e1f;
+}
+.pwEye[aria-pressed="true"] {
+  color: var(--gold);
+}
+
+/* Strength, as a line under the field.
+ *
+ * A bar, never a word: "weak" is a judgement somebody has to read and argue with, where a short
+ * red line that grows and turns gold as they type is read without looking at it. It only runs
+ * while a password is being SET - see pwMode in client/main.js. */
+.pwMeter {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: -5px;
+  height: 2px;
+  border-radius: 2px;
+  background: #ffffff12;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.pwMeter.on {
+  opacity: 1;
+}
+.pwMeter i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  transform-origin: 0 50%;
+  transform: scaleX(0);
+  background: var(--bad);
+  transition:
+    transform 0.25s cubic-bezier(0.2, 1.2, 0.4, 1),
+    background 0.25s ease;
+}
+.pwMeter.mid i {
+  background: #e8a33f;
+}
+.pwMeter.good i {
+  background: #4fc78a;
+}
+
+/* Wrong, and it says so by moving. The shake is 180ms and never repeats - long enough to be felt
+   in peripheral vision, short enough that it is over before the toast is read. */
 #pw.invalid {
   border-color: var(--bad);
   box-shadow:
     0 0 0 3px #e8655a26,
     0 0 22px #e8655a24;
+  animation: pwShake 0.18s ease-in-out 2;
 }
 #pw.invalid:focus {
   border-color: var(--bad);
@@ -4538,18 +4637,17 @@ kbd.wide {
     0 0 0 3px #e8655a38,
     0 0 26px #e8655a30;
 }
-/* Why you are being asked, under the box: "pick a password for this name" and "that name needs
-   its password" are different situations and the difference matters to the person reading it. */
-#pwNote {
-  margin: 8px 0 0;
-  font-size: 12px;
-  line-height: 1.4;
-  color: var(--dim);
-  letter-spacing: 0.02em;
+@keyframes pwShake {
+  25% {
+    transform: translateX(-3px);
+  }
+  75% {
+    transform: translateX(3px);
+  }
 }
-#pwNote[hidden] {
-  display: none;
-}
-#pwNote.bad {
-  color: var(--bad);
+@media (prefers-reduced-motion: reduce) {
+  #pwGroup,
+  #pw.invalid {
+    animation: none;
+  }
 }

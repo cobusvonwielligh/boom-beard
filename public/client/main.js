@@ -811,11 +811,9 @@ const net = createNet({
     }
     closePassword();
     toast(m.why);
-    if (m.forget) {
-      // net.js has already dropped the stored id, so pressing play again simply works.
-      $('signedOut').textContent = `${m.why}. press play to start a new session.`;
-      $('signedOut').style.display = '';
-    }
+    // net.js has already dropped the stored id, so pressing play again simply works - which is
+    // the whole message, and it fits in the toast that has just said why.
+    if (m.forget) toast(`${m.why} - press play to start again`);
   },
   // The connection readout lives in the HUD, which is hidden until you are in a game. Before
   // that, a full server or an unreachable one has to say so somewhere you can actually see it.
@@ -2157,10 +2155,24 @@ nameInput.value = store.get('bv.name') || '';
  *   when the server is full - which is the whole reason the feature exists.
  */
 function play(observe = false) {
-  $('signedOut').style.display = 'none';
   const name = nameInput.value.trim();
-  // A spectator still needs a name for the chat, but not a chosen one.
-  if (!name && !observe) { nameInput.focus(); return; }
+  /* Everything that can be checked here is checked here, and every answer is a toast.
+   *
+   * Not because the server cannot be trusted - it checks all of this again and its answer is the
+   * one that counts - but because a round trip to be told "that is seven characters" is a round
+   * trip nobody should wait for. The wording is the same on both sides, so a rule that only the
+   * server can know (that name is taken, too many tries) arrives looking identical to one the
+   * page caught itself. */
+  if (!name && !observe) {
+    toast('pick a player id first');
+    nameInput.focus();
+    return;
+  }
+  if (!observe && name.length > NAME_MAX_CHARS) {
+    toast(`a player id is at most ${NAME_MAX_CHARS} characters`);
+    nameInput.focus();
+    return;
+  }
   if ($('play').disabled) return;          // double-click would otherwise open a second socket
   /* The password, if the box is open, and the box is only open because the server asked.
    *
@@ -2170,10 +2182,20 @@ function play(observe = false) {
    * machine. See trustFor in client/net.js.
    */
   const pw = pwOpen && !observe ? $('pw').value : '';
-  if (pwOpen && !observe && !pw) { passwordError('a password is needed'); return; }
-  if (pwOpen && !observe && pwMode === 'signup' && pw.length < PASSWORD_MIN) {
-    passwordError(`password must be at least ${PASSWORD_MIN} characters`);
-    return;
+  if (pwOpen && !observe) {
+    if (!pw) { passwordError('a password is needed'); return; }
+    if (pw.length > PASSWORD_MAX) {
+      passwordError(`a password is at most ${PASSWORD_MAX} characters`);
+      return;
+    }
+    if (pwMode === 'signup') {
+      if (pw.length < PASSWORD_MIN) {
+        passwordError(`at least ${PASSWORD_MIN} characters - ${PASSWORD_MIN - pw.length} to go`);
+        return;
+      }
+      const weak = weakPassword(pw, name);
+      if (weak) { passwordError(weak); return; }
+    }
   }
   $('play').disabled = true;
   observing = observe;
@@ -2264,48 +2286,94 @@ function play(observe = false) {
   $('pw').value = '';
 }
 
-/* The password box: shut until the server asks for it, and it says WHY it is asking.
+/* The password box: shut until the server asks for it.
  *
- * Three states and they are genuinely different situations:
+ * Two states and they are genuinely different situations:
  *
- *   signup  this name has never been claimed. Whatever is typed here becomes its password, so the
- *           field is `new-password` and a manager will offer to generate and save one.
- *   need    the name is claimed and this browser is not trusted. `current-password`.
- *   bad     the last attempt was wrong, or there have been too many. Same field, red note, and
- *           the value cleared - never left in place to be re-sent by a reconnect.
+ *   signup  this name has never been claimed. Whatever is typed becomes its password, so the
+ *           field is `new-password`, a manager will offer to generate one, and the strength bar
+ *           runs while it is typed.
+ *   need    the name is claimed and this browser is not trusted. `current-password`, no meter -
+ *           telling somebody their existing password is weak while they are trying to use it is
+ *           noise they cannot act on.
+ *
+ * Every REASON goes to the toast. There used to be a note under the field as well, which meant
+ * two places to look for "what went wrong" and two sets of wording to keep in step.
  */
 let pwOpen = false;
 let pwMode = 'need';
+let capsWarned = false;
+
+/** 0 to 1. Length does most of the work, variety the rest; see PASSWORD_MIN. */
+function passwordStrength(pw) {
+  if (!pw) return 0;
+  const kinds = [/[a-z]/, /[A-Z]/, /[0-9]/, /[^a-zA-Z0-9]/].filter(re => re.test(pw)).length;
+  const long = Math.min(1, pw.length / (PASSWORD_MIN * 2));
+  return Math.min(1, long * 0.7 + (kinds - 1) / 3 * 0.3);
+}
+
+/* Passwords nobody should be allowed to claim a name with.
+ *
+ * Deliberately tiny, and not a composition rule: the length floor is the real requirement, and
+ * "must contain a digit" only ever produced "password1". This catches the three that turn up on
+ * a shared office server - the name itself, one character held down, and the handful of strings
+ * everybody reaches for first.
+ */
+const PW_OBVIOUS = ['password', '12345678', 'qwertyui', 'iloveyou', 'boombeard', 'letmein'];
+function weakPassword(pw, name) {
+  const low = pw.toLowerCase();
+  if (PW_OBVIOUS.some(bad => low === bad || low.startsWith(bad))) return 'that one is first on every list';
+  if (/^(.)\1+$/.test(pw)) return 'one character held down is not a password';
+  if (name && low === name.trim().toLowerCase()) return 'your name is not a password';
+  return null;
+}
+
+function pwMeter(pw) {
+  const meter = $('pwMeter');
+  // Only while SETTING one. See the note above.
+  meter.classList.toggle('on', pwMode === 'signup' && pwOpen);
+  const s = passwordStrength(pw);
+  meter.classList.toggle('mid', s >= 0.5 && s < 0.8);
+  meter.classList.toggle('good', s >= 0.8);
+  meter.firstElementChild.style.transform = `scaleX(${s.toFixed(3)})`;
+}
 
 function askPassword(mode, why) {
   pwOpen = true;
   pwMode = mode === 'signup' ? 'signup' : 'need';
-  const group = $('pwGroup');
-  const note = $('pwNote');
   const input = $('pw');
-  group.hidden = false;
+  $('pwGroup').hidden = false;
   input.type = 'password';
-  input.autocomplete = mode === 'signup' ? 'new-password' : 'current-password';
-  input.placeholder = mode === 'signup' ? `at least ${PASSWORD_MIN} characters` : 'your password';
+  $('pwEye').setAttribute('aria-pressed', 'false');
+  $('pwEye').setAttribute('aria-label', 'show password');
+  $('pwEye').firstElementChild.firstElementChild.setAttribute('href', '#i-eye');
+  input.autocomplete = pwMode === 'signup' ? 'new-password' : 'current-password';
+  input.placeholder = pwMode === 'signup' ? `at least ${PASSWORD_MIN} characters` : 'your password';
   input.maxLength = PASSWORD_MAX;
   input.classList.remove('invalid');
   input.removeAttribute('aria-invalid');
-  $('pwLabel').textContent = mode === 'signup' ? 'SET PASSWORD:' : 'PASSWORD:';
-  note.hidden = false;
-  note.className = mode === 'bad' || mode === 'wait' ? 'bad' : '';
-  note.textContent = mode === 'signup'
-    ? `"${nameInput.value.trim()}" is yours to claim. Pick a password - you will only be asked for it again on a new browser.`
-    : why;
+  $('pwLabel').textContent = pwMode === 'signup' ? 'SET PASSWORD:' : 'PASSWORD:';
   input.value = '';
+  pwMeter('');
+  // Restart the open animation, so a second prompt reads as a new one rather than as nothing.
+  $('pwGroup').style.animation = 'none';
+  void $('pwGroup').offsetWidth;
+  $('pwGroup').style.animation = '';
   input.focus();
+  toast(pwMode === 'signup'
+    ? `"${nameInput.value.trim()}" is yours - pick a password`
+    : (why || 'that name needs its password'));
 }
 
 function passwordError(why) {
   pwOpen = true;
   const input = $('pw');
   $('pwGroup').hidden = false;
-  $('pwNote').hidden = true;
   input.value = '';
+  pwMeter('');
+  // Restart the shake: two errors in a row have to look like two.
+  input.classList.remove('invalid');
+  void input.offsetWidth;
   input.classList.add('invalid');
   input.setAttribute('aria-invalid', 'true');
   input.focus();
@@ -2315,10 +2383,11 @@ function passwordError(why) {
 function closePassword() {
   pwOpen = false;
   $('pwGroup').hidden = true;
-  $('pwNote').hidden = true;
   $('pw').value = '';
   $('pw').classList.remove('invalid');
   $('pw').removeAttribute('aria-invalid');
+  pwMeter('');
+  capsWarned = false;
 }
 
 /** True while this tab is watching rather than playing. Read by the HUD and the input loop. */
@@ -2332,6 +2401,29 @@ $('pw').onkeydown = e => { if (e.key === 'Enter') play(false); };
 $('pw').oninput = () => {
   $('pw').classList.remove('invalid');
   $('pw').removeAttribute('aria-invalid');
+  pwMeter($('pw').value);
+};
+/* Caps lock, once.
+ *
+ * It is the single commonest reason a password that is definitely right is definitely wrong, and
+ * the person typing cannot see it. Said once per time the box is open - a warning that fires on
+ * every keystroke is a warning nobody reads. */
+$('pw').addEventListener('keydown', e => {
+  if (capsWarned || !e.getModifierState?.('CapsLock')) return;
+  capsWarned = true;
+  toast('caps lock is on');
+});
+/* Reveal. Paranoid about one thing: the field is put back to `password` whenever the box closes
+ * or re-opens, so a revealed password can never be left on screen behind a dialog. */
+$('pwEye').onclick = () => {
+  const input = $('pw');
+  const shown = input.type === 'text';
+  input.type = shown ? 'password' : 'text';
+  const btn = $('pwEye');
+  btn.setAttribute('aria-pressed', String(!shown));
+  btn.setAttribute('aria-label', shown ? 'show password' : 'hide password');
+  btn.firstElementChild.firstElementChild.setAttribute('href', shown ? '#i-eye' : '#i-eyeoff');
+  input.focus();
 };
 // A different name is a different account, so whatever was typed for the last one is wrong by
 // definition - and leaving it there is how somebody sends one person's password to another's

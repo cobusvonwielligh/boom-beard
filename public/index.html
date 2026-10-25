@@ -132,6 +132,32 @@
     <!-- Four things the HUD never needed a pip for, but the rules sheet has to name: the keg,
          ice, a gull and a streak. Drawn in the same hand as the rest so a sheet of them reads
          as one set. -->
+    <!-- Show / hide the password. One eye and one struck-through eye, same hand as the rest. -->
+    <symbol id="i-eye" viewBox="0 0 16 16">
+      <path
+        d="M1 8s2.6-4.2 7-4.2S15 8 15 8s-2.6 4.2-7 4.2S1 8 1 8z"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+      />
+      <circle cx="8" cy="8" r="2.1" fill="currentColor" />
+    </symbol>
+    <symbol id="i-eyeoff" viewBox="0 0 16 16">
+      <path
+        d="M1 8s2.6-4.2 7-4.2S15 8 15 8s-2.6 4.2-7 4.2S1 8 1 8z"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-opacity=".55"
+      />
+      <circle cx="8" cy="8" r="2.1" fill="currentColor" fill-opacity=".55" />
+      <path
+        d="M2.4 13.6 13.6 2.4"
+        stroke="currentColor"
+        stroke-width="1.6"
+        stroke-linecap="round"
+      />
+    </symbol>
     <symbol id="i-keg" viewBox="0 0 16 16">
       <!-- A barrel, not a box. Three things carry that at sixteen pixels and all three are
            curves: the staves BULGE at the waist, the hoops bow with them, and the lid is an
@@ -760,19 +786,36 @@
            letters, which is worse security than any amount of hardening here can buy back. -->
       <div class="playerid-group" id="pwGroup" hidden>
         <label for="pw" id="pwLabel">PASSWORD:</label>
-        <input
-          id="pw"
-          type="password"
-          placeholder="your password"
-          autocomplete="current-password"
-        />
+        <!-- The field, the reveal button and the strength bar as one unit. No note underneath:
+             every reason - too short, too easy, wrong, locked out, name already playing - goes
+             to the toast, which is where every other message in this game already appears. One
+             place to look for "what went wrong" beats two. -->
+        <div class="pwField">
+          <input
+            id="pw"
+            type="password"
+            placeholder="your password"
+            autocomplete="current-password"
+          />
+          <button
+            id="pwEye"
+            class="pwEye"
+            type="button"
+            aria-label="show password"
+            aria-pressed="false"
+          >
+            <svg aria-hidden="true"><use href="#i-eye" /></svg>
+          </button>
+          <!-- Strength, as a bar and never as a sentence. It is only shown while setting a new
+               password, because telling somebody their EXISTING password is weak while they are
+               trying to sign in is noise they cannot act on. -->
+          <div class="pwMeter" id="pwMeter" aria-hidden="true"><i></i></div>
+        </div>
       </div>
-      <p id="pwNote" hidden></p>
       <button id="play">play</button>
       <!-- Always available, including when every seat is taken: a spectator costs nobody a
            place, so "full" is not a reason to turn one away. -->
       <button id="watch" class="ghost">spectate only</button>
-      <p id="signedOut"></p>
       <div class="keys">
         <h2>Controls</h2>
         <dl>
