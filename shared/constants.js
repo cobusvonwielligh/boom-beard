@@ -39,6 +39,13 @@ export const SEA_MARGIN_TILES = 3;
  * frame makes everything that matters smaller. The shelf is allowed to run off; the island and a
  * clear two tiles of water around it are not. */
 export const SEA_FIT_MARGIN_TILES = 2;
+/* And the most sea there may ever be between the island and the frame, on any side.
+ *
+ * The fit above is for the TIGHTER axis; the other one used to get whatever the window's shape
+ * left over, five or six tiles of open water on a wide screen. The canvas is cut down to the
+ * island plus this much and centred, so the frame - and the radar riding on it - is never more
+ * than four tiles from the coast. See applyBoardSize in client/render.js. */
+export const SEA_MAX_MARGIN_TILES = 4;
 
 // The board is never drawn smaller than this, whatever the window. Below about two thirds a
 // 32-pixel tile is 21 pixels and a player is a smudge; past that point a camera that follows you

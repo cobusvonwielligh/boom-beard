@@ -328,6 +328,19 @@ canvas#game {
   border-radius: 8px;
 }
 
+/* The space the board may occupy: the same insets as canvas#game, and nothing else. render.js
+   measures this and then sizes and centres the canvas inside it (applyBoardSize), so the canvas's
+   own size above is only what it starts at. Invisible and inert. */
+#boardBox {
+  position: fixed;
+  top: calc(var(--bar) + var(--gap) * 2);
+  left: var(--gap);
+  width: calc(100vw - var(--side) - var(--gap) * 3);
+  height: calc(100vh - var(--bar) - var(--gap) * 3);
+  visibility: hidden;
+  pointer-events: none;
+}
+
 /* Below this the side panel costs more than it gives: drop it, and let the board have the lot. */
 @media (max-width: 1080px) {
   :root {
@@ -336,7 +349,8 @@ canvas#game {
   #side {
     display: none;
   }
-  canvas#game {
+  canvas#game,
+  #boardBox {
     width: calc(100vw - var(--gap) * 2);
   }
 }

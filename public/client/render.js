@@ -6,7 +6,8 @@
 
 import {
   TILE_PX, CHUNK_TILES, UNITS_PER_TILE, TRACER_SAMPLES, FUSE_TICKS, FIRE_TICKS, STATUS,
-  BLOCK, BLOCK_HP, SEA_MARGIN_TILES, SEA_FIT_MARGIN_TILES, SPAWN_POP_TICKS, SPAWN_POP_SCALE,
+  BLOCK, BLOCK_HP, SEA_MARGIN_TILES, SEA_FIT_MARGIN_TILES, SEA_MAX_MARGIN_TILES,
+  SPAWN_POP_TICKS, SPAWN_POP_SCALE,
   MIN_ZOOM, MAX_ZOOM,
   PERK_FADE_TICKS, STAMINA_SHOW_AT, STAMINA_LOW_AT, staminaMaxFor,
   PUDDLE_FADE_TICKS, TICK_MS, TICK_HZ,
@@ -35,7 +36,8 @@ export function createRenderer(canvas, world) {
   let flash = 0, flashColour = '255,255,255';
   let sea = null, seaNear = null, seaFar = null;
   // Everything about the drawing surface, measured on resize and never from the frame loop.
-  const view = { dpr: 1, w: 0, h: 0, zoom: 1, smooth: false };
+  // `w`/`h` are the board as drawn; `availW`/`availH` the box it may use. See applyBoardSize.
+  const view = { dpr: 1, w: 0, h: 0, zoom: 1, smooth: false, availW: 0, availH: 0, availX: 0, availY: 0 };
   const splashes = [];         // shoreline foam, capped - see spawnSplash
   const floaters = [];         // "+1 BOMB" rising off a player - see addFloater
   let seaT = 0;
@@ -157,20 +159,55 @@ export function createRenderer(canvas, world) {
    * it returns settles over several frames while the panels lay out, the zoom crept and the
    * whole board visibly shimmered. Measuring on resize only is both faster and stable.
    */
+  /* The box the board may use is measured off #boardBox, an invisible element with the canvas's
+   * own CSS insets - not off the canvas, because the canvas is then sized DOWN inside that box
+   * (see applyBoardSize) and measuring it would only ever report its own last answer. */
+  const boardBox = document.getElementById('boardBox');
+
   function resize() {
     const dpr = Math.min(2, devicePixelRatio || 1);
-    const { clientWidth: w, clientHeight: h } = canvas;
+    const r = (boardBox || canvas).getBoundingClientRect();
+    const w = Math.round(r.width), h = Math.round(r.height);
     if (!w || !h) return;                   // laid out but not measured yet
     // Bail when nothing actually changed. Writing canvas.width resets the drawing surface and
     // can itself be observed as a resize, so an unguarded ResizeObserver callback that always
     // writes is a loop that clears the canvas every frame.
-    if (w === view.w && h === view.h && dpr === view.dpr) return;
-    canvas.width = Math.round(w * dpr);
-    canvas.height = Math.round(h * dpr);
+    if (w === view.availW && h === view.availH && dpr === view.dpr
+      && r.left === view.availX && r.top === view.availY) return;
     view.dpr = dpr;
+    view.availW = w; view.availH = h; view.availX = r.left; view.availY = r.top;
+    view.w = 0;                             // force applyBoardSize to write the canvas
+    recomputeZoom();
+    if (!view.w) applyBoardSize();          // no map yet: the whole box, as it always was
+  }
+
+  /* No more than SEA_MAX_MARGIN_TILES of sea between the island and the frame, on any side.
+   *
+   * The zoom fits the TIGHTER axis with two tiles of sea; on a window of a different shape the
+   * other axis got whatever was left over - on a wide screen five or six tiles of open water each
+   * side, which pushed the radar on the frame a long way from the fight. So the canvas itself is
+   * narrowed (or shortened) to the island plus 3.5 tiles a side and centred in its box. Nothing
+   * is drawn differently: the board is the same picture at the same scale, with less empty sea.
+   * Where the island does not fit at all (the zoom floor) the cap is larger than the box and the
+   * board fills it, as before. */
+  function applyBoardSize() {
+    if (!view.availW) return;
+    let w = view.availW, h = view.availH;
+    if (world.map) {
+      const [, , lw, lh] = landBounds();
+      const cap = SEA_MAX_MARGIN_TILES * 2 * TILE_PX * view.zoom;
+      w = Math.min(w, Math.ceil(lw * TILE_PX * view.zoom + cap));
+      h = Math.min(h, Math.ceil(lh * TILE_PX * view.zoom + cap));
+    }
+    canvas.style.left = `${view.availX + Math.floor((view.availW - w) / 2)}px`;
+    canvas.style.top = `${view.availY + Math.floor((view.availH - h) / 2)}px`;
+    if (w === view.w && h === view.h) return;
+    canvas.style.width = `${w}px`;
+    canvas.style.height = `${h}px`;
+    canvas.width = Math.round(w * view.dpr);
+    canvas.height = Math.round(h * view.dpr);
     view.w = w;
     view.h = h;
-    recomputeZoom();
   }
 
   /**
@@ -212,14 +249,15 @@ export function createRenderer(canvas, world) {
   }
 
   function recomputeZoom() {
-    if (!world.map || !view.w) return;
+    if (!world.map || !view.availW) return;
     const m = SEA_FIT_MARGIN_TILES * 2;
     const [, , lw, lh] = landBounds();
     // Fit the ISLAND plus two tiles of ocean, not the three the scenery reaches into: see
     // SEA_FIT_MARGIN_TILES. The far edge of the sand shelf is the faintest thing on the board and
-    // it is not worth a tile of scale on every side to keep it in frame.
-    const fit = Math.min(view.w / ((lw + m) * TILE_PX),
-                         view.h / ((lh + m) * TILE_PX));
+    // it is not worth a tile of scale on every side to keep it in frame. Against the whole box -
+    // the canvas is then cut down to it by applyBoardSize.
+    const fit = Math.min(view.availW / ((lw + m) * TILE_PX),
+                         view.availH / ((lh + m) * TILE_PX));
 
     // Quantised. An unrounded scale changes by a hair on every layout settle and on every DPR
     // report, and a board that resizes by one part in a thousand reads as jitter. Fortieths are
@@ -243,8 +281,11 @@ export function createRenderer(canvas, world) {
     // nobody has ever noticed. Smoothing is switched on above 1 as well, which hides it anyway.
     const z = q;
     if (!Number.isFinite(z) || z <= 0) return;      // never let a bad measurement blank the board
-    if (z === view.zoom) return;
+    // A new map changes the island's shape at the same zoom, so the board size is re-applied
+    // whatever happened to the scale.
+    if (z === view.zoom) { applyBoardSize(); return; }
     view.zoom = z;
+    applyBoardSize();
     // Smooth at any non-integer scale, in both directions, for the reason above.
     view.smooth = Math.abs(q - Math.round(q)) > 1e-6;
     invalidateAll();
@@ -260,7 +301,7 @@ export function createRenderer(canvas, world) {
       if (queued) return;
       queued = true;
       requestAnimationFrame(() => { queued = false; resize(); });
-    }).observe(canvas);
+    }).observe(boardBox || canvas);
   }
 
   const invalidateAll = () => {
@@ -4343,8 +4384,6 @@ export function createRenderer(canvas, world) {
   const RIM_ALERT_S = 1.1;        // how long a hit keeps the border red
   const RIM_BLIP_FOLLOW_MS = 140; // how fast a blip follows its player along the border
   const RIM_BLIP_FADE_MS = 220;   // how fast a blip fades in or out of the nearest few
-  const RIM_TRACK_PAD = 0.5;      // tiles between the island's edge and the radar track
-  const RIM_TRACK_RADIUS = 3.5;   // the track's corner radius, in tiles - a racetrack, not a frame
   /* Per-seat blip state: where it is along the border, how visible, and its own pulse phase.
    *
    * State, because a blip computed fresh every frame jittered. Its position came from the nearest
@@ -4439,8 +4478,8 @@ export function createRenderer(canvas, world) {
     if (rimAlert > 0) rimAlert = Math.max(0, rimAlert - (dtMs / 1000) / RIM_ALERT_S);
     const dead = !!me && !me.alive;
 
-    // The dark band: the frame of the board, exactly where and what it always was. It is still
-    // what carries the hit and death states below - only the moving lights left it.
+    // The dark band first. Everything lit is drawn over it, so the band is what makes a faint
+    // blip legible at all - a glow on open sea has nothing to be brighter than.
     ctx.save();
     ctx.lineWidth = bw;
     ctx.strokeStyle = 'rgba(6,10,16,0.85)';
@@ -4448,35 +4487,9 @@ export function createRenderer(canvas, world) {
     ctx.roundRect(x0, y0, w, h, r);
     ctx.stroke();
 
-    /* ─── the track: the radar, moved in to hug the island ───
-     *
-     * The lights used to run round the CANVAS, which on a wide window is a long way from the
-     * fight - two or three tiles of open sea between the coast and the frame, so glancing from
-     * your pirate to "where is he" crossed all of it. Now they run on a track of their own, laid
-     * through the shallows half a tile off the coast, with corners rounded to RIM_TRACK_RADIUS -
-     * a racetrack round the island rather than a picture frame round the screen. Closer to every
-     * player, and the big radius means a light slides round a corner instead of turning on it.
-     *
-     * Nothing about the board changes: the frame band stays, the sea and coast are untouched,
-     * and the track itself is only a hairline so the lights have something to run along. Where
-     * the island is bigger than the window (the zoom floor) the track is clamped inside the
-     * canvas, and the radar falls back to riding the edge - which is the only place it can be. */
-    const [lx, ly, lw, lh] = landBounds();
-    const pad = TILE_PX * RIM_TRACK_PAD, inset = bw * 1.5;
-    const tx0 = Math.max(inset, ox + lx * TILE_PX - pad);
-    const ty0 = Math.max(inset, oy + ly * TILE_PX - pad);
-    const tx1 = Math.min(vw - inset, ox + (lx + lw) * TILE_PX + pad);
-    const ty1 = Math.min(vh - inset, oy + (ly + lh) * TILE_PX + pad);
-    const tw = tx1 - tx0, th = ty1 - ty0;
-    const tr = Math.min(TILE_PX * RIM_TRACK_RADIUS, tw / 2 - 1, th / 2 - 1);
-    if (tw <= 2 * tr || th <= 2 * tr || tr <= 0) { ctx.restore(); return; }
-    const rim = rimPath(tx0, ty0, tw, th, tr);
-    ctx.lineWidth = Math.max(1, bw * 0.25);
-    ctx.strokeStyle = 'rgba(6,10,16,0.32)';
-    ctx.beginPath();
-    ctx.roundRect(tx0, ty0, tw, th, tr);
-    ctx.stroke();
-    ctx.lineWidth = bw;
+    // The lights ride the frame itself. It is never more than SEA_MAX_MARGIN_TILES from the coast
+    // (see applyBoardSize), which is what keeps them close to the fight.
+    const rim = rimPath(x0, y0, w, h, r);
 
     /** One stretch of the border, lit, centred on `mid` and fading to nothing at both ends. */
     const slither = (mid, halfLen, peak, colour, steps) => {

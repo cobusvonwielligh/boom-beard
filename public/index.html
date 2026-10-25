@@ -243,6 +243,9 @@
 <!-- tabindex="-1": not in the tab order, but focusable in code. Sending a chat message hands
      focus back here, so the board is what the keyboard is pointed at. -->
 <canvas id="game" tabindex="-1"></canvas>
+<!-- The box the board may use, measured and never seen. The canvas is cut down inside it so
+     there is never more than four tiles of sea round the island - see applyBoardSize. -->
+<div id="boardBox" aria-hidden="true"></div>
 
 <div id="hud">
   <div id="topbar" class="edge">

@@ -233,7 +233,7 @@ Every one of these is in `shared/constants.js`. Nothing is inline.
 | Respawn | 13.5 s, then distance-weighted across safe spawns; full-map fallback, never forced into danger |
 | Fire | drawn 15 ticks, lethal 10; damage box 13/20 of the movement box |
 | Health | 2 hits (`MAX_HP`): shields first, then half, then dead; same-tick blasts each cost one, 0.6 s grace after |
-| Radar | your light and maroon foe blips run on a track half a tile off the coast, 3.5-tile corners; the canvas frame keeps the hit/death states |
+| Radar | your light and maroon foe blips ride the canvas frame, which is cut down so it is never more than 4 tiles of sea from the island (`SEA_MAX_MARGIN_TILES`) |
 | Colours | picked per player; ≤8 players are always the 8 most distinct; only reshuffled between rounds |
 | Perk drops | 35% base, scaled by what is on the floor and how fast it is taken |
 | Rum | 2.7% of drops. Softens damage, sways your walk, rolls your camera for 12 s |
