@@ -51,6 +51,33 @@ const DIR_STEP = {
   [DIR_D]: { dx: 0, dy: 1 },
 };
 
+/**
+ * Where a press of the bomb key would put a bomb right now, or null if it would not.
+ *
+ * Every reason a press is refused lives here and only here, because two things must agree on it
+ * exactly: place() below, and the client's instant "place" sound. The sound used to keep its own
+ * copy of the rules, which drifted - it knew about walls, other bombs, puddles and the bomb count,
+ * but not pacifism, being dazed or being mid-slide - so it clicked for bombs that never appeared.
+ */
+export function placeable(state, p) {
+  if (!p || !p.alive) return null;
+  if (has(p, STATUS.PACIFISM)) return null;
+  // Seeing stars: somebody slid through you and for the next second and a half you cannot find
+  // the fuse. place() has already consumed the key's edge by the time it asks, so holding the key
+  // through it does not bank a bomb that fires the moment it wears off - you have to press again.
+  if (has(p, STATUS.CONFUSED)) return null;
+  // A slide in progress is hands-full. Without this the slide becomes a bomb-delivery vehicle:
+  // launch, cross three tiles in a third of a second, and drop one at the far end from safety.
+  if (p.slideV > 0) return null;
+
+  const at = bombTile(state, p);
+  if (!bombable(state, at.tx, at.ty)) return null;
+
+  const live = state.bombs.reduce((n, b) => n + ((b.owner ?? b.o) === p.i ? 1 : 0), 0);
+  if (live >= p.bombs) return null;
+  return at;
+}
+
 export function place(state, p, mask) {
   /* One bomb per PRESS, not per tick the key is down.
    *
@@ -66,21 +93,10 @@ export function place(state, p, mask) {
   const held = (mask & IN_BOMB) !== 0;
   const pressed = held && !p.bombHeld;
   p.bombHeld = held;
-  if (!pressed || !p.alive) return;
-  if (has(p, STATUS.PACIFISM)) return;
-  // Seeing stars: somebody slid through you and for the next second and a half you cannot find
-  // the fuse. The edge above has already been consumed, so holding the key through it does not
-  // bank a bomb that fires the moment it wears off - you have to press again.
-  if (has(p, STATUS.CONFUSED)) return;
-  // A slide in progress is hands-full. Without this the slide becomes a bomb-delivery vehicle:
-  // launch, cross three tiles in a third of a second, and drop one at the far end from safety.
-  if (p.slideV > 0) return;
-
-  const { tx, ty } = bombTile(state, p);
-  if (!bombable(state, tx, ty)) return;
-
-  const live = state.bombs.reduce((n, b) => n + (b.owner === p.i ? 1 : 0), 0);
-  if (live >= p.bombs) return;
+  if (!pressed) return;
+  const at = placeable(state, p);
+  if (!at) return;
+  const { tx, ty } = at;
 
   const fuse = has(p, STATUS.FAST_DET) ? FUSE_TICKS_FAST : FUSE_TICKS;
   const bomb = {

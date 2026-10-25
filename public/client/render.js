@@ -19,7 +19,7 @@ import {
   PERK_GLOWS, drawBombLive, CASTS_SHADOW, drawGull, drawFeather, fireTones,
   COAST_CORNERS, COAST_Q, carveRockCorners, drawCoastFillets, cornerCells, STONE_RADIUS,
 } from '/assets/art.js';
-import { bombTile, bombable } from '/shared/sim/bombs.js';
+import { placeable } from '/shared/sim/bombs.js';
 import { gullAt } from '/shared/sim/gulls.js';
 
 const CHUNK_PX = TILE_PX * CHUNK_TILES;
@@ -2122,12 +2122,20 @@ export function createRenderer(canvas, world) {
    * sea around the island is now the only place anything is happening, so the thing that is
    * SUPPOSED to be happening there can afford to spread. Seven tiles puts the tip of a loud band
    * out past the shallows and into open water, which is also where there is room for it. */
-  const EQ_MAX = 7;                                     // tiles of reach, at full scale
+  /* ...and then back in, hard against the coast: 2.6 tiles, about four and a half at the loudest.
+   *
+   * Seven was set when the board showed five or six tiles of sea a side. The frame now stops
+   * four tiles out (SEA_MAX_MARGIN_TILES), so most of a seven-tile bar was off the board, and
+   * what was left was its faint, faded tail. Pulled in, the whole bar - its bright root included
+   * - is in the water right next to the island, where the eye already is. */
+  const EQ_MAX = 2.6;                                   // tiles of reach, at full scale
   const EQ_SUB = 4;                                     // blocks per tile, outward
   // Half of what it was again - 0.15 and a 0.3 cap - at the user's request after a real round.
   // Half again on both, with the reach: at the old alpha a bar seven tiles long faded to nothing
   // before it got there, which is a longer bar that reads as a shorter one.
-  const EQ_ALPHA = 0.058, EQ_CAP_ALPHA = 0.105;
+  // Up very slightly once it came back to the coast, on request - about a seventh. The shorter
+  // reach does most of the intensifying by itself: the bars no longer fade out over seven tiles.
+  const EQ_ALPHA = 0.066, EQ_CAP_ALPHA = 0.12;
   // One band per shade, so a colour never spans two bands.
   const EQ_BANDS = 24;
   const EQ_SHADES = 24;
@@ -2703,7 +2711,8 @@ export function createRenderer(canvas, world) {
    * World-pixel resolution, because these are blocks of glow at four percent alpha and nobody
    * can see their edges soften when the board is zoomed. */
   const EQ_REPAINT_MS = 83;
-  const EQ_PAD = EQ_MAX + 1;
+  // Room for the longest bar there can be - full reach times the boost - or the loudest are clipped.
+  const EQ_PAD = Math.ceil(EQ_MAX * EQ_VU_BOOST) + 1;
   let eqLayer = null, eqLayerCtx = null, eqLayerFor = null, eqAge = Infinity;
 
   function drawCoastEq(dtMs) {
@@ -5291,12 +5300,12 @@ export function createRenderer(canvas, world) {
   function drawAim(ox, oy, dtMs) {
     const me = world.me();
     if (!me || !me.alive || world.observing) { aimSeen = false; return; }
-    const { tx, ty } = bombTile(world, me);
-    // Nothing to show if you are out of bombs: a sight on a shot you cannot take is a lie.
-    const live = world.bombs.reduce((n, b) => n + ((b.o ?? b.owner) === world.you ? 1 : 0), 0);
-    if (live >= me.bombs) { aimSeen = false; aimIn = 0; return; }
-    // Nor while standing in a puddle with nowhere dry in front: the bomb would not go down.
-    if (!bombable(world, tx, ty)) { aimSeen = false; aimIn = 0; return; }
+    // Nothing to show when the key would do nothing - out of bombs, in water, dazed, mid-slide,
+    // pacifist: a sight on a shot you cannot take is a lie. The simulation's own answer, so the
+    // bracket, the click and the bomb can never disagree. See placeable().
+    const at = placeable(world, me);
+    if (!at) { aimSeen = false; aimIn = 0; return; }
+    const { tx, ty } = at;
 
     /* Fade in when it comes back.
      *

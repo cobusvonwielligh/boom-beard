@@ -24,7 +24,7 @@ import { createListener } from './audio/listen.js';
 import { createQuips, MENU_QUIPS } from './quips.js';
 import { createMenuViz } from './menuviz.js';
 import { store } from './store.js';
-import { bombTile, bombable } from '/shared/sim/bombs.js';
+import { placeable } from '/shared/sim/bombs.js';
 import { MAPS } from '/shared/maps.js';
 
 const $ = id => document.getElementById(id);
@@ -1077,23 +1077,23 @@ function startPerformanceMonitor() {
  * Your own bomb, the instant you press the key.
  *
  * The server's `bomb` event is two ticks behind, and 66 ms of lag on the one sound you trigger
- * yourself is the difference between responsive and mushy. The client knows every reason a
- * placement would be refused - dead, pacifist, out of bombs, already a bomb on this tile - so it
- * can be honest about it rather than clicking optimistically and being wrong.
+ * yourself is the difference between responsive and mushy. So it plays here - but ONLY if the
+ * simulation would really put a bomb down, which is asked of the simulation's own `placeable()`
+ * rather than of a copy of its rules. The copy drifted (it never learned about pacifism, being
+ * dazed or being mid-slide) and the click played for bombs that never appeared.
+ *
+ * Called AFTER this tick's movement is predicted, because that is the order the tick runs in:
+ * a double-tap that launches a slide on the same tick as the bomb key leaves you mid-slide by
+ * the time place() asks, and the bomb is refused.
  */
 function localBombFeedback(mask) {
   const pressed = (mask & IN_BOMB) && !(lastMask & IN_BOMB);
   lastMask = mask;
   if (!pressed) return;
-  const me = world.me();
-  if (!me || !me.alive) return;
   // The same tile the sim will choose, from the same function - the sound has to come from
   // where the bomb actually lands, which with facing-placement is rarely where you stand.
-  const { tx, ty } = bombTile(world, me);
-  // Same rule as place(): no bomb on another bomb, and none in a puddle.
-  if (!bombable(world, tx, ty)) return;
-  if (world.bombs.reduce((n, b) => n + ((b.o ?? b.owner) === world.you ? 1 : 0), 0) >= me.bombs) return;
-  sfx.play('place', tx, ty);
+  const at = placeable(world, world.me());
+  if (at) sfx.play('place', at.tx, at.ty);
 }
 
 /**
@@ -1209,8 +1209,8 @@ function frame(now) {
     // The slide bit rides on this tick's mask only. `takeSlide` clears as it reads, so the five
     // steps a stalled frame can run cannot turn one double-tap into five launches.
     const mask = input.mask | (input.takeSlide() ? IN_SLIDE : 0);
-    localBombFeedback(mask);
     world.predict(tick, mask);
+    localBombFeedback(mask);
     const me = world.me();
     net.send({ t: 'input', tick, m: mask, x: me?.x | 0, y: me?.y | 0 });
   }
