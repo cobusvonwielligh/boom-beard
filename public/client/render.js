@@ -4992,6 +4992,7 @@ export function createRenderer(canvas, world) {
   const SCORCH_LINE = 15.5;             // tile pixels from the top: the belt, half way down him
   const SCORCH_FOOT = 26;               // where the sweep starts, at the boots
   const SCORCH_SWEEP_MS = 340;
+  const HURT_FLICKER_MS = 520;          // the lamp-failing flicker when half a life goes
   const hurtAt = new Map();             // seat -> performance.now() of the hit
 
   function drawScorch(c, sprite, x, y, seat) {
@@ -5137,6 +5138,33 @@ export function createRenderer(canvas, world) {
     const sx = (small ? 0.55 : 1) * pop * (1 - pant * 0.5);
     const sy = (small ? 0.55 : 1) * pop * (flipped ? -1 : 1) * (1 + pant);
     const scorched = p.hp === 1 && pop < 1.5;
+
+    /* Health is how SOLID they are, and how brightly they burn.
+     *
+     * Whole: fully opaque, standing in a soft glow of their own colour that breathes. Half: the
+     * pirate is half there - drawn at half opacity - and the glow has nearly gone out. The hit
+     * itself is a lamp failing: a few hard flickers for half a second, then it settles at half.
+     * Opacity is the one property that reads on every pirate at once, at any zoom, without
+     * looking for anything - a crowd where two of them are ghosts tells you who to chase. */
+    const since = performance.now() - (hurtAt.get(p.i) ?? -1e9);
+    let life = scorched ? 0.5 : 1;
+    if (scorched && since < HURT_FLICKER_MS) life = ((since / 45) | 0) % 2 ? 0.2 : 0.95;
+    const breathe = 0.85 + 0.15 * Math.sin(seaT * 2.2 + p.i);
+    const glowA = (scorched ? 0.12 : 0.4) * breathe * (pop < 1.5 ? 1 : 0);
+    if (glowA > 0.01) {
+      const gx = px + TILE_PX / 2, gy = py + TILE_PX / 2 + 2, gr = TILE_PX * 0.78 * Math.abs(sx);
+      const g = c.createRadialGradient(gx, gy, 0, gx, gy, gr);
+      const tint = playerShades(p.i).light;
+      g.addColorStop(0, tint);
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      c.save();
+      c.globalCompositeOperation = 'lighter';
+      c.globalAlpha *= glowA;
+      c.fillStyle = g;
+      c.beginPath(); c.arc(gx, gy, gr, 0, 7); c.fill();
+      c.restore();
+    }
+    c.globalAlpha *= life;
     if (sx !== 1 || sy !== 1) {
       c.save();
       c.translate(px + TILE_PX / 2, py + TILE_PX / 2);

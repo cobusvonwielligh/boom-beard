@@ -272,6 +272,27 @@
          you have any of that perk at all, so the bar answers "what am I carrying" without
          anybody having to read the numbers. -->
     <span id="gear">
+      <!-- Health, as a gold heart with three states and no number: whole and shining, half and
+           dull, or an empty outline while you are down. Inline rather than a <use>, because the
+           two halves are filled separately. See MAX_HP and heartState in main.js. -->
+      <span class="pip heart full" id="pHeart" title="health: two hits">
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          <defs>
+            <linearGradient id="heartGold" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#fff1a8" />
+              <stop offset="0.45" stop-color="#edc24e" />
+              <stop offset="1" stop-color="#9c6a10" />
+            </linearGradient>
+          </defs>
+          <path class="hL" d="M8 14.2S1.6 10.2 1.6 5.8a3.2 3.2 0 0 1 6.4-1.1z" />
+          <path class="hR" d="M8 14.2s6.4-4 6.4-8.4a3.2 3.2 0 0 0-6.4-1.1z" />
+          <path
+            class="hO"
+            d="M8 14.2S1.6 10.2 1.6 5.8a3.2 3.2 0 0 1 6.4-1.1 3.2 3.2 0 0 1 6.4 1.1c0 4.4-6.4 8.4-6.4 8.4z"
+          />
+        </svg>
+        <span class="glint" aria-hidden="true"></span>
+      </span>
       <span class="pip" id="pBombs" title="bombs you can have out at once">
         <svg><use href="#i-bomb" /></svg><span class="n">1</span
         ><span class="cap"></span>

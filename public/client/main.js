@@ -1350,6 +1350,27 @@ function showUpgrade(type) {
   box.append(el);
 }
 
+/**
+ * The gold heart: 'full' (shining), 'half' (dull, left half only) or 'empty' (down). Only touches
+ * the DOM when the state changes, and knocks the heart when it drops so the loss is felt. See
+ * `.pip.heart` in style.css.
+ */
+let heartWas = 'full';
+function heartState(state) {
+  if (state === heartWas) return;
+  const el = $('pHeart');
+  el.classList.remove('full', 'half', 'empty', 'hit');
+  el.classList.add(state);
+  const order = { full: 2, half: 1, empty: 0 };
+  if (order[state] < order[heartWas]) {
+    void el.offsetWidth;                  // restart the animation if it is already running
+    el.classList.add('hit');
+  }
+  el.title = state === 'full' ? 'health: whole - two hits'
+    : state === 'half' ? 'health: half - one more hit and you are down' : 'health: down';
+  heartWas = state;
+}
+
 const gearPip = (id, value, cap, base = 0) => {
   const el = $(id);
   setValue(el.querySelector('.n'), value);
@@ -1521,6 +1542,7 @@ function drawHud() {
   // Every live perk as a pip, lit when you are carrying more than you started with. Shields used
   // to be a separate row of green dots off to the right of the bar; they are a perk like the
   // rest and belong in the same row, counted the same way.
+  heartState(!me.alive ? 'empty' : me.hp === 1 ? 'half' : 'full');
   gearPip('pBombs', me.bombs, MAX_BOMBS_CARRIED, START_BOMBS);
   gearPip('pFire', me.radius, MAX_RADIUS, START_RADIUS);
   gearPip('pSpeed', me.speed, MAX_SKATES);
