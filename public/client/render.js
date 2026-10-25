@@ -2128,7 +2128,14 @@ export function createRenderer(canvas, world) {
    * four tiles out (SEA_MAX_MARGIN_TILES), so most of a seven-tile bar was off the board, and
    * what was left was its faint, faded tail. Pulled in, the whole bar - its bright root included
    * - is in the water right next to the island, where the eye already is. */
-  const EQ_MAX = 2.6;                                   // tiles of reach, at full scale
+  /* And then given a floor and a ceiling in tiles, on request: never under 1.5, never over 4.5.
+   *
+   * Lengths used to fall out of the standing wave times the volume, which let a band sink to
+   * nothing - a bare stretch of coast, which reads as that side of the island not listening -
+   * and the boost then had no fixed top. Now the wave and the music only decide WHERE between
+   * the two a bar sits. */
+  const EQ_MIN = 1.5;                                   // tiles: the shortest any bar gets
+  const EQ_MAX = 4.5;                                   // tiles: the longest, loud and on a crest
   const EQ_SUB = 4;                                     // blocks per tile, outward
   // Half of what it was again - 0.15 and a 0.3 cap - at the user's request after a real round.
   // Half again on both, with the reach: at the old alpha a bar seven tiles long faded to nothing
@@ -2141,12 +2148,6 @@ export function createRenderer(canvas, world) {
   const EQ_SHADES = 24;
   const EQ_COLOURS = Array.from({ length: EQ_SHADES }, (_, k) =>
     `hsl(${(205 - k * 2.3) | 0} 55% ${(54 + k * 0.7) | 0}%)`);  // deep blue bass to aqua treble
-  /* Well over half again what the standing wave asks for, at every volume. See paintCoastEq.
-   *
-   * This started at 1.33 - "a third more intense" - and went up with the rest of the sea when the
-   * flow streaks came out. The coast is now the loudest thing in the water, which is the right
-   * thing for it to be: it is the only part of the sea that is actually listening. */
-  const EQ_VU_BOOST = 1.75;
   // Below this the coast is dark. Five percent on the slider is "effectively off", and a coast
   // glowing for music nobody can hear reads as a fault rather than as atmosphere.
   const EQ_MIN_VOL = 0.05;
@@ -2711,8 +2712,8 @@ export function createRenderer(canvas, world) {
    * World-pixel resolution, because these are blocks of glow at four percent alpha and nobody
    * can see their edges soften when the board is zoomed. */
   const EQ_REPAINT_MS = 83;
-  // Room for the longest bar there can be - full reach times the boost - or the loudest are clipped.
-  const EQ_PAD = Math.ceil(EQ_MAX * EQ_VU_BOOST) + 1;
+  // Room for the longest bar there can be, or the loudest are clipped.
+  const EQ_PAD = Math.ceil(EQ_MAX) + 1;
   let eqLayer = null, eqLayerCtx = null, eqLayerFor = null, eqAge = Infinity;
 
   function drawCoastEq(dtMs) {
@@ -2751,20 +2752,22 @@ export function createRenderer(canvas, world) {
      * volume comes from the caller of setSound for exactly this. The layer is already cleared
      * above, so returning here leaves the coast dark.
      *
-     * Then the size. Half the height is a floor and the other half is the music: nothing playing
-     * is half height, a loud mix is full height, and it never drops below half whatever the mix
-     * does - the standing wave is scenery, and scenery should not stop when the track does.
-     * EQ_VU_BOOST lifts the whole range by a third, volume-independent, because at the old
-     * amplitude the bars were lost in the shallows they rise out of.
+     * Then the size, always between EQ_MIN and EQ_MAX tiles. The standing wave says where in that
+     * range a band sits, and the music how much of the range is open: with nothing playing a
+     * crest reaches half way, on a loud mix all the way. The floor holds whatever the mix does -
+     * the standing wave is scenery, and scenery should not stop when the track does.
      */
     if ((sound.vol ?? 0) < EQ_MIN_VOL) return;
-    const loud = (0.5 + 0.5 * Math.max(0, Math.min(1, mood.level))) * EQ_VU_BOOST;
+    // How much of the range between EQ_MIN and EQ_MAX the music opens up: half of it with nothing
+    // playing, all of it on a loud mix. The wave picks where in that a band is.
+    const loud = 0.5 + 0.5 * Math.max(0, Math.min(1, mood.level));
     for (let b = 0; b < n; b++) {
       const p = b / n;
       const w = Math.sin(eqT * 0.21 + p * 6.1)
         + Math.sin(eqT * 0.13 - p * 9.7) * 0.7
         + Math.sin(eqT * 0.072 + p * 3.3) * 0.5;
-      eqLen[b] = Math.max(0, w / 2.2 + 0.52) * EQ_MAX * loud;
+      const crest = Math.max(0, Math.min(1, (w + 2.2) / 4.4));       // 0 trough .. 1 crest
+      eqLen[b] = EQ_MIN + (EQ_MAX - EQ_MIN) * crest * loud;
     }
     // One gentle blur across neighbouring bands, so no band stands up on its own like a post.
     let prev = eqLen[0];
