@@ -4525,8 +4525,10 @@ export function createRenderer(canvas, world) {
         b.ph += (dtMs / 1000) * (2.2 + 5 * near);
         const pulse = 0.82 + 0.18 * Math.sin(b.ph);
         const sound = 1 + mood.beat * 0.3;
-        const mix = (far, close) => Math.round(far + (close - far) * near * near);
-        const colour = `rgb(${mix(143, 255)},${mix(196, 92)},${mix(255, 74)})`;
+        /* One colour for everybody else: maroon. Distance still drives brightness, length and
+         * pulse, but not hue - a blue-to-red scale on the frame read as players' colours, and
+         * "that is somebody else" is the one thing a blip has to say. */
+        const colour = 'rgb(178,34,58)';
         const half = ((RIM_BLIP_PX / 2) / zoom) * (1 + 0.3 * near);
         const peak = Math.min(0.9, (0.42 + 0.38 * near) * pulse * sound) * b.vis;
         ctx.lineWidth = bw;
@@ -4534,7 +4536,7 @@ export function createRenderer(canvas, world) {
         // The hot thread: a narrower, paler line down the middle, which is what keeps the blip
         // legible over bright water, where a coloured glow on its own washes out.
         ctx.lineWidth = bw * 0.4;
-        slither(b.at, half * 0.6, peak * 0.7, `rgb(${mix(220, 255)},${mix(236, 200)},255)`, 10);
+        slither(b.at, half * 0.6, peak * 0.7, 'rgb(240,120,132)', 10);
       }
       ctx.lineWidth = bw;
     }
