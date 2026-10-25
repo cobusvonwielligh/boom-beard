@@ -3626,6 +3626,11 @@ body.intermission #dead {
   display: grid;
   place-items: center;
   z-index: 10;
+  /* The card is as tall as its contents and the title hangs half out of the top of it, so on a
+     short window the whole thing can reach past the edge. Scrolling rather than clipping: a
+     laptop at 1366x768 can still get to PLAY, and nothing is ever cut off. */
+  overflow-y: auto;
+  padding: 14px 0;
   /* Deep maroon at the top, not violet: the landing page reads in the mascot's gold and bandana
      red rather than purple. Dark enough to stay a backdrop. */
   background: radial-gradient(120% 90% at 50% 0%, #2a1018 0%, #0d1117 60%);
@@ -4150,8 +4155,15 @@ label {
  * anybody parsing the sentence, and it lets the left column stay the same width no matter how
  * many keys a row names. The right column is a plain description at body size, because this is
  * the one block on the page somebody actually reads rather than scans. */
+/* Narrower than the card, and centred in it.
+ *
+ * Full width put the keys hard against the left edge and the action hard against the right with
+ * a hand's width of nothing between them, which is a long way for the eye to carry one fact. At
+ * 440px the pair reads as a pair. Everything in the block - the top rule, the heading, every row
+ * rule - shares that width, so the lines all start and stop together. */
 .keys {
-  margin: 24px 0 0;
+  width: min(440px, 100%);
+  margin: 24px auto 0;
   padding: 20px 0 0;
   border-top: 1px solid #ffffff14;
 }
@@ -4184,13 +4196,20 @@ label {
   margin: 0;
   display: grid;
   grid-template-columns: max-content 1fr;
-  gap: 0 20px;
+  /* No column gap at all. A gap puts a hole in the middle of every rule, which is why the line
+     under CONTROLS ran the full width and the line under each row did not meet it - the breaks
+     read as the table being broken. The separation between the keys and the action is padding
+     INSIDE the cells instead, so the rules are continuous from edge to edge. */
+  gap: 0;
   align-items: center;
 }
 .keys dt,
 .keys dd {
   padding: 6px 0;
   border-bottom: 1px solid #ffffff12;
+}
+.keys dt {
+  padding-right: 14px;
 }
 /* The last row closes the table rather than leaving a line hanging under it. */
 .keys dl > dt:nth-last-of-type(1),
@@ -4681,5 +4700,53 @@ kbd.wide {
   #pwGroup,
   #pw.invalid {
     animation: none;
+  }
+}
+
+
+/* The landing page on a screen that is not very tall.
+ *
+ * Everything that makes the card tall is one of three numbers: the title's scale, the padding the
+ * lifted title needs above it, and the height of a row in the controls table. A 1080p window with
+ * browser chrome is about 950 usable pixels and the full-size card wants more than that, so the
+ * three come down together rather than the card being allowed to run off the top.
+ *
+ * Height queries, not width: a wide short window is the case that breaks, and a narrow tall one
+ * is fine at full size. */
+@media (max-height: 1000px) {
+  :root {
+    --titleScale: 1.45;
+  }
+  #menuWrap > .card {
+    padding-bottom: 16px;
+  }
+  .keys {
+    margin-top: 16px;
+    padding-top: 14px;
+  }
+  .keys dt,
+  .keys dd {
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+}
+@media (max-height: 850px) {
+  :root {
+    --titleScale: 1.2;
+  }
+  #menuWrap > .card > .sub {
+    margin: 4px 0 10px;
+  }
+  .keys dl {
+    font-size: 13px;
+  }
+  .keys dt,
+  .keys dd {
+    padding-top: 3px;
+    padding-bottom: 3px;
+  }
+  #menuWrap #play {
+    margin-top: 8px;
+    padding: 9px;
   }
 }
