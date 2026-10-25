@@ -327,7 +327,10 @@ export function createRenderer(canvas, world) {
    * lasted as long as the fire would read as a coloured filter laid over the board, and worse,
    * it would make the lethal window look longer than it is - the one thing the fire's own
    * drawing is responsible for saying. */
-  const BLAST_LIGHT_PX = TILE_PX * 3.6;
+  // Four and a half tiles. A blast lighting less than its own reach is a blast that looks like it
+  // is lighting a decal of itself; past four it starts carrying down a corridor, which is where
+  // the light stops being decoration and starts being information.
+  const BLAST_LIGHT_PX = TILE_PX * 4.6;
   // How much of the finished light layer reaches the board. One number for a whole blast now,
   // not per tile, because the pools are merged before they get here.
   const BLAST_LIGHT_ALPHA = 0.55;
@@ -349,9 +352,12 @@ export function createRenderer(canvas, world) {
     if (hit) return hit;
     const h = key >= 0 ? fireTones(key).hue : 33;
     const g = ctx.createRadialGradient(0, 0, TILE_PX * 0.1, 0, 0, BLAST_LIGHT_PX);
-    g.addColorStop(0, `hsla(${h} 90% 82% / 0.95)`);
-    g.addColorStop(0.3, `hsla(${h} 100% 62% / 0.5)`);
-    g.addColorStop(0.65, `hsla(${h} 85% 42% / 0.2)`);
+    /* Softer than the flame: light that has crossed a room has lost its colour on the way, and
+     * the pool is three times the size of the fire that threw it - the same saturation over that
+     * area reads as a coloured lamp rather than as firelight with a hint of whose it is. */
+    g.addColorStop(0, `hsla(${h} 72% 84% / 0.95)`);
+    g.addColorStop(0.28, `hsla(${h} 88% 64% / 0.52)`);
+    g.addColorStop(0.62, `hsla(${h} 78% 44% / 0.24)`);
     g.addColorStop(1, 'rgba(0,0,0,0)');
     blastLights.set(key, g);
     return g;
@@ -3868,7 +3874,11 @@ export function createRenderer(canvas, world) {
         const age = Math.min(1, 1 - Math.max(0, (f.until - tickNow) / FIRE_TICKS));
         // Two frames up, then down. Slower than the flames, so the walls are still warm as the
         // fire thins out rather than going dark under it.
-        const k = age < 0.07 ? age / 0.07 : Math.max(0, 1 - (age - 0.07) / 0.69);
+        /* A fifth slower again on the way down, and only the LIGHT - the flames keep their own
+         * timing. The walls holding the glow a beat after the fire has started to thin is what
+         * firelight actually does, and it is also the half of the effect you see with your
+         * peripheral vision rather than by looking at it. */
+        const k = age < 0.07 ? age / 0.07 : Math.max(0, 1 - (age - 0.07) / 0.83);
         if (k <= 0) continue;
         // Board coordinates for the geometry, screen for where the finished lamp lands.
         const cx = (f.tx + 0.5) * TILE_PX, cy = (f.ty + 0.5) * TILE_PX;
@@ -3944,12 +3954,16 @@ export function createRenderer(canvas, world) {
              * does not. This is the part that makes a blast round a corner look like a blast
              * round a corner instead of a sticker of one. */
             const dist = Math.hypot(ax + TILE_PX / 2, ay + TILE_PX / 2);
-            const bounce = Math.max(0, 1 - dist / R) * k;
+            // Falls off with the square root of the distance rather than linearly, so a wall four
+            // tiles down a corridor still catches something - a linear falloff put all of the
+            // bounce on the two tiles beside the blast and nothing past them, which is the
+            // opposite of what a corridor does with light.
+            const bounce = Math.max(0, 1 - Math.sqrt(dist / R)) * k;
             if (bounce > 0.02) {
               mc.globalCompositeOperation = 'lighter';
-              mc.globalAlpha = Math.min(0.5, bounce * 0.55);
-              mc.strokeStyle = 'rgba(255,182,96,0.9)';
-              mc.lineWidth = 3;
+              mc.globalAlpha = Math.min(0.72, bounce * 0.95);
+              mc.strokeStyle = 'rgba(255,190,110,0.95)';
+              mc.lineWidth = 3.6;
               mc.beginPath();
               mc.moveTo(p0[0], p0[1]);
               mc.lineTo(p1[0], p1[1]);
