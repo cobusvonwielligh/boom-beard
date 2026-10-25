@@ -615,7 +615,7 @@ export const SHIELD_GRACE_TICKS = 18;
  * saved and never a top-up. A hit opens the same grace a shield does, so a blast a moment later
  * cannot finish you - but two blasts crossing on you in the same instant are two hits (see
  * SHIELD_GRACE_TICKS). No regeneration: half stays half until you die, which is what makes "he
- * is smoking" worth chasing. See killInFire in sim/round.js. */
+ * is a ghost" worth chasing. See killInFire in sim/round.js. */
 export const MAX_HP = 2;
 
 /* Password length, shared so the hint text and the rule cannot drift apart.

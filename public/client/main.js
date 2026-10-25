@@ -400,6 +400,7 @@ const net = createNet({
         requestAnimationFrame(loop);
       }
       renderer?.resize();             // the canvas was behind the menu; make sure it measured right
+      if (m.you >= 0) scheduleArrival();
     }
   },
   onSnap: snap => {
@@ -482,7 +483,7 @@ const net = createNet({
         }
 
         /* Half a life gone. Loud enough on you that you know, without looking, that the next
-         * one is the last; quiet for everybody else, because the scorch on the sprite is what
+         * one is the last; quiet for everybody else, because the fading on the sprite is what
          * tells them, and it stays. See MAX_HP. */
         case 'hurt': {
           const p = world.players[e.i];
@@ -524,10 +525,12 @@ const net = createNet({
           // Only your own. Sixteen players respawning at ten seconds apiece meant something was
           // ballooning across the board every few seconds, which buried the thing the effect is
           // for - finding YOURSELF. Everyone else still gets the panned arrival sound.
-          if (e.i === world.you) world.markSpawn(e.i);
+          // Except in the first seconds after joining or a new round: then the screen is still
+          // coming up and the effect is missed, so scheduleArrival plays it three seconds in.
+          if (e.i === world.you && !arrivalPending()) world.markSpawn(e.i);
           // Panned and attenuated by where it happened, so the sound alone tells you which side
           // of you somebody just appeared on. Your own is centred, because you are not elsewhere.
-          if (e.i === world.you) { sfx.play('ownSpawn'); quips.spawned(); }
+          if (e.i === world.you) { if (!arrivalPending()) sfx.play('ownSpawn'); quips.spawned(); }
           else sfx.playAtUnits('spawn', e.x, e.y, { theirs: true });
           break;
 
@@ -1128,6 +1131,28 @@ function fuseTicks() {
  * Keyed off input rather than off movement: standing still behind a wall on purpose is being
  * idle in exactly the sense that matters, and a player held in place by a bomb is not.
  */
+/* Where you are, three seconds after you arrive.
+ *
+ * Joining - or a new round - puts you on the board while the menu is still fading out and your
+ * eyes are still on the card you clicked, so the arrival effect played to nobody. It now waits
+ * three seconds, and the instant one is held back in that window (see the `spawn` case). A
+ * respawn later in the round still marks you the moment you land: that is when you are looking.
+ */
+const ARRIVE_DELAY_MS = 3000;
+let arriveTimer = 0, arrivedAt = -Infinity;
+const arrivalPending = () => performance.now() - arrivedAt < ARRIVE_DELAY_MS;
+function scheduleArrival() {
+  clearTimeout(arriveTimer);
+  arrivedAt = performance.now();
+  arriveTimer = setTimeout(() => {
+    const me = world.me();
+    if (!me || !me.alive || observing) return;
+    world.markSpawn(world.you);
+    sfx.play('ownSpawn');
+    lastActivityAt = performance.now();
+  }, ARRIVE_DELAY_MS);
+}
+
 const IDLE_MARK_MS = 15_000;
 let lastActivityAt = 0;
 

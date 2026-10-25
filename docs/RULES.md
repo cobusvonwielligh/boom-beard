@@ -326,9 +326,11 @@ Fire hurts you unless you are Invulnerable. **Two hits kill.**
 - **Anything after that tick is shrugged off** for a **grace window of 18 ticks (0.6 s)**. A blast
   arriving a moment later cannot finish you, and the grace outlasts a blast's lethal window, so no
   explosion can come back for more.
-- **How you can tell:** at half health a pirate is **charred from the boots to the belt and
-  smoking** - half of him burned, so half of him left. The char sweeps up on the hit with a flare.
-  Your own mascot in the corner smoulders too. It is on the sprite, so it reads on everybody.
+- **How you can tell:** whole, a pirate is solid and stands in a soft glow of their own colour.
+  At half health they are **a quarter opaque** inside a crisp outline, the glow almost out, with
+  **a little dust** coming off them; the hit itself is a hard flicker. It is on the sprite, so
+  it reads on everybody. For you there is also the **gold heart** in the bar - whole and shining,
+  half and dull, or an empty socket while you are down - and the mascot in the corner smoulders.
 - **Death** drops your stats to the starting values (1 bomb, radius 1, 0 boots) and clears all
   statuses.
 - On death you drop **up to 3 perks** on nearby free tiles, so a good kill is rewarded.

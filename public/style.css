@@ -1581,8 +1581,8 @@ body.dead #rank {
 }
 
 /* ─── half health ─────────────────────────────────────────────────────────────
- * The same story as dead, told half way. On the board your pirate is charred to the waist and
- * smoking (see drawScorch in render.js); up here the mascot is scorched - browned, darkened and
+ * The same story as dead, told half way. On the board your pirate is a quarter opaque with dust
+ * coming off him (see drawOne in render.js); up here the mascot is scorched - browned, darkened and
  * smouldering with a slow ember glow - so the corner of your eye knows "one more and I am out"
  * without a bar to read. Only two states exist, so there is no meter: it is on or it is off. */
 body.hurt:not(.dead) #avatar {

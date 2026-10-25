@@ -4368,6 +4368,83 @@ export function createRenderer(canvas, world) {
     c.globalAlpha = 1;
   }
 
+  /* ─── arriving: "you are HERE" ───
+   *
+   * The pop and the shockwave below say "somebody arrived". These three say "and it is you",
+   * and only ever on your own pirate, for ARRIVE_FX_MS from the moment the arrival is marked:
+   *
+   *   the beam      a column of your colour dropping onto the spot from the top of the board,
+   *                 so the eye is pulled DOWN to you from wherever it was
+   *   the arrows    four chevrons closing in from three tiles out, the old radar's sightlines
+   *                 folded into one gesture: everything points at you
+   *   the tag       a gold YOU rising off your head and fading - the one word that needs no colour
+   *                 matching at all
+   *
+   * Called twice per frame: `under` for the beam, before the sprite; then the rest over it. */
+  const ARRIVE_FX_MS = 1900;
+  function drawArrival(c, p, cx, cy, under) {
+    if (p.spawnAt !== undefined && p.spawnAt !== p.fxFor) { p.fxFor = p.spawnAt; p.fxAt = performance.now(); }
+    if (p.fxAt === undefined) return;
+    const ms = performance.now() - p.fxAt;
+    if (ms > ARRIVE_FX_MS) return;
+    const k = playerShades(p.i);
+    const t = ms / ARRIVE_FX_MS;
+    c.save();
+    if (under) {
+      // The beam: full height of the board above you, brightest in the first third.
+      const a = Math.max(0, 1 - t * 1.6);
+      if (a > 0) {
+        const top = cy - view.h / Math.max(0.1, view.zoom);
+        const w = TILE_PX * (0.9 - 0.5 * t);
+        const g = c.createLinearGradient(0, top, 0, cy);
+        g.addColorStop(0, 'rgba(255,255,255,0)');
+        g.addColorStop(0.75, k.light);
+        g.addColorStop(1, '#ffffff');
+        c.globalCompositeOperation = 'lighter';
+        c.globalAlpha = 0.55 * a;
+        c.fillStyle = g;
+        c.fillRect(cx - w / 2, top, w, cy - top);
+        c.globalAlpha = 0.5 * a;
+        c.beginPath(); c.ellipse(cx, cy + 6, TILE_PX * 0.9, TILE_PX * 0.32, 0, 0, 7); c.fill();
+      }
+    } else {
+      // The arrows: in fast, then hold, then fade.
+      const inT = Math.min(1, ms / 520), ease = 1 - (1 - inT) ** 3;
+      const fade = ms < 1100 ? 1 : 1 - (ms - 1100) / (ARRIVE_FX_MS - 1100);
+      const dist = TILE_PX * (3.2 - 2.1 * ease) + Math.sin(ms / 90) * 1.5 * ease;
+      c.globalAlpha = Math.max(0, fade);
+      c.fillStyle = k.light;
+      c.strokeStyle = '#0b0f15';
+      c.lineWidth = 1.5;
+      c.lineJoin = 'round';
+      for (const [ax, ay] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
+        // (ax, ay) is the way the arrow points: in, towards you.
+        const x = cx - ax * dist, y = cy - ay * dist, s = 7;
+        c.beginPath();
+        c.moveTo(x + ax * s, y + ay * s);
+        c.lineTo(x - ay * s * 0.9 - ax * s * 0.4, y + ax * s * 0.9 - ay * s * 0.4);
+        c.lineTo(x + ay * s * 0.9 - ax * s * 0.4, y - ax * s * 0.9 - ay * s * 0.4);
+        c.closePath();
+        c.stroke();
+        c.fill();
+      }
+      // The tag: rises 14 px over its life, in from nothing, out over the last third.
+      const ta = ms < 250 ? ms / 250 : t > 0.66 ? (1 - t) / 0.34 : 1;
+      c.globalAlpha = Math.max(0, ta);
+      c.font = 'bold 11px ui-monospace, monospace';
+      c.textAlign = 'center';
+      c.textBaseline = 'bottom';
+      const ty = cy - TILE_PX * 0.95 - 8 - t * 14;
+      c.lineWidth = 3;
+      c.strokeStyle = '#0b0f15';
+      c.strokeText('YOU', cx, ty);
+      c.fillStyle = PALETTE.gold;
+      c.fillText('YOU', cx, ty);
+    }
+    c.restore();
+    c.globalAlpha = 1;
+  }
+
   /** A shockwave under an arriving player, in their own colour, so it says WHO as well as WHERE. */
   function drawSpawnRing(c, cx, cy, pop, i) {
     const t = (pop - 1) / (SPAWN_POP_SCALE - 1);     // 1 at the moment of arrival, 0 when settled
@@ -4610,100 +4687,69 @@ export function createRenderer(canvas, world) {
   }
 
   /** The outline, at (x, y) in the same space and size the sprite is about to be drawn in. */
-  function drawEdge(c, sprite, x, y, isMe) {
+  function drawEdge(c, sprite, x, y, isMe, hollow = false) {
     if (world.you < 0) return;
-    const sil = silhouette(sprite, isMe ? ALLY_EDGE : FOE_EDGE);
+    const colour = isMe ? ALLY_EDGE : FOE_EDGE;
+    if (hollow) { c.drawImage(hollowEdge(sprite, colour), x - 2, y - 2, TILE_PX + 4, TILE_PX + 4); return; }
+    const sil = silhouette(sprite, colour);
     for (const [dx, dy] of [[EDGE_PX, 0], [-EDGE_PX, 0], [0, EDGE_PX], [0, -EDGE_PX]]) {
       c.drawImage(sil, x + dx, y + dy, TILE_PX, TILE_PX);
     }
   }
 
+  /* The outline with the middle cut out, for a pirate drawn see-through.
+   *
+   * The ordinary edge is four nudged copies of a solid silhouette, and only reads as an outline
+   * because the opaque sprite on top covers everything but the rim. A half-health pirate is drawn
+   * a quarter opaque, the copies showed straight through, and he came out a solid maroon blob. So
+   * this bakes the same four copies at four times the resolution, punches the sprite's own shape
+   * out of the middle, and caches the ring per sprite and colour. Two pixels of margin either
+   * side so the nudge is not cropped. */
+  const HOLLOW_SCALE = 4;
+  const hollows = new Map();          // sprite canvas -> { [colour]: canvas }
+  function hollowEdge(sprite, colour) {
+    let set = hollows.get(sprite);
+    if (!set) hollows.set(sprite, set = {});
+    if (set[colour]) return set[colour];
+    const S = HOLLOW_SCALE, size = (TILE_PX + 4) * S;
+    const el = document.createElement('canvas');
+    el.width = el.height = size;
+    const g = el.getContext('2d');
+    const sil = silhouette(sprite, colour);
+    for (const [dx, dy] of [[EDGE_PX, 0], [-EDGE_PX, 0], [0, EDGE_PX], [0, -EDGE_PX]]) {
+      g.drawImage(sil, (2 + dx) * S, (2 + dy) * S, TILE_PX * S, TILE_PX * S);
+    }
+    g.globalCompositeOperation = 'destination-out';
+    g.drawImage(sprite, 2 * S, 2 * S, TILE_PX * S, TILE_PX * S);
+    return (set[colour] = el);
+  }
+
   /* ─── half health, on the body ───
    *
    * Only two states exist (see MAX_HP), so the indicator is not a bar - a bar for two states is a
-   * light switch drawn as a gauge. It is the pirate himself: at half health the LOWER HALF of him
-   * is charred. The picture is the number - half of him is burned, so he has half left - and
-   * because it is on the sprite it reads on every player at once, in the crowd, without anyone
-   * looking anywhere but at the fight. Smoke curls off his head and a few embers glow along the
-   * burn line, so a scorched pirate is visible from across the board even when he stands still.
-   *
-   * The hit itself is the char sweeping UP from the boots to the waist in a third of a second,
-   * with a flare along the edge as it goes. After that it holds, until the next hit ends him or a
-   * respawn makes him whole.
+   * light switch drawn as a gauge. It is the pirate himself: at half health he is mostly see-
+   * through (HALF_HP_ALPHA) with his outline kept crisp (HALF_HP_EDGE), and a little dust drifts
+   * off him - knocked about, not burned. See drawOne.
    */
-  /* Multiplied, not painted over: the coat is how sixteen players tell each other apart, so the
-   * char darkens and browns it while its own hue still shows through. A flat black overlay took
-   * the bottom half of the colour away, which is the one thing the sprite must never lose. */
-  const SCORCH = '#94735b';
-  const SCORCH_EDGE = 'rgba(16,8,3,0.85)';
-  const SCORCH_LINE = 15.5;             // tile pixels from the top: the belt, half way down him
-  const SCORCH_FOOT = 26;               // where the sweep starts, at the boots
-  const SCORCH_SWEEP_MS = 340;
+  const HALF_HP_ALPHA = 0.25;           // a quarter opaque: half health, half again more see-through
+  const HALF_HP_EDGE = 0.65;            // the outline stays findable while the body fades
   const HURT_FLICKER_MS = 520;          // the lamp-failing flicker when half a life goes
   const hurtAt = new Map();             // seat -> performance.now() of the hit
 
-  function drawScorch(c, sprite, x, y, seat) {
-    const since = performance.now() - (hurtAt.get(seat) ?? -1e9);
-    const k = Math.min(1, since / SCORCH_SWEEP_MS);
-    const ease = 1 - (1 - k) ** 3;
-    const line = SCORCH_FOOT - (SCORCH_FOOT - SCORCH_LINE) * ease;
+  /** A few specks of sandy dust shaken off a half-health pirate, falling and fading on a loop. */
+  function drawHurtDust(c, cx, cy, seat) {
     c.save();
-    c.beginPath();
-    c.rect(x - 2, y + line, TILE_PX + 4, TILE_PX - line + 2);
-    c.clip();
-    c.globalCompositeOperation = 'multiply';
-    c.drawImage(silhouette(sprite, SCORCH), x, y, TILE_PX, TILE_PX);
-    c.restore();
-    // The burn line itself: a ragged dark edge, so it reads as burned rather than as shaded.
-    c.save();
-    c.beginPath();
-    for (let s = 0; s < 8; s++) {
-      const jag = ((s * 7 + seat * 3) % 5) * 0.35;
-      c.rect(x + 4 + s * 3, y + line - 0.6 + jag, 3, 1.4);
-    }
-    c.clip();
-    c.drawImage(silhouette(sprite, SCORCH_EDGE), x, y, TILE_PX, TILE_PX);
-    c.restore();
-    // The burning edge: a flare while it sweeps, then two embers that breathe.
-    c.save();
-    c.globalCompositeOperation = 'lighter';
-    if (k < 1 || since < 700) {
-      const flare = k < 1 ? 1 : 1 - (since - SCORCH_SWEEP_MS) / (700 - SCORCH_SWEEP_MS);
-      c.globalAlpha = 0.85 * flare;
-      c.fillStyle = '#ff8a3a';
-      c.fillRect(x + 8, y + line - 1, 16, 2);
-      c.globalAlpha = 0.35 * flare;
-      c.fillRect(x + 6, y + line - 3, 20, 6);
-    }
-    for (let e = 0; e < 2; e++) {
-      const glow = 0.5 + 0.5 * Math.sin(seaT * (5 + e * 2.3) + seat * 1.7 + e * 2);
-      c.globalAlpha = 0.35 + 0.55 * glow;
-      c.fillStyle = e ? '#ffb347' : '#ff6a2a';
-      c.fillRect(x + 11 + e * 7, y + line - 0.5, 1.5, 1.5);
-    }
-    c.restore();
-  }
-
-  /** Smoke off a scorched pirate's head, in world space so it rises straight up whatever he does. */
-  // Not `drawSmoke`: that name is the blast smoke's, further up, and a second function
-  // declaration silently replaced it - every frame then crashed calling the wrong one.
-  function drawHurtSmoke(c, cx, top, seat) {
-    c.save();
-    /* Two-tone puffs - a dark body with a pale cap offset toward the light - because the board
-     * is both pale sand and dark stone, and a single grey vanishes into one or the other. */
-    for (let n = 0; n < 4; n++) {
-      const t = (seaT * 0.5 + n / 4 + seat * 0.13) % 1;
-      const a = 0.6 * (1 - t) * Math.min(1, t * 6);
-      if (a < 0.02) continue;
-      const sx = cx + Math.sin(t * 5 + n * 2 + seat) * (1.5 + t * 3);
-      const sy = top - 2 - t * 18;
-      const r = 2.2 + t * 4.4;
-      c.globalAlpha = a * 0.75;
-      c.fillStyle = '#3c3f45';
-      c.beginPath(); c.arc(sx, sy, r, 0, 7); c.fill();
-      c.globalAlpha = a * 0.6;
-      c.fillStyle = '#c9ccd2';
-      c.beginPath(); c.arc(sx - r * 0.25, sy - r * 0.25, r * 0.62, 0, 7); c.fill();
+    for (let n = 0; n < 6; n++) {
+      const t = (seaT * 0.6 + n / 6 + seat * 0.17) % 1;
+      const a = 0.9 * Math.min(1, t * 5) * (1 - t);
+      if (a < 0.03) continue;
+      const side = ((n * 7 + seat * 3) % 5) / 4 - 0.5;            // -0.5 .. 0.5 across the body
+      const x = cx + side * 14 + Math.sin(t * 6 + n) * 1.5;
+      const y = cy - 6 + t * 14;                                   // drifts down off him
+      c.globalAlpha = a;
+      c.fillStyle = n % 2 ? '#d8c39a' : '#b39b72';
+      const d = 1.8 + (n % 3) * 0.6;
+      c.fillRect(x - d / 2, y - d / 2, d, d);
     }
     c.restore();
   }
@@ -4766,6 +4812,7 @@ export function createRenderer(canvas, world) {
       } else p.spawnAt = undefined;
     }
 
+    if (isMe) drawArrival(c, p, px + TILE_PX / 2, py + TILE_PX / 2, true);
     if (pop > 1) drawSpawnRing(c, px + TILE_PX / 2, py + TILE_PX / 2, pop, p.i);
 
     // Exhausted: a warm pulse on the ground under them. Under, not over - it says "slow" without
@@ -4784,20 +4831,24 @@ export function createRenderer(canvas, world) {
 
     const sx = (small ? 0.55 : 1) * pop * (1 - pant * 0.5);
     const sy = (small ? 0.55 : 1) * pop * (flipped ? -1 : 1) * (1 + pant);
-    const scorched = p.hp === 1 && pop < 1.5;
+    const half = p.hp === 1 && pop < 1.5;
 
     /* Health is how SOLID they are, and how brightly they burn.
      *
      * Whole: fully opaque, standing in a soft glow of their own colour that breathes. Half: the
-     * pirate is half there - drawn at half opacity - and the glow has nearly gone out. The hit
-     * itself is a lamp failing: a few hard flickers for half a second, then it settles at half.
-     * Opacity is the one property that reads on every pirate at once, at any zoom, without
-     * looking for anything - a crowd where two of them are ghosts tells you who to chase. */
+     * pirate is mostly gone - a quarter opaque (HALF_HP_ALPHA), the glow nearly out, and a little
+     * dust coming off them. The hit itself is a lamp failing: hard flickers for half a second,
+     * then it settles. Opacity reads on every pirate at once, at any zoom, without looking for
+     * anything - a crowd where two of them are ghosts tells you who to chase.
+     *
+     * The friend/foe edge is kept stronger than the body (HALF_HP_EDGE), so a half-health pirate
+     * is a faint figure inside a crisp outline rather than something you can lose on the sand.
+     * The charred-to-the-waist look this replaced was taken out on request: it read as grey. */
     const since = performance.now() - (hurtAt.get(p.i) ?? -1e9);
-    let life = scorched ? 0.5 : 1;
-    if (scorched && since < HURT_FLICKER_MS) life = ((since / 45) | 0) % 2 ? 0.2 : 0.95;
+    let life = half ? HALF_HP_ALPHA : 1;
+    if (half && since < HURT_FLICKER_MS) life = ((since / 45) | 0) % 2 ? 0.1 : 0.95;
     const breathe = 0.85 + 0.15 * Math.sin(seaT * 2.2 + p.i);
-    const glowA = (scorched ? 0.12 : 0.4) * breathe * (pop < 1.5 ? 1 : 0);
+    const glowA = (half ? 0.1 : 0.4) * breathe * (pop < 1.5 ? 1 : 0);
     if (glowA > 0.01) {
       const gx = px + TILE_PX / 2, gy = py + TILE_PX / 2 + 2, gr = TILE_PX * 0.78 * Math.abs(sx);
       const g = c.createRadialGradient(gx, gy, 0, gx, gy, gr);
@@ -4811,22 +4862,25 @@ export function createRenderer(canvas, world) {
       c.beginPath(); c.arc(gx, gy, gr, 0, 7); c.fill();
       c.restore();
     }
-    c.globalAlpha *= life;
+    const base = c.globalAlpha;
+    const edgeA = base * (half ? Math.max(life, HALF_HP_EDGE) : 1);
     if (sx !== 1 || sy !== 1) {
       c.save();
       c.translate(px + TILE_PX / 2, py + TILE_PX / 2);
       c.scale(sx, sy);
-      drawEdge(c, sprite, -TILE_PX / 2, -TILE_PX / 2, isMe);
+      c.globalAlpha = edgeA;
+      drawEdge(c, sprite, -TILE_PX / 2, -TILE_PX / 2, isMe, half);
+      c.globalAlpha = base * life;
       c.drawImage(sprite, -TILE_PX / 2, -TILE_PX / 2);
-      if (scorched) drawScorch(c, sprite, -TILE_PX / 2, -TILE_PX / 2, p.i);
       c.restore();
     } else {
-      drawEdge(c, sprite, Math.round(px), Math.round(py), isMe);
+      c.globalAlpha = edgeA;
+      drawEdge(c, sprite, Math.round(px), Math.round(py), isMe, half);
+      c.globalAlpha = base * life;
       c.drawImage(sprite, Math.round(px), Math.round(py));
-      if (scorched) drawScorch(c, sprite, Math.round(px), Math.round(py), p.i);
     }
     c.globalAlpha = 1;
-    if (scorched) drawHurtSmoke(c, px + TILE_PX / 2, py + TILE_PX / 2 - 9 * Math.abs(sy), p.i);
+    if (half) drawHurtDust(c, px + TILE_PX / 2, py + TILE_PX / 2, p.i);
 
     // Not while they are still landing at twenty times their size: the rings would sit inside.
     if (pop < 1.5) drawShields(c, p, px + TILE_PX / 2, py + TILE_PX / 2);
@@ -4838,6 +4892,7 @@ export function createRenderer(canvas, world) {
     // already say which one is you; the name's job is to say what colour you are.
     const label = nameLabel(p.name, playerShades(p.i).light, !!p.isBot, p.i === world.host);
     c.drawImage(label.el, px + TILE_PX / 2 - label.w / 2, py - 3 - LABEL_BASE, label.w, LABEL_H);
+    if (isMe) drawArrival(c, p, px + TILE_PX / 2, py + TILE_PX / 2, false);
   }
 
   /* Names over heads, baked.
@@ -5470,7 +5525,7 @@ export function createRenderer(canvas, world) {
      * reported that is still saying so when you look up. See drawRadarRim.
      */
     alertRim(strength = 1) { rimAlert = Math.max(rimAlert, Math.min(1, strength)); },
-    /** Somebody just lost half their health: starts the scorch sweeping up them. See drawScorch. */
+    /** Somebody just lost half their health: starts the hit flicker. See HURT_FLICKER_MS. */
     markHurt(seat) { if (seat >= 0) hurtAt.set(seat, performance.now()); },
 
     /** Hooks for the gulls' sounds, in tiles: `onGullCry(tx, ty)` and `onGullDown(tx, ty)`. */
