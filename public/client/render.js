@@ -4532,14 +4532,20 @@ export function createRenderer(canvas, world) {
          * "that is somebody else" is the one thing a blip has to say. */
         const colour = FOE_RED;
         const half = ((RIM_BLIP_PX / 2) / zoom) * (1 + 0.3 * near);
-        const peak = Math.min(0.9, (0.42 + 0.38 * near) * pulse * sound) * b.vis;
+        /* PAINTED, not added. Everything else on the rim is additive light, and that is right
+         * for a bright colour - but maroon added at partial alpha onto a near-black band comes
+         * out as a slightly less black band, and the blips disappeared the moment they went
+         * maroon. Normal blending at a high alpha makes them the maroon they are meant to be. */
+        const peak = Math.min(1, (0.78 + 0.22 * near) * pulse * sound) * b.vis;
+        ctx.globalCompositeOperation = 'source-over';
         ctx.lineWidth = bw;
         slither(b.at, half, peak, colour, 16);
-        // The hot thread: a narrower, paler line down the middle, which is what keeps the blip
-        // legible over bright water, where a coloured glow on its own washes out.
+        // The thread: a narrower, paler line down the middle, which keeps the blip legible over
+        // bright water, where a dark red on its own would read as a gap in the frame.
         ctx.lineWidth = bw * 0.4;
-        slither(b.at, half * 0.6, peak * 0.7, 'rgb(240,120,132)', 10);
+        slither(b.at, half * 0.6, peak * 0.85, 'rgb(236,112,128)', 10);
       }
+      ctx.globalCompositeOperation = 'lighter';
       ctx.lineWidth = bw;
     }
 
