@@ -2180,16 +2180,14 @@ export function drawRock(c, tx, ty, edges) {
 
 // ─── rounded coast ────────────────────────────────────────────────────────────
 
-/* Convex outside corners use smooth arcs; concave water-side fillets remain quarter-tile steps.
- *
- * Convex outside corners are cut with antialiased arcs to match the rounded inland blocks.
- * Concave corners are filled into the water tile using a shared quarter-tile mask, which also
- * supplies the coast shape for the shallows in render.js.
+/* Both sides of the shoreline use smooth arcs. The inside-facing radius follows the larger stone
+ * chamfer; the outer coastline keeps its established radius.
  */
 export const COAST_EDGE = '#241c14';
 export const COAST_STEPS = [2, 1];          // quarters taken from each row, from the corner in
 export const COAST_Q = TILE_PX / 4;
 export const COAST_RADIUS = 8;
+export const INSIDE_COAST_RADIUS = STONE_RADIUS;
 /** The four corners: which sea-edge bits make each one, and the mirroring that maps it to top-left. */
 export const COAST_CORNERS = [
   { bits: 2 | 4, sx: 1, sy: 1 },            // top-left: up and left face the sea
@@ -2258,24 +2256,38 @@ export function carveRockCorners(c, corners) {
 }
 
 /**
- * Fill concave corners of a water tile with rock, outlined on the water side.
+ * Fill concave corners of a water tile with a smooth rock curve, outlined on the water side.
  *
  * Each fillet reaches 2px into the land tiles beside it, to paint over the straight outline they
  * drew along that side - it is inside the rock now. Drawn after every tile in the chunk, so that
  * overlap lands on top of them rather than under.
  */
 export function drawCoastFillets(c, corners) {
-  const q = COAST_Q, T = 2, S = TILE_PX, fill = cornerCells(corners);
+  const r = INSIDE_COAST_RADIUS, T = 2, S = TILE_PX;
   c.fillStyle = PALETTE.rockDark;
   for (const k of corners) {
-    const x0 = k.sx > 0 ? 0 : S - 2 * q, y0 = k.sy > 0 ? 0 : S - 2 * q;
-    c.fillRect(x0, k.sy > 0 ? -T : S, 2 * q, T);        // over the neighbour's old outline
-    c.fillRect(k.sx > 0 ? -T : S, y0, T, 2 * q);
+    const x0 = k.sx > 0 ? 0 : S - 2 * r, y0 = k.sy > 0 ? 0 : S - 2 * r;
+    c.fillRect(x0, k.sy > 0 ? -T : S, 2 * r, T);        // over the neighbour's old outline
+    c.fillRect(k.sx > 0 ? -T : S, y0, T, 2 * r);
+
+    c.save();
+    c.translate(k.sx > 0 ? 0 : S, k.sy > 0 ? 0 : S);
+    c.scale(k.sx, k.sy);
+    c.beginPath();
+    c.moveTo(0, 0);
+    c.lineTo(r, 0);
+    c.arc(r, r, r, -Math.PI / 2, -Math.PI, true);
+    c.closePath();
+    c.fillStyle = PALETTE.rock;
+    c.fill();
+
+    c.beginPath();
+    c.arc(r, r, r, -Math.PI / 2, -Math.PI, true);
+    c.strokeStyle = COAST_EDGE;
+    c.lineWidth = T;
+    c.stroke();
+    c.restore();
   }
-  // The boulders' own stone, so the fillet reads as one more lump of the pile beside it.
-  c.fillStyle = PALETTE.rock;
-  for (let i = 0; i < 16; i++) if (fill[i]) c.fillRect((i & 3) * q, (i >> 2) * q, q, q);
-  outlineCells(c, (x, y) => fill[y * 4 + x] === 1, T);
 }
 
 /**

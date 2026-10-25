@@ -27,6 +27,24 @@ test('outside-facing coastline corners use a smooth curved cut and outline', () 
   assert.doesNotMatch(carve, /clearRect/, 'the old blocky quarter-cell cut remains');
 });
 
+test('inside-facing coastline corners use a larger smooth curved fill and outline', () => {
+  const source = fs.readFileSync(new URL('../public/assets/art.js', import.meta.url), 'utf8');
+  const fill = source.slice(
+    source.indexOf('export function drawCoastFillets'),
+    source.indexOf('/**\n * Draw something'),
+  );
+  const insideRadius = source.includes('export const INSIDE_COAST_RADIUS = STONE_RADIUS;')
+    ? Number(source.match(/export const STONE_RADIUS = (\d+);/)?.[1])
+    : 0;
+  const coastRadius = Number(source.match(/export const COAST_RADIUS = (\d+);/)?.[1]);
+
+  assert.ok(insideRadius > coastRadius, 'inside-facing corners should be more chamfered');
+  assert.match(fill, /\.arc\(/, 'inside-facing rock is not filled with a smooth curve');
+  assert.match(fill, /INSIDE_COAST_RADIUS/, 'inside-facing corners lack their own radius');
+  assert.match(fill, /COAST_EDGE/, 'the smooth fill has no matching outline');
+  assert.doesNotMatch(fill, /cornerCells|fillRect\(\(i/, 'inside-facing corners still use quarter-cell steps');
+});
+
 test('interior blocks have a larger smooth cut than the coast', () => {
   const source = fs.readFileSync(new URL('../public/assets/art.js', import.meta.url), 'utf8');
   const stoneRadius = Number(source.match(/export const STONE_RADIUS = (\d+);/)?.[1]);

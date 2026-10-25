@@ -130,10 +130,10 @@ There are no jellyfish any more (removed on request in 1.0.4); the bioluminescen
 equaliser are the only things in the water that listen to the music. Every sea boulder carries
 the island's sand shelf, scaled to the rock so it always reaches past the rock's submerged base.
 
-The coast is rounded in quarter-tile steps, not smoothed: every outside corner of the rock loses a
-stepped quarter circle and every inside corner gains one (`COAST_STEPS` in `art.js`). The
-shallows are measured from the same quarter-tile mask, so the water follows the stepped rock.
-The simulation does not know: a tile is still solid or not, and only its drawing changed.
+The rock silhouette uses smooth curved cuts on outside-facing corners and matching curved fills on
+inside-facing corners. Inside curves use the larger stone radius; the shallows still follow a
+four-samples-per-tile coast mask. The simulation does not know: a tile is still solid or not, and
+only its drawing changed.
 
 What changed is how often some of it is drawn. Static or slow things are painted once into an
 offscreen canvas and blitted: the ship, the shallows bands, players' name labels, and the coastal
