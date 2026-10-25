@@ -2476,13 +2476,16 @@ export function createRenderer(canvas, world) {
    * the colour, it is that the water gets warmer as it gets shallower. */
   const SHELF_TILES = 3;
   const SHELF_TONE = '#7d6843';
+  // The thin edge hard against every coast: the interface gold (--gold). Sixty percent: at forty,
+  // gold laid over blue water came out olive, and the point is that it reads as the theme's gold.
+  const COAST_RING = '#edc24e', COAST_RING_ALPHA = 0.6;
   // The same steps again round each sea boulder: [tiles out, alpha, colour]. See drawRockShelves.
   const ROCK_SHELF_BANDS = [
     [3, 0.07, SHELF_TONE],
     [2.2, 0.1, SHELF_TONE],
     [1.6, 0.17, SHELF_TONE],
     [1.6, 0.16, PALETTE.seaMid],
-    [0.5, 0.42, PALETTE.seaLight],      // half a tile, like the island's
+    [0.25, COAST_RING_ALPHA, COAST_RING], // the gilt edge, a quarter tile, like the island's
   ];
   let shallowsCanvas = null, shallowsFor = null;
   function shallowsLayer() {
@@ -2531,9 +2534,10 @@ export function createRenderer(canvas, world) {
         if (x < MW + P * Q && !land(x, y)) {
           for (const [dx, dy, d2] of offsets) {
             if (!land(x + dx, y + dy)) continue;
-            // The pale band hard against the coast is half a tile, not a whole one: the light
-            // blue ring round the island was twice as thick as it needed to be to read.
-            band = d2 <= (Q / 2) * (Q / 2) ? 1
+            // The pale band hard against the coast is a quarter of a tile - one quarter-tile
+            // cell - where it was a whole one, and it is gold now (COAST_RING): a thin gilt edge
+            // round the island in the interface's own colour rather than a wide light-blue ring.
+            band = d2 <= (Q / 4) * (Q / 4) ? 1
               : d2 <= (1.6 * Q) * (1.6 * Q) ? 2
                 : d2 <= (2.2 * Q) * (2.2 * Q) ? 3 : 4;
             break;
@@ -2562,7 +2566,7 @@ export function createRenderer(canvas, world) {
     paint([...near, ...far, ...shelfIn], 0.17, SHELF_TONE);
     // The shallows themselves, over the top of it, exactly as they were.
     paint([...near, ...far], 0.16, PALETTE.seaMid);
-    paint(near, 0.42, PALETTE.seaLight);
+    paint(near, COAST_RING_ALPHA, COAST_RING);
     shallowsCanvas = el; shallowsFor = map;
     return el;
   }
