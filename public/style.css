@@ -4027,6 +4027,71 @@ h1 {
      sitting there empty. */
   margin: calc(var(--titleBase) * var(--titleScale) * -0.5) auto 0;
 }
+
+/* The generated wordmark keeps the exact title footprint the live type occupied: its width is
+   derived from the old rendered line, while the beard and bandana artwork grows upward out of
+   that box. Bottom-aligning it leaves the slogan and the rest of the card exactly where they were. */
+#titleWrap {
+  width: 100%;
+  height: calc(var(--titleBase) * var(--titleScale));
+}
+#title.titleArt {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: min(
+    calc(var(--titleBase) * var(--titleScale) * 6.6),
+    calc(100vw - 32px)
+  );
+  max-width: none;
+  margin: 0;
+  font-size: 0;
+  line-height: 0;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 8px 12px #000a) drop-shadow(0 0 28px #edc24e38);
+}
+#title.titleArt img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+#title.titleArt::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    104deg,
+    #ffffff00 42%,
+    #ffffff00 46%,
+    #fffffff0 50%,
+    #ffffff00 54%,
+    #ffffff00 58%
+  );
+  background-size: 260% 100%;
+  background-repeat: no-repeat;
+  -webkit-mask-image: url("/assets/img/title-boom-beard-bandanas-bomb.png");
+  mask-image: url("/assets/img/title-boom-beard-bandanas-bomb.png");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  mix-blend-mode: screen;
+  opacity: 0.78;
+  pointer-events: none;
+  animation: titleArtShine 7s linear infinite;
+}
+@keyframes titleArtShine {
+  from { background-position: -120% 0; }
+  to { background-position: 220% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #title.titleArt::after {
+    animation: none;
+    background-position: 42% 0;
+  }
+}
 /* Top right of the PAGE, not of the title.
    Hung off the title it had to be nudged with a -75px right offset to clear the lettering, and
    every change to the title's size moved it again. Fixed to the viewport it is simply where
