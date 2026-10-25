@@ -163,6 +163,7 @@ test('bombs in the round loop', async t => {
     const killer = spawn(st, 0, 3, 3);
     const victim = spawn(st, 1, 4, 3);
     victim.status = 0; victim.statusUntil = {};
+    victim.hp = 1;                           // already scorched: this hit is the last one (MAX_HP)
     killer.dir = DIR_R;                      // bombs go where you are looking
     tap(st, killer);
     run(st, FUSE_TICKS + 1);
@@ -357,6 +358,7 @@ test('fire stops killing before it stops being drawn', () => {
   }
   const p = createPlayer(0, 'p');
   p.alive = true;
+  p.hp = 1;                       // one hit from dead, so "lethal" means exactly that (MAX_HP)
   p.x = tileCentre(4); p.y = tileCentre(4);
   st.players[0] = p;
 

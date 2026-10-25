@@ -3,7 +3,7 @@
 
 import {
   MAX_PLAYERS, START_BOMBS, START_RADIUS, UNITS_PER_TILE, DIR_D, STATUS, STATUS_TICKS,
-  STAMINA_MAX, GULL_FIRST_TICK,
+  STAMINA_MAX, GULL_FIRST_TICK, MAX_HP,
 } from '../constants.js';
 import { buildMap, cellType, cellHp, packCell } from '../maps.js';
 import { BLOCK, BLOCK_WALKABLE } from '../constants.js';
@@ -68,6 +68,8 @@ export function createPlayer(i, name) {
     radius: START_RADIUS,
     speed: 0,          // index into SPEED_UNITS_PER_TICK
     shields: 0,
+    // Whole or half; see MAX_HP. Set whole again by every respawn.
+    hp: MAX_HP,
     /* The tick a spent shield's grace runs out. See SHIELD_GRACE_TICKS: while this is in the
      * future nothing can touch you, so one explosion - or one chain - costs exactly one shield. */
     shieldGrace: 0,
@@ -161,7 +163,7 @@ export function hashState(state) {
     if (!p) { mix(0xdeadbeef); continue; }
     mix(p.i); mix(p.x); mix(p.y); mix(p.dir);
     mix(p.alive ? 1 : 0); mix(p.bombs); mix(p.radius); mix(p.speed);
-    mix(p.shields); mix(p.status); mix(p.score); mix(p.kills); mix(p.deaths);
+    mix(p.shields); mix(p.status); mix(p.score); mix(p.kills); mix(p.deaths); mix(p.hp | 0);
   }
   for (const b of state.bombs) { mix(b.id); mix(b.tx); mix(b.ty); mix(b.owner); mix(b.radius); mix(b.at); }
   for (const k of state.perks) { mix(k.id); mix(k.tx); mix(k.ty); mix(k.type); }

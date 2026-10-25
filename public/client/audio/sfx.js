@@ -403,6 +403,31 @@ export function createSfx({ listener }) {
       o.start(t); o.stop(t + 0.5);
     },
 
+    /**
+     * Somebody lost half their health: a scorch, not a death. A hiss of high noise falling away
+     * - the beard catching - over a short low thump, and no pitch drop, because the descending
+     * saw is reserved for the hit that ends it. See MAX_HP.
+     */
+    hurt(c, out, t, level) {
+      const thump = voiceGain(c, out, t, { a: 0.002, d: 0.14, peak: 0.24 * level, send: 0.15 });
+      const o = c.createOscillator();
+      o.type = 'sine';
+      o.frequency.setValueAtTime(jit(150, 0.05), t);
+      o.frequency.exponentialRampToValueAtTime(70, t + 0.12);
+      o.connect(thump);
+      o.start(t); o.stop(t + 0.18);
+
+      const hg = voiceGain(c, out, t, { a: 0.004, d: 0.32, peak: 0.12 * level, send: 0.3 });
+      const n = noiseSource();
+      const bp = c.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.Q.value = 1.1;
+      bp.frequency.setValueAtTime(jit(6200, 0.06), t);
+      bp.frequency.exponentialRampToValueAtTime(2400, t + 0.32);
+      n.connect(bp); bp.connect(hg);
+      n.start(t); n.stop(t + 0.36);
+    },
+
     /** You died. Same idea, bigger, slower, and right in front of you. */
     ownDeath(c, out, t) {
       // A third quieter than it started: 0.42 to 0.336 to 0.286. It is the longest sound in the

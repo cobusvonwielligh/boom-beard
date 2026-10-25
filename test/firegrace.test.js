@@ -7,7 +7,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  FIRE_TICKS, BLOCK, HITBOX_UNITS, HITBOX_FIRE_NUM, HITBOX_FIRE_DEN,
+  FIRE_TICKS, BLOCK, HITBOX_UNITS, HITBOX_FIRE_NUM, HITBOX_FIRE_DEN, MAX_HP,
 } from '../shared/constants.js';
 import { MAPS } from '../shared/maps.js';
 import { createState, createPlayer, tileCentre, tileAt } from '../shared/sim/state.js';
@@ -42,9 +42,10 @@ test('a sliver of sprite in the fire tile is not a death', () => {
   // Past the tile edge by the sprite, short of it by the lethal box.
   const nudge = (128 - spriteHalf) + ((spriteHalf - fireHalf) >> 1);
   assert.ok(nudge > 128 - spriteHalf && nudge < 128 - fireHalf, 'test nudge is in the grace band');
-  assert.equal(hiding(nudge).alive, true, 'the grace band is not being applied');
+  assert.equal(hiding(nudge).hp, MAX_HP, 'the grace band is not being applied');
 });
 
-test('a body in the fire tile still dies', () => {
-  assert.equal(hiding(128 - fireHalf + 8).alive, false, 'the grace swallowed a real hit');
+// "Dies" is "is hit" since health arrived: a whole pirate loses half, not his life. See MAX_HP.
+test('a body in the fire tile is still hit', () => {
+  assert.ok(hiding(128 - fireHalf + 8).hp < MAX_HP, 'the grace swallowed a real hit');
 });

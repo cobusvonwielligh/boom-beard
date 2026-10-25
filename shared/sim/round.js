@@ -7,7 +7,7 @@
 import {
   IN_BOMB, SCORE, STATUS, HITBOX_UNITS,
   HITBOX_REDUCED_UNITS, START_BOMBS, START_RADIUS, RESPAWN_DELAY_TICKS,
-  FIRE_TICKS, FIRE_LETHAL_TICKS, SHIELD_GRACE_TICKS,
+  FIRE_TICKS, FIRE_LETHAL_TICKS, SHIELD_GRACE_TICKS, MAX_HP,
   HITBOX_FIRE_NUM, HITBOX_FIRE_DEN,
 } from '../constants.js';
 import { expireStatuses, has, toTile } from './state.js';
@@ -67,7 +67,8 @@ export function tick(state, inputs, { onRespawn } = {}) {
 }
 
 /**
- * Anyone standing in fire dies, unless they are invulnerable or spend a shield.
+ * Anyone standing in fire is hurt, unless they are invulnerable or spend a shield - and the
+ * second hurt is a death. See MAX_HP.
  *
  * Kill credit goes to the owner of the fire tile, which is why ordering inside `detonate` is
  * deterministic - in a chain, two players' bombs can both be burning the same square.
@@ -93,17 +94,19 @@ function killInFire(state) {
     const lethal = has(p, STATUS.DRUNK) ? cores : fresh;
     if (!lethal.length || !burns(lethal, p.x, p.y, half)) continue;
 
-    /* One shield per blast, and never two in one instant. See SHIELD_GRACE_TICKS.
+    /* Every blast that catches you costs one - a shield first, then a half of your health.
      *
      * Two mechanisms, and they answer two different questions. `hitBy` is MEMORY: it holds the
      * blasts you have already paid for, so a single explosion cannot charge you once per tick for
-     * the ten ticks it burns. `shieldGrace` is a TIMER: once a shield has absorbed something, the
-     * next six tenths of a second cannot take the next one, however many bombs arrive in it.
+     * the ten ticks it burns. `shieldGrace` is a TIMER: once something has cost you, the next six
+     * tenths of a second cannot cost you again - so a blast that reaches you a moment AFTER the
+     * first is shrugged off, and the explosion that hit you can never come back for more.
      *
-     * Without the timer a chain reaction stripped both shields in the same frame, which is the
-     * thing the second shield exists to prevent. With it, surviving a crossfire costs exactly one
-     * shield and the second is still there for the next mistake - and because the grace outlasts
-     * a blast's lethal window, the explosion that triggered it can never come back for more. */
+     * But blasts that land in the SAME instant are each paid for. Two bombs in a chain whose
+     * flames cross on you are two hits: two shields, or a shield and a half, or both halves. It
+     * used to be one shield for any number of them, which made standing in a crossfire the safest
+     * place on the board - the opposite of what a crossfire is for. Chains resolve in one tick
+     * (see detonate), so "the same instant" is exactly "this tick". */
     if (p.shieldGrace && state.tick < p.shieldGrace) continue;
     const live = new Set(fresh.map(f => f.src));
     p.hitBy = (p.hitBy || []).filter(src => live.has(src));
@@ -121,25 +124,24 @@ function killInFire(state) {
     }
     if (!newHits.length) continue;
 
-    /* The first new hit decides everything: a shield eats it, or it kills.
-     *
-     * Not a loop over every blast any more. Spending one shield opens the grace window, and the
-     * grace window is precisely the statement that nothing else lands until it closes - so
-     * charging the rest of this tick's blasts against the remaining shields would contradict it.
-     * The blasts that are being shrugged off still go into `hitBy`, or they would each be a fresh
-     * hit again the moment the grace expires, which would spend the second shield on an
-     * explosion that finished burning half a second ago.
-     */
-    const first = newHits[0];
+    /* Pay for them in order: shields, then health, then your life. The blast that takes the last
+     * of it is the one that gets the kill. Everything that reached you this tick goes into
+     * `hitBy` either way, so none of them can charge you again when the grace runs out. */
     let fatal = null;
-    if (p.shields > 0) {
-      p.shields--;
-      p.shieldGrace = state.tick + SHIELD_GRACE_TICKS;
-      for (const f of newHits) p.hitBy.push(f.src);
-      state.events.push({ e: 'shield', tick: state.tick, i: p.i, left: p.shields });
-    } else {
-      fatal = first;
+    for (const f of newHits) {
+      p.hitBy.push(f.src);
+      if (fatal) continue;
+      if (p.shields > 0) {
+        p.shields--;
+        state.events.push({ e: 'shield', tick: state.tick, i: p.i, left: p.shields });
+      } else if ((p.hp ?? MAX_HP) > 1) {
+        p.hp = (p.hp ?? MAX_HP) - 1;
+        state.events.push({ e: 'hurt', tick: state.tick, i: p.i, hp: p.hp, by: f.owner });
+      } else {
+        fatal = f;
+      }
     }
+    p.shieldGrace = state.tick + SHIELD_GRACE_TICKS;
     if (!fatal) continue;
 
     // Who gets the kill.
@@ -170,6 +172,7 @@ function killInFire(state) {
     p.radius = START_RADIUS;
     p.speed = 0;
     p.shields = 0;
+    p.hp = 0;
     p.status = 0;
     p.statusUntil = {};
     p.respawnAt = state.tick + RESPAWN_DELAY_TICKS;

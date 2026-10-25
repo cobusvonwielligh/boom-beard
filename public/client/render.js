@@ -1659,6 +1659,8 @@ export function createRenderer(canvas, world) {
   // small ones staying put is the point - the set reads as a set because they differ.
   const ROCK_GROW_LARGEST = 2 * 1.75 * 0.5;
   const ROCK_GROW_OTHERS = 1.7 * 1.5;
+  // The smallest a rock may be sized before that growth, in tiles. Tripled on request.
+  const ROCK_MIN_FULL = 0.35 * 3, ROCK_MIN_OTHERS = 0.9 * 3;
 
   function waterRocks() {
     if (rocksFor === world.map) return seaRocks;
@@ -1715,9 +1717,11 @@ export function createRenderer(canvas, world) {
       const full = i < ROCK_FULLY_VISIBLE;
       // A thin band still gets a rock; it is simply a smaller one.
       const want = TILE_PX * (2.1 + rnd() * 1.9);
+      // The floors are three times what they were (0.35 and 0.9 tiles): on a narrow band of sea
+      // they clamped the smaller rocks down to pebbles, which read as noise rather than as rock.
       const r = full
-        ? Math.max(TILE_PX * 0.35, Math.min(want, band / 2))
-        : Math.max(TILE_PX * 0.9, Math.min(want, band * 0.8));
+        ? Math.max(TILE_PX * ROCK_MIN_FULL, Math.min(want, band / 2))
+        : Math.max(TILE_PX * ROCK_MIN_OTHERS, Math.min(want, band * 0.8));
       plans.push({ side, horizontal, axis, inner, outer, full, r });
     }
     const largest = plans.reduce((a, b) => (b.r > a.r ? b : a), plans[0]);
@@ -4891,6 +4895,93 @@ export function createRenderer(canvas, world) {
     }
   }
 
+  /* ─── half health, on the body ───
+   *
+   * Only two states exist (see MAX_HP), so the indicator is not a bar - a bar for two states is a
+   * light switch drawn as a gauge. It is the pirate himself: at half health the LOWER HALF of him
+   * is charred. The picture is the number - half of him is burned, so he has half left - and
+   * because it is on the sprite it reads on every player at once, in the crowd, without anyone
+   * looking anywhere but at the fight. Smoke curls off his head and a few embers glow along the
+   * burn line, so a scorched pirate is visible from across the board even when he stands still.
+   *
+   * The hit itself is the char sweeping UP from the boots to the waist in a third of a second,
+   * with a flare along the edge as it goes. After that it holds, until the next hit ends him or a
+   * respawn makes him whole.
+   */
+  /* Multiplied, not painted over: the coat is how sixteen players tell each other apart, so the
+   * char darkens and browns it while its own hue still shows through. A flat black overlay took
+   * the bottom half of the colour away, which is the one thing the sprite must never lose. */
+  const SCORCH = '#94735b';
+  const SCORCH_EDGE = 'rgba(16,8,3,0.85)';
+  const SCORCH_LINE = 15.5;             // tile pixels from the top: the belt, half way down him
+  const SCORCH_FOOT = 26;               // where the sweep starts, at the boots
+  const SCORCH_SWEEP_MS = 340;
+  const hurtAt = new Map();             // seat -> performance.now() of the hit
+
+  function drawScorch(c, sprite, x, y, seat) {
+    const since = performance.now() - (hurtAt.get(seat) ?? -1e9);
+    const k = Math.min(1, since / SCORCH_SWEEP_MS);
+    const ease = 1 - (1 - k) ** 3;
+    const line = SCORCH_FOOT - (SCORCH_FOOT - SCORCH_LINE) * ease;
+    c.save();
+    c.beginPath();
+    c.rect(x - 2, y + line, TILE_PX + 4, TILE_PX - line + 2);
+    c.clip();
+    c.globalCompositeOperation = 'multiply';
+    c.drawImage(silhouette(sprite, SCORCH), x, y, TILE_PX, TILE_PX);
+    c.restore();
+    // The burn line itself: a ragged dark edge, so it reads as burned rather than as shaded.
+    c.save();
+    c.beginPath();
+    for (let s = 0; s < 8; s++) {
+      const jag = ((s * 7 + seat * 3) % 5) * 0.35;
+      c.rect(x + 4 + s * 3, y + line - 0.6 + jag, 3, 1.4);
+    }
+    c.clip();
+    c.drawImage(silhouette(sprite, SCORCH_EDGE), x, y, TILE_PX, TILE_PX);
+    c.restore();
+    // The burning edge: a flare while it sweeps, then two embers that breathe.
+    c.save();
+    c.globalCompositeOperation = 'lighter';
+    if (k < 1 || since < 700) {
+      const flare = k < 1 ? 1 : 1 - (since - SCORCH_SWEEP_MS) / (700 - SCORCH_SWEEP_MS);
+      c.globalAlpha = 0.85 * flare;
+      c.fillStyle = '#ff8a3a';
+      c.fillRect(x + 8, y + line - 1, 16, 2);
+      c.globalAlpha = 0.35 * flare;
+      c.fillRect(x + 6, y + line - 3, 20, 6);
+    }
+    for (let e = 0; e < 2; e++) {
+      const glow = 0.5 + 0.5 * Math.sin(seaT * (5 + e * 2.3) + seat * 1.7 + e * 2);
+      c.globalAlpha = 0.35 + 0.55 * glow;
+      c.fillStyle = e ? '#ffb347' : '#ff6a2a';
+      c.fillRect(x + 11 + e * 7, y + line - 0.5, 1.5, 1.5);
+    }
+    c.restore();
+  }
+
+  /** Smoke off a scorched pirate's head, in world space so it rises straight up whatever he does. */
+  function drawSmoke(c, cx, top, seat) {
+    c.save();
+    /* Two-tone puffs - a dark body with a pale cap offset toward the light - because the board
+     * is both pale sand and dark stone, and a single grey vanishes into one or the other. */
+    for (let n = 0; n < 4; n++) {
+      const t = (seaT * 0.5 + n / 4 + seat * 0.13) % 1;
+      const a = 0.6 * (1 - t) * Math.min(1, t * 6);
+      if (a < 0.02) continue;
+      const sx = cx + Math.sin(t * 5 + n * 2 + seat) * (1.5 + t * 3);
+      const sy = top - 2 - t * 18;
+      const r = 2.2 + t * 4.4;
+      c.globalAlpha = a * 0.75;
+      c.fillStyle = '#3c3f45';
+      c.beginPath(); c.arc(sx, sy, r, 0, 7); c.fill();
+      c.globalAlpha = a * 0.6;
+      c.fillStyle = '#c9ccd2';
+      c.beginPath(); c.arc(sx - r * 0.25, sy - r * 0.25, r * 0.62, 0, 7); c.fill();
+    }
+    c.restore();
+  }
+
   function drawOne(c, p, ox, oy, isMe) {
     if (!p.alive) return;
     const px = ox + (p.rx / UNITS_PER_TILE) * TILE_PX - TILE_PX / 2;
@@ -4967,18 +5058,22 @@ export function createRenderer(canvas, world) {
 
     const sx = (small ? 0.55 : 1) * pop * (1 - pant * 0.5);
     const sy = (small ? 0.55 : 1) * pop * (flipped ? -1 : 1) * (1 + pant);
+    const scorched = p.hp === 1 && pop < 1.5;
     if (sx !== 1 || sy !== 1) {
       c.save();
       c.translate(px + TILE_PX / 2, py + TILE_PX / 2);
       c.scale(sx, sy);
       drawEdge(c, sprite, -TILE_PX / 2, -TILE_PX / 2, isMe);
       c.drawImage(sprite, -TILE_PX / 2, -TILE_PX / 2);
+      if (scorched) drawScorch(c, sprite, -TILE_PX / 2, -TILE_PX / 2, p.i);
       c.restore();
     } else {
       drawEdge(c, sprite, Math.round(px), Math.round(py), isMe);
       c.drawImage(sprite, Math.round(px), Math.round(py));
+      if (scorched) drawScorch(c, sprite, Math.round(px), Math.round(py), p.i);
     }
     c.globalAlpha = 1;
+    if (scorched) drawSmoke(c, px + TILE_PX / 2, py + TILE_PX / 2 - 9 * Math.abs(sy), p.i);
 
     // Not while they are still landing at twenty times their size: the rings would sit inside.
     if (pop < 1.5) drawShields(c, p, px + TILE_PX / 2, py + TILE_PX / 2);
@@ -5620,6 +5715,8 @@ export function createRenderer(canvas, world) {
      * reported that is still saying so when you look up. See drawRadarRim.
      */
     alertRim(strength = 1) { rimAlert = Math.max(rimAlert, Math.min(1, strength)); },
+    /** Somebody just lost half their health: starts the scorch sweeping up them. See drawScorch. */
+    markHurt(seat) { if (seat >= 0) hurtAt.set(seat, performance.now()); },
 
     /** Hooks for the gulls' sounds, in tiles: `onGullCry(tx, ty)` and `onGullDown(tx, ty)`. */
     onGullCry: null, onGullDown: null,

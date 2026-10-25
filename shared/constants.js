@@ -590,8 +590,26 @@ export const MAX_SHIELDS = 2;
  * the next shield. Eighteen ticks, six tenths of a second - comfortably longer than a blast's
  * lethal window (FIRE_LETHAL_TICKS), so one explosion can never reach past the grace it just
  * triggered, and short enough that it is a flinch rather than a free run through a fire.
+ *
+ * ─── and then back, for blasts that land on the same tick ───
+ *
+ * With health in the game (MAX_HP), "one shield for any number of blasts" made a crossfire the
+ * safest place to stand. So blasts that reach you on the SAME tick - a chain whose flames cross
+ * on you - are each paid for: two shields, a shield and a half, or both halves. The grace still
+ * covers everything AFTER that tick, so a blast arriving a moment later is shrugged off and no
+ * explosion can come back for more. See killInFire in sim/round.js.
  */
 export const SHIELD_GRACE_TICKS = 18;
+
+/* Health: two hits, and only two states - whole, or one hit from dead.
+ *
+ * Everybody spawns whole. The first fire that gets past your shields takes you to half; the
+ * second kills. Shields are spent first, whatever your health, so a shield is always a whole hit
+ * saved and never a top-up. A hit opens the same grace a shield does, so a blast a moment later
+ * cannot finish you - but two blasts crossing on you in the same instant are two hits (see
+ * SHIELD_GRACE_TICKS). No regeneration: half stays half until you die, which is what makes "he
+ * is smoking" worth chasing. See killInFire in sim/round.js. */
+export const MAX_HP = 2;
 
 /* Password length, shared so the hint text and the rule cannot drift apart.
  *

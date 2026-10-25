@@ -72,6 +72,8 @@ export function createWorld() {
     p.bombs = wire.b; p.radius = wire.f; p.speed = wire.sp; p.shields = wire.sh;
     p.score = wire.s; p.kills = wire.k; p.deaths = wire.dd; p.status = wire.stat;
     p.coins = wire.c || 0;
+    // Absent means whole; see MAX_HP and playerWire.
+    p.hp = wire.hp ?? 2;
     if (wire.sta !== undefined) { p.stamina = wire.sta; p.staminaLevel = wire.stl; p.tired = !!wire.tr; }
     p.slide = wire.sl ?? 0;
     // The deliberate slide: absent means not sliding, which is almost every tick. See playerWire.

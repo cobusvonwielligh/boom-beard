@@ -227,7 +227,7 @@ Drop weights, applied after the drop roll:
 | Fire | 100 | 24.3 % | +1 blast radius | 6 |
 | Stim | 72 | 17.5 % | +75 maximum stamina, and tops you up | 4 |
 | Boots | 72 | 17.5 % | +1 speed step | 4 |
-| Shield | 48 | 11.7 % | Each absorbs one blast; a blue ring per shield on your pirate. No grace period: two blasts at once, or a second while the first still burns, cost two | 2 held |
+| Shield | 48 | 11.7 % | Each absorbs one blast before your health does; a blue ring per shield on your pirate. Two blasts on the same tick cost two; one arriving inside the 0.6 s grace after a hit costs nothing (§6) | 2 held |
 | Rum | 11 | 2.7 % | Blast arms stop killing you for 12 s; you walk drunk | - |
 
 The weights live in `PERK_WEIGHTS` in `shared/constants.js`; this table is a copy of them.
@@ -309,13 +309,22 @@ play. `count_in = 0` in config.ini starts rounds live, which is also what every 
 
 ## 6. Death, respawn, and what you keep
 
-Touching fire kills you, unless you are Invulnerable or hold a Shield.
+Fire hurts you unless you are Invulnerable. **Two hits kill.**
 
-- **Shield** absorbs the death and is consumed - one shield per blast, and never two at once.
-  Spending one opens a **grace window of 18 ticks (0.6 s)** in which nothing can touch you, so a
-  chain reaction or a crossfire costs exactly one shield and the second is still there for the
-  next mistake. The grace outlasts a blast's lethal window, so the explosion that triggered it can
-  never come back for more.
+- **Health** has two states: whole, or half. Everybody spawns whole. There is no regeneration -
+  half stays half until you die or respawn.
+- **Every blast that catches you costs one**, paid in this order: a **Shield** if you hold one,
+  otherwise **half your health**, and if you are already at half, your life. Shields always go
+  first, whatever your health.
+- **Blasts that land on the same tick are each paid for.** Two bombs in a chain whose flames
+  cross on you cost two: two shields, a shield and a half, or both halves. The blast that takes
+  the last of it gets the kill.
+- **Anything after that tick is shrugged off** for a **grace window of 18 ticks (0.6 s)**. A blast
+  arriving a moment later cannot finish you, and the grace outlasts a blast's lethal window, so no
+  explosion can come back for more.
+- **How you can tell:** at half health a pirate is **charred from the boots to the belt and
+  smoking** - half of him burned, so half of him left. The char sweeps up on the hit with a flare.
+  Your own mascot in the corner smoulders too. It is on the sprite, so it reads on everybody.
 - **Death** drops your stats to the starting values (1 bomb, radius 1, 0 boots) and clears all
   statuses.
 - On death you drop **up to 3 perks** on nearby free tiles, so a good kill is rewarded.

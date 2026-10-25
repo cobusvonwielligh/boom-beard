@@ -232,6 +232,8 @@ Every one of these is in `shared/constants.js`. Nothing is inline.
 | Stamina | 6900 twentieths (+1500 per stim), empty = half pace until a third is back |
 | Respawn | 13.5 s, then distance-weighted across safe spawns; full-map fallback, never forced into danger |
 | Fire | drawn 15 ticks, lethal 10; damage box 13/20 of the movement box |
+| Health | 2 hits (`MAX_HP`): shields first, then half, then dead; same-tick blasts each cost one, 0.6 s grace after |
+| Colours | picked per player; ≤8 players are always the 8 most distinct; only reshuffled between rounds |
 | Perk drops | 35% base, scaled by what is on the floor and how fast it is taken |
 | Rum | 2.7% of drops. Softens damage, sways your walk, rolls your camera for 12 s |
 | Gold | 2.1% of drops, ≤5 a round. 400 XP. Changes nothing about the round - it is a collectible |

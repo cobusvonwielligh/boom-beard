@@ -43,6 +43,16 @@
         d="M8 1l6 2.5v4.2c0 3.4-2.4 6.2-6 7.3-3.6-1.1-6-3.9-6-7.3V3.5z"
       />
     </symbol>
+    <!-- Health: a heart outline with its left half filled - the two states, in one drawing. -->
+    <symbol id="i-heart" viewBox="0 0 16 16">
+      <path
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.3"
+        d="M8 14S2 10.2 2 6a3 3 0 0 1 6-1 3 3 0 0 1 6 1c0 4.2-6 8-6 8z"
+      />
+      <path fill="currentColor" d="M8 14S2 10.2 2 6a3 3 0 0 1 6-1z" />
+    </symbol>
     <symbol id="i-bolt" viewBox="0 0 16 16">
       <path fill="currentColor" d="M9.5 1L3 9h3.5L5.5 15 12 7H8.5z" />
     </symbol>
@@ -480,6 +490,8 @@
               <th>name</th>
               <th>level</th>
               <th>medals</th>
+              <th class="num">kills</th>
+              <th class="num">deaths</th>
               <th class="num">coins</th>
               <th class="num">xp</th>
             </tr>
@@ -527,7 +539,14 @@
         <dt>
           <svg><use href="#i-shield" /></svg>shields
         </dt>
-        <dd>One blast each. A chain costs one, not both.</dd>
+        <dd>One blast each, spent before your health. Two blasts at once cost two.</dd>
+        <dt>
+          <svg><use href="#i-heart" /></svg>health
+        </dt>
+        <dd>
+          Two hits. The first chars you to the waist and you smoke; the second
+          kills. No healing until you respawn.
+        </dd>
         <dt>
           <svg><use href="#i-ice" /></svg>ice
         </dt>

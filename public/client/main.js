@@ -481,6 +481,21 @@ const net = createNet({
           break;
         }
 
+        /* Half a life gone. Loud enough on you that you know, without looking, that the next
+         * one is the last; quiet for everybody else, because the scorch on the sprite is what
+         * tells them, and it stays. See MAX_HP. */
+        case 'hurt': {
+          const p = world.players[e.i];
+          if (p) sfx.playAtUnits('hurt', p.rx ?? p.x, p.ry ?? p.y, { theirs: e.i !== world.you });
+          renderer?.markHurt(e.i);
+          if (e.i === world.you) {
+            renderer?.alertRim(1);
+            renderer?.addFlash(0.45, '255,120,60');
+            renderer?.addShake(0.35);
+          }
+          break;
+        }
+
         case 'status': {
           const p = world.players[e.i];
           if (p) sfx.playAtUnits('status', p.rx ?? p.x, p.ry ?? p.y, { theirs: e.i !== world.you });
@@ -1471,6 +1486,7 @@ function drawHud() {
     // showing the last player who happened to be in the slot.
     if (observing) {
       $('who').classList.remove('tinted');
+      document.body.classList.remove('hurt');
       castText($('who'), 'spectating');
       setValue($('rank'), '');
       $('dead').style.display = 'none';
@@ -1480,6 +1496,8 @@ function drawHud() {
   }
 
   const mine = ranks.get(world.you);
+  // Half health, in the corner: the mascot smoulders. See `body.hurt` in style.css and MAX_HP.
+  document.body.classList.toggle('hurt', !!me.alive && me.hp === 1);
   // In your own colour, so the name and the sprite agree; see #who.tinted in style.css.
   $('who').style.setProperty('--me', playerColor(world.you));
   $('who').classList.add('tinted');
@@ -2110,11 +2128,16 @@ function renderScores() {
     markPlayerHover(nameCell, { allTimeIndex: n });
     cell(tr, `${e.level} \u00b7 ${e.tier}`, null, true);
     cell(tr, '').append(medalTally([e.gold, e.silver, e.bronze]));
+    num(cell(tr, e.kills || 0));
+    num(cell(tr, e.deaths || 0));
     num(cell(tr, e.coins || 0, (e.coins || 0) > 0 ? 'var(--gold)' : null));
     num(cell(tr, e.score));
     best.append(tr);
   }
-  $('allTime').style.display = allTime.length ? '' : 'none';
+  /* 'block', not ''. `#allTime` is display:none in style.css until there is something to show,
+   * and clearing the inline style only hands it back to that rule - so the lifetime board was
+   * hidden for everybody, every time, however many careers the server had. */
+  $('allTime').style.display = allTime.length ? 'block' : 'none';
   reanchorPlayerHover();
 }
 

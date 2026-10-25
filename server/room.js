@@ -8,7 +8,7 @@ import {
   ROUNDTIME_MIN_MIN, ROUNDTIME_MAX_MIN,
   TILE_PX, UNITS_PER_TILE, HITBOX_UNITS, FUSE_TICKS, FIRE_TICKS, FIRE_LETHAL_TICKS,
   paletteColor, COLOUR_PREFERENCE, DISTINCT_PLAYERS, isDistinctColour, encodeSeatColours,
-  SCORE, ROUND_INTERMISSION_MS,
+  SCORE, ROUND_INTERMISSION_MS, MAX_HP,
   progressFor,
   STREAK_WINDOW_TICKS, STREAK_NAMES, STREAK_ACE, GAMESPEED_MIN, GAMESPEED_MAX,
   IDLE_KICK_TICKS, AUTO_BOTS_EMPTY_ROUNDS, IN_MASK, COUNT_IN_TICKS,
@@ -340,6 +340,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     p.x = tileCentre(pick.tx);
     p.y = tileCentre(pick.ty);
     p.alive = true;
+    p.hp = MAX_HP;                               // everybody starts whole; see MAX_HP
     applyStatus(state, p, STATUS.INVULN, STATUS_TICKS[STATUS.INVULN]);
     // Godmode is a property of the SEAT, not of the body. `respawn` clears every status, and a
     // new round builds a new player object from scratch, so without this the admin quietly
@@ -635,6 +636,8 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
   const playerWire = p => ({
     i: p.i, x: p.x, y: p.y, d: p.dir, st: p.alive ? 1 : 0,
     b: p.bombs, f: p.radius, sp: p.speed, sh: p.shields,
+    // Health: whole or half. Only sent when it is not whole, which is the rare case.
+    ...(p.alive && p.hp < MAX_HP ? { hp: p.hp } : null),
     s: p.score, k: p.kills, dd: p.deaths, stat: p.status,
     // Coins. One small integer that only ever goes up, and the only stat on the wire that is
     // not about this round - it is what the HUD counter reads. `c`, not `g`: `gold` on the
