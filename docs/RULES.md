@@ -126,6 +126,10 @@ the map edge, or a bomb already there. That is not a compromise: the commonest r
 anything is to break the wall you are looking at, and a rule that simply refused would mean
 walls could never be broken by somebody facing them.
 
+**Never in water.** A puddle (melted ice) would put the fuse out, so it cannot take a bomb either:
+a puddle in front falls back to the tile underfoot, and if you are standing in one too, nothing
+goes down and the aim sight hides. See `bombable()` in `shared/sim/bombs.js`.
+
 Four places have to agree on that tile exactly, and all four call the same `bombTile()`: the
 simulation, the client's prediction, the click sound, and the bots.
 

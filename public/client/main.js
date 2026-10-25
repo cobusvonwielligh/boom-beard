@@ -24,7 +24,7 @@ import { createListener } from './audio/listen.js';
 import { createQuips, MENU_QUIPS } from './quips.js';
 import { createMenuViz } from './menuviz.js';
 import { store } from './store.js';
-import { bombTile } from '/shared/sim/bombs.js';
+import { bombTile, bombable } from '/shared/sim/bombs.js';
 import { MAPS } from '/shared/maps.js';
 
 const $ = id => document.getElementById(id);
@@ -1090,7 +1090,8 @@ function localBombFeedback(mask) {
   // The same tile the sim will choose, from the same function - the sound has to come from
   // where the bomb actually lands, which with facing-placement is rarely where you stand.
   const { tx, ty } = bombTile(world, me);
-  if (world.bombs.some(b => b.tx === tx && b.ty === ty)) return;
+  // Same rule as place(): no bomb on another bomb, and none in a puddle.
+  if (!bombable(world, tx, ty)) return;
   if (world.bombs.reduce((n, b) => n + ((b.o ?? b.owner) === world.you ? 1 : 0), 0) >= me.bombs) return;
   sfx.play('place', tx, ty);
 }

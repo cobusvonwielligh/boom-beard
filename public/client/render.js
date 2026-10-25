@@ -18,7 +18,7 @@ import {
   PERK_GLOWS, drawBombLive, CASTS_SHADOW, drawGull, drawFeather, fireTones,
   COAST_CORNERS, COAST_Q, carveRockCorners, drawCoastFillets, cornerCells, STONE_RADIUS,
 } from '/assets/art.js';
-import { bombTile } from '/shared/sim/bombs.js';
+import { bombTile, bombable } from '/shared/sim/bombs.js';
 import { gullAt } from '/shared/sim/gulls.js';
 
 const CHUNK_PX = TILE_PX * CHUNK_TILES;
@@ -5244,6 +5244,8 @@ export function createRenderer(canvas, world) {
     // Nothing to show if you are out of bombs: a sight on a shot you cannot take is a lie.
     const live = world.bombs.reduce((n, b) => n + ((b.o ?? b.owner) === world.you ? 1 : 0), 0);
     if (live >= me.bombs) { aimSeen = false; aimIn = 0; return; }
+    // Nor while standing in a puddle with nowhere dry in front: the bomb would not go down.
+    if (!bombable(world, tx, ty)) { aimSeen = false; aimIn = 0; return; }
 
     /* Fade in when it comes back.
      *

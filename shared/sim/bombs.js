@@ -11,6 +11,13 @@ import { maybeDrop } from './perks.js';
 
 export const bombAt = (state, tx, ty) => state.bombs.find(b => b.tx === tx && b.ty === ty);
 
+/* Standing water from melted ice. A fuse dropped in it would be put out, so a bomb can never be
+ * placed on a puddle - not in front of you, and not underfoot either. See bombTile and place. */
+export const puddleAt = (state, tx, ty) => !!state.puddles?.some(q => q.tx === tx && q.ty === ty);
+
+/** Whether a bomb could be put down on this tile right now: no bomb there, and not in water. */
+export const bombable = (state, tx, ty) => !bombAt(state, tx, ty) && !puddleAt(state, tx, ty);
+
 /* Which tile a bomb from this player would land on.
  *
  * In FRONT of them, not underneath. You face a direction and the bomb goes there, which turns
@@ -31,7 +38,9 @@ export function bombTile(state, p) {
   const tx = toTile(p.x), ty = toTile(p.y);
   const d = DIR_STEP[p.dir] ?? DIR_STEP[DIR_D];
   const fx = tx + d.dx, fy = ty + d.dy;
-  const free = tileAt(state.map, fx, fy) === BLOCK.FLOOR && !bombAt(state, fx, fy);
+  // A puddle in front is not free either: the fallback then tries underfoot, which place()
+  // refuses in turn if you are standing in the water yourself.
+  const free = tileAt(state.map, fx, fy) === BLOCK.FLOOR && bombable(state, fx, fy);
   return free ? { tx: fx, ty: fy } : { tx, ty };
 }
 
@@ -68,7 +77,7 @@ export function place(state, p, mask) {
   if (p.slideV > 0) return;
 
   const { tx, ty } = bombTile(state, p);
-  if (bombAt(state, tx, ty)) return;
+  if (!bombable(state, tx, ty)) return;
 
   const live = state.bombs.reduce((n, b) => n + (b.owner === p.i ? 1 : 0), 0);
   if (live >= p.bombs) return;
