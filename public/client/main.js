@@ -439,7 +439,7 @@ const net = createNet({
           world.burstBomb({
             id: e.id, tx: e.x, ty: e.y, o: e.o, r: e.r, at: known?.at,
             streakPowered: e.streakPowered ?? known?.streakPowered,
-          });
+          }, e.tick);
           break;
         }
 

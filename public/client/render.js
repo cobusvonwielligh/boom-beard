@@ -3871,6 +3871,7 @@ export function createRenderer(canvas, world) {
       const reach = Math.ceil(R / TILE_PX);
       let lit = false;
       for (const f of world.fires) {
+        if (tickNow < (f.startsAt ?? 0)) continue;
         const age = Math.min(1, 1 - Math.max(0, (f.until - tickNow) / FIRE_TICKS));
         // Two frames up, then down. Slower than the flames, so the walls are still warm as the
         // fire thins out rather than going dark under it.
@@ -3992,6 +3993,7 @@ export function createRenderer(canvas, world) {
     // On the smoothed tick, not the snapshot tick: world.tick moves two at a time, fifteen times a
     // second, which held every blast on the same picture for four frames at a time.
     for (const f of world.fires) {
+      if (tickNow < (f.startsAt ?? 0)) continue;
       const age = Math.min(1, 1 - Math.max(0, (f.until - tickNow) / FIRE_TICKS));
       ctx.save();
       ctx.translate(ox + f.tx * TILE_PX, oy + f.ty * TILE_PX);

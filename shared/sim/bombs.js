@@ -1,4 +1,4 @@
-// Bomb placement, fuses, and same-tick chain reactions.
+// Bomb placement, fuses, and stepwise fire-wave chains.
 
 import {
   FUSE_TICKS, FUSE_TICKS_FAST, FIRE_TICKS, CHAIN_CAP_PER_TICK, IN_BOMB, STATUS, MAX_RADIUS,
@@ -113,13 +113,31 @@ export function place(state, p, mask) {
 }
 
 /**
- * Detonate everything due this tick, including whatever the blasts set off.
+ * Detonate bombs due this tick and resolve fire-wave effects that arrive this tick.
  *
- * Resolved as a queue in one tick, always in ascending bomb id, with a hard cap - a 16-player
- * bomb carpet must not be able to stall the loop. Deterministic ordering matters more than it
- * looks: it decides who gets credit for a chain kill.
+ * Due bombs resolve in ascending id with a hard cap - a 16-player bomb carpet must not stall the
+ * loop. A blast schedules each arm tile at its deterministic wave-arrival tick; bombs and powder
+ * kegs are triggered at that tile's arrival instead of instantly.
  */
 export function detonate(state) {
+  for (const fire of state.fires) {
+    if (!fire.hit || fire.hitApplied || (fire.startsAt ?? 0) > state.tick) continue;
+    fire.hitApplied = true;
+    const res = damage(state, fire.tx, fire.ty, fire.owner);
+    if (!res?.destroyed) continue;
+    if (res.type === BLOCK.POWDER) {
+      state.bombs.push({
+        id: state.nextBombId++, tx: fire.tx, ty: fire.ty,
+        owner: fire.owner, radius: POWDER_RADIUS, at: state.tick,
+        fuseTicks: 0, streakPowered: !!fire.streakPowered,
+      });
+    } else if (res.type === BLOCK.ICE) {
+      melt(state, fire.tx, fire.ty);
+    } else {
+      maybeDrop(state, fire.tx, fire.ty, res.type);
+    }
+  }
+
   const due = state.bombs.filter(b => b.at <= state.tick).sort((a, b) => a.id - b.id);
   if (!due.length) return;
 
@@ -133,53 +151,26 @@ export function detonate(state) {
     burst.add(bomb.id);
 
     // The live bomb list goes in so arms stop at other bombs instead of overshooting them.
-    const { cells, hits } = spread(state.map, bomb, state.bombs);
+    const { cells } = spread(state.map, bomb, state.bombs);
 
-    // `boom` must come out BEFORE the block events this same blast produces.
-    //
-    // The client replays a snapshot's events strictly in order and only derives the blast when it
-    // reaches `boom` - by running the same `spread` against its own map. Emitted last, the block
-    // the arm was supposed to stop at has already been turned to floor by the preceding
-    // `blockdie`, so the client draws fire two tiles past where the server actually burned. That
-    // happened on roughly half of all bombs (both fuse lengths are even, so `at` shares parity
-    // with the placement tick and lands in the same snapshot as its own block events) and on every
-    // chain-detonated bomb regardless of parity.
-    //
-    // The alternative - buffering block events on the client until after the booms - is wrong: a
-    // snapshot spans two ticks, so it would mis-order block changes from the earlier tick.
+    // The client uses this event to derive the same per-tile fire schedule from its map. Block
+    // effects are emitted later, when the scheduled wave reaches their tiles.
     state.events.push({
       e: 'boom', tick: state.tick, id: bomb.id,
       x: bomb.tx, y: bomb.ty, o: bomb.owner, r: bomb.radius,
       ...(bomb.streakPowered ? { streakPowered: true } : null),
     });
 
-    for (const { tx, ty } of hits) {
-      const res = damage(state, tx, ty, bomb.owner);
-      if (!res?.destroyed) continue;
-      if (res.type === BLOCK.POWDER) {
-        // A keg IS a bomb, so it goes on the same queue as any other chained bomb. Nothing in
-        // the blast code needs to know about kegs: it chains through other kegs, through bombs
-        // and through walls exactly the way a bomb already does.
-        queue.push({
-          id: state.nextBombId++, tx, ty,
-          owner: bomb.owner, radius: POWDER_RADIUS, at: state.tick,
-          fuseTicks: 0, streakPowered: !!bomb.streakPowered,
-        });
-        continue;                                   // kegs hold powder, not pickups
-      }
-      if (res.type === BLOCK.ICE) { melt(state, tx, ty); continue; }   // the water is the drop
-      maybeDrop(state, tx, ty, res.type);
-    }
-
     for (const c of cells) {
       // `src` is which blast this is, so a hit can be counted once per blast - see killInFire.
+      const startsAt = state.tick + (c.delayTicks ?? 0);
       state.fires.push({
-        tx: c.tx, ty: c.ty, kind: c.kind, rot: c.rot, until: state.tick + FIRE_TICKS,
+        tx: c.tx, ty: c.ty, kind: c.kind, rot: c.rot,
+        startsAt, until: startsAt + FIRE_TICKS, hit: !!c.hit,
         owner: bomb.owner, src: bomb.id, streakPowered: !!bomb.streakPowered,
       });
-      // Anything caught in the blast goes off now, not on its own fuse.
       const neighbour = bombAt(state, c.tx, c.ty);
-      if (neighbour && !burst.has(neighbour.id)) queue.push(neighbour);
+      if (neighbour && !burst.has(neighbour.id)) neighbour.at = Math.min(neighbour.at, startsAt);
     }
   }
 

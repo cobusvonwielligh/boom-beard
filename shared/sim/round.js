@@ -36,7 +36,7 @@ export function tick(state, inputs, { onRespawn } = {}) {
     if (p) place(state, p, inputs[i] | 0);
   }
 
-  // 4 & 5. fuses and chains, resolved together in one tick
+  // 4 & 5. resolve due fuses and any fire-wave effects arriving this tick
   detonate(state);
 
   // 6. fire damage: blocks were already hit inside detonate, players die here
@@ -78,7 +78,7 @@ function killInFire(state) {
   // Only fire that is still in its lethal window, not merely still on screen. A blast is drawn
   // for FIRE_TICKS and kills for the first two thirds of that; the tail is embers.
   const deadline = state.tick + (FIRE_TICKS - FIRE_LETHAL_TICKS);
-  const fresh = state.fires.filter(f => f.until > deadline);
+  const fresh = state.fires.filter(f => f.until > deadline && (f.startsAt ?? 0) <= state.tick);
   if (!fresh.length) return;
   // Rum: the arms stop hurting, the core still does. Computed once rather than per player.
   const cores = fresh.filter(f => f.kind === 'core');

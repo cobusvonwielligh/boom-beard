@@ -13,12 +13,13 @@ building it.
 
 ### (a) Fire is derived, not pushed
 
-A bomb's snapshot carries `at` - the exact server tick it explodes. Nobody ever sends "it
-exploded". Every client computes the blast itself at tick `at` from the bomb list and the map,
-using the same `fire.spread()` function the server uses.
+A bomb's snapshot carries `at` - its authoritative fuse tick, which may be moved earlier if a
+stepwise fire wave chains into it. Nobody ever sends "it exploded". Every client computes each
+blast wave from the bomb list and the map, using the same `fire.spread()` function and per-tile
+arrival timing as the server.
 
 A 180 ms player learns about the bomb ~90 ms after placement and still has 2.3 s of warning. The
-blast lands on the same tick on every screen.
+blast wave reaches each tile on the same tick on every screen.
 
 **So: no rollback, no lag compensation, no server rewind.** They are not simplifications we are
 making - they are genuinely not needed. The one rule this buys with: explosion timing is a pure
