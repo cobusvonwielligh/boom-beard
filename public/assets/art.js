@@ -18,7 +18,7 @@ export const PALETTE = {
   floor: '#4d576b', floorAccent: '#515358',
   soft: '#8a6b4a', reinforced: '#6f7785', monolith: '#4b5362',
   iron: '#262c38', column: '#59627a', shrub: '#3f6b46',
-  outline: '#161b24',
+  outline: '#161b2459',
   fireCore: '#fff4c2', fireMid: '#ff9b3d', fireEdge: '#e63f27',
   // The interface accent, matching --gold in style.css. It IS fireMid above - the same value,
   // not a near miss - so the chrome is the exact colour of an explosion. Keep it off the board:
@@ -202,7 +202,7 @@ const bevel = (c, x, y, w, h, t = 2) => {
  *
  * It is drawing only, as it always was - the simulation is whole tiles - but it is now drawing
  * that MATCHES what the collision does, which is the whole point of changing it. */
-export const STONE_RADIUS = 10;
+export const STONE_RADIUS = 8;
 /* Which types get it: everything solid that sits ON the sand. Not FLOOR (it IS the sand), and
  * not the types that already draw their own shape on a floor of their own - a column, a keg and
  * a block of ice are objects, not cells, and they were never square to begin with. */
@@ -287,8 +287,8 @@ function drawTileBody(c, type, tx = 0, ty = 0, dmg = 0) {
 
       // The seam where the chunk cache joins tiles. A hair of shadow on two sides gives the
       // floor a grid without drawing a grid, and hides the join entirely.
-      px(c, 0, 0, S, 1, 'rgba(0,0,0,0.05)');
-      px(c, 0, 0, 1, S, 'rgba(0,0,0,0.05)');
+      px(c, 0, 0, S, 2, 'rgba(24, 24, 24, 0.04)');
+      px(c, 0, 0, 2, S, 'rgba(35, 35, 35, 0.04)');
       break;
     }
 
