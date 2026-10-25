@@ -355,9 +355,9 @@ export function createRenderer(canvas, world) {
     /* Softer than the flame: light that has crossed a room has lost its colour on the way, and
      * the pool is three times the size of the fire that threw it - the same saturation over that
      * area reads as a coloured lamp rather than as firelight with a hint of whose it is. */
-    g.addColorStop(0, `hsla(${h} 58% 86% / 0.95)`);
-    g.addColorStop(0.28, `hsla(${h} 70% 64% / 0.52)`);
-    g.addColorStop(0.62, `hsla(${h} 62% 44% / 0.24)`);
+    g.addColorStop(0, `hsla(${h} 41% 86% / 0.95)`);
+    g.addColorStop(0.28, `hsla(${h} 49% 64% / 0.52)`);
+    g.addColorStop(0.62, `hsla(${h} 43% 44% / 0.24)`);
     g.addColorStop(1, 'rgba(0,0,0,0)');
     blastLights.set(key, g);
     return g;

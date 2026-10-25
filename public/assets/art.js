@@ -90,7 +90,12 @@ const FIRE_HUE = 24;                 // fire's own orange, in degrees
  * a dark edge, a bright body and a white-hot core, none of them more saturated than paint on a
  * wall. A desaturated blue with that ramp is blue fire. A saturated blue with it is a neon sign.
  * So the hue goes almost all the way over and the saturation comes right down - which is both of
- * the things asked for, in the two places that each one actually lives. */
+ * the things asked for, in the two places that each one actually lives.
+ *
+ * And then down another thirty percent: 41/49/50 rather than 58/70/72. At this point the colour
+ * is nearly smoke-and-ember rather than paint, and the hue is doing the identifying almost on
+ * its own - which is exactly what a real fire looks like when it is not the brightest thing in
+ * the frame. Below about thirty the sixteen hues stop being distinguishable from each other. */
 const FIRE_PULL = 0.8;
 const fireToneCache = new Map();
 
@@ -107,14 +112,14 @@ export function fireTones(i) {
      * of saturation off each one. A hue that has been pulled toward blue or green shows its
      * saturation far more than the orange it came from does, so holding fire's exact numbers made
      * the cool players look like paint and the warm ones look right. */
-    edge: `hsl(${h.toFixed(1)} 58% 48%)`,
-    mid: `hsl(${h.toFixed(1)} 70% 61%)`,
+    edge: `hsl(${h.toFixed(1)} 41% 48%)`,
+    mid: `hsl(${h.toFixed(1)} 49% 61%)`,
     // The core keeps a quarter of the shift and nearly all of fire's own whiteness.
     // The core leans their way too, and stays nearly white: hot things go white whatever is
     // burning, and that is what keeps the middle of a blast looking like the middle of a blast.
-    core: `hsl(${(FIRE_HUE + delta * FIRE_PULL * 0.6 + 360) % 360} 72% 90%)`,
+    core: `hsl(${(FIRE_HUE + delta * FIRE_PULL * 0.6 + 360) % 360} 50% 90%)`,
     // What the smoke-stage body cools to, and the one the sparks fly in.
-    cool: `hsl(${h.toFixed(1)} 48% 42%)`,
+    cool: `hsl(${h.toFixed(1)} 34% 42%)`,
     hue: h,
   };
   fireToneCache.set(seat, tones);
