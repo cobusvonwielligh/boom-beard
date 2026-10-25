@@ -181,6 +181,22 @@ function landMask(def, next) {
       }
       for (const i of add) land[i] = 1;
     }
+    /* One boulder, in the middle of the lagoon.
+     *
+     * The lagoon is a wide blank in the centre of the board - correct as a rule, because walking
+     * round it is the whole shape of this map, and dull to look at. A two-by-two rock in the
+     * middle of it gives the water something to break against and the eye something to measure
+     * the crossing by. Two by two rather than three, because every land tile with water beside
+     * it becomes shoreline rock (see buildMap), so a 2x2 is solid stone all the way through -
+     * where a 3x3 would hide a tile of sand nobody can ever reach in the middle of it.
+     *
+     * It changes nothing about the fight: it is in water, and nothing walks on water. */
+    const bx = Math.round((w - 1) / 2), by = Math.round(h * 0.42);
+    for (let y = by - 1; y <= by; y++) {
+      for (let x = bx - 1; x <= bx; x++) {
+        if (x > 0 && y > 0 && x < w - 1 && y < h - 1) land[y * w + x] = 1;
+      }
+    }
     return land;
   }
 

@@ -14,7 +14,7 @@ import {
 import { cellType, cellHp } from '/shared/maps.js';
 import {
   drawTile, drawFire, drawPerk, drawRock, drawShip, playerShades, PALETTE, bake, bakeSea,
-  PERK_GLOWS, drawBombLive, CASTS_SHADOW, drawGull, drawFeather,
+  PERK_GLOWS, drawBombLive, CASTS_SHADOW, drawGull, drawFeather, fireTones,
   COAST_CORNERS, COAST_Q, carveRockCorners, drawCoastFillets, cornerCells, STONE_RADIUS,
 } from '/assets/art.js';
 import { bombTile } from '/shared/sim/bombs.js';
@@ -270,7 +270,8 @@ export function createRenderer(canvas, world) {
     perkSeen.clear();
     perkGone.clear();
     perkLive.clear();
-    blastLight = null;
+    bombSeen.clear();
+    blastLights.clear();
     lightLayer = null;
     lightCtx = null;
     lampLayer = null;
@@ -333,11 +334,37 @@ export function createRenderer(canvas, world) {
   /* Perks fading in and out. `perkSeen` is when this renderer first saw an id, `perkGone` is the
    * last thing known about one, and `perkLive` is this frame's ids. See the note in the perk
    * loop; a sixth of a second each way. */
+  /* The pool of light a blast throws, per owner.
+   *
+   * Same shape for everybody - white-hot middle, warm body, nothing at the rim, which is what
+   * "adds no light" has to look like under both blends - and the hue is the owner's own fire
+   * (see fireTones in art.js), so the wall two tiles away warms in the colour of whoever lit it.
+   * One gradient per seat, built once: a gradient is an object, and seventeen of them beats one
+   * per burning tile per frame.
+   */
+  const blastLights = new Map();
+  function blastLightFor(owner) {
+    const key = owner >= 0 ? owner % 16 : -1;
+    const hit = blastLights.get(key);
+    if (hit) return hit;
+    const h = key >= 0 ? fireTones(key).hue : 33;
+    const g = ctx.createRadialGradient(0, 0, TILE_PX * 0.1, 0, 0, BLAST_LIGHT_PX);
+    g.addColorStop(0, `hsla(${h} 90% 82% / 0.95)`);
+    g.addColorStop(0.3, `hsla(${h} 100% 62% / 0.5)`);
+    g.addColorStop(0.65, `hsla(${h} 85% 42% / 0.2)`);
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    blastLights.set(key, g);
+    return g;
+  }
+
   const PERK_POP_MS = 170;
+  // A bomb arrives faster than a perk does: it is an action somebody just took rather than
+  // something uncovered, and anything slower than this reads as lag on their input.
+  const BOMB_POP_MS = 110;
+  const bombSeen = new Map();
   const perkSeen = new Map();
   const perkGone = new Map();
   const perkLive = new Set();
-  let blastLight = null;
   let lightLayer = null, lightCtx = null;
   let lampLayer = null, lampCtx = null;
   /* Darker, and SOFT.
@@ -2506,6 +2533,18 @@ export function createRenderer(canvas, world) {
    * a higher alpha; globalAlpha can only ever dim. */
   const SHALLOWS_PAD = 3;
   const SHALLOWS_HEADROOM = 1.15;
+  /* The shelf: the island's sand carrying on under the water.
+   *
+   * An island does not stop at the waterline, it slopes - and a board where the land ends in a
+   * hard edge against deep blue reads as a cutout on a background. Three tiles of it, in the same
+   * quarter-tile steps the coast is cut in, so it follows every bay and headland and never shows
+   * a square corner. SEA_MARGIN_TILES is three to keep the whole of it on screen.
+   *
+   * The tone is a warm sand, two shades down from the beach itself because it is being seen
+   * through water, and it is painted at a sixth of an alpha at most: what the eye reads is not
+   * the colour, it is that the water gets warmer as it gets shallower. */
+  const SHELF_TILES = 3;
+  const SHELF_TONE = '#7d6843';
   let shallowsCanvas = null, shallowsFor = null;
   function shallowsLayer() {
     if (shallowsFor === world.map && shallowsCanvas) return shallowsCanvas;
@@ -2526,7 +2565,7 @@ export function createRenderer(canvas, world) {
      * of every outside corner and gave inside corners two coats. */
     const Q = 4, mask = coastMask(), MW = map.w * Q, MH = map.h * Q;
     const land = (x, y) => x >= 0 && y >= 0 && x < MW && y < MH && mask[y * MW + x] === 1;
-    const R = 2 * Q;
+    const R = SHELF_TILES * Q;
     const offsets = [];
     for (let dy = -R; dy <= R; dy++) {
       for (let dx = -R; dx <= R; dx++) {
@@ -2536,20 +2575,31 @@ export function createRenderer(canvas, world) {
     }
     offsets.sort((a, b) => a[2] - b[2]);                 // nearest first: stop at the first land
     const q = COAST_Q;
-    const near = [], far = [];                            // runs: x, y, length, in cells
+    // Runs per band: x, y, length, in quarter-tile cells. See the band assignment below.
+    const near = [], far = [], shelfIn = [], shelfOut = [];
+    const BANDS = [near, far, shelfIn, shelfOut];
     for (let y = -P * Q; y < MH + P * Q; y++) {
       let run = null;
       for (let x = -P * Q; x <= MW + P * Q; x++) {
+        /* Four steps out, in quarter-tile cells.
+         *
+         * 1 and 2 are the shallows as they always were. 3 and 4 are the SHELF: the island's own
+         * sand carrying on under the water and petering out, which is what a real island does -
+         * the land does not stop at the waterline, it slopes. Four thin steps of it fading out
+         * reads as depth; one wide band of sand reads as a beach towel.
+         */
         let band = 0;
         if (x < MW + P * Q && !land(x, y)) {
           for (const [dx, dy, d2] of offsets) {
             if (!land(x + dx, y + dy)) continue;
-            band = d2 <= Q * Q ? 1 : 2;
+            band = d2 <= Q * Q ? 1
+              : d2 <= (1.6 * Q) * (1.6 * Q) ? 2
+                : d2 <= (2.2 * Q) * (2.2 * Q) ? 3 : 4;
             break;
           }
         }
         if (run && run.band === band) { run.n++; continue; }
-        if (run && run.band) (run.band === 1 ? near : far).push(run.x, y, run.n);
+        if (run && run.band) BANDS[run.band - 1].push(run.x, y, run.n);
         run = { band, x, n: 1 };
       }
     }
@@ -2558,8 +2608,19 @@ export function createRenderer(canvas, world) {
       c.fillStyle = colour;
       for (let i = 0; i < runs.length; i += 3) c.fillRect(runs[i] * q, runs[i + 1] * q, runs[i + 2] * q, q);
     };
-    // The near band keeps the far band's tint under it, as it always had.
-    paint([...near, ...far], 0.16, PALETTE.seaMid);     // the outer, deeper step
+    /* Painted from the outside in, so every band sits on the one beyond it.
+     *
+     * The shelf is the island's own sand (PALETTE.floor's warm cousin - `sand`) under the water,
+     * at a fifth and a tenth of its strength: barely there, and that is the point. What the eye
+     * reads is not the colour, it is that the water gets warmer as it gets shallower, in the same
+     * quarter-tile steps the rock is cut in - so the shelf follows every bay and headland exactly
+     * as the coast does and never shows a square corner.
+     */
+    paint([...shelfOut], 0.07, SHELF_TONE);        // the last of the sand, almost gone
+    paint([...shelfIn, ...shelfOut], 0.1, SHELF_TONE);
+    paint([...near, ...far, ...shelfIn], 0.17, SHELF_TONE);
+    // The shallows themselves, over the top of it, exactly as they were.
+    paint([...near, ...far], 0.16, PALETTE.seaMid);
     paint(near, 0.42, PALETTE.seaLight);
     shallowsCanvas = el; shallowsFor = map;
     return el;
@@ -3667,10 +3728,14 @@ export function createRenderer(canvas, world) {
       }
 
       if (fade < 1) {
-        // A slow flicker on top of the ramp. The ramp alone is easy to miss in peripheral
-        // vision; something blinking in the corner of your eye is not.
-        const blink = 0.78 + 0.22 * Math.sin(world.tick / 2.2);
-        ctx.globalAlpha = fade * (fade < 0.45 ? blink : 1) * Math.min(1, inT);
+        /* Five seconds of leaving, and most of it is just getting dimmer.
+         *
+         * The blink used to start as soon as the fade did, which at fifteen seconds meant a
+         * flashing perk was the normal state of a perk. It is the last fifth now - the part where
+         * "this is going" becomes "this is going NOW" - and the rest is a plain, slow fade that
+         * reads as time passing rather than as an alarm. */
+        const blink = 0.8 + 0.2 * Math.sin(world.tick / 1.8);
+        ctx.globalAlpha = fade * (fade < 0.2 ? blink : 1) * Math.min(1, inT);
         // Shrink about the tile's centre, so it sinks into the floor rather than drifting.
         const scale = 0.72 + 0.28 * fade;
         ctx.translate(TILE_PX / 2, TILE_PX / 2);
@@ -3720,10 +3785,26 @@ export function createRenderer(canvas, world) {
      * and the fuse run continuously and still reach zero on the frame the blast appears. */
     if (world.tick !== bombClock.tick) { bombClock.tick = world.tick; bombClock.at = performance.now(); }
     const tickNow = world.tick + Math.min(1.95, (performance.now() - bombClock.at) / (world.tickMs || TICK_MS));
+    const bombNow = performance.now();
     for (const b of world.bombs) {
       const owner = (b.o ?? b.owner) % 16;
+      /* In quickly. A bomb used to exist from one frame to the next, which at sixteen players is
+       * a board where things appear out of nothing - and the one thing a bomb has to communicate
+       * is that somebody PUT it there. A tenth of a second of fade and a small squash-and-settle
+       * says that; anything longer starts to read as lag on their input. Keyed off the id, like
+       * the perks, so nothing has to be told and a reconnect simply shows the bomb. */
+      if (!bombSeen.has(b.id)) bombSeen.set(b.id, bombNow);
+      const pop = Math.min(1, (bombNow - bombSeen.get(b.id)) / BOMB_POP_MS);
       ctx.save();
       ctx.translate(ox + b.tx * TILE_PX, oy + b.ty * TILE_PX);
+      if (pop < 1) {
+        // Lands wide and settles: a bomb is a heavy thing set down, not a thing that grew.
+        const squash = 1 + Math.sin(pop * Math.PI) * 0.18;
+        ctx.globalAlpha = pop;
+        ctx.translate(TILE_PX / 2, TILE_PX / 2);
+        ctx.scale(squash * (0.7 + 0.3 * pop), (2 - squash) * (0.7 + 0.3 * pop));
+        ctx.translate(-TILE_PX / 2, -TILE_PX / 2);
+      }
       drawBombLive(ctx, baked.bombs[owner], {
         leftS: Math.max(0, b.at - tickNow) / TICK_HZ,
         fullS: FUSE_TICKS / TICK_HZ,
@@ -3733,6 +3814,12 @@ export function createRenderer(canvas, world) {
         t: seaT + b.id * 0.37,
       });
       ctx.restore();
+      ctx.globalAlpha = 1;
+    }
+    // Ids only ever grow, so the record of what has been seen would too.
+    if (bombSeen.size > 64) {
+      const live = new Set(world.bombs.map(b => b.id));
+      for (const id of bombSeen.keys()) if (!live.has(id)) bombSeen.delete(id);
     }
 
     /* The light first, then the flames. See BLAST_LIGHT_PX.
@@ -3753,15 +3840,6 @@ export function createRenderer(canvas, world) {
      *     them saturated the whole canvas to white.
      */
     if (world.fires.length) {
-      if (!blastLight) {
-        blastLight = ctx.createRadialGradient(0, 0, TILE_PX * 0.1, 0, 0, BLAST_LIGHT_PX);
-        // Firelight: warm amber through the body, out to nothing. Pure black at the rim is what
-        // "adds no light" looks like under both blends.
-        blastLight.addColorStop(0, 'rgba(255,206,140,0.95)');
-        blastLight.addColorStop(0.3, 'rgba(255,160,66,0.5)');
-        blastLight.addColorStop(0.65, 'rgba(176,78,22,0.2)');
-        blastLight.addColorStop(1, 'rgba(0,0,0,0)');
-      }
       // Two scratch canvases: the frame's light layer, and one light's worth.
       if (!lightLayer || lightLayer.width !== canvas.width || lightLayer.height !== canvas.height) {
         lightLayer = document.createElement('canvas');
@@ -3809,25 +3887,14 @@ export function createRenderer(canvas, world) {
 
         mc.globalCompositeOperation = 'source-over';
         mc.globalAlpha = k * k * (f.kind === 'core' ? 1 : 0.7);
-        mc.fillStyle = blastLight;
+        // The light is the same fire at the other end of the room, so it is the same hue: the
+        // wall two tiles away warms in the colour of whoever lit the blast. One cached gradient
+        // per seat; see blastLightFor.
+        mc.fillStyle = blastLightFor(f.owner ?? -1);
         mc.beginPath();
         mc.arc(0, 0, R, 0, 7);
         mc.fill();
-        /* And the light it throws carries the hue too, faintly.
-         *
-         * The flames say whose blast it is close up; this is the same fact at the other end of
-         * the room - the wall two tiles away warms in that player's colour. A tenth of the
-         * pool's own strength, over the middle of it only, because firelight is firelight and
-         * this is a hint about WHO rather than a coloured lamp. */
-        if (f.owner >= 0) {
-          mc.globalCompositeOperation = 'screen';
-          mc.globalAlpha = k * k * 0.1;
-          mc.fillStyle = playerShades(f.owner % 16).light;
-          mc.beginPath();
-          mc.arc(0, 0, R * 0.55, 0, 7);
-          mc.fill();
-          mc.globalCompositeOperation = 'source-over';
-        }
+
 
         // The walls in range, as shadows and as lit faces.
         for (let ty = f.ty - reach; ty <= f.ty + reach; ty++) {
@@ -3914,12 +3981,10 @@ export function createRenderer(canvas, world) {
       const age = Math.min(1, 1 - Math.max(0, (f.until - tickNow) / FIRE_TICKS));
       ctx.save();
       ctx.translate(ox + f.tx * TILE_PX, oy + f.ty * TILE_PX);
-      // Whose it is, in the flames. See the tint note in drawFire; a keg inherits the owner of
-      // whatever set it off, so a player's own keg burns in the player's own colour.
-      const owner = f.owner;
+      // Whose it is, in the flames themselves - see fireTones in art.js. A keg inherits whoever
+      // set it off, so a player's own keg burns in the player's own fire.
       drawFire(ctx, {
-        kind: f.kind, rot: f.rot, age, t: seaT, seed: f.tx * 7 + f.ty * 13,
-        tint: owner >= 0 ? playerShades(owner % 16).light : null,
+        kind: f.kind, rot: f.rot, age, t: seaT, seed: f.tx * 7 + f.ty * 13, owner: f.owner ?? -1,
       });
       ctx.restore();
     }

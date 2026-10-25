@@ -63,6 +63,48 @@ const PIRATE = {
 
 /** 16 maximally distinct player colours, plus their light/dark shades. Slots come from
  *  shared/constants.js so the sim, the HUD and the art never disagree about who is what colour. */
+/* Fire, in the colour of whoever lit it.
+ *
+ * Fire is not one colour, it is a RAMP - a dark red edge, an orange body, a near-white core -
+ * and that ramp is what makes a shape read as flame rather than as a coloured blob. So the hue
+ * is the only thing that moves: every tone keeps fire's own saturation and lightness, and the
+ * player's hue is mixed FORTY PERCENT of the way toward it from fire's own orange. Forty is the
+ * number that survived the test of looking at it: at a hundred a blue player's blast is a blue
+ * blob, at twenty nobody can tell two players apart, and at forty every blast is obviously fire
+ * and obviously somebody's.
+ *
+ * The core moves least of the three. The middle of a blast is the hottest thing on the board and
+ * hot things go white, so hue there is nearly invisible anyway - and tinting it is exactly what
+ * made the first attempt look like coloured cellophane rather than fire.
+ *
+ * Cached per seat: sixteen seats, three strings each, built once.
+ */
+const FIRE_HUE = 24;                 // fire's own orange, in degrees
+const FIRE_PULL = 0.4;               // how far toward the player's hue the ramp moves
+const fireToneCache = new Map();
+
+export function fireTones(i) {
+  const seat = ((i % 16) + 16) % 16;
+  const hit = fireToneCache.get(seat);
+  if (hit) return hit;
+  const hue = playerHueSlot(seat) * 22.5;
+  // Shortest way round the wheel, or a red player's fire would swing through green to get there.
+  let delta = ((hue - FIRE_HUE + 540) % 360) - 180;
+  const h = (FIRE_HUE + delta * FIRE_PULL + 360) % 360;
+  const tones = {
+    // Same ramp fire always had: #e63f27, #ff9b3d, #fff4c2, read back as hsl.
+    edge: `hsl(${h.toFixed(1)} 80% 53%)`,
+    mid: `hsl(${h.toFixed(1)} 100% 62%)`,
+    // The core keeps a quarter of the shift and nearly all of fire's own whiteness.
+    core: `hsl(${(FIRE_HUE + delta * FIRE_PULL * 0.35 + 360) % 360} 100% 88%)`,
+    // What the smoke-stage body cools to, and the one the sparks fly in.
+    cool: `hsl(${h.toFixed(1)} 60% 46%)`,
+    hue: h,
+  };
+  fireToneCache.set(seat, tones);
+  return tones;
+}
+
 export const playerShades = i => {
   const slot = playerHueSlot(i), h = slot * 22.5, l = slot % 2 ? 52 : 64;
   return {
@@ -1186,7 +1228,7 @@ export function drawBomb(c, { phase = 0, colorIndex = 0 }) {
  *   sparks  the core throws embers outward while it is young
  *   smoke   the last third darkens, shrinks and lifts away as smoke - the part that no longer kills
  */
-export function drawFire(c, { kind = 'core', rot = 0, age = 0, t = 0, seed = 0, tint = null }) {
+export function drawFire(c, { kind = 'core', rot = 0, age = 0, t = 0, seed = 0, owner = -1 }) {
   const S = TILE_PX;
   // Fixed per tile and per tongue - nothing here is re-rolled while the blast burns. Every bit
   // of motion below is a slow sine on `t`, so the fire flows rather than flickers.
@@ -1201,14 +1243,21 @@ export function drawFire(c, { kind = 'core', rot = 0, age = 0, t = 0, seed = 0, 
   const w = S * (1 - ease(age) * 0.18) * punch * breathe;
   c.globalAlpha = Math.max(0, 1 - ease(age) * 0.45 - smoke * 0.35);
 
+  // Whose blast this is. Everything below draws from this ramp; see fireTones.
+  const tone = owner >= 0 ? fireTones(owner) : null;
+  const EDGE = tone ? tone.edge : PALETTE.fireEdge;
+  const MID = tone ? tone.mid : PALETTE.fireMid;
+  const CORE = tone ? tone.core : PALETTE.fireCore;
+  const COOL = tone ? tone.cool : '#c4532e';
+
   const band = (inset, col) => rr(c, -w / 2 + inset, -w / 2 + inset, w - inset * 2, w - inset * 2, 4, col);
-  const hot = smoke > 0.15 ? '#c4532e' : PALETTE.fireEdge;
+  const hot = smoke > 0.15 ? COOL : EDGE;
   if (kind === 'tip') { c.beginPath(); c.arc(0, 0, w / 2 - 1, 0, 7); c.fillStyle = hot; c.fill(); }
   else band(0, hot);
 
   // Tongues: four blobs, each on its own side, gliding back and forth along the edge and
   // swelling in and out on slow sines.
-  c.fillStyle = PALETTE.fireMid;
+  c.fillStyle = MID;
   for (let i = 0; i < 4; i++) {
     const side = i;
     const along = Math.sin(t * (2.2 + fixed(i) * 1.4) + fixed(i + 9) * 6.28) * w * 0.32;
@@ -1219,12 +1268,12 @@ export function drawFire(c, { kind = 'core', rot = 0, age = 0, t = 0, seed = 0, 
   }
 
   const coreIn = 9 + 1.2 * Math.sin(t * 6 + seed * 3) + ease(age) * 3;
-  band(4, smoke > 0.6 ? '#e0732f' : PALETTE.fireMid);
-  if (coreIn * 2 < w - 2) band(coreIn, PALETTE.fireCore);
+  band(4, smoke > 0.6 ? COOL : MID);
+  if (coreIn * 2 < w - 2) band(coreIn, CORE);
 
   // Sparks off the core while it is young: short streaks flying outward and fading.
   if (kind === 'core' && age < 0.55) {
-    c.strokeStyle = PALETTE.fireCore;
+    c.strokeStyle = CORE;
     c.lineWidth = 1.4;
     c.lineCap = 'round';
     for (let i = 0; i < 6; i++) {
@@ -1236,37 +1285,6 @@ export function drawFire(c, { kind = 'core', rot = 0, age = 0, t = 0, seed = 0, 
       c.moveTo(Math.cos(a) * r0, Math.sin(a) * r0);
       c.lineTo(Math.cos(a) * (r0 + 4), Math.sin(a) * (r0 + 4));
       c.stroke();
-    }
-  }
-
-  /* Whose blast this is, said in the flames.
-   *
-   * A wash of the owner's own colour over the outer body of the fire - never the core, which
-   * stays white-hot the way fire does. It is deliberately a HINT: twenty percent at the start,
-   * fading as the blast cools, which at a glance reads as "that one is mine" and at no point
-   * reads as a blue fire. Sixteen players put sixteen blasts on one board in a bad second, and
-   * knowing which is yours - or whose keg just went off beside you - is worth a tint.
-   *
-   * `screen` rather than a flat fill: it lifts the hue into the flame without touching its
-   * brightness, so a dark player colour tints rather than darkens. The core is redrawn over the
-   * top afterwards, which is what keeps the middle of the blast the hottest thing on screen.
-   */
-  if (tint) {
-    const strength = 0.2 * Math.max(0, 1 - age * 0.8);
-    if (strength > 0.01) {
-      c.save();
-      c.globalCompositeOperation = 'screen';
-      c.globalAlpha = strength;
-      c.fillStyle = tint;
-      if (kind === 'tip') { c.beginPath(); c.arc(0, 0, w / 2 - 1, 0, 7); c.fill(); }
-      else rr(c, -w / 2, -w / 2, w, w, 4, tint);
-      c.restore();
-      // The core, back on top: a tinted middle is a cold blast, and the middle is the part that
-      // has to look like it will kill you.
-      if (coreIn * 2 < w - 2) {
-        c.globalAlpha = Math.max(0, 1 - ease(age) * 0.45 - smoke * 0.35) * 0.9;
-        band(coreIn, PALETTE.fireCore);
-      }
     }
   }
 

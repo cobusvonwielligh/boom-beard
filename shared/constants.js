@@ -20,10 +20,16 @@ export const ROUND_TICKS = 10 * 60 * TICK_HZ; // 18000
 export const ROUNDTIME_MIN_MIN = 0.1;
 export const ROUNDTIME_MAX_MIN = 60;
 
-// Tiles of open sea kept visible on every side of the island. The board is scaled so the map
-// plus this margin fits exactly - without it an island can sit flush against the panel edge and
-// stop reading as an island.
-export const SEA_MARGIN_TILES = 2;
+/* Tiles of open sea kept visible on every side of the island.
+ *
+ * The board is scaled so the map plus this margin fits exactly - without it an island can sit
+ * flush against the panel edge and stop reading as an island.
+ *
+ * Three rather than two, now that the shallows are drawn: the sand shelf reaches about a tile
+ * and a half out from the coast (see SHELF_TILES in client/render.js), and at a two-tile margin
+ * the far side of the shelf was the first thing the panel edge cut off - which is exactly the
+ * part that makes the island look like it is standing in water rather than floating on it. */
+export const SEA_MARGIN_TILES = 3;
 
 // The board is never drawn smaller than this, whatever the window. Below about two thirds a
 // 32-pixel tile is 21 pixels and a player is a smudge; past that point a camera that follows you
@@ -534,14 +540,23 @@ export const PERK_TAKE_HALFLIFE_TICKS = 8 * TICK_HZ;
 export const PERK_TAKE_DECAY = Math.pow(0.5, 1 / PERK_TAKE_HALFLIFE_TICKS);
 export const PERK_DEMAND_BOOST = 0.8;      // at most +80% when the board is being stripped
 export const PERK_DROP_ALWAYS = [BLOCK.REINFORCED, BLOCK.MONOLITH];
-export const PERK_EXPIRE_TICKS = 45 * TICK_HZ;
+/* Two minutes on the floor, not forty-five seconds.
+ *
+ * A perk you can see across the board and cannot reach yet is a reason to go there, and at
+ * forty-five seconds the answer to "is that worth crossing for" was usually no: it had gone by
+ * the time you arrived, which turns a decision into a dice roll. */
+export const PERK_EXPIRE_TICKS = 120 * TICK_HZ;
 /* How long a perk spends visibly dying before it is removed.
  *
  * A drop that vanishes between two frames reads as a bug, or as somebody else having taken it
  * from across the map. Fading it out turns the same event into information you can act on: a
  * perk you can see going translucent is one you have a few seconds left to reach. Purely a
- * render concern - the sim still removes it on the exact tick. */
-export const PERK_FADE_TICKS = 15 * TICK_HZ;
+ * render concern - the sim still removes it on the exact tick.
+ *
+ * Five seconds of it, and it used to be fifteen - a third of the perk's whole life spent dying,
+ * which meant the normal state of a perk on this board was "leaving". Five is long enough to
+ * sprint for and short enough that a perk standing there looks like it is staying. */
+export const PERK_FADE_TICKS = 5 * TICK_HZ;
 export const PERKS_DROPPED_ON_DEATH = 3;
 // Two, so a shield can be stacked: each one survives one hit, and a second is worth walking to
 // rather than a capped pickup. Drawn on the player as a blue ring per shield - see drawShields.

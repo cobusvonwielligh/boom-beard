@@ -2738,23 +2738,29 @@ body.dead #rank {
   filter: drop-shadow(0 0 7px #edc24e4d);
   outline: none;
 }
+/* The dossier is a CARD, with the card's own numbers.
+ *
+ * It had its own fill, its own padding, its own shadow and a two-degree tilt, which is three
+ * near-misses and a wonk: next to the round-over card or the menu it read as something from a
+ * different site. Same `--panel-fill`, same 16px corner, same shadow stack as `.card`, same
+ * 26px/48px padding rhythm scaled to its width - and no rotation. It still gets the sweep and
+ * the lift, because it ARRIVES rather than being there, and that is the one way it is not a
+ * dialog. */
 #playerHover {
-  --panel-fill: #121923fa;
+  --panel-fill: #141b24f2;
   position: fixed;
   z-index: 40;
   width: 310px;
-  padding: 18px;
-  /* The same corner every other dialog on the site has. It was square, which made it read as a
-     browser tooltip sitting on top of the game rather than as part of it. */
+  padding: 20px 22px 18px;
   border-radius: 16px;
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
-  transform: translateY(10px) scale(0.94) rotate(-0.4deg);
+  transform: translateY(10px) scale(0.94);
   transform-origin: 22px 0;
   box-shadow:
-    0 22px 52px #000d,
-    0 0 36px #edc24e26;
+    0 0 80px #80203238,
+    0 22px 60px #000b;
   transition:
     opacity 0.18s ease,
     transform 0.28s cubic-bezier(0.2, 1.45, 0.3, 1),
@@ -2773,7 +2779,7 @@ body.dead #rank {
 #playerHover.show {
   opacity: 1;
   visibility: visible;
-  transform: translateY(0) scale(1) rotate(0);
+  transform: translateY(0) scale(1);
   transition-delay: 0s;
 }
 .phHead {
