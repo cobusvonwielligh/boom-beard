@@ -1,6 +1,6 @@
 {
   "name": "boom-beard",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "private": true,
   "type": "module",
   "description": "16-player browser Bomberman for Friday office games",
@@ -9,7 +9,6 @@
   },
   "scripts": {
     "tag": "npm version minor -m \"release: v%s\" && git push --follow-tags",
-
     "start": "node server/index.js",
     "dev": "LAG=200 JITTER=40 node server/index.js",
     "test": "node --test",

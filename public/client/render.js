@@ -546,30 +546,12 @@ export function createRenderer(canvas, world) {
             cc.beginPath();
             if (sea) cc.rect(0, 0, TILE_PX, TILE_PX);
             else {
-              /* Rounded only where the corner is actually a corner.
-               *
-               * A flat radius on every tile turns a solid rock wall into a row of lozenges with
-               * sand showing through every join - four notches per shared corner, which is both
-               * ugly and a lie about what you can walk between. So each corner asks whether
-               * either of the two sides meeting there continues into more rock: if it does, the
-               * corner is interior and stays square, and the two tiles meet with no seam. Only
-               * the corners on the OUTSIDE of a mass of rock are rounded, which is exactly where
-               * a boulder would be worn round.
-               */
-              // Off the board counts as rock: the map's border ring is rock, so a tile on the
-              // edge of the grid has more of the same beyond it rather than open sand.
-              const rock = (x, y) => (x < 0 || y < 0 || x >= map.w || y >= map.h
-                ? true : cellType(map.cells[y * map.w + x]) === BLOCK.IRON);
-              const up = rock(tx, ty - 1), down = rock(tx, ty + 1);
-              const west = rock(tx - 1, ty), east = rock(tx + 1, ty);
+              /* Inland boulders are individual rounded stones, not square tiles within a wall.
+               * Keep the base layer underneath their cut corners so neighbouring stones still
+               * read as one continuous rock mass instead of exposing transparent canvas. */
               const r = ROCK_RADIUS;
               drawTile(cc, BLOCK.FLOOR, tx, ty, 0);
-              cc.roundRect(0, 0, TILE_PX, TILE_PX, [
-                up || west ? 0 : r,
-                up || east ? 0 : r,
-                down || east ? 0 : r,
-                down || west ? 0 : r,
-              ]);
+              cc.roundRect(0, 0, TILE_PX, TILE_PX, r);
             }
             cc.clip();
             drawRock(cc, tx, ty, sea);

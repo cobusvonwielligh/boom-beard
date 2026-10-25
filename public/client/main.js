@@ -9,7 +9,7 @@ import {
   MAX_SKATES, MAX_SHIELDS, MAX_STAMINA_LEVELS, IDLE_DISCONNECT_MS, RESPAWN_DELAY_TICKS, TILE_PX,
   MAX_BOMBS_CARRIED, MAX_RADIUS, START_BOMBS, START_RADIUS,
   POWDER_RADIUS, PERK, STATUS, VOLUME_MUSIC_DEFAULT,
-  CHAT_MIN_INTERVAL_MS, STREAK_WINDOW_TICKS,
+  CHAT_MIN_INTERVAL_MS, STREAK_WINDOW_TICKS, ARRIVE_DELAY_TICKS,
 } from '/shared/constants.js';
 // The one number the password box needs to quote at somebody. The rules themselves live on the
 // server - see badPassword in server/accounts.js - and this is only the hint text.
@@ -1720,7 +1720,10 @@ function syncCountIn() {
   const el = $('countIn');
   // The server's number, not ours: it is the tick the freeze lifts on, and the digit has to be
   // counting down to the same instant the board unfreezes or it is a decoration.
-  const until = world.startsAtTick || 0;
+  const me = world.me();
+  const sharedUntil = world.startsAtTick || 0;
+  const personalArrival = !!me?.arriving && me.arriveAt > sharedUntil;
+  const until = personalArrival ? me.arriveAt : sharedUntil;
   if (!until) { if (countInShown !== -1) { el.classList.remove('on', 'hot'); countInShown = -1; } return; }
   const left = until - world.tick;
   // Over, or not this round: the GO frame is left to finish its own animation.
@@ -1730,7 +1733,9 @@ function syncCountIn() {
   }
   // 5..1 while there is time left, then 0 for the GO beat.
   const n = Math.max(0, Math.ceil(left / TICK_HZ));
-  const seconds = Math.max(1, Math.round(until / TICK_HZ));
+  const seconds = personalArrival
+    ? ARRIVE_DELAY_TICKS / TICK_HZ
+    : Math.max(1, Math.round(until / TICK_HZ));
   if (n === countInShown) return;
   countInShown = n;
 

@@ -76,6 +76,7 @@ export function createWorld() {
     // Absent means whole; see MAX_HP and playerWire.
     p.hp = wire.hp ?? MAX_HP;
     p.arriving = !!wire.ar;
+    p.arriveAt = wire.art ?? 0;
     if (wire.sta !== undefined) { p.stamina = wire.sta; p.staminaLevel = wire.stl; p.tired = !!wire.tr; }
     p.slide = wire.sl ?? 0;
     // The deliberate slide: absent means not sliding, which is almost every tick. See playerWire.

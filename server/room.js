@@ -212,7 +212,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     return { seat, resumed: false, playerId: id, displaced };
   }
 
-  /* Arriving: off the board for `arriveIn` ticks, then placed. See ARRIVE_DELAY_TICKS.
+  /* Arriving: wait for the shared round start, or a private delay after it has started.
    *
    * Not dead - no death, no score, and `arriving` rides on the wire so the client shows neither
    * the death card nor an empty heart. respawnAt is the arrival tick, so the respawn key cannot
@@ -221,7 +221,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     if (arriveIn <= 0) return;
     p.alive = false;
     p.arriving = true;
-    p.arriveAt = state.tick + arriveIn;
+    p.arriveAt = state.tick < countIn ? countIn : state.tick + arriveIn;
     p.respawnAt = p.arriveAt;
   }
   function placeArrivals() {
@@ -673,7 +673,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     // Health: whole or half. Only sent when it is not whole, which is the rare case.
     ...(p.alive && p.hp < MAX_HP ? { hp: p.hp } : null),
     // Arriving, not dead: off the board for a moment after joining. See holdArrival.
-    ...(p.arriving ? { ar: 1 } : null),
+    ...(p.arriving ? { ar: 1, art: p.arriveAt } : null),
     s: p.score, k: p.kills, dd: p.deaths, stat: p.status,
     sk: p.streakCount || 0, skt: p.streakLastKillTick ?? -1,
     // Coins. One small integer that only ever goes up, and the only stat on the wire that is

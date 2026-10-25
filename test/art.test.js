@@ -38,3 +38,16 @@ test('interior blocks have a larger smooth cut than the coast', () => {
   assert.match(drawTile, /roundRect\(0, 0, TILE_PX, TILE_PX, STONE_RADIUS\)/,
     'interior block artwork is not clipped to the enlarged chamfer');
 });
+
+test('inland rock blocks round every corner instead of retaining square internal edges', () => {
+  const source = fs.readFileSync(new URL('../public/client/render.js', import.meta.url), 'utf8');
+  const inlandRock = source.slice(
+    source.indexOf('const sea = seaEdges(tx, ty);'),
+    source.indexOf('cc.clip();\n            drawRock(cc, tx, ty, sea);'),
+  );
+
+  assert.match(inlandRock, /roundRect\(0, 0, TILE_PX, TILE_PX, r\)/,
+    'inland rock is not smoothly clipped at all four corners');
+  assert.doesNotMatch(inlandRock, /up \|\| west|up \|\| east|down \|\| east|down \|\| west/,
+    'interior corners still keep the square tile edge');
+});
