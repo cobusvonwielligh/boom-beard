@@ -1227,9 +1227,47 @@ export function createRenderer(canvas, world) {
   const SURFACE_DRIFT = [5, 15];                   // px/s each layer travels
   const SURFACE_SPREAD = [-Math.PI / 5, Math.PI / 5];
 
-  const between = ([lo, hi]) => lo + Math.random() * (hi - lo);
+  /* Scenery is part of the MAP, not part of this window.
+   *
+   * The sea's heading, the boulders out in the water and where the ship is moored were all rolled
+   * off Math.random(), which made them three different things at once: different for every player
+   * in the room, different for the same player after a resize, and different on the same map from
+   * one round to the next. All three are wrong for the same reason - two people talking about
+   * "the rock by the wreck" have to be looking at the same rock.
+   *
+   * So they come off a stream seeded from the map itself. Every client builds the identical sea,
+   * nothing reshuffles when the window changes, and a given map always looks like itself. Only
+   * the transient things - foam, splashes, dust, sparks - still use Math.random(), which is right:
+   * nobody can compare a splash.
+   *
+   * Mulberry32, the same shape as the simulation's own rng, because determinism from a seed is
+   * the entire requirement and thirty-two bits of it is plenty for where to put a rock.
+   */
+  function seededRng(seed) {
+    let a = seed >>> 0;
+    return () => {
+      a = (a + 0x6d2b79f5) >>> 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  /** A stream for one aspect of one map. `salt` keeps the aspects independent of each other. */
+  function mapRng(salt) {
+    const map = world.map || {};
+    let h = (map.seed ?? 0) ^ ((map.w | 0) * 73856093) ^ ((map.h | 0) * 19349663);
+    for (const ch of String(map.id ?? '')) h = Math.imul(h ^ ch.charCodeAt(0), 16777619);
+    return seededRng((h ^ salt) >>> 0);
+  }
+
+  // Set by whoever is rolling: `between` reads it, so the thirty-odd calls below did not each
+  // have to be threaded with a generator.
+  let roll = Math.random;
+  const between = ([lo, hi]) => lo + roll() * (hi - lo);
 
   function rollSurface() {
+    roll = mapRng(0x5ea50);
     current.surface = [0, 1].map(() => {
       const a = between(SURFACE_SPREAD);
       const sp = between(SURFACE_DRIFT);
@@ -1238,8 +1276,11 @@ export function createRenderer(canvas, world) {
   }
 
   function rollCurrent() {
+    /* Seeded from the map, so the sea is the same sea for everybody in the room and the same sea
+     * every time that map comes round. See mapRng. */
+    roll = mapRng(0x0cea4);
     // The heading everything is rolled around: a full turn, so no two maps share an orientation.
-    current.angle = Math.random() * Math.PI * 2;
+    current.angle = roll() * Math.PI * 2;
     current.speed = between(DRIFT_SPEED);
     rollSurface();
     current.trains = [-1, 1].map(side => {
@@ -1247,7 +1288,7 @@ export function createRenderer(canvas, world) {
       const heading = current.angle + side * between(TRAIN_SPREAD);
       const wavelength = between(TRAIN_WAVELENGTH);
       // The envelope gets a heading of its own, anywhere on the circle.
-      const envHeading = Math.random() * Math.PI * 2;
+      const envHeading = roll() * Math.PI * 2;
       const envWavelength = between(ENVELOPE_WAVELENGTH);
       return {
         // Precomputed because this runs per particle per frame.
@@ -1255,13 +1296,15 @@ export function createRenderer(canvas, world) {
         k: (Math.PI * 2) / wavelength,          // radians of phase per pixel
         w: ((Math.PI * 2) / wavelength) * between(TRAIN_SPEED),   // and per second
         amp: between(TRAIN_AMPLITUDE),
-        phase: Math.random() * Math.PI * 2,
+        phase: roll() * Math.PI * 2,
         edx: Math.cos(envHeading), edy: Math.sin(envHeading),
         ek: (Math.PI * 2) / envWavelength,
         ew: ((Math.PI * 2) / envWavelength) * between(ENVELOPE_SPEED),
-        ephase: Math.random() * Math.PI * 2,
+        ephase: roll() * Math.PI * 2,
       };
     });
+    // Back to the real thing: everything transient below this - foam, splashes, dust - wants it.
+    roll = Math.random;
   }
 
   /**
@@ -1456,16 +1499,28 @@ export function createRenderer(canvas, world) {
     if (mooredFor === world.map) return moored;
     mooredFor = world.map;
     const [lx, ly, lw, lh] = landBounds();
-
-    // Which side of the island she sits off, chosen from the map's own dimensions so it is
-    // stable for a given map and different between maps.
-    const side = (world.map.w * 31 + world.map.h * 17) % 4;      // 0 right, 1 up, 2 left, 3 down
+    /* Where she lies, how far out, how far along and how big - all off the map's own stream.
+     *
+     * The side and the drift used to come out of `w * 31 + h * 17` and `w % 7`, which is stable
+     * and almost constant: two maps of similar size moored her in the same place at the same
+     * size, and she was dead level with the island's middle on half of them. A seeded stream
+     * gives every map its own answer to all four questions while keeping every client's answer
+     * identical - see mapRng.
+     */
+    const rnd = mapRng(0x5417);
+    const side = (rnd() * 4) | 0;                                // 0 right, 1 up, 2 left, 3 down
     const cx = (lx + lw / 2) * TILE_PX, cy = (ly + lh / 2) * TILE_PX;
-    const outX = (lw / 2 + SHIP_OFFSHORE_TILES) * TILE_PX;
-    const outY = (lh / 2 + SHIP_OFFSHORE_TILES) * TILE_PX;
-    // Offset along the shore as well as away from it, so she is never dead level with the
-    // middle of the island - which would look placed rather than anchored.
-    const drift = ((world.map.w % 7) - 3) * TILE_PX * 1.5;
+    // How far offshore, give or take a third of a ship: close in off one island, standing well
+    // out off the next.
+    const off = SHIP_OFFSHORE_TILES * (0.82 + rnd() * 0.45);
+    const outX = (lw / 2 + off) * TILE_PX;
+    const outY = (lh / 2 + off) * TILE_PX;
+    // Along the shore as well as away from it, so she is never level with the middle of the
+    // island - which looks placed rather than anchored. Up to four tiles either way.
+    const drift = (rnd() - 0.5) * 8 * TILE_PX;
+    // And she is not the same ship every time: a fifth either side of her nominal size, which at
+    // this distance reads as a different vessel rather than as a scaling error.
+    const scale = 0.82 + rnd() * 0.4;
 
     const spots = [
       { x: cx + outX, y: cy + drift, angle: Math.PI / 2 },
@@ -1473,7 +1528,7 @@ export function createRenderer(canvas, world) {
       { x: cx - outX, y: cy + drift, angle: Math.PI / 2 },
       { x: cx + drift, y: cy + outY, angle: 0 },
     ];
-    moored = spots[side];
+    moored = { ...spots[side], side, scale };
     return moored;
   }
 
@@ -1488,6 +1543,12 @@ export function createRenderer(canvas, world) {
     // that is not reads as a sprite rather than as a boat.
     const roll = Math.sin(seaT * 0.45) * 0.026;
     ctx.rotate(roll);
+    /* Her size for this map, applied to the whole rig at once.
+     *
+     * Inside the transform rather than baked into SHIP_SCALE, so the hull, the wake rings, the
+     * collar of displaced water and the shadow all grow together - a ship whose wake did not
+     * scale with her would read as the wrong ship in somebody else's water. See mooring. */
+    if (m.scale !== 1) ctx.scale(m.scale, m.scale);
     // Her total heading, for anything below that has to work in world axes rather than hers.
     const heading = m.angle + roll;
 
@@ -1568,7 +1629,7 @@ export function createRenderer(canvas, world) {
    * about the brightness of the deep water around them: you see shapes, not objects.
    */
   const SEA_ROCKS = 3;
-  let rocksFor = null, rocksForView = 0, seaRocks = [];
+  let rocksFor = null, seaRocks = [];
   let rockSprites = null, rockSpritesFor = null;
 
   /* Placed against the VIEW, not just against the island.
@@ -1595,17 +1656,27 @@ export function createRenderer(canvas, world) {
   const ROCK_GROW_OTHERS = 1.7 * 1.5;
 
   function waterRocks() {
-    const viewKey = Math.round(view.w / 40) * 1000 + Math.round(view.h / 40);
-    if (rocksFor === world.map && rocksForView === viewKey) return seaRocks;
+    if (rocksFor === world.map) return seaRocks;
     rocksFor = world.map;
-    rocksForView = viewKey;
 
     const [lx, ly, lw, lh] = landBounds();
     const cx = (lx + lw / 2) * TILE_PX, cy = (ly + lh / 2) * TILE_PX;
-    const zoom = view.zoom || 1;
-    // Half the board, in world pixels, from the island's centre.
-    const halfView = [(view.w / zoom) / 2, (view.h / zoom) / 2];
+    /* Measured against the BOARD, not the window.
+     *
+     * Against the window every player in the room had the boulders somewhere different, and your
+     * own moved every time you resized - the cache key literally contained the window size. The
+     * sea between the island and the edge of the map is the same sea for everybody, so that is
+     * what the band is measured in now, and the whole set is identical on every screen. The board
+     * is scaled to fit the map plus SEA_MARGIN_TILES, so anything inside this band is on screen.
+     */
+    const halfBoard = [
+      Math.min(cx, world.map.w * TILE_PX - cx),
+      Math.min(cy, world.map.h * TILE_PX - cy),
+    ];
+    const halfView = halfBoard;
     const halfLand = [(lw * TILE_PX) / 2, (lh * TILE_PX) / 2];
+    // Every number below comes off the map's own stream: same rocks for everyone, every round.
+    const rnd = mapRng(0x0c1a7);
 
     const bandOn = axis => halfView[axis] - (halfLand[axis] + TILE_PX * 1.2);
     // The fully-visible one goes on whichever axis has the most spare sea, because it is the
@@ -1613,7 +1684,7 @@ export function createRenderer(canvas, world) {
     const widest = bandOn(0) >= bandOn(1) ? 0 : 1;
 
     seaRocks = [];
-    const spin = (Math.random() * 4) | 0;
+    const spin = (rnd() * 4) | 0;
 
     /* Sized first, placed second, because the sizes depend on each other.
      *
@@ -1628,7 +1699,7 @@ export function createRenderer(canvas, world) {
     const plans = [];
     for (let i = 0; i < SEA_ROCKS; i++) {
       let side = i === 0
-        ? widest + (Math.random() < 0.5 ? 0 : 2)        // same axis, either end
+        ? widest + (rnd() < 0.5 ? 0 : 2)        // same axis, either end
         : (spin + i) % 4;
       if (side === shipSide) side = (side + 2) % 4;
       const horizontal = side % 2 === 0;
@@ -1638,7 +1709,7 @@ export function createRenderer(canvas, world) {
       const band = outer - inner;
       const full = i < ROCK_FULLY_VISIBLE;
       // A thin band still gets a rock; it is simply a smaller one.
-      const want = TILE_PX * (2.1 + Math.random() * 1.9);
+      const want = TILE_PX * (2.1 + rnd() * 1.9);
       const r = full
         ? Math.max(TILE_PX * 0.35, Math.min(want, band / 2))
         : Math.max(TILE_PX * 0.9, Math.min(want, band * 0.8));
@@ -1657,26 +1728,26 @@ export function createRenderer(canvas, world) {
         ? (inner + r + Math.max(inner + r, outer - r)) / 2
         // Partly outside: `visible` is how much of its width is left on screen, so the centre
         // sits that far short of the edge plus the rest of its radius beyond it.
-        : outer + r * (1 - 2 * (ROCK_MIN_VISIBLE + Math.random() * 0.3)));
+        : outer + r * (1 - 2 * (ROCK_MIN_VISIBLE + rnd() * 0.3)));
 
       // And a slide along the shore, so they are not all on the centre line of their side. The
       // fully-visible one is clamped so the slide cannot push it off the OTHER edge, which is
       // the easy way to lose a guarantee you only checked on one axis.
       const spread = halfView[1 - axis];
       const along = full
-        ? (Math.random() - 0.5) * 2 * Math.max(0, spread - r)
-        : (Math.random() - 0.5) * spread * 1.2;
+        ? (rnd() - 0.5) * 2 * Math.max(0, spread - r)
+        : (rnd() - 0.5) * spread * 1.2;
 
       seaRocks.push({
         x: cx + (horizontal ? sign * dist : along),
         y: cy + (horizontal ? along : sign * dist),
         r,
         lumps: Array.from({ length: 4 }, () => ({
-          dx: (Math.random() - 0.5) * r * 0.9,
-          dy: (Math.random() - 0.5) * r * 0.7,
-          r: r * (0.42 + Math.random() * 0.46),
-          squash: 0.72 + Math.random() * 0.3,
-          turn: Math.random() * Math.PI,
+          dx: (rnd() - 0.5) * r * 0.9,
+          dy: (rnd() - 0.5) * r * 0.7,
+          r: r * (0.42 + rnd() * 0.46),
+          squash: 0.72 + rnd() * 0.3,
+          turn: rnd() * Math.PI,
         })),
         /* The mass of it under the water: bigger than what breaks the surface, and barely there.
          *
@@ -1691,13 +1762,13 @@ export function createRenderer(canvas, world) {
          * the shape on top of it reads as a shadow rather than as rock.
          */
         base: Array.from({ length: 5 }, () => ({
-          dx: (Math.random() - 0.5) * r * 1.9,
-          dy: (Math.random() - 0.5) * r * 1.5,
-          r: r * (0.75 + Math.random() * 0.85),
-          squash: 0.55 + Math.random() * 0.4,
-          turn: Math.random() * Math.PI,
+          dx: (rnd() - 0.5) * r * 1.9,
+          dy: (rnd() - 0.5) * r * 1.5,
+          r: r * (0.75 + rnd() * 0.85),
+          squash: 0.55 + rnd() * 0.4,
+          turn: rnd() * Math.PI,
         })),
-        phase: Math.random() * Math.PI * 2,
+        phase: rnd() * Math.PI * 2,
       });
     }
     return seaRocks;

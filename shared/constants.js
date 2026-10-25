@@ -852,7 +852,20 @@ export const REGEN_MAX_FILL = 0.55;
 // 12.4°, against 22.5° for this.)
 const HUE_ORDER = [0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15];
 export const playerHueSlot = i => HUE_ORDER[((i % 16) + 16) % 16];
+
+/* ONE definition of what colour a seat is, as three numbers.
+ *
+ * Everything that paints a player reads this: the name in the chat, the row on the scoreboard,
+ * the sprite's three shades, the crown, the rim blip, the server's welcome. They all agreed
+ * before - by all doing the same arithmetic in their own file - which is the kind of agreement
+ * that holds until somebody adjusts one of them. A seat's colour is a fact about the seat, so
+ * there is now exactly one place it comes from and the rest derive.
+ */
+export const playerHsl = i => {
+  const slot = playerHueSlot(i);
+  return { h: slot * 22.5, s: 74, l: slot % 2 ? 52 : 64 };
+};
 export const playerColor = i => {
-  const h = playerHueSlot(i);
-  return `hsl(${h * 22.5} 74% ${h % 2 ? 52 : 64}%)`;
+  const { h, s, l } = playerHsl(i);
+  return `hsl(${h} ${s}% ${l}%)`;
 };

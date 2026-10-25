@@ -10,7 +10,7 @@
 //   3. Terrain is muted; players are the only saturated things on screen.
 
 // `/shared` is mounted by the dev server alongside `public/` - see docs/ARCHITECTURE.md §7.
-import { BLOCK, TILE_PX, MAX_RADIUS, playerHueSlot } from '/shared/constants.js';
+import { BLOCK, TILE_PX, MAX_RADIUS, playerHueSlot, playerHsl } from '/shared/constants.js';
 
 export const PALETTE = {
   void: '#0d1117',
@@ -83,10 +83,11 @@ const FIRE_HUE = 24;                 // fire's own orange, in degrees
 /* How far toward the player's hue the ramp moves: 0.28, down from 0.4.
  *
  * Forty percent made a blast obviously somebody's and slightly less obviously fire - the blues
- * and greens in particular stopped looking hot. Twenty-eight is the point where a blast still
- * reads as fire first and as a player's fire second, which is the right order: the colour is
- * there to answer "whose" for somebody who is already looking at it, not to label it. */
-const FIRE_PULL = 0.28;
+ * and greens in particular stopped looking hot. Eighteen is natural fire with somebody's accent
+ * IN it: you would not pick the hue out of a still frame, and you can tell two players' blasts
+ * apart on a board without being told that is what you are doing. That is the right order - the
+ * colour answers "whose" for an eye already on it, it does not label it. */
+const FIRE_PULL = 0.18;
 const fireToneCache = new Map();
 
 export function fireTones(i) {
@@ -102,8 +103,8 @@ export function fireTones(i) {
      * of saturation off each one. A hue that has been pulled toward blue or green shows its
      * saturation far more than the orange it came from does, so holding fire's exact numbers made
      * the cool players look like paint and the warm ones look right. */
-    edge: `hsl(${h.toFixed(1)} 74% 53%)`,
-    mid: `hsl(${h.toFixed(1)} 92% 62%)`,
+    edge: `hsl(${h.toFixed(1)} 68% 53%)`,
+    mid: `hsl(${h.toFixed(1)} 86% 62%)`,
     // The core keeps a quarter of the shift and nearly all of fire's own whiteness.
     core: `hsl(${(FIRE_HUE + delta * FIRE_PULL * 0.35 + 360) % 360} 100% 88%)`,
     // What the smoke-stage body cools to, and the one the sparks fly in.
@@ -115,11 +116,13 @@ export function fireTones(i) {
 }
 
 export const playerShades = i => {
-  const slot = playerHueSlot(i), h = slot * 22.5, l = slot % 2 ? 52 : 64;
+  // Straight off playerHsl, so the sprite and the name in the chat can never drift apart: `base`
+  // IS what `playerColor` returns, and the other two are it lit and shaded.
+  const { h, s, l } = playerHsl(i);
   return {
-    light: `hsl(${h} 74% ${l + 14}%)`,
-    base: `hsl(${h} 74% ${l}%)`,
-    dark: `hsl(${h} 74% ${l - 20}%)`,
+    light: `hsl(${h} ${s}% ${l + 14}%)`,
+    base: `hsl(${h} ${s}% ${l}%)`,
+    dark: `hsl(${h} ${s}% ${l - 20}%)`,
   };
 };
 
