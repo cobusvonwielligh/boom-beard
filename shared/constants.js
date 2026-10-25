@@ -94,10 +94,14 @@ export const HITBOX_REDUCED_UNITS = 10 * (UNITS_PER_TILE / TILE_PX);
  * moving and another when being pushed is the kind of disagreement that ends in a desync.
  */
 export const DIAG_NUM = 181, DIAG_DEN = 256;
-// 64 units, up from 44: eight pixels of chamfer on a twenty-pixel box rather than five and a
-// half. At 44 a diagonal past a block corner still caught often enough to notice, which is the
-// one thing the chamfer exists to stop.
-export const CORNER_CUT_UNITS = 64;
+/* 96 units: twelve pixels of chamfer on a twenty-pixel box.
+ *
+ * It was 44, then 64, now half again as much. The box is 160 units across, so the chamfer is now
+ * most of the way to the middle of each side - which is as far as it can usefully go: at 80 the
+ * corners meet and the hitbox is a diamond, and a diamond slides off everything including the
+ * walls you meant to stop against. At 96 it is still an octagon with real flats on it, and a
+ * diagonal past a block corner glances off with nothing left to catch on. */
+export const CORNER_CUT_UNITS = 96;
 
 // Fire forgives a sliver of the sprite. The hitboxes above are what geometry collides with; fire
 // kills on this fraction of them, so a player tucked behind a wall with two or three pixels of

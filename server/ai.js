@@ -473,7 +473,7 @@ function chooseDir(state, p, brain, danger, tx, ty) {
 function steer(state, p, dir) {
   const d = DIRS[dir];
   const speed = speedOf(p);
-  if (!blocked(state, p, p.x + d.dx * speed, p.y + d.dy * speed)) return d.mask;
+  if (!blocked(state, p, p.x + d.dx * speed, p.y + d.dy * speed, true, false)) return d.mask;
   const off = d.dx ? (p.y & 255) - 128 : (p.x & 255) - 128;
   if (off === 0) return d.mask;                    // squarely facing a wall; nothing to line up
   if (d.dx) return off > 0 ? IN_UP : IN_DOWN;
@@ -514,7 +514,9 @@ function withDiagonal(state, p, danger, mask, dir, gx, gy) {
   if (!walkable(map, tx + sx, ty + sy)) return mask;        // the side step itself has to exist
   // Hitbox, not tile: a corner the centre clears but the shoulders do not is a bot wedged in it.
   const pace = Math.max(1, (speedOf(p) * DIAG_NUM / DIAG_DEN) | 0);
-  if (blocked(state, p, p.x + sx * pace, p.y + sy * pace)) return mask;
+  // The SQUARE box: see the chamfer note in blocked(). A corner a person may glance off is not a
+  // corner a bot may plan through.
+  if (blocked(state, p, p.x + sx * pace, p.y + sy * pace, true, false)) return mask;
 
   const straight = threatAt(danger, null, tx + d.dx, ty + d.dy);
   if (threatAt(danger, null, cx, cy) < straight) return mask;

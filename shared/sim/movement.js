@@ -233,7 +233,11 @@ function bombSolid(state, p, tx, ty) {
 /**
  * @param bombsCount false to ask about terrain only - see `unstick`.
  */
-export function blocked(state, p, x, y, bombsCount = true) {
+/**
+ * @param bombsCount false to ask about terrain only - see `unstick`.
+ * @param chamfer false to ask about the SQUARE box - see the note below.
+ */
+export function blocked(state, p, x, y, bombsCount = true, chamfer = true) {
   const h = halfBox(p);
   const reduced = has(p, STATUS.REDUCTION);
   const x0 = (x - h) >> 8, x1 = (x + h - 1) >> 8;
@@ -251,6 +255,15 @@ export function blocked(state, p, x, y, bombsCount = true) {
        * block diagonally feel like catching on a nail, and the only case: anything you are
        * properly into fails the depth test and is as solid as it ever was.
        */
+      /* The chamfer is a kindness to a person at the controls, not a fact about the world.
+       *
+       * A bot asking "can I stand here" has to ask about the square box. It is deciding whether a
+       * tile is a place to be when a fuse runs out, and twelve pixels of shoulder inside a wall
+       * corner is twelve pixels inside the blast on the other side of it - the corner cut lets you
+       * ROUND a corner, it does not make the corner cover you. Bots that trusted it cut diagonals
+       * into blasts they had correctly worked out they were clear of, and their suicides doubled.
+       */
+      if (!chamfer) return true;
       if (tx !== x0 && tx !== x1) return true;
       if (ty !== y0 && ty !== y1) return true;
       if (x0 === x1 || y0 === y1) return true;        // flush against a face, not a corner
