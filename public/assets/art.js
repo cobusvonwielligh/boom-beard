@@ -381,6 +381,7 @@ function drawTileBody(c, type, tx = 0, ty = 0, dmg = 0) {
         px(c, bx, by, 2, 2, 'rgba(255,255,255,0.14)');
       }
       bevel(c, 0, 0, S, S, 2);
+      if (CASTS_SHADOW.has(type)) castShadow(c, type);
       break;
     }
     case BLOCK.COLUMN:
@@ -669,7 +670,7 @@ function drawTileBody(c, type, tx = 0, ty = 0, dmg = 0) {
     }
   }
   if (dmg > 0) drawCracks(c, dmg, tx, ty);
-  if (CASTS_SHADOW.has(type)) castShadow(c);
+  if (CASTS_SHADOW.has(type)) castShadow(c, type);
   if (OUTLINED.has(type)) outlineTile(c);
 }
 
@@ -701,7 +702,7 @@ function outlineTile(c) {
  * the trick away, so the two lists have to be the same list. */
 export const CASTS_SHADOW = new Set([
   BLOCK.SOFT, BLOCK.REINFORCED, BLOCK.MONOLITH, BLOCK.POWDER, BLOCK.COLUMN, BLOCK.SHRUB_SOLID,
-  BLOCK.ICE,
+  BLOCK.ICE, BLOCK.IRON
 ]);
 
 /**
@@ -715,8 +716,14 @@ export const CASTS_SHADOW = new Set([
  *
  * Top-left light, matching every other piece of shading in the file.
  */
-function castShadow(c) {
+function castShadow(c, type) {
   const S = TILE_PX;
+  c.save();
+  if (type === BLOCK.ICE) {
+    c.beginPath();
+    c.roundRect(2.5, 2, S - 5, S - 5, [5, 5, 4, 4]);
+    c.clip();
+  }
   const g = c.createLinearGradient(0, S - 5, 0, S);
   g.addColorStop(0, 'rgba(0,0,0,0)');
   g.addColorStop(1, 'rgba(0,0,0,0.3)');
@@ -725,6 +732,7 @@ function castShadow(c) {
   h.addColorStop(0, 'rgba(0,0,0,0)');
   h.addColorStop(1, 'rgba(0,0,0,0.22)');
   px(c, S - 5, 0, 5, S, h);
+  c.restore();
 }
 
 /**

@@ -2,6 +2,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { rainbowFireTones } from '../public/client/fire.js';
+import { rockCornerRadii } from '../public/client/rock-corners.js';
+
+test('rock corners are cut only when both adjoining sides are exposed', () => {
+  assert.deepEqual(rockCornerRadii(false, true, true, false, 10), [10, 0, 0, 0]);
+  assert.deepEqual(rockCornerRadii(true, true, true, true, 10), [0, 0, 0, 0]);
+  assert.deepEqual(rockCornerRadii(false, false, false, false, 10), [10, 10, 10, 10]);
+});
 
 test('streak fire tones animate through the spectrum', () => {
   const first = rainbowFireTones(0);
@@ -57,15 +64,75 @@ test('interior blocks have a larger smooth cut than the coast', () => {
     'interior block artwork is not clipped to the enlarged chamfer');
 });
 
-test('inland rock blocks round every corner instead of retaining square internal edges', () => {
+test('rock tile clipping uses exposed-corner radii at the coast too', () => {
   const source = fs.readFileSync(new URL('../public/client/render.js', import.meta.url), 'utf8');
-  const inlandRock = source.slice(
+  const cornerGeometry = source.slice(
+    source.indexOf('function blockCornerRadii'),
+    source.indexOf('function appendBlockShape'),
+  );
+  const ironRock = source.slice(
     source.indexOf('const sea = seaEdges(tx, ty);'),
-    source.indexOf('cc.clip();\n            drawRock(cc, tx, ty, sea);'),
+    source.indexOf('drawRock(cc, tx, ty, sea);'),
   );
 
-  assert.match(inlandRock, /roundRect\(0, 0, TILE_PX, TILE_PX, r\)/,
-    'inland rock is not smoothly clipped at all four corners');
-  assert.doesNotMatch(inlandRock, /up \|\| west|up \|\| east|down \|\| east|down \|\| west/,
-    'interior corners still keep the square tile edge');
+  assert.match(ironRock, /blockCornerRadii\(/,
+    'rock clipping does not distinguish exposed from shared corners');
+  assert.match(ironRock, /roundRect\(0, 0, TILE_PX, TILE_PX, radii\)/,
+    'the exposed-corner radii are not applied to coast-facing tiles');
+  assert.doesNotMatch(ironRock, /if \(sea\) cc\.rect/,
+    'coast-facing tiles still preserve sharp tile corners');
+  assert.match(cornerGeometry, /\? COAST_RADIUS : ROCK_RADIUS/,
+    'coast and inland corners do not keep their established radii');
+});
+
+test('projected shadows and occlusion follow trimmed block silhouettes', () => {
+  const source = fs.readFileSync(new URL('../public/client/render.js', import.meta.url), 'utf8');
+  const floorClip = source.slice(
+    source.indexOf('function floorClipPath()'),
+    source.indexOf('/** Clip the caller'),
+  );
+  const ao = source.slice(
+    source.indexOf('function aoPass('),
+    source.indexOf('/** Which sides of this tile face open water'),
+  );
+  const projected = source.slice(
+    source.indexOf('/* Project block shadows onto the finished floor'),
+    source.indexOf('// The rounded coast, after every tile'),
+  );
+  const art = fs.readFileSync(new URL('../public/assets/art.js', import.meta.url), 'utf8');
+
+  assert.match(floorClip, /appendBlockShape/,
+    'floor shadow masking still cuts square holes around blocks');
+  assert.doesNotMatch(floorClip, /p\.rect\(tx \* TILE_PX, ty \* TILE_PX, TILE_PX, TILE_PX\)/,
+    'the shadow mask still removes a full tile instead of the visible block shape');
+  assert.match(projected, /appendBlockShape/,
+    'projected shadows still start from a square tile silhouette');
+  assert.match(projected, /clip\(floorClipPath\(\), 'evenodd'\)/,
+    'projected shadows still paint over rounded block faces');
+  assert.match(ao, /blockCornerRadii/,
+    'ambient occlusion still treats chamfered corners as full square tiles');
+    const aoReach = Number(source.match(/const AO_REACH = Math\.round\(TILE_PX \* ([\d.]+)\)/)?.[1]);
+    const aoAlpha = Number(source.match(/const AO_ALPHA = ([\d.]+);/)?.[1]);
+    assert.ok(aoReach <= 0.12, 'ambient occlusion bands are too wide');
+    assert.ok(aoAlpha <= 0.14, 'ambient occlusion is too intense');
+  assert.match(art, /function castShadow\(c, type\)[\s\S]*?type === BLOCK\.ICE[\s\S]*?c\.clip\(\)/,
+    'ice shadows are not clipped to the rounded ice body');
+});
+
+test('iron rocks cast shadows in the shared sun direction', () => {
+  const source = fs.readFileSync(new URL('../public/client/render.js', import.meta.url), 'utf8');
+  const art = fs.readFileSync(new URL('../public/assets/art.js', import.meta.url), 'utf8');
+  const shadowTypes = art.slice(
+    art.indexOf('export const CASTS_SHADOW'),
+    art.indexOf(']);', art.indexOf('export const CASTS_SHADOW')),
+  );
+  const projected = source.slice(
+    source.indexOf('/* Project block shadows onto the finished floor'),
+    source.indexOf('// The rounded coast, after every tile'),
+  );
+
+  assert.match(shadowTypes, /BLOCK\.IRON/,
+    'fixed rock tiles do not cast a projected shadow');
+  assert.match(projected, /map, sdx, sdy/,
+    'projected blocks do not share the scene’s sun direction');
 });

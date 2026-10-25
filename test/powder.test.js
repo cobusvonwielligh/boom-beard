@@ -46,7 +46,7 @@ test('a keg detonates when the stepwise wave reaches it, with a blast of its own
   assert.equal(booms[0].r, 3, 'the first boom should be the bomb that lit it');
   assert.equal(booms[1].r, POWDER_RADIUS, 'the keg did not blast at its own radius');
   assert.deepEqual([booms[1].x, booms[1].y], [6, 4], 'the keg blasted somewhere else');
-  assert.equal(booms[1].tick - booms[0].tick, 5, 'the keg did not wait for the fire wave');
+  assert.equal(booms[1].tick - booms[0].tick, 4, 'the keg did not wait for the accelerated fire wave');
 
   // Reach: POWDER_RADIUS tiles each way from the keg, in an empty room.
   assert.ok(s.fires.some(f => f.tx === 6 + POWDER_RADIUS && f.ty === 4),
@@ -64,7 +64,7 @@ test('kegs chain into each other as the fire wave reaches them', () => {
   for (let i = 0; i < 42; i++, s.tick++) detonate(s);
   const booms = s.events.filter(e => e.e === 'boom');
   assert.equal(booms.length, 3, `the second keg did not chain (${booms.length} booms)`);
-  assert.equal(booms[2].tick - booms[1].tick, 35, 'the second keg ignored exponential arrival timing');
+  assert.equal(booms[2].tick - booms[1].tick, 27, 'the last four flame steps were not accelerated');
 });
 
 test('a keg drops no perk - it holds powder', () => {

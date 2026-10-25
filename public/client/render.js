@@ -17,11 +17,13 @@ import { cellType, cellHp } from '/shared/maps.js';
 import {
   drawTile, drawFire, drawPerk, drawRock, drawShip, playerShades, PALETTE, bake, bakeSea,
   PERK_GLOWS, drawBombLive, CASTS_SHADOW, drawGull, drawFeather, fireTones,
-  COAST_CORNERS, COAST_Q, carveRockCorners, drawCoastFillets, cornerCells, STONE_RADIUS,
+  COAST_CORNERS, COAST_Q, COAST_RADIUS, carveRockCorners, drawCoastFillets, cornerCells,
+  STONE_RADIUS,
 } from '/assets/art.js';
 import { placeable } from '/shared/sim/bombs.js';
 import { gullAt } from '/shared/sim/gulls.js';
 import { streakActive } from '/shared/sim/state.js';
+import { rockCornerRadii } from './rock-corners.js';
 import {
   radarBombColor, radarBombFuseFraction, radarBombPulseAlpha, radarBombPulseHz,
   radarBombDiamondAngle, radarBombSizePx, radarBombWidthPx, selectRadarBombs,
@@ -444,11 +446,41 @@ export function createRenderer(canvas, world) {
    * over that top says there is nothing there. On a real board the shadow stops at the foot of
    * the block and climbs it, and since we have no way to climb it, stopping is the honest half.
    *
-   * One even-odd path: the whole world, minus a rect per solid tile. Rebuilt when the tick
-   * changes, because a crate that just blew up has to stop blocking immediately - and shared by
-   * every shadow pass in the frame, which is why it is not rebuilt per pass.
+   * One even-odd path: the whole world, minus each solid block's visible silhouette. Rebuilt when
+   * the tick changes, because a crate that just blew up has to stop blocking immediately - and
+   * shared by every shadow pass in the frame, which is why it is not rebuilt per pass.
    */
   let floorClip = null, floorClipAt = -1, floorClipMap = null;
+  const SHADOW_ROUNDED_BLOCKS = new Set([BLOCK.SOFT, BLOCK.REINFORCED, BLOCK.MONOLITH]);
+
+  function blockCornerRadii(type, tx, ty, map) {
+    if (type === BLOCK.IRON) {
+      const rock = (x, y) => x < 0 || y < 0 || x >= map.w || y >= map.h
+        ? true : cellType(map.cells[y * map.w + x]) === BLOCK.IRON;
+      const sea = (x, y) => x < 0 || y < 0 || x >= map.w || y >= map.h
+        || cellType(map.cells[y * map.w + x]) === BLOCK.WATER;
+      const radius = sea(tx + 1, ty) || sea(tx, ty - 1) || sea(tx - 1, ty) || sea(tx, ty + 1)
+        ? COAST_RADIUS : ROCK_RADIUS;
+      return rockCornerRadii(
+        rock(tx, ty - 1), rock(tx + 1, ty), rock(tx, ty + 1), rock(tx - 1, ty), radius,
+      );
+    }
+    if (type === BLOCK.ICE) return [5, 5, 4, 4];
+    const radius = SHADOW_ROUNDED_BLOCKS.has(type) ? STONE_RADIUS : 4;
+    return [radius, radius, radius, radius];
+  }
+
+  function appendBlockShape(path, type, x, y, tx, ty, map, dx = 0, dy = 0) {
+    if (type === BLOCK.ICE) {
+      path.roundRect(x + dx + 2.5, y + dy + 2, TILE_PX - 5, TILE_PX - 5, [5, 5, 4, 4]);
+      return;
+    }
+    path.roundRect(
+      x + dx, y + dy, TILE_PX, TILE_PX,
+      blockCornerRadii(type, tx, ty, map),
+    );
+  }
+
   function floorClipPath() {
     const map = world.map;
     if (!map) return null;
@@ -458,8 +490,9 @@ export function createRenderer(canvas, world) {
     p.rect(-1e5, -1e5, 2e5, 2e5);
     for (let ty = 0; ty < map.h; ty++) {
       for (let tx = 0; tx < map.w; tx++) {
-        if (!CASTS_SHADOW.has(cellType(map.cells[ty * map.w + tx]))) continue;
-        p.rect(tx * TILE_PX, ty * TILE_PX, TILE_PX, TILE_PX);
+        const type = cellType(map.cells[ty * map.w + tx]);
+        if (!CASTS_SHADOW.has(type)) continue;
+        appendBlockShape(p, type, tx * TILE_PX, ty * TILE_PX, tx, ty, map);
       }
     }
     floorClip = p; floorClipAt = world.tick; floorClipMap = map;
@@ -521,38 +554,14 @@ export function createRenderer(canvas, world) {
           cc.save();
           cc.translate(i * TILE_PX, j * TILE_PX);
           if (type === BLOCK.IRON) {
-            /* Rock, clipped - and the shape of the clip depends on where the rock is.
-             *
-             * Two problems share one answer here. The first is SPILL: a rock tile is three hashed
-             * lumps and the hash can put one up to nine pixels past the tile edge. Inland that
-             * never showed, because the next tile is drawn after it and paints the overhang out -
-             * but a water tile is never drawn at all (the sea is the background), so on the outer
-             * border the overhang survived, and the rounded coast made it obvious: the carve
-             * clears the corner back to the sea and the lump that used to hide under the square
-             * outline is left sitting on open water.
-             *
-             * The second is CORNERS: a boulder inside the playing area is a lump of stone, and a
-             * lump of stone does not have four right angles. The breakable blocks are rounded by
-             * the same radius (see STONE_RADIUS in art.js) and a square rock standing in a row of
-             * rounded crates is the one thing left on the board reading as a grid cell.
-             *
-             * So an INLAND rock gets sand laid under it and a rounded clip, exactly like a crate.
-             * A COAST rock - anything with a side facing the sea - keeps the square clip and no
-             * sand: its corners are already shaped, in quarter-tile steps, by the coast pass
-             * below, and a rounded clip there would notch sea into the island or sand into the
-             * sea depending on which side it was on.
-             */
-            const sea = seaEdges(tx, ty);
+            /* Round only corners exposed on both adjoining sides. Shared corners remain square,
+             * so rock walls stay joined; the matching floor/sea beneath a clipped corner shows
+              * through, and the coast pass draws the shoreline outline afterward. */
+             const sea = seaEdges(tx, ty);
+             const radii = blockCornerRadii(type, tx, ty, map);
+            if (!sea) drawTile(cc, BLOCK.FLOOR, tx, ty, 0);
             cc.beginPath();
-            if (sea) cc.rect(0, 0, TILE_PX, TILE_PX);
-            else {
-              /* Inland boulders are individual rounded stones, not square tiles within a wall.
-               * Keep the base layer underneath their cut corners so neighbouring stones still
-               * read as one continuous rock mass instead of exposing transparent canvas. */
-              const r = ROCK_RADIUS;
-              drawTile(cc, BLOCK.FLOOR, tx, ty, 0);
-              cc.roundRect(0, 0, TILE_PX, TILE_PX, r);
-            }
+            cc.roundRect(0, 0, TILE_PX, TILE_PX, radii);
             cc.clip();
             drawRock(cc, tx, ty, sea);
           } else drawTile(cc, type, tx, ty, dmg);
@@ -608,12 +617,11 @@ export function createRenderer(canvas, world) {
        */
       aoPass(cc, cx, cy, map);
 
-      /* Project block shadows over the finished ground AND the tops of downstream blocks.
+      /* Project block shadows onto the finished floor, never over the block faces.
        *
-       * Drawing this before the tiles made every block erase its own shadow, leaving only the
-       * part that landed on floor. Clip to land so the projection cannot paint over the sea;
-       * include the one-tile source border so shadows cross chunk seams without disappearing.
-       * It is still baked: the map and sun direction only change when a chunk is invalidated.
+       * Use the shared silhouette mask as well as the land mask: this keeps shadows from filling
+       * the chamfered gaps between blocks or painting square patches over their tops. Include the
+       * one-tile source border so shadows cross chunk seams without disappearing.
        */
       cc.save();
       cc.beginPath();
@@ -627,6 +635,9 @@ export function createRenderer(canvas, world) {
         }
       }
       cc.clip();
+      cc.translate(-cx * CHUNK_PX, -cy * CHUNK_PX);
+      cc.clip(floorClipPath(), 'evenodd');
+      cc.translate(cx * CHUNK_PX, cy * CHUNK_PX);
       cc.globalAlpha = SHADOW_ALPHA;
       cc.fillStyle = '#000';
       const canBlur = 'filter' in cc;
@@ -635,12 +646,14 @@ export function createRenderer(canvas, world) {
         ty < Math.min(map.h, (cy + 1) * CHUNK_TILES + 1); ty++) {
         for (let tx = Math.max(0, cx * CHUNK_TILES - 1);
           tx < Math.min(map.w, (cx + 1) * CHUNK_TILES + 1); tx++) {
-          if (!CASTS_SHADOW.has(cellType(map.cells[ty * map.w + tx]))) continue;
+          const type = cellType(map.cells[ty * map.w + tx]);
+          if (!CASTS_SHADOW.has(type)) continue;
           cc.beginPath();
-          cc.roundRect(
-            (tx - cx * CHUNK_TILES) * TILE_PX + sdx,
-            (ty - cy * CHUNK_TILES) * TILE_PX + sdy,
-            TILE_PX, TILE_PX, 4,
+          appendBlockShape(
+            cc, type,
+            (tx - cx * CHUNK_TILES) * TILE_PX,
+            (ty - cy * CHUNK_TILES) * TILE_PX,
+            tx, ty, map, sdx, sdy,
           );
           cc.fill();
         }
@@ -706,7 +719,7 @@ export function createRenderer(canvas, world) {
          * the corners the rounding opened up. ICE is deliberately not in the set above: it is
          * translucent and lit from inside by its own frost and sheen, and a ramp across it would
          * put an opaque gradient over the one block you are supposed to see through. */
-        cc.roundRect(x, y, S, S, type === BLOCK.IRON ? ROCK_RADIUS : STONE_RADIUS);
+        cc.roundRect(x, y, S, S, blockCornerRadii(type, tx, ty, map));
         cc.clip();
 
         /* The ramp. From the sunward edge to the far one, through the tile's centre, so the
@@ -990,16 +1003,8 @@ export function createRenderer(canvas, world) {
    * second wall. Both are drawn at tile scale and rotated into place, so one edge sprite serves
    * all four sides and one corner sprite all four corners.
    */
-  const AO_REACH = Math.round(TILE_PX * 0.46);      // how far into the floor the dark reaches
-  /* 0.72, up from 0.3.
-   *
-   * The first pass was tuned to be deniable - "the board looks softer" - and the honest report
-   * was that you could not see it. Occlusion in a crease is not subtle in life: the inside of a
-   * join between a wall and the floor is genuinely dark, and at nearly half a tile of reach and
-   * this alpha the corridors finally have depth instead of a hint of one. The falloff below is
-   * what keeps it from reading as paint: dense in the first few pixels, almost gone by the end.
-   */
-  const AO_ALPHA = 0.72;
+  const AO_REACH = Math.round(TILE_PX * 0.12);      // leave clear floor between neighbouring bands
+  const AO_ALPHA = 0.14;
   let aoEdge = null, aoCorner = null;
 
   function aoSprites() {
@@ -1045,6 +1050,54 @@ export function createRenderer(canvas, world) {
       // and the coast outline are already doing that job.
       return t !== BLOCK.WATER && !BLOCK_WALKABLE(t, false);
     };
+    const drawEdge = (side, tx, ty, x, y) => {
+      const type = cellType(map.cells[ty * map.w + tx]);
+      const radii = blockCornerRadii(type, tx, ty, map);
+      const insetX = type === BLOCK.ICE ? 2.5 : 0;
+      const insetY = type === BLOCK.ICE ? 2 : 0;
+      let start, end;
+      if (side === 'up') {
+        start = insetX + radii[3];
+        end = TILE_PX - insetX - radii[2];
+        if (end > start) {
+          cc.drawImage(aoEdge, start, 0, end - start, AO_REACH,
+            x + start, y - insetY, end - start, AO_REACH);
+        }
+      } else if (side === 'down') {
+        start = insetX + radii[0];
+        end = TILE_PX - insetX - radii[1];
+        if (end > start) {
+          cc.save();
+          cc.translate(x + start, y + TILE_PX + insetY);
+          cc.scale(1, -1);
+          cc.drawImage(aoEdge, start, 0, end - start, AO_REACH,
+            0, 0, end - start, AO_REACH);
+          cc.restore();
+        }
+      } else if (side === 'left') {
+        start = insetY + radii[1];
+        end = TILE_PX - insetY - radii[2];
+        if (end > start) {
+          cc.save();
+          cc.translate(x, y + TILE_PX);
+          cc.rotate(-Math.PI / 2);
+          cc.drawImage(aoEdge, TILE_PX - end, 0, end - start, AO_REACH,
+            0, 0, end - start, AO_REACH);
+          cc.restore();
+        }
+      } else {
+        start = insetY + radii[0];
+        end = TILE_PX - insetY - radii[3];
+        if (end > start) {
+          cc.save();
+          cc.translate(x + TILE_PX, y);
+          cc.rotate(Math.PI / 2);
+          cc.drawImage(aoEdge, start, 0, end - start, AO_REACH,
+            0, 0, end - start, AO_REACH);
+          cc.restore();
+        }
+      }
+    };
     cc.save();
     cc.globalAlpha = AO_ALPHA;
     for (let j = 0; j < CHUNK_TILES; j++) {
@@ -1064,39 +1117,22 @@ export function createRenderer(canvas, world) {
         const up = solid(tx, ty - 1), down = solid(tx, ty + 1);
         const left = solid(tx - 1, ty), right = solid(tx + 1, ty);
 
-        // One rotation per side, drawing the same strip each time.
-        if (up) cc.drawImage(aoEdge, x, y);
-        if (down) {
-          cc.save();
-          cc.translate(x + TILE_PX, y + TILE_PX);
-          cc.rotate(Math.PI);
-          cc.drawImage(aoEdge, 0, 0);
-          cc.restore();
-        }
-        if (left) {
-          cc.save();
-          cc.translate(x, y + TILE_PX);
-          cc.rotate(-Math.PI / 2);
-          cc.drawImage(aoEdge, 0, 0);
-          cc.restore();
-        }
-        if (right) {
-          cc.save();
-          cc.translate(x + TILE_PX, y);
-          cc.rotate(Math.PI / 2);
-          cc.drawImage(aoEdge, 0, 0);
-          cc.restore();
-        }
+        if (up) drawEdge('up', tx, ty - 1, x, y);
+        if (down) drawEdge('down', tx, ty + 1, x, y);
+        if (left) drawEdge('left', tx - 1, ty, x, y);
+        if (right) drawEdge('right', tx + 1, ty, x, y);
 
         // Inside corners, from the diagonals, and only where neither shared side is already dark.
         const corners = [
-          [-1, -1, !up && !left, x, y, 0],
-          [1, -1, !up && !right, x + TILE_PX, y, Math.PI / 2],
-          [1, 1, !down && !right, x + TILE_PX, y + TILE_PX, Math.PI],
-          [-1, 1, !down && !left, x, y + TILE_PX, -Math.PI / 2],
+          [-1, -1, !up && !left, x, y, 0, 2],
+          [1, -1, !up && !right, x + TILE_PX, y, Math.PI / 2, 3],
+          [1, 1, !down && !right, x + TILE_PX, y + TILE_PX, Math.PI, 0],
+          [-1, 1, !down && !left, x, y + TILE_PX, -Math.PI / 2, 1],
         ];
-        for (const [dx, dy, open, ax, ay, rot] of corners) {
+        for (const [dx, dy, open, ax, ay, rot, radiusIndex] of corners) {
           if (!open || !solid(tx + dx, ty + dy)) continue;
+          const diagonal = cellType(map.cells[(ty + dy) * map.w + tx + dx]);
+          if (blockCornerRadii(diagonal, tx + dx, ty + dy, map)[radiusIndex] > 0) continue;
           cc.save();
           cc.translate(ax, ay);
           cc.rotate(rot);

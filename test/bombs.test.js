@@ -96,15 +96,15 @@ test('fire spread', async t => {
     assert.equal(a, b);
   });
 
-  await t.test('fire is 15% slower through five tiles and 50% faster afterwards', () => {
+  await t.test('fire spread is 15% faster after the interval tuning', () => {
     const st = room(25, 15);
     const { cells } = spread(st.map, { tx: 10, ty: 7, radius: 10 });
     const delayAt = x => cells.find(c => c.tx === x && c.ty === 7)?.delayTicks;
 
     const arrivals = [11, 12, 13, 14, 15, 16, 17, 18, 19, 20].map(delayAt);
-    assert.deepEqual(arrivals, [2, 5, 9, 14, 21, 27, 35, 47, 65, 91]);
+    assert.deepEqual(arrivals, [2, 5, 8, 13, 19, 24, 30, 38, 52, 70]);
     assert.deepEqual(arrivals.slice(1).map((tick, i) => tick - arrivals[i]),
-      [3, 4, 5, 7, 6, 8, 12, 18, 26]);
+      [3, 3, 5, 6, 5, 6, 8, 14, 18]);
   });
 });
 
@@ -185,11 +185,7 @@ test('bombs in the round loop', async t => {
 
     st.tick++;
     detonate(st);
-    assert.equal(tileAt(st.map, 5, 3), BLOCK.SOFT, 'the wall broke before the flame arrived');
-
-    st.tick++;
-    detonate(st);
-    assert.equal(tileAt(st.map, 5, 3), BLOCK.FLOOR, 'the wall survived the arriving flame');
+    assert.equal(tileAt(st.map, 5, 3), BLOCK.FLOOR, 'the wall survived the accelerated flame');
   });
 
   await t.test('fuse duration and streak power participate in deterministic hashes', () => {

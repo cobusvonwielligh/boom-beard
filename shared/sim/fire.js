@@ -14,13 +14,15 @@ const DESTRUCTIBLE = new Set([BLOCK.SOFT, BLOCK.REINFORCED, BLOCK.MONOLITH, BLOC
 const SHRUB = new Set([BLOCK.SHRUB_WALK, BLOCK.SHRUB_SOLID]);
 
 // Slow the first five intervals by 15%; the remaining exponential intervals run 50% faster.
-export function fireDelayTicks(step) {
+// All arrivals are 15% faster overall, and the final four steps of each arm get another 20%.
+export function fireDelayTicks(step, finalStep = step) {
   let arrival = 0;
   for (let interval = 0; interval < step; interval++) {
     const base = Math.ceil(1.5 ** interval);
-    arrival += interval < 5 ? Math.ceil(base * 1.15) : Math.ceil(base / 1.5);
+    const tuned = interval < 5 ? Math.ceil(base * 1.15) : Math.ceil(base / 1.5);
+    arrival += interval >= finalStep - 4 ? tuned / 1.2 : tuned;
   }
-  return arrival;
+  return Math.ceil(arrival / 1.15);
 }
 
 /**
@@ -38,6 +40,7 @@ export function spread(map, bomb, bombs = null) {
     const [dx, dy] = DIRS[d];
     let reach = bomb.radius;
     let step = 1;
+    const arm = [];
 
     while (step <= reach) {
       const tx = bomb.tx + dx * step;
@@ -48,11 +51,7 @@ export function spread(map, bomb, bombs = null) {
 
       if (DESTRUCTIBLE.has(t)) {                       // damages it, burns the tile, stops
         hits.push({ tx, ty });
-        cells.push({
-          tx, ty, kind: 'tip', rot: d,
-          delayTicks: fireDelayTicks(step),
-          hit: true,
-        });
+        arm.push({ tx, ty, kind: 'tip', rot: d, hit: true, step });
         break;
       }
 
@@ -69,12 +68,14 @@ export function spread(map, bomb, bombs = null) {
        * Checked AFTER the tile is pushed so the bomb's own tile is lit, and the bomb's own
        * origin is excluded or every blast would stop on itself at step 1.
        */
-      cells.push({
-        tx, ty, kind: step >= reach ? 'tip' : 'arm', rot: d,
-        delayTicks: fireDelayTicks(step),
-      });
+      arm.push({ tx, ty, kind: step >= reach ? 'tip' : 'arm', rot: d, step });
       if (bombs && bombs.some(b => b.tx === tx && b.ty === ty && b.id !== bomb.id)) break;
       step++;
+    }
+
+    const finalStep = arm.at(-1)?.step ?? 0;
+    for (const { step: distance, ...cell } of arm) {
+      cells.push({ ...cell, delayTicks: fireDelayTicks(distance, finalStep) });
     }
   }
 
