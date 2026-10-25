@@ -126,11 +126,9 @@ timber with butt joints, knots and fasteners, a worn centreline and grime along 
 a gilded transom, gun ports and lit barrels, scuppers weeping down her sides, casks and a lashed
 crate, a fife rail, a binnacle, ratlines, and rolled canvas with folds and banded yardarms.
 
-Up to **three jellyfish** cross the open water at once (it was one), each on its own side, depth
-and clock. They are moon jellies now - radial canals, four gonads, a frilled margin - and the music
-is readable on them: every kick fires a ring of light off the bell, the bass lifts and swells them
-and lets their tentacles out, the top end chases light round the beads on the margin, and the
-mix's level slowly lights the gonads.
+There are no jellyfish any more (removed on request in 1.0.4); the bioluminescence and the coast
+equaliser are the only things in the water that listen to the music. Every sea boulder carries
+the island's sand shelf, scaled to the rock so it always reaches past the rock's submerged base.
 
 The coast is rounded in quarter-tile steps, not smoothed: every outside corner of the rock loses a
 stepped quarter circle and every inside corner gains one (`COAST_STEPS` in `art.js`). The
