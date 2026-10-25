@@ -21,6 +21,7 @@ import { tick as simTick } from '../shared/sim/round.js';
 import { gullWire } from '../shared/sim/gulls.js';
 import { careerKey } from './leaderboard.js';
 import { createBrain, think, dangerMap } from './ai.js';
+import { createBotEmoter } from './botEmotes.js';
 import { nameKey } from './names.js';
 
 // How long a seat is held for someone who vanished. A closed laptop lid, a wifi roam or a tunnel
@@ -61,6 +62,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
    * ARRIVE_DELAY_TICKS. Zero by default, like `minBots`, so a test room seats people exactly as
    * its test expects; the real server passes the constant in (server/net.js). */
   arriveIn = 0,
+  botEmoteRandom = Math.random,
 }) {
   // Start somewhere random rather than always on the first map. Rotation between rounds works
   // fine, but a server that restarts - a deploy, a crash, a reboot - always came back to Arena,
@@ -99,6 +101,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
 
   // The simulation owns streak count and expiry; this set tracks only ACE victim coverage.
   const streaks = new Array(maxPlayers).fill(null).map(() => newStreak());
+  const botEmoter = createBotEmoter({ broadcast: onBroadcast, random: botEmoteRandom });
 
   // ─── seating ────────────────────────────────────────────────────────────────
 
@@ -512,6 +515,9 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     placeArrivals();
     simTick(state, inputs, { onRespawn: respawn });
     trackStreaks(evFrom);
+    for (let i = evFrom; i < state.events.length; i++) {
+      botEmoter.react(state.events[i], seats, state.tick);
+    }
 
     const ms = performance.now() - t0;
     tickTimes.push(ms);
