@@ -27,7 +27,9 @@ const startServer = () => new Promise((resolve, reject) => {
       // And live from tick 0: this drives inputs over a socket and asserts on the movement they
       // produce, which five frozen seconds of count-in would simply swallow. The freeze has its
       // own test in test/countin.test.js.
-      COUNT_IN: '0' },
+      COUNT_IN: '0',
+      // Same for the three seconds a joiner waits to be placed: see test/arrival.test.js.
+      ARRIVE_IN: '0' },
     stdio: ['ignore', 'pipe', 'inherit'],
   });
   const bail = setTimeout(() => reject(new Error('server did not come up')), 10_000);

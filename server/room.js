@@ -57,6 +57,10 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
    * which is what the room did before the freeze existed.
    */
   countIn = COUNT_IN_TICKS,
+  /* Ticks a joining or rejoining player is held off the board before being placed. See
+   * ARRIVE_DELAY_TICKS. Zero by default, like `minBots`, so a test room seats people exactly as
+   * its test expects; the real server passes the constant in (server/net.js). */
+  arriveIn = 0,
 }) {
   // Start somewhere random rather than always on the first map. Rotation between rounds works
   // fine, but a server that restarts - a deploy, a crash, a reboot - always came back to Arena,
@@ -174,6 +178,10 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
       held.name = name || held.name;
       held.admin = admin;
       if (state.players[existing]) state.players[existing].name = held.name;
+      // Coming back mid-life: lifted off the board and placed again after the arrival delay, so
+      // the rejoin is shown the same way a join is. Somebody who came back dead stays dead and
+      // respawns as usual - lifting them would be a free respawn.
+      if (state.players[existing]?.alive) holdArrival(state.players[existing]);
       topUpBots();
       return { seat: existing, resumed: true, playerId, displaced: null };
     }
@@ -197,9 +205,30 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     streaks[seat] = newStreak();
     const p = createPlayer(seat, name);
     state.players[seat] = p;
-    respawn(p);
+    if (arriveIn > 0) holdArrival(p); else respawn(p);
     topUpBots();
     return { seat, resumed: false, playerId: id, displaced };
+  }
+
+  /* Arriving: off the board for `arriveIn` ticks, then placed. See ARRIVE_DELAY_TICKS.
+   *
+   * Not dead - no death, no score, and `arriving` rides on the wire so the client shows neither
+   * the death card nor an empty heart. respawnAt is the arrival tick, so the respawn key cannot
+   * place you early; `placeArrivals` places you on that tick through the ordinary respawn. */
+  function holdArrival(p) {
+    if (arriveIn <= 0) return;
+    p.alive = false;
+    p.arriving = true;
+    p.arriveAt = state.tick + arriveIn;
+    p.respawnAt = p.arriveAt;
+  }
+  function placeArrivals() {
+    for (const p of state.players) {
+      if (!p?.arriving || state.tick < p.arriveAt) continue;
+      p.arriving = false;
+      p.arriveAt = 0;
+      if (!p.alive) respawn(p);
+    }
   }
 
   function disconnect(seat) {
@@ -483,6 +512,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     // Where the new events start, so the streak scan reads only this tick's deaths. Events linger
     // for two ticks because snapshots do, so the length before the step is the only safe cursor.
     const evFrom = state.events.length;
+    placeArrivals();
     simTick(state, inputs, { onRespawn: respawn });
     trackStreaks(evFrom);
 
@@ -638,6 +668,8 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     b: p.bombs, f: p.radius, sp: p.speed, sh: p.shields,
     // Health: whole or half. Only sent when it is not whole, which is the rare case.
     ...(p.alive && p.hp < MAX_HP ? { hp: p.hp } : null),
+    // Arriving, not dead: off the board for a moment after joining. See holdArrival.
+    ...(p.arriving ? { ar: 1 } : null),
     s: p.score, k: p.kills, dd: p.deaths, stat: p.status,
     // Coins. One small integer that only ever goes up, and the only stat on the wire that is
     // not about this round - it is what the HUD counter reads. `c`, not `g`: `gold` on the

@@ -74,6 +74,7 @@ export function createWorld() {
     p.coins = wire.c || 0;
     // Absent means whole; see MAX_HP and playerWire.
     p.hp = wire.hp ?? MAX_HP;
+    p.arriving = !!wire.ar;
     if (wire.sta !== undefined) { p.stamina = wire.sta; p.staminaLevel = wire.stl; p.tired = !!wire.tr; }
     p.slide = wire.sl ?? 0;
     // The deliberate slide: absent means not sliding, which is almost every tick. See playerWire.
@@ -205,6 +206,7 @@ export function createWorld() {
     // Health, which only the server decides. Missing from here once, so your own pirate never
     // went to half on your own screen - the heart, the ghosting and the scorch all read this.
     me.hp = wire.hp ?? MAX_HP;
+    me.arriving = !!wire.ar;              // joining: off the board for a moment, not dead
     // Stamina is simulated locally too, so it is replayed with the inputs below rather than
     // simply trusted - the server's value is the one the replay starts from.
     if (wire.sta !== undefined) { me.stamina = wire.sta; me.staminaLevel = wire.stl; me.tired = !!wire.tr; }

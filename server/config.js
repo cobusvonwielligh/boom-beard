@@ -87,6 +87,11 @@ export const config = {
    * server who finds five seconds of standing still annoying can have none.
    */
   countIn: Math.max(0, num('COUNT_IN', 'server', 'count_in', 5)),
+
+  /* Seconds a joining or rejoining player is held off the board before being placed. See
+   * ARRIVE_DELAY_TICKS. A knob for the same reason as the count-in: a test that drives inputs the
+   * moment it joins sets ARRIVE_IN=0. */
+  arriveIn: Math.max(0, num('ARRIVE_IN', 'server', 'arrive_in', 3)),
 };
 
 export const usingTls = Boolean(config.tlsCert && config.tlsKey);

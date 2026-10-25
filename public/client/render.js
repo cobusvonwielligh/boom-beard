@@ -800,7 +800,7 @@ export function createRenderer(canvas, world) {
    * makes it read as moss is the SHAPE, not the saturation. So the alpha came down by nearly
    * half and everything that was spent on colour is spent on edges instead.
    */
-  const MOSS_MAX = 0.17;
+  const MOSS_MAX = 0.24;
 
   const smooth = t => t * t * (3 - 2 * t);
 
@@ -845,15 +845,17 @@ export function createRenderer(canvas, world) {
    * nothing else on this island is green. The darker one is the body of a clump and the lighter
    * one is the few millimetres of it that catch the light.
    */
-  const MOSS_DARK = '58,74,45';
-  const MOSS_LIT = '122,140,86';
+  // Greener, on request: the olive and sage read as grime rather than as growth. Still pulled
+  // toward the island's palette, but a real green now, and a touch stronger (MOSS_MAX).
+  const MOSS_DARK = '42,88,40';
+  const MOSS_LIT = '96,158,70';
   /* And a third, for the creeping edge.
    *
    * Two tones made a patch that was dark in the middle and dark at the rim, which reads as a
    * stain. Real growth is YOUNGEST at its edge - thinner, yellower, a little brighter than the
    * mass behind it - so the frontier gets a tone of its own and the patch suddenly has a
    * direction to it. It is the single cheapest thing that turns a blob into something growing. */
-  const MOSS_EDGE = '146,154,84';
+  const MOSS_EDGE = '132,170,78';
 
   /* One blob per third of a tile, which is the resolution the pattern is actually drawn at.
    *
@@ -1857,45 +1859,78 @@ export function createRenderer(canvas, world) {
     ctx.globalAlpha = 1;
   }
 
-  /* The island's shelf, round every boulder too.
+  /* The seabed round every sea boulder: a slope of sand, not a stack of rings.
    *
-   * A rock standing in open water with deep blue right up to its face looks dropped onto the sea;
-   * the island stopped looking like that when its sand carried on under the water (see
-   * SHELF_TILES). The same bands in the same colours and alphas, so the two read as the same
-   * seabed: three tiles of sand fading out, the mid shallows inside a tile and a half, and the
-   * pale shallows hard against the rock. Breathes with the bass exactly as the island's does.
+   * A rock standing in open water with deep blue right up to its face looks dropped onto the sea,
+   * so each one sits on its own patch of sand (ROCK_SHELF_BANDS): faint and dark at the edge of
+   * the shelf, warmer and paler towards the rock where the water is shallowest, then blurred so
+   * the steps melt into one slope, with a scatter of grain so it reads as sand rather than as a
+   * gradient. Breathes with the bass exactly as the island's shelf does.
    *
    * Each band is the union of the rock's own lumps grown by that band's distance, filled as ONE
    * path - nonzero winding makes overlapping ellipses a single shape at a single alpha - so the
-   * shelf follows the rock's silhouette and never stacks where two lumps meet. Fifteen fills a
-   * frame for three rocks; cheaper than the cache it would need. The bands are ROCK_SHELF_BANDS,
-   * declared beside SHELF_TONE.
+   * shelf follows the rock's silhouette and never stacks where two lumps meet.
+   *
+   * Baked once per rock into its own canvas (the blur is far too dear per frame) and re-baked only
+   * when waterRocks() hands back a new set. Baked ROCK_SHELF_HEADROOM brighter than drawn at rest,
+   * so the bass can lift it by drawing at a higher alpha. Scaled to the rock: the outer band
+   * reaches at least 1.4 radii past the rock's edge, because each rock also lays a dark
+   * submerged base under itself, and a fixed three tiles round a big rock sat entirely under it.
    */
+  const ROCK_SHELF_HEADROOM = 1.15;
+  let rockShelfFor = null, rockShelves = [];
   function drawRockShelves(breathe) {
-    for (const k of waterRocks()) {
-      /* Scaled to the rock, with the island's three tiles as the floor.
-       *
-       * At a fixed three tiles the big boulders had no sand at all to look at: each one also lays
-       * a dark submerged base under itself reaching well past its radius (see `base` in
-       * waterRocks), and a three-tile shelf round a ten-tile rock sat entirely underneath it. So
-       * the outer band reaches at least 1.4 radii past the rock's edge, and the inner bands keep
-       * their proportions inside that. */
-      const reach = Math.max(3 * TILE_PX * 0.85, k.r * 1.4);
-      for (const [tiles, alpha, colour] of ROCK_SHELF_BANDS) {
-        // Measured from the rock's edge, which sits a little inside its outermost lumps.
-        const grow = (tiles / 3) * reach;
-        ctx.globalAlpha = Math.min(1, alpha * breathe);
-        ctx.fillStyle = colour;
-        ctx.beginPath();
-        for (const l of k.lumps) {
-          const rx = l.r + grow, ry = l.r * l.squash + grow;
-          ctx.moveTo(k.x + l.dx + rx * Math.cos(l.turn), k.y + l.dy + rx * Math.sin(l.turn));
-          ctx.ellipse(k.x + l.dx, k.y + l.dy, rx, ry, l.turn, 0, Math.PI * 2);
-        }
-        ctx.fill();
-      }
-    }
+    const rocks = waterRocks();
+    if (rockShelfFor !== rocks) { rockShelves = rocks.map(bakeRockShelf); rockShelfFor = rocks; }
+    ctx.globalAlpha = Math.min(1, breathe / ROCK_SHELF_HEADROOM);
+    for (const s of rockShelves) ctx.drawImage(s.el, s.x, s.y, s.size, s.size);
     ctx.globalAlpha = 1;
+  }
+
+  function bakeRockShelf(k) {
+    const reach = Math.max(3 * TILE_PX * 0.85, k.r * 1.4);
+    const blur = TILE_PX * 0.4;
+    // The lumps reach about 1.33 radii from the centre; then the shelf, then room for the blur.
+    const half = Math.ceil(k.r * 1.5 + reach + blur * 3);
+    // Half resolution: it is a blurred slope of sand, and at full size a big rock's shelf was a
+    // canvas two thousand pixels square - twenty megabytes for something with no edges in it.
+    const S = 0.5;
+    const el = document.createElement('canvas');
+    el.width = el.height = Math.ceil(half * 2 * S);
+    const c = el.getContext('2d');
+    c.scale(S, S);
+    c.translate(half - k.x, half - k.y);
+    if ('filter' in c) c.filter = `blur(${blur * S}px)`;
+    const union = grow => {
+      c.beginPath();
+      for (const l of k.lumps) {
+        const rx = l.r + grow, ry = l.r * l.squash + grow;
+        c.moveTo(k.x + l.dx + rx * Math.cos(l.turn), k.y + l.dy + rx * Math.sin(l.turn));
+        c.ellipse(k.x + l.dx, k.y + l.dy, rx, ry, l.turn, 0, Math.PI * 2);
+      }
+    };
+    for (const [tiles, alpha, colour] of ROCK_SHELF_BANDS) {
+      c.globalAlpha = Math.min(1, alpha * ROCK_SHELF_HEADROOM);
+      c.fillStyle = colour;
+      union((tiles / 3) * reach);
+      c.fill();
+    }
+    // Grain: specks of paler and darker sand, thinning out towards the edge of the shelf.
+    // Deterministic in the rock, so a rock's sand is the same sand every time it is baked.
+    if ('filter' in c) c.filter = 'none';
+    c.save();
+    union(reach * 0.9);
+    c.clip();
+    for (let i = 0; i < 260; i++) {
+      const a = hash01(i * 97 + k.r) * Math.PI * 2;
+      const d = k.r * 0.8 + Math.sqrt(hash01(i * 131 + 7)) * reach;
+      const near = 1 - (d - k.r * 0.8) / reach;
+      c.globalAlpha = (0.05 + 0.1 * near) * ROCK_SHELF_HEADROOM;
+      c.fillStyle = i % 3 ? '#c2a876' : '#4f3f26';
+      c.fillRect(k.x + Math.cos(a) * d, k.y + Math.sin(a) * d * 0.85, 2, 2);
+    }
+    c.restore();
+    return { el, x: k.x - half, y: k.y - half, size: half * 2 };
   }
 
   function paintWaterRocks(ox, oy, only = null) {
@@ -2476,16 +2511,16 @@ export function createRenderer(canvas, world) {
    * the colour, it is that the water gets warmer as it gets shallower. */
   const SHELF_TILES = 3;
   const SHELF_TONE = '#7d6843';
-  // The thin edge hard against every coast: the interface gold (--gold). Sixty percent: at forty,
-  // gold laid over blue water came out olive, and the point is that it reads as the theme's gold.
-  const COAST_RING = '#edc24e', COAST_RING_ALPHA = 0.6;
-  // The same steps again round each sea boulder: [tiles out, alpha, colour]. See drawRockShelves.
+  /* The seabed round each sea boulder: [tiles out, alpha, colour], outermost first, each band
+   * painted over the one beyond it and then the whole thing blurred into a slope (see
+   * bakeRockShelf). Sand all the way in - darkest and faintest at the edge of the shelf, warmer
+   * and paler near the rock, where the water is shallowest - rather than the island's pale
+   * water, which round a lone rock read as a halo rather than as sand. */
   const ROCK_SHELF_BANDS = [
-    [3, 0.07, SHELF_TONE],
-    [2.2, 0.1, SHELF_TONE],
-    [1.6, 0.17, SHELF_TONE],
-    [1.6, 0.16, PALETTE.seaMid],
-    [0.25, COAST_RING_ALPHA, COAST_RING], // the gilt edge, a quarter tile, like the island's
+    [3, 0.08, SHELF_TONE],
+    [2.2, 0.12, SHELF_TONE],
+    [1.5, 0.17, '#8f7548'],
+    [0.85, 0.2, '#a88b5a'],
   ];
   let shallowsCanvas = null, shallowsFor = null;
   function shallowsLayer() {
@@ -2534,9 +2569,8 @@ export function createRenderer(canvas, world) {
         if (x < MW + P * Q && !land(x, y)) {
           for (const [dx, dy, d2] of offsets) {
             if (!land(x + dx, y + dy)) continue;
-            // The pale band hard against the coast is a quarter of a tile - one quarter-tile
-            // cell - where it was a whole one, and it is gold now (COAST_RING): a thin gilt edge
-            // round the island in the interface's own colour rather than a wide light-blue ring.
+            // The band hard against the coast is a quarter of a tile - one quarter-tile cell. It
+            // carried a pale ring, then a gold one; both are gone, so it only splits the bands.
             band = d2 <= (Q / 4) * (Q / 4) ? 1
               : d2 <= (1.6 * Q) * (1.6 * Q) ? 2
                 : d2 <= (2.2 * Q) * (2.2 * Q) ? 3 : 4;
@@ -2566,7 +2600,8 @@ export function createRenderer(canvas, world) {
     paint([...near, ...far, ...shelfIn], 0.17, SHELF_TONE);
     // The shallows themselves, over the top of it, exactly as they were.
     paint([...near, ...far], 0.16, PALETTE.seaMid);
-    paint(near, COAST_RING_ALPHA, COAST_RING);
+    // No gilt ring hard against the coast any more: removed on request (it read as a band of very
+    // yellow sand). The near band keeps only the pale water painted with `far` above.
     shallowsCanvas = el; shallowsFor = map;
     return el;
   }
@@ -4141,7 +4176,7 @@ export function createRenderer(canvas, world) {
     if (w <= 2 * r || h <= 2 * r) return;
 
     if (rimAlert > 0) rimAlert = Math.max(0, rimAlert - (dtMs / 1000) / RIM_ALERT_S);
-    const dead = !!me && !me.alive;
+    const dead = !!me && !me.alive && !me.arriving;
 
     // The dark band first. Everything lit is drawn over it, so the band is what makes a faint
     // blip legible at all - a glow on open sea has nothing to be brighter than.
@@ -4402,7 +4437,9 @@ export function createRenderer(canvas, world) {
    *                 matching at all
    *
    * Called twice per frame: `under` for the beam, before the sprite; then the rest over it. */
-  const ARRIVE_FX_MS = 1900;
+  // 1.9 s slowed by a quarter, on request; the timings inside are scaled by ARRIVE_SLOW with it.
+  const ARRIVE_SLOW = 1.25;
+  const ARRIVE_FX_MS = 1900 * ARRIVE_SLOW;
   function drawArrival(c, p, cx, cy, under) {
     if (p.spawnAt !== undefined && p.spawnAt !== p.fxFor) { p.fxFor = p.spawnAt; p.fxAt = performance.now(); }
     if (p.fxAt === undefined) return;
@@ -4430,9 +4467,10 @@ export function createRenderer(canvas, world) {
       }
     } else {
       // The arrows: in fast, then hold, then fade.
-      const inT = Math.min(1, ms / 520), ease = 1 - (1 - inT) ** 3;
-      const fade = ms < 1100 ? 1 : 1 - (ms - 1100) / (ARRIVE_FX_MS - 1100);
-      const dist = TILE_PX * (3.2 - 2.1 * ease) + Math.sin(ms / 90) * 1.5 * ease;
+      const hold = 1100 * ARRIVE_SLOW;
+      const inT = Math.min(1, ms / (520 * ARRIVE_SLOW)), ease = 1 - (1 - inT) ** 3;
+      const fade = ms < hold ? 1 : 1 - (ms - hold) / (ARRIVE_FX_MS - hold);
+      const dist = TILE_PX * (3.2 - 2.1 * ease) + Math.sin(ms / (90 * ARRIVE_SLOW)) * 1.5 * ease;
       c.globalAlpha = Math.max(0, fade);
       c.fillStyle = k.light;
       c.strokeStyle = '#0b0f15';
@@ -4450,7 +4488,7 @@ export function createRenderer(canvas, world) {
         c.fill();
       }
       // The tag: rises 14 px over its life, in from nothing, out over the last third.
-      const ta = ms < 250 ? ms / 250 : t > 0.66 ? (1 - t) / 0.34 : 1;
+      const ta = ms < 250 * ARRIVE_SLOW ? ms / (250 * ARRIVE_SLOW) : t > 0.66 ? (1 - t) / 0.34 : 1;
       c.globalAlpha = Math.max(0, ta);
       c.font = 'bold 11px ui-monospace, monospace';
       c.textAlign = 'center';

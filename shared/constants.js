@@ -825,7 +825,16 @@ export const IDLE_KICK_TICKS = 90 * TICK_HZ; // 90 s
  * back" has to be answerable in one frame, from the far corner of the screen. The quintic
  * ease-out below is what keeps it from being obnoxious: it is past 20x within three frames and
  * spends most of the window near normal size. */
-export const SPAWN_POP_TICKS = 24;   // 0.8 s
+export const SPAWN_POP_TICKS = 30;   // 1 s - 0.8 s slowed by a quarter, on request
+
+/* Joining, or coming back: held off the board for three seconds, then placed.
+ *
+ * Appearing on the board the instant you join is appearing while the menu is still fading and
+ * your eyes are still on the button you pressed - the arrival animation, the one thing that says
+ * where you are, played to nobody. So a joining or rejoining player is ARRIVING for this long:
+ * not on the board, not dead (no death card, no respawn timer, no score), just not placed yet.
+ * Then they are placed through the ordinary respawn, and the arrival plays as they land. */
+export const ARRIVE_DELAY_TICKS = 3 * TICK_HZ;
 export const SPAWN_POP_SCALE = 20;
 
 export const TRACER_SAMPLES = 8;

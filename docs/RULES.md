@@ -337,6 +337,12 @@ Fire hurts you unless you are Invulnerable. **Two hits kill.**
 - You respawn by pressing **SPACE** after a **13.5-second** cooldown, with **90 ticks (3 s)**
   Invulnerability.
 
+**Joining, or coming back.** A player who joins - or rejoins while alive - is held off the board
+for **3 seconds** (`ARRIVE_DELAY_TICKS`; `arrive_in` in config.ini), then placed through the
+ordinary respawn, so the arrival is seen once the screen is up: a beam of your colour, four arrows
+closing in and a gold YOU. Arriving is not dead - no death, no card, no respawn timer - and the
+respawn key cannot place you early. Rejoining while dead stays dead.
+
 **Where you respawn.** Every safe map spawn is a candidate, weighted by the *square* of the
 distance to the nearest living player - twice as far away is four times as likely. Safe means the
 full movement hitbox fits, the tile is not occupied by a bomb, lethal fire, a puddle or another

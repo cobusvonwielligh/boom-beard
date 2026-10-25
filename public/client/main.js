@@ -400,7 +400,6 @@ const net = createNet({
         requestAnimationFrame(loop);
       }
       renderer?.resize();             // the canvas was behind the menu; make sure it measured right
-      if (m.you >= 0) scheduleArrival();
     }
   },
   onSnap: snap => {
@@ -525,12 +524,13 @@ const net = createNet({
           // Only your own. Sixteen players respawning at ten seconds apiece meant something was
           // ballooning across the board every few seconds, which buried the thing the effect is
           // for - finding YOURSELF. Everyone else still gets the panned arrival sound.
-          // Except in the first seconds after joining or a new round: then the screen is still
-          // coming up and the effect is missed, so scheduleArrival plays it three seconds in.
-          if (e.i === world.you && !arrivalPending()) world.markSpawn(e.i);
+          // On joining this lands three seconds in, once the screen is up: the server holds a
+          // joining player off the board until then (see ARRIVE_DELAY_TICKS), so the arrival is
+          // seen rather than played behind the fading menu.
+          if (e.i === world.you) world.markSpawn(e.i);
           // Panned and attenuated by where it happened, so the sound alone tells you which side
           // of you somebody just appeared on. Your own is centred, because you are not elsewhere.
-          if (e.i === world.you) { if (!arrivalPending()) sfx.play('ownSpawn'); quips.spawned(); }
+          if (e.i === world.you) { sfx.play('ownSpawn'); quips.spawned(); }
           else sfx.playAtUnits('spawn', e.x, e.y, { theirs: true });
           break;
 
@@ -1131,28 +1131,6 @@ function fuseTicks() {
  * Keyed off input rather than off movement: standing still behind a wall on purpose is being
  * idle in exactly the sense that matters, and a player held in place by a bomb is not.
  */
-/* Where you are, three seconds after you arrive.
- *
- * Joining - or a new round - puts you on the board while the menu is still fading out and your
- * eyes are still on the card you clicked, so the arrival effect played to nobody. It now waits
- * three seconds, and the instant one is held back in that window (see the `spawn` case). A
- * respawn later in the round still marks you the moment you land: that is when you are looking.
- */
-const ARRIVE_DELAY_MS = 3000;
-let arriveTimer = 0, arrivedAt = -Infinity;
-const arrivalPending = () => performance.now() - arrivedAt < ARRIVE_DELAY_MS;
-function scheduleArrival() {
-  clearTimeout(arriveTimer);
-  arrivedAt = performance.now();
-  arriveTimer = setTimeout(() => {
-    const me = world.me();
-    if (!me || !me.alive || observing) return;
-    world.markSpawn(world.you);
-    sfx.play('ownSpawn');
-    lastActivityAt = performance.now();
-  }, ARRIVE_DELAY_MS);
-}
-
 const IDLE_MARK_MS = 15_000;
 let lastActivityAt = 0;
 
@@ -1462,7 +1440,7 @@ function drawXp(p) {
  */
 function drawRespawn(me) {
   const btn = $('respawn');
-  if (me.alive) { diedAtTick = -1; return; }
+  if (me.alive || me.arriving) { diedAtTick = -1; return; }
   if (diedAtTick < 0) diedAtTick = world.tick;
   const left = Math.max(0, RESPAWN_DELAY_TICKS - (world.tick - diedAtTick));
   const secs = Math.ceil(left / TICK_HZ);
@@ -1567,7 +1545,8 @@ function drawHud() {
   // Every live perk as a pip, lit when you are carrying more than you started with. Shields used
   // to be a separate row of green dots off to the right of the bar; they are a perk like the
   // rest and belong in the same row, counted the same way.
-  heartState(!me.alive ? 'empty' : me.hp === 1 ? 'half' : 'full');
+  // Arriving is not dead: a full heart while you wait to be placed. See holdArrival.
+  heartState(!me.alive && !me.arriving ? 'empty' : me.hp === 1 ? 'half' : 'full');
   gearPip('pBombs', me.bombs, MAX_BOMBS_CARRIED, START_BOMBS);
   gearPip('pFire', me.radius, MAX_RADIUS, START_RADIUS);
   gearPip('pSpeed', me.speed, MAX_SKATES);
@@ -1576,7 +1555,8 @@ function drawHud() {
 
   // drawRespawn first: it is what stamps diedAtTick, and showDead reads it to hold the dialog
   // back. The other order shows the dialog a frame early on the tick you die.
-  if (!roundOverUntil) { drawRespawn(me); showDead(!me.alive); }
+  // Arriving (just joined, about to be placed) is not dead: no death card, no respawn timer.
+  if (!roundOverUntil) { drawRespawn(me); showDead(!me.alive && !me.arriving); }
   if (scoresOpen) renderScores();
 }
 
@@ -2589,7 +2569,7 @@ addEventListener('keydown', e => {
   // at whatever button happens to hold focus.
   if ((e.code === 'Space' || e.code === 'KeyK') && running && !typingSomewhere()) {
     const me = world.me();
-    if (me && !me.alive) { e.preventDefault(); askRespawn(); }
+    if (me && !me.alive && !me.arriving) { e.preventDefault(); askRespawn(); }
   }
 });
 

@@ -6,6 +6,7 @@ import { WebSocketServer } from 'ws';
 import {
   MAX_MESSAGE_BYTES, NAME_MAX_CHARS, CHAT_MAX_CHARS, CHAT_MIN_INTERVAL_MS,
   BAN_MAX_HOURS, GAMESPEED_MIN, GAMESPEED_MAX, ROUNDTIME_MIN_MIN, ROUNDTIME_MAX_MIN, TICK_HZ,
+  ARRIVE_DELAY_TICKS,
 } from '../shared/constants.js';
 import { createRoom } from './room.js';
 import { createGuard, addressOf } from './guard.js';
@@ -344,6 +345,8 @@ export function attachHub(server, config) {
     maxPlayers: config.maxPlayers,
     leaderboard: config.leaderboard,
     minBots: config.minBots ?? 0,
+    // Seconds in the config, ticks in the room; ARRIVE_DELAY_TICKS is the default's meaning.
+    arriveIn: config.arriveIn === undefined ? ARRIVE_DELAY_TICKS : Math.round(config.arriveIn * TICK_HZ),
     // Seconds on the wire, ticks in the room. See `countIn` in server/config.js.
     ...(config.countIn === undefined ? null : { countIn: Math.round(config.countIn * TICK_HZ) }),
   });
