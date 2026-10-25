@@ -4026,9 +4026,13 @@ h1 {
   z-index: 12;
   font-family: var(--nums);
   font-size: 8px;
+  /* Bold and a shade darker. At 8px a light regular weight is a grey smudge - the strokes are
+     thinner than the antialiasing - where bold at a lower opacity is legible and quieter at the
+     same time, which is both things this marker wants to be. */
+  font-weight: 700;
   letter-spacing: 0.14em;
   color: var(--dim);
-  opacity: 0.5;
+  opacity: 0.38;
   pointer-events: none;
   white-space: nowrap;
 }
