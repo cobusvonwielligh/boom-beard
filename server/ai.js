@@ -117,6 +117,17 @@ export const createBrain = () => ({
   bored: 0,
 });
 
+/** Delay a bot's chosen input by one fixed simulation tick (30 ms rounds up at 30 Hz). */
+export function delayBotInput(brain, input, { frozen = false } = {}) {
+  if (frozen) {
+    brain.pendingInput = 0;
+    return 0;
+  }
+  const delayed = brain.pendingInput ?? 0;
+  brain.pendingInput = input;
+  return delayed;
+}
+
 /**
  * Everything about to be on fire, how soon, and where a bomb is standing.
  *

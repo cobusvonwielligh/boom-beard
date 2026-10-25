@@ -20,7 +20,7 @@ import { burns } from '../shared/sim/fire.js';
 import { tick as simTick } from '../shared/sim/round.js';
 import { gullWire } from '../shared/sim/gulls.js';
 import { careerKey } from './leaderboard.js';
-import { createBrain, think, dangerMap } from './ai.js';
+import { createBrain, delayBotInput, think, dangerMap } from './ai.js';
 import { createBotEmoter } from './botEmotes.js';
 import { nameKey } from './names.js';
 
@@ -475,7 +475,8 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
       const s = seats[i];
       if (!s) continue;
       if (s.isBot) {
-        inputs[i] = counting ? 0 : think(state, state.players[i], s.brain, danger);
+        const planned = counting ? 0 : think(state, state.players[i], s.brain, danger);
+        inputs[i] = delayBotInput(s.brain, planned, { frozen: counting });
         s.lastAckTick = state.tick;
         continue;
       }
