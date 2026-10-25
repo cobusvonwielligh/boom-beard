@@ -1625,6 +1625,22 @@ body.dead #rank {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Your name in your own colour, not the cast gold.
+ *
+ * The gold is the interface's colour and the orange seat's colour and the fire's, so every red,
+ * blue or green pirate saw their name in somebody else's colour - and "which one am I" is answered
+ * by matching this name to a sprite. The metal overlay goes (it would paint gold over the tint);
+ * the hard shadow stays so it still reads over the bar. Declared before `#who.rainbow`, which
+ * has the same specificity and must still win during a streak; `body.dead #who` outranks both. */
+#who.tinted {
+  color: var(--me);
+  text-shadow:
+    0 2px 0 #000,
+    0 4px 10px #000c;
+}
+#who.tinted::after {
+  display: none;
+}
 #rank {
   display: inline;
   color: var(--dim);

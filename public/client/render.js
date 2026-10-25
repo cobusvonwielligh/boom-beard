@@ -10,7 +10,7 @@ import {
   MIN_ZOOM, MAX_ZOOM,
   PERK_FADE_TICKS, STAMINA_SHOW_AT, STAMINA_LOW_AT, staminaMaxFor,
   PUDDLE_FADE_TICKS, TICK_MS, TICK_HZ,
-  BLOCK_WALKABLE, MAX_SHIELDS,
+  BLOCK_WALKABLE, MAX_SHIELDS, seatSlot,
 } from '/shared/constants.js';
 import { cellType, cellHp } from '/shared/maps.js';
 import {
@@ -349,10 +349,11 @@ export function createRenderer(canvas, world) {
    */
   const blastLights = new Map();
   function blastLightFor(owner) {
-    const key = owner >= 0 ? owner % 16 : -1;
+    // Per colour rather than per seat, so a seat that changes colour between rounds is lit right.
+    const key = owner >= 0 ? seatSlot(owner) : -1;
     const hit = blastLights.get(key);
     if (hit) return hit;
-    const tones = key >= 0 ? fireTones(key) : { hue: 33, sat: 70 };
+    const tones = key >= 0 ? fireTones(owner) : { hue: 33, sat: 70 };
     const h = tones.hue, sat = k => Math.round(tones.sat * k);
     const g = ctx.createRadialGradient(0, 0, TILE_PX * 0.1, 0, 0, BLAST_LIGHT_PX);
     /* Softer than the flame: light that has crossed a room has lost its colour on the way, and
@@ -4037,7 +4038,7 @@ export function createRenderer(canvas, world) {
         ctx.scale(squash * (0.7 + 0.3 * pop), (2 - squash) * (0.7 + 0.3 * pop));
         ctx.translate(-TILE_PX / 2, -TILE_PX / 2);
       }
-      drawBombLive(ctx, baked.bombs[owner], {
+      drawBombLive(ctx, baked.bombs[seatSlot(owner)], {
         leftS: Math.max(0, b.at - tickNow) / TICK_HZ,
         fullS: FUSE_TICKS / TICK_HZ,
         colorIndex: owner,
@@ -4333,10 +4334,21 @@ export function createRenderer(canvas, world) {
   const RIM_PX = 6;               // the dark band, in CSS pixels, whatever the zoom
   const RIM_RADIUS_PX = 8;        // the canvas's own corner radius; see canvas#game in style.css
   const RIM_LIT_PX = 170;         // how much of the border your own slither covers, before music
-  const RIM_BLIP_PX = 54;         // and how much somebody else's does
-  const RIM_BLIPS = 3;            // never more than three of them
+  const RIM_BLIP_PX = 84;         // and how much somebody else's does (was 54: too easy to miss)
+  const RIM_BLIPS = 4;            // never more than four of them
   const RIM_ALERT_S = 1.1;        // how long a hit keeps the border red
-  const RIM_SAMPLES = 160;        // points the perimeter is sampled at, to find the nearest one
+  const RIM_BLIP_FOLLOW_MS = 140; // how fast a blip follows its player along the border
+  const RIM_BLIP_FADE_MS = 220;   // how fast a blip fades in or out of the nearest few
+  /* Per-seat blip state: where it is along the border, how visible, and its own pulse phase.
+   *
+   * State, because a blip computed fresh every frame jittered. Its position came from the nearest
+   * of 160 SAMPLES of the border - about 25 px apart on a wide board, so a walking player's blip
+   * hopped in steps - nothing eased it, and the "nearest three" were re-sorted every frame, so
+   * two players at similar range swapped places, popped in and out and traded pulse phases. Now
+   * the position is exact and eased along the border, membership fades rather than pops, and the
+   * phase belongs to the seat. */
+  const rimBlips = new Map();
+  let rimTotalWas = 0;
   let rimAlert = 0;               // 1 at the moment of the hit, decaying
   let rimAt = -1;                 // where your slither is, in pixels along the perimeter
   let rimBend = 0;                // 0 on a straight, 1 mid-corner; eased, drives the stretch
@@ -4379,7 +4391,32 @@ export function createRenderer(canvas, world) {
       while (i < runs.length - 1 && d > runs[i]) { d -= runs[i]; i++; }
       return i;
     };
-    return { total, at, runAt };
+    /* The exact nearest point on the border to a point on the board, as a distance along it.
+     *
+     * Exact rather than sampled: continuous in the point, so a player walking moves their light
+     * smoothly instead of in steps. Inside a corner's square it is the angle round that corner's
+     * arc; anywhere else it is the nearest straight side, clamped to that side's straight part. */
+    const c1 = sw, c2 = c1 + arc, c3 = c2 + sh, c4 = c3 + arc, c5 = c4 + sw, c6 = c5 + arc, c7 = c6 + sh;
+    const L = x0 + r, R = x0 + w - r, T = y0 + r, B = y0 + h - r;
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const project = (qx, qy) => {
+      const px = clamp(qx, x0, x0 + w), py = clamp(qy, y0, y0 + h);
+      const H = Math.PI / 2;
+      if (px > R && py < T) return c1 + clamp(Math.atan2(py - T, px - R) + H, 0, H) * r;
+      if (px > R && py > B) return c3 + clamp(Math.atan2(py - B, px - R), 0, H) * r;
+      if (px < L && py > B) return c5 + clamp(Math.atan2(py - B, px - L) - H, 0, H) * r;
+      if (px < L && py < T) {
+        const a = Math.atan2(py - T, px - L);
+        return c7 + clamp((a < 0 ? a + 2 * Math.PI : a) - Math.PI, 0, H) * r;
+      }
+      const dT = py - y0, dR = x0 + w - px, dB = y0 + h - py, dL = px - x0;
+      const m = Math.min(dT, dR, dB, dL);
+      if (m === dT) return clamp(px - L, 0, sw);
+      if (m === dR) return c2 + clamp(py - T, 0, sh);
+      if (m === dB) return c4 + clamp(R - px, 0, sw);
+      return c6 + clamp(B - py, 0, sh);
+    };
+    return { total, at, runAt, project };
   }
 
   function drawRadarRim(ox, oy, vw, vh, dtMs, zoom) {
@@ -4421,58 +4458,81 @@ export function createRenderer(canvas, world) {
       ctx.globalAlpha = 1;
     };
 
-    /** Where on the border a point on the board is: the nearest sample, by brute force. */
-    const nearestAt = (wx, wy) => {
-      let best = 0, bestD = Infinity;
-      for (let i = 0; i < RIM_SAMPLES; i++) {
-        const t = (i / RIM_SAMPLES) * rim.total;
-        const [px, py] = rim.at(t);
-        const d = (px - wx) * (px - wx) + (py - wy) * (py - wy);
-        if (d < bestD) { bestD = d; best = t; }
-      }
-      return best;
-    };
+    /** Where on the border a point on the board is: its exact nearest point. See rimPath. */
+    const nearestAt = (wx, wy) => rim.project(wx, wy);
+    // A resize changes the perimeter, and every stored distance along it with it.
+    if (Math.abs(rim.total - rimTotalWas) > 1) { rimBlips.clear(); rimAt = -1; rimTotalWas = rim.total; }
 
     ctx.globalCompositeOperation = 'lighter';
     ctx.lineCap = 'butt';
 
-    /* Everybody else, quietly.
+    /* Everybody else: the nearest few, clearly but never louder than you.
      *
-     * Three at most, nearest first, at a fifth of your own brightness over a third of the
-     * length, in their own colour. They are a hint that somebody is over there, not a map: a
+     * Four at most, nearest first. They are a hint that somebody is over there, not a map: a
      * border lit in sixteen places says nothing at all, and the one thing that has to survive
-     * on this frame is where YOU are.
+     * on this frame is where YOU are. But a hint has to be SEEN to be a hint, and at a peak of
+     * a sixth of an alpha over a few dozen pixels they mostly were not - so they are longer,
+     * brighter, and carry a hot thread down the middle that holds up against bright water.
      */
     if (me) {
-      const others = world.players
+      const fade = 1 - Math.exp(-dtMs / RIM_BLIP_FADE_MS);
+      const follow = 1 - Math.exp(-dtMs / RIM_BLIP_FOLLOW_MS);
+      const ranked = world.players
         .filter(q => q && q.alive && q.i !== world.you)
         .map(q => ({ q, d: Math.hypot(q.rx - me.rx, q.ry - me.ry) }))
-        .sort((m, n) => m.d - n.d)
-        .slice(0, RIM_BLIPS);
-      for (const [n, { q, d }] of others.entries()) {
-        const bx = ox + (q.rx / UNITS_PER_TILE) * TILE_PX;
-        const by = oy + (q.ry / UNITS_PER_TILE) * TILE_PX;
+        .sort((m, n) => m.d - n.d);
+      const shown = new Set(ranked.slice(0, RIM_BLIPS).map(o => o.q.i));
+      // Anybody who left the room, or died, fades out from where they were.
+      for (const [seat, b] of rimBlips) {
+        if (!ranked.some(o => o.q.i === seat)) {
+          b.vis += (0 - b.vis) * fade;
+          if (b.vis < 0.01) rimBlips.delete(seat);
+        }
+      }
+      for (const { q, d } of ranked) {
+        let b = rimBlips.get(q.i);
+        const want = nearestAt(ox + (q.rx / UNITS_PER_TILE) * TILE_PX, oy + (q.ry / UNITS_PER_TILE) * TILE_PX);
+        if (!b) {
+          if (!shown.has(q.i)) continue;
+          // A stable phase per seat, so two blips never share a pulse and never swap one.
+          b = { at: want, vis: 0, d, ph: (q.i * 2.39996) % (Math.PI * 2) };
+          rimBlips.set(q.i, b);
+        }
+        b.vis += ((shown.has(q.i) ? 1 : 0) - b.vis) * fade;
+        b.d += (d - b.d) * follow;
+        // Eased along the border the short way round, so a turn of a corner is a slide.
+        const delta = ((want - b.at + rim.total * 1.5) % rim.total) - rim.total / 2;
+        b.at = (b.at + delta * follow + rim.total) % rim.total;
+      }
+      for (const b of rimBlips.values()) {
+        if (b.vis < 0.01) continue;
         /* A blip says how close they are, not who they are.
          *
          * Distance is the only thing about another player that is worth a light on the frame
          * while you are busy, so it is what every property of the blip is wired to: the colour
          * runs from cold blue at the far end of the island to alarm red inside two tiles, and
-         * the pulse speeds up as it reddens, so a near one is unmistakably agitated and a far
-         * one barely moves. Three at most, each a third of a cycle out of phase with the last,
-         * so three read as three rather than as one light drawn three times.
+         * the pulse quickens as it reddens. The pulse moves BRIGHTNESS only, and gently - it
+         * used to stretch the blip's length too, fast when close, which read as jitter.
          *
          * Not their own colour: sixteen hues on one dark band is a fruit salad, half of them
          * are the orange of the fire, and "who" is a question the scoreboard answers. */
-        const tiles = d / UNITS_PER_TILE;
+        const tiles = b.d / UNITS_PER_TILE;
         const near = Math.max(0, Math.min(1, 1 - (tiles - 2) / 9));
-        const ph = seaT * (4 + 9 * near) + n * 2.1;
-        const pulse = 0.55 + 0.45 * Math.sin(ph);
-        const sound = 0.45 + mood.beat * 0.8 + mood.level * 0.4;
+        b.ph += (dtMs / 1000) * (2.2 + 5 * near);
+        const pulse = 0.82 + 0.18 * Math.sin(b.ph);
+        const sound = 1 + mood.beat * 0.3;
         const mix = (far, close) => Math.round(far + (close - far) * near * near);
         const colour = `rgb(${mix(143, 255)},${mix(196, 92)},${mix(255, 74)})`;
-        slither(nearestAt(bx, by), ((RIM_BLIP_PX / 2) / zoom) * (0.85 + 0.3 * pulse + 0.35 * near),
-          Math.min(0.55, (0.16 + 0.22 * near) * pulse * sound), colour, 12);
+        const half = ((RIM_BLIP_PX / 2) / zoom) * (1 + 0.3 * near);
+        const peak = Math.min(0.9, (0.42 + 0.38 * near) * pulse * sound) * b.vis;
+        ctx.lineWidth = bw;
+        slither(b.at, half, peak, colour, 16);
+        // The hot thread: a narrower, paler line down the middle, which is what keeps the blip
+        // legible over bright water, where a coloured glow on its own washes out.
+        ctx.lineWidth = bw * 0.4;
+        slither(b.at, half * 0.6, peak * 0.7, `rgb(${mix(220, 255)},${mix(236, 200)},255)`, 10);
       }
+      ctx.lineWidth = bw;
     }
 
     if (me) {
@@ -4519,7 +4579,15 @@ export function createRenderer(canvas, world) {
        * blue-to-red distance scale and nothing else. Red while you are down.
        */
       const mine = playerShades(me.i).light;
-      slither(rimAt, half, 0.72 * (0.7 + 0.3 * lift), dead ? '#ff3b4e' : mine, 26);
+      // A touch brighter than it was (0.72 -> 0.84 at rest), plus the same hot thread the blips
+      // carry, so it still outranks them now that they are easier to see.
+      const peak = Math.min(1, 0.84 * (0.72 + 0.28 * lift));
+      slither(rimAt, half, peak, dead ? '#ff3b4e' : mine, 26);
+      if (!dead) {
+        ctx.lineWidth = bw * 0.4;
+        slither(rimAt, half * 0.6, peak * 0.6, '#ffffff', 16);
+        ctx.lineWidth = bw;
+      }
     }
 
     /* A hit takes the whole frame, because what is being reported has no direction.
@@ -4837,7 +4905,8 @@ export function createRenderer(canvas, world) {
     if (p.status & STATUS.INVULN) c.globalAlpha = (world.tick >> 2) % 2 ? 0.45 : 1;
     if (p.status & STATUS.INVISIBLE) c.globalAlpha = 0.35;
 
-    const sprite = baked.players[p.i % 16][p.dir * 2 + frame];
+    // Baked per colour, not per seat; see bake() and COLOUR_PREFERENCE.
+    const sprite = baked.players[seatSlot(p.i)][p.dir * 2 + frame];
     const flipped = (p.status & STATUS.CHANGELING) !== 0;
     const small = (p.status & STATUS.REDUCTION) !== 0;
 
@@ -4915,8 +4984,11 @@ export function createRenderer(canvas, world) {
     if (pop < 1.5) drawShields(c, p, px + TILE_PX / 2, py + TILE_PX / 2);
     drawStatusPips(c, p, px, py);
 
-    const label = nameLabel(p.name, isMe ? PALETTE.gold : playerShades(p.i).light,
-      !!p.isBot, p.i === world.host);
+    // Your own name too, in your own colour. It was the interface gold, which is the orange of the
+    // fire and of the orange seat - so a red or blue pirate walked round under an orange name and
+    // the label disagreed with the sprite it sat on. The rim, the chevrons and the spawn ring
+    // already say which one is you; the name's job is to say what colour you are.
+    const label = nameLabel(p.name, playerShades(p.i).light, !!p.isBot, p.i === world.host);
     c.drawImage(label.el, px + TILE_PX / 2 - label.w / 2, py - 3 - LABEL_BASE, label.w, LABEL_H);
   }
 

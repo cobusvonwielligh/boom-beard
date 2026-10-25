@@ -1470,6 +1470,7 @@ function drawHud() {
     // Watching. Everything that is about YOU is meaningless, so it is emptied rather than left
     // showing the last player who happened to be in the slot.
     if (observing) {
+      $('who').classList.remove('tinted');
       castText($('who'), 'spectating');
       setValue($('rank'), '');
       $('dead').style.display = 'none';
@@ -1479,6 +1480,9 @@ function drawHud() {
   }
 
   const mine = ranks.get(world.you);
+  // In your own colour, so the name and the sprite agree; see #who.tinted in style.css.
+  $('who').style.setProperty('--me', playerColor(world.you));
+  $('who').classList.add('tinted');
   castText($('who'), me.name);
   setValue($('rank'), mine ? mine.tier : '');
   drawXp(mine);

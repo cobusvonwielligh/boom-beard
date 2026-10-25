@@ -7,7 +7,8 @@ import {
   TICK_MS, TICK_HZ, SNAP_EVERY_TICKS, MAX_PLAYERS, ROUND_TICKS, STATUS, STATUS_TICKS,
   ROUNDTIME_MIN_MIN, ROUNDTIME_MAX_MIN,
   TILE_PX, UNITS_PER_TILE, HITBOX_UNITS, FUSE_TICKS, FIRE_TICKS, FIRE_LETHAL_TICKS,
-  playerColor, SCORE, ROUND_INTERMISSION_MS,
+  paletteColor, COLOUR_PREFERENCE, DISTINCT_PLAYERS, isDistinctColour, encodeSeatColours,
+  SCORE, ROUND_INTERMISSION_MS,
   progressFor,
   STREAK_WINDOW_TICKS, STREAK_NAMES, STREAK_ACE, GAMESPEED_MIN, GAMESPEED_MAX,
   IDLE_KICK_TICKS, AUTO_BOTS_EMPTY_ROUNDS, IN_MASK, COUNT_IN_TICKS,
@@ -115,6 +116,26 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     return seat;
   };
 
+  /* ─── colours ───
+   *
+   * Picked when somebody sits down and then left alone; see COLOUR_PREFERENCE for why the order
+   * is what it is. `seat.colour` is a palette slot, and the table goes out in every snapshot. */
+  const coloursInUse = except => new Set(seats.filter((s, i) => s && i !== except).map(s => s.colour));
+  const pickColour = seat => {
+    const used = coloursInUse(seat);
+    return COLOUR_PREFERENCE.find(k => !used.has(k)) ?? seat;
+  };
+  /** Between rounds only: a small room gets back onto the eight colours nobody can confuse. */
+  function settleColours() {
+    if (seats.filter(Boolean).length > DISTINCT_PLAYERS) return;
+    for (let i = 0; i < maxPlayers; i++) {
+      const s = seats[i];
+      if (!s || isDistinctColour(s.colour)) continue;
+      s.colour = pickColour(i);
+    }
+  }
+  const coloursWire = () => encodeSeatColours(seats.map((s, i) => (s ? s.colour : i)));
+
   /** Vacate a seat without banking anything. Bots have no career to bank. */
   function clearSeat(seat) {
     seats[seat] = null;
@@ -171,7 +192,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     const id = playerId || `p_${seat}_${Date.now().toString(36)}_${(Math.random() * 1e6) | 0}`;
     seats[seat] = {
       playerId: id, name, admin, mask: 0, inputs: new Map(), lastAckTick: 0,
-      connected: true, goneSince: 0, lastInputAt: state.tick,
+      connected: true, goneSince: 0, lastInputAt: state.tick, colour: pickColour(seat),
     };
     streaks[seat] = newStreak();
     const p = createPlayer(seat, name);
@@ -597,6 +618,8 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
       state.players[i] = p;
       respawn(p);
     }
+    // The one moment colours may move: nobody is mid-fight, and the welcome below repaints all.
+    settleColours();
     between = false;
     nextDeadline = performance.now() + tickMs();
     onBroadcast(seat => welcomeFor(seat));
@@ -641,11 +664,15 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     for (const p of state.players) if (p) players.push(playerWire(p));
     const ev = state.events.slice();
     const gullsWire = state.gulls.map(gullWire);
+    const pal = coloursWire();
     onBroadcast(seat => ({
       t: 'snap',
       tick: state.tick,
       ack: seats[seat]?.lastAckTick ?? 0,
       players,
+      // Who is what colour, in every snapshot: sixteen characters, and a joiner must never be
+      // drawn in a colour they do not have for even one frame. See COLOUR_PREFERENCE.
+      pal,
       bombs: state.bombs,
       perks: state.perks,
       // In the snapshot rather than derived from `melt` events: movement prediction reads them,
@@ -737,7 +764,8 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
       startsAtTick: countIn,
       // A reconnect during the intermission must not be mistaken for the next round starting.
       between,
-      color: playerColor(seat),
+      color: paletteColor(seats[seat]?.colour ?? seat),
+      pal: coloursWire(),
       map: welcomePayloadBase().map,
       players,
       bombs: state.bombs,
@@ -846,6 +874,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
       seats[seat] = {
         playerId: `bot_${seat}`, name, mask: 0, inputs: new Map(), lastAckTick: 0,
         connected: true, goneSince: 0, isBot: true, brain: createBrain(), addedAt: ++botSeq,
+        colour: pickColour(seat),
       };
       streaks[seat] = newStreak();
       const p = createPlayer(seat, name);

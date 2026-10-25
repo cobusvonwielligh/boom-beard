@@ -904,6 +904,63 @@ const PLAYER_PALETTE = [
 
 const seatOf = i => ((i % 16) + 16) % 16;
 
+/* A colour belongs to the PLAYER now, not to the seat number.
+ *
+ * Seats are handed out lowest-free-first, so after a few joins and leaves a small room could be
+ * sitting in seats 1, 6, 9 and 13 - cyan, sky, blue and teal, four players nobody could tell
+ * apart. So the server picks each player's colour when they sit down and sends the seat-to-colour
+ * table with every snapshot (`pal`, sixteen hex digits).
+ *
+ * The pick walks COLOUR_PREFERENCE and takes the first colour nobody in the room is wearing. Its
+ * first eight are the eight most different colours in the palette - different in hue AND in
+ * lightness and saturation, and each a plain word: red, cyan, yellow, magenta, green, white,
+ * orange, blue. So while the room is DISTINCT_PLAYERS or fewer, everybody is one of those eight
+ * and no two are alike. Past eight, the rest come in the palette's own spread-out order.
+ *
+ * Colours do not move under people. A player keeps theirs for as long as they hold the seat,
+ * including across rounds; the only reshuffle is at the start of a round, when the room is down
+ * to eight or fewer and somebody is still wearing one of the less distinct colours from a busier
+ * stretch. They, and only they, are moved onto a free one of the eight. See server/room.js.
+ */
+export const DISTINCT_PLAYERS = 8;
+const DISTINCT_COLOURS = [0, 1, 2, 11, 4, 15, 8, 9];    // red cyan yellow magenta green white orange blue
+export const COLOUR_PREFERENCE = [
+  ...DISTINCT_COLOURS,
+  ...PLAYER_PALETTE.map((_, k) => k).filter(k => !DISTINCT_COLOURS.includes(k)),
+];
+export const isDistinctColour = slot => DISTINCT_COLOURS.includes(slot);
+
+/** Seat -> palette slot. Identity until the server says otherwise; see setSeatColours. */
+const seatColours = PLAYER_PALETTE.map((_, k) => k);
+
+/** The table as it goes on the wire: one hex digit per seat. */
+export const encodeSeatColours = slots => slots.map(k => (k & 15).toString(16)).join('');
+
+/**
+ * Adopt the server's table. Returns true when anything changed, so a caller holding colour-keyed
+ * caches knows to drop them. Garbage is ignored rather than half-applied.
+ */
+export function setSeatColours(pal) {
+  if (typeof pal !== 'string' || !/^[0-9a-f]{1,16}$/.test(pal)) return false;
+  let changed = false;
+  for (let i = 0; i < pal.length; i++) {
+    const k = parseInt(pal[i], 16);
+    if (seatColours[i] !== k) { seatColours[i] = k; changed = true; }
+  }
+  return changed;
+}
+
+/** Which palette slot a seat is wearing. Anything baked per colour is indexed by this. */
+export const seatSlot = i => seatColours[seatOf(i)];
+/** A palette slot's three numbers, for things baked per colour rather than per seat. */
+export const paletteHsl = slot => PLAYER_PALETTE[slot & 15];
+
+/** A palette slot's own colour, for the server, which knows slots rather than a table. */
+export const paletteColor = slot => {
+  const { h, s, l } = PLAYER_PALETTE[slot & 15];
+  return `hsl(${h} ${s}% ${l}%)`;
+};
+
 /* ONE definition of what colour a seat is, as three numbers.
  *
  * Everything that paints a player reads this: the name in the chat, the row on the scoreboard,
@@ -911,13 +968,13 @@ const seatOf = i => ((i % 16) + 16) % 16;
  * welcome. They all agreed before - by all doing the same arithmetic in their own file - which is
  * the kind of agreement that holds until somebody adjusts one of them.
  */
-export const playerHsl = i => PLAYER_PALETTE[seatOf(i)];
+export const playerHsl = i => PLAYER_PALETTE[seatColours[seatOf(i)]];
 export const playerColor = i => {
   const { h, s, l } = playerHsl(i);
   return `hsl(${h} ${s}% ${l}%)`;
 };
 /** What to call it. "You are light green" is the whole feature. */
-export const playerColorName = i => PLAYER_PALETTE[seatOf(i)].name;
+export const playerColorName = i => playerHsl(i).name;
 /** Kept for the fire's hue; see fireTones in art.js. */
-export const playerHue = i => PLAYER_PALETTE[seatOf(i)].h;
+export const playerHue = i => playerHsl(i).h;
 

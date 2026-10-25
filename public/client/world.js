@@ -3,7 +3,7 @@
 // Your own player is predicted from your keys and corrected by replaying unacknowledged inputs.
 // Everyone else is drawn from snapshots, a little in the past. docs/NETCODE.md §2.
 
-import { INTERP_DELAY_TICKS, TRACER_SAMPLES, TRACER_EVERY_TICKS, FIRE_TICKS } from '/shared/constants.js';
+import { INTERP_DELAY_TICKS, TRACER_SAMPLES, TRACER_EVERY_TICKS, FIRE_TICKS, setSeatColours } from '/shared/constants.js';
 import { createPlayer, tileCentre } from '/shared/sim/state.js';
 import { decodeCells, packCell, cellType } from '/shared/maps.js';
 import { BLOCK, BLOCK_HP } from '/shared/constants.js';
@@ -50,6 +50,8 @@ export function createWorld() {
      * that does not send it behaves as it always did. */
     w.startsAtTick = m.startsAtTick ?? 0;
     w.tick = m.tick;
+    // Who is what colour. Before the players, so nothing is ever drawn in a seat's old colour.
+    setSeatColours(m.pal);
     w.players = [];
     for (const p of m.players) w.players[p.i] = hydrate(p);
     w.bombs = m.bombs || [];
@@ -149,6 +151,7 @@ export function createWorld() {
     // shim can, and a rewound tick would unburst bombs and walk the interpolation backwards.
     if (snap.tick < w.tick) return;
     w.tick = snap.tick;
+    setSeatColours(snap.pal);
     w.perks = snap.perks || [];
     w.puddles = snap.puddles || [];
     // Omitted from the snapshot when the sky is empty, so absent means none.

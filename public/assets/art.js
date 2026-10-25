@@ -10,7 +10,7 @@
 //   3. Terrain is muted; players are the only saturated things on screen.
 
 // `/shared` is mounted by the dev server alongside `public/` - see docs/ARCHITECTURE.md §7.
-import { BLOCK, TILE_PX, MAX_RADIUS, playerHsl } from '/shared/constants.js';
+import { BLOCK, TILE_PX, MAX_RADIUS, playerHsl, paletteHsl, seatSlot } from '/shared/constants.js';
 
 export const PALETTE = {
   void: '#0d1117',
@@ -110,10 +110,11 @@ const FIRE_SAT = { edge: 0.62, mid: 0.72, core: 0.55, cool: 0.5 };
 const fireToneCache = new Map();
 
 export function fireTones(i) {
-  const seat = ((i % 16) + 16) % 16;
-  const hit = fireToneCache.get(seat);
+  // Cached per COLOUR, not per seat: a seat's colour can change between rounds.
+  const slot = seatSlot(i);
+  const hit = fireToneCache.get(slot);
   if (hit) return hit;
-  const { h, s, l } = playerHsl(seat);
+  const { h, s, l } = paletteHsl(slot);
   const sat = k => Math.round(s * k);
   const tones = {
     /* Same ramp fire always had - a dark edge, a bright body, a near-white core - in the
@@ -128,14 +129,16 @@ export function fireTones(i) {
     hue: h,
     sat: s,
   };
-  fireToneCache.set(seat, tones);
+  fireToneCache.set(slot, tones);
   return tones;
 }
 
-export const playerShades = i => {
+export const playerShades = i => shadesOf(playerHsl(i));
+/** The same three shades for a palette slot, for sprites baked per colour rather than per seat. */
+export const slotShades = slot => shadesOf(paletteHsl(slot));
+function shadesOf({ h, s, l }) {
   // Straight off playerHsl, so the sprite and the name in the chat can never drift apart: `base`
   // IS what `playerColor` returns, and the other two are it lit and shaded.
-  const { h, s, l } = playerHsl(i);
   return {
     light: `hsl(${h} ${s}% ${l + 14}%)`,
     base: `hsl(${h} ${s}% ${l}%)`,
@@ -836,8 +839,9 @@ function drawCracks(c, dmg, tx, ty) {
  * 12x16 figure centred in a 32px tile. dir: 0 R, 1 U, 2 L, 3 D. frame: 0|1 walk cycle.
  * Caller handles Changeling (flip Y) and Reduction (scale 0.5) with a transform.
  */
-export function drawPlayer(c, { dir = 3, frame = 0, colorIndex = 0, dead = false, shadow = true }) {
-  const k = playerShades(colorIndex);
+export function drawPlayer(c, { dir = 3, frame = 0, colorIndex = 0, slot = null, dead = false, shadow = true }) {
+  // `slot` paints a palette colour directly - what bake() wants; `colorIndex` is a seat.
+  const k = slot !== null ? slotShades(slot) : playerShades(colorIndex);
   const ox = TILE_PX / 2 - 6, oy = TILE_PX / 2 - 9;
   c.save();
 
@@ -985,8 +989,8 @@ const BOMB_RING_R = 14.2;
 const BOMB_WARN_S = 0.8;
 const BRASS = '#b8892e', BRASS_LIT = '#f0cf72', BRASS_DARK = '#6f4f12';
 
-export function drawBombBody(c, { colorIndex = 0 } = {}) {
-  const S = TILE_PX, k = playerShades(colorIndex), r = BOMB_R;
+export function drawBombBody(c, { colorIndex = 0, slot = null } = {}) {
+  const S = TILE_PX, k = slot !== null ? slotShades(slot) : playerShades(colorIndex), r = BOMB_R;
   c.save();
   c.translate(S / 2, BOMB_CY);
 
@@ -2316,8 +2320,8 @@ export function bake({ playerCount = 16 } = {}) {
       for (let frame = 0; frame < 2; frame++) {
         const el = canvas();
         outlined(el.getContext('2d'),
-          cc => drawPlayer(cc, { dir, frame, colorIndex: i, shadow: false }),
-          cc => drawPlayer(cc, { dir, frame, colorIndex: i }));
+          cc => drawPlayer(cc, { dir, frame, slot: i, shadow: false }),
+          cc => drawPlayer(cc, { dir, frame, slot: i }));
         set.push(el);
         /* The same figure as a flat black silhouette, for the sun to throw.
          *
@@ -2336,9 +2340,11 @@ export function bake({ playerCount = 16 } = {}) {
         }
       }
     out.players.push(set);
-    // One body per owner. Everything that changes with the fuse is drawn live - see drawBombLive.
+    // One body per COLOUR - indexed by palette slot, like the figures above, so a seat whose
+    // colour changes between rounds just reads a different entry. Everything that changes with
+    // the fuse is drawn live - see drawBombLive.
     const b = canvas();
-    drawBombBody(b.getContext('2d'), { colorIndex: i });
+    drawBombBody(b.getContext('2d'), { slot: i });
     out.bombs.push(b);
   }
 
