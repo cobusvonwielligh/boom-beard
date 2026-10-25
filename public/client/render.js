@@ -21,6 +21,7 @@ import {
 } from '/assets/art.js';
 import { placeable } from '/shared/sim/bombs.js';
 import { gullAt } from '/shared/sim/gulls.js';
+import { radarBombPulseHz, selectRadarBombs } from './radar.js';
 
 const CHUNK_PX = TILE_PX * CHUNK_TILES;
 
@@ -4094,6 +4095,7 @@ export function createRenderer(canvas, world) {
    * the position is exact and eased along the border, membership fades rather than pops, and the
    * phase belongs to the seat. */
   const rimBlips = new Map();
+  const radarBombBlips = new Map();
   // Everybody else, on the rim and round their sprite: one maroon. See drawEdge.
   const FOE_RED = 'rgb(178,34,58)';
   let rimTotalWas = 0;
@@ -4315,6 +4317,50 @@ export function createRenderer(canvas, world) {
       ctx.globalCompositeOperation = 'lighter';
       ctx.lineWidth = bw;
     }
+
+    const selectedBombs = me ? selectRadarBombs(world.bombs, me) : [];
+    const selectedBombIds = new Set(selectedBombs.map(({ bomb }) => bomb.id));
+    for (const id of radarBombBlips.keys()) {
+      if (!selectedBombIds.has(id)) radarBombBlips.delete(id);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    const bombFollow = 1 - Math.exp(-dtMs / RIM_BLIP_FOLLOW_MS);
+    for (const { bomb } of selectedBombs) {
+      const want = nearestAt(
+        ox + (bomb.tx + 0.5) * TILE_PX,
+        oy + (bomb.ty + 0.5) * TILE_PX,
+      );
+      let marker = radarBombBlips.get(bomb.id);
+      if (!marker) {
+        marker = { at: want, phase: (bomb.id * 2.39996) % (Math.PI * 2) };
+        radarBombBlips.set(bomb.id, marker);
+      }
+      const delta = ((want - marker.at + rim.total * 1.5) % rim.total) - rim.total / 2;
+      marker.at = (marker.at + delta * bombFollow + rim.total) % rim.total;
+      marker.phase = (marker.phase
+        + (dtMs / 1000) * radarBombPulseHz(bomb, world.tick) * Math.PI * 2) % (Math.PI * 2);
+      const pulse = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(marker.phase));
+      const [x, y] = rim.at(marker.at);
+      const size = 11 / zoom;
+
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(Math.PI / 4);
+      ctx.globalAlpha = 0.72 + pulse * 0.28;
+      ctx.shadowColor = '#ff8b2d';
+      ctx.shadowBlur = (3 + pulse * 7) / zoom;
+      ctx.fillStyle = '#ff9d24';
+      ctx.strokeStyle = '#fff0a1';
+      ctx.lineWidth = 1.4 / zoom;
+      ctx.fillRect(-size / 2, -size / 2, size, size);
+      ctx.strokeRect(-size / 2, -size / 2, size, size);
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#fff5d6';
+      ctx.fillRect(-size * 0.16, -size * 0.16, size * 0.32, size * 0.32);
+      ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'lighter';
 
     if (me) {
       const px = ox + (me.rx / UNITS_PER_TILE) * TILE_PX;
