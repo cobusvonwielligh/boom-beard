@@ -82,12 +82,16 @@ const PIRATE = {
 const FIRE_HUE = 24;                 // fire's own orange, in degrees
 /* How far toward the player's hue the ramp moves: 0.28, down from 0.4.
  *
- * Forty percent made a blast obviously somebody's and slightly less obviously fire - the blues
- * and greens in particular stopped looking hot. Eighteen is natural fire with somebody's accent
- * IN it: you would not pick the hue out of a still frame, and you can tell two players' blasts
- * apart on a board without being told that is what you are doing. That is the right order - the
- * colour answers "whose" for an eye already on it, it does not label it. */
-const FIRE_PULL = 0.18;
+ * The hue is the player's, near enough all of it - 0.8 - because the whole point is that YOUR
+ * blast is your colour and everybody's is their own. Pulling it back to 0.18 to make it look
+ * more like fire made sixteen players' blasts the same orange, which answers nothing.
+ *
+ * What makes it still read as fire is NOT a hue near orange, it is the ramp and the saturation:
+ * a dark edge, a bright body and a white-hot core, none of them more saturated than paint on a
+ * wall. A desaturated blue with that ramp is blue fire. A saturated blue with it is a neon sign.
+ * So the hue goes almost all the way over and the saturation comes right down - which is both of
+ * the things asked for, in the two places that each one actually lives. */
+const FIRE_PULL = 0.8;
 const fireToneCache = new Map();
 
 export function fireTones(i) {
@@ -103,12 +107,14 @@ export function fireTones(i) {
      * of saturation off each one. A hue that has been pulled toward blue or green shows its
      * saturation far more than the orange it came from does, so holding fire's exact numbers made
      * the cool players look like paint and the warm ones look right. */
-    edge: `hsl(${h.toFixed(1)} 68% 53%)`,
-    mid: `hsl(${h.toFixed(1)} 86% 62%)`,
+    edge: `hsl(${h.toFixed(1)} 58% 48%)`,
+    mid: `hsl(${h.toFixed(1)} 70% 61%)`,
     // The core keeps a quarter of the shift and nearly all of fire's own whiteness.
-    core: `hsl(${(FIRE_HUE + delta * FIRE_PULL * 0.35 + 360) % 360} 100% 88%)`,
+    // The core leans their way too, and stays nearly white: hot things go white whatever is
+    // burning, and that is what keeps the middle of a blast looking like the middle of a blast.
+    core: `hsl(${(FIRE_HUE + delta * FIRE_PULL * 0.6 + 360) % 360} 72% 90%)`,
     // What the smoke-stage body cools to, and the one the sparks fly in.
-    cool: `hsl(${h.toFixed(1)} 60% 46%)`,
+    cool: `hsl(${h.toFixed(1)} 48% 42%)`,
     hue: h,
   };
   fireToneCache.set(seat, tones);
