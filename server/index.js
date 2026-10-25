@@ -40,6 +40,7 @@ const MIME = {
   '.woff2': 'font/woff2',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
+  '.webp': 'image/webp',
   '.ico': 'image/x-icon',
   '.mp3': 'audio/mpeg',
 };

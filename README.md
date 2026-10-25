@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://boombeard.co.za">
-    <img src="docs/readme/banner.svg" alt="Boom Beard: sixteen pirates, one island, light the fuse and run" width="100%">
+    <img src="public/assets/img/title-boom-beard-bandanas-bomb.webp" alt="Boom Beard" width="100%">
   </a>
 </p>
 
@@ -25,27 +25,28 @@ Ten minutes a round, five islands in rotation. Drop a bomb, get clear, be standi
 |---|---|
 | Move | <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> or the arrows. Hold two for a diagonal |
 | Bomb | <kbd>Space</kbd> or <kbd>K</kbd>, on the tile you are facing. Same key gets you back up |
-| Dash | Double-tap a direction. Costs stamina, goes through people |
+| Slide | Double-tap a direction. Costs stamina, goes through people |
 | Emote | <kbd>Shift</kbd> + a direction |
 | Chat | <kbd>Enter</kbd> |
 | Scoreboard | <kbd>Tab</kbd> - round and all-time |
 | Back out | <kbd>Esc</kbd> |
 
-Fire runs in a cross and stops at walls. It sets off any bomb it touches, and chains are where
-rounds are decided. Your own fire kills you at exactly the speed everyone else's does. A death
-costs you fifteen seconds, which is long enough to watch how the fight you just left turns out.
+Fire runs in a cross, stops at walls, and carries its owner's colour. It sets off any bomb it
+touches, and chains are where rounds are decided. Fire is lethal for the first ten of its fifteen
+drawn ticks; the ember tail is safe, and damage uses a smaller hitbox than movement so a shoulder
+behind cover is forgiven. A death costs 13.5 seconds.
 
 ## <img src="docs/readme/icons/fire.svg" width="20" align="middle"> On the island
 
 | | | |
 |---|---|---|
 | <img src="docs/readme/icons/bomb.svg" width="18" align="middle"> | **Bombs and fire** | A cross, stopped by walls, handed on to any bomb it reaches. |
-| <img src="docs/readme/icons/keg.svg" width="18" align="middle"> | **Powder kegs** | Rare barrels. Break one and it takes the neighbourhood with it. One a round, at least. |
+| <img src="docs/readme/icons/keg.svg" width="18" align="middle"> | **Powder kegs** | Rare barrels. Break one and it takes the neighbourhood with it. At least one and at most twelve a round. |
 | <img src="docs/readme/icons/bolt.svg" width="18" align="middle"> | **Stamina** | Ten seconds of sprint, then you limp. Stopping to breathe is a real decision. |
 | <img src="docs/readme/icons/boot.svg" width="18" align="middle"> | **Perks** | More bombs, longer fire, boots, a shield, stim, and rum - which saves you from everything except the tile the bomb was on, and steers like a shopping trolley. |
 | <img src="docs/readme/icons/ice.svg" width="18" align="middle"> | **Ice** | Melts to a puddle when it is hit. Half pace, and you keep going after you let go. |
 | <img src="docs/readme/icons/coin.svg" width="18" align="middle"> | **Gold** | The rarest thing on the floor. Worth nothing in the round, worth a lot on the board. |
-| <img src="docs/readme/icons/gull.svg" width="18" align="middle"> | **Seagulls** | Scenery, until you catch one in a blast - then it pays. Once a round, two of them pick a player and settle it themselves. |
+| <img src="docs/readme/icons/gull.svg" width="18" align="middle"> | **Seagulls** | Scenery, until you catch one in a blast - then three coins go straight to the fire's owner. Up to four cross at once; once a round, two pick a player and settle it themselves. |
 | <img src="docs/readme/icons/skull.svg" width="18" align="middle"> | **Kill streaks** | Double, triple, ultra, rampage, and an **ACE** for taking the whole island in one run. |
 
 ## <img src="docs/readme/icons/medal-gold.svg" width="18" align="middle"> Medals
@@ -89,6 +90,14 @@ Level 1 takes a minute. Veteran takes about a hundred hours.
 | 20 | Veteran | 1,200,000 |
 
 Levels carry on past Veteran. The rank does not.
+
+## Player identity
+
+A player name is claimed once with a password. The browser keeps a revocable device token, so the
+password box normally appears only on first claim and on a new browser. Names are unique across
+case, spacing and Unicode lookalikes, including disconnected seats still inside their reconnect
+window. Severe English and Afrikaans slurs are refused in names and starred in chat; ordinary
+swearing is left alone. Hover a player name for 2.5 seconds to open their round-and-career dossier.
 
 ## <img src="docs/readme/icons/bolt.svg" width="20" align="middle"> Run your own island
 
@@ -138,7 +147,8 @@ itself when they leave.
 - One deterministic simulation, shared by both sides. Your movement and every explosion are
   predicted locally and almost never corrected.
 - Art and sound effects written in code. Four produced music tracks.
-- 372 tests on Node's own runner, on every push.
+- A broad Node test suite covers simulation, identity, persistence, transport, source integrity
+  and deployment on every push.
 
 | | |
 |---|---|

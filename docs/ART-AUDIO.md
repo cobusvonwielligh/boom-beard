@@ -1,8 +1,20 @@
 # Boom Beard - Art & Audio
 
-Slice: **ART**. Everything the game draws is code, not files - nothing to version, no CORS, no
-cache busting. The exceptions are all decoration or music: four landing-page PNGs, one font, and
-four mp3s. Nothing inside the board is an image, and every sound effect is still synthesised.
+Slice: **ART**. Everything inside the board is still drawn in code. The exceptions are decoration
+and music: six landing/HUD image assets, one font, and four mp3s. Every sound effect remains
+synthesised.
+
+The landing title is the transparent generated wordmark
+`assets/img/title-boom-beard-bandanas-bomb.webp`: cast-gold **BOOM BEARD**, a beard and red bandana
+on each B, and one lit bomb behind the final R/D. CSS applies the same seven-second masked
+specular sweep the old live-text title used, while the `<h1>` and image alt text keep the title
+accessible.
+
+The wordmark is 1100 × 331, lossy WebP with lossless alpha (`cwebp -q 92 -alpha_q 100 -m 6
+-sharp_yuv`), about 70 KB. It is never drawn wider than 544 CSS px (`--titleBase` 44 px ×
+1.875 × 6.6), so 1100 is sharp at 2× and on a 3× phone. The 2172 px PNG it came from was 1.2 MB,
+about four times the resolution any screen could use. It is the page's largest paint, so the
+`<img>` carries `fetchpriority="high"`; the CSS mask uses the same URL and shares the cached file. The other image assets are mascot/HUD branding; none participates in simulation.
 
 ---
 

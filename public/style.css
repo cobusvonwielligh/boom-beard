@@ -4069,8 +4069,8 @@ h1 {
   );
   background-size: 260% 100%;
   background-repeat: no-repeat;
-  -webkit-mask-image: url("/assets/img/title-boom-beard-bandanas-bomb.png");
-  mask-image: url("/assets/img/title-boom-beard-bandanas-bomb.png");
+  -webkit-mask-image: url("/assets/img/title-boom-beard-bandanas-bomb.webp");
+  mask-image: url("/assets/img/title-boom-beard-bandanas-bomb.webp");
   -webkit-mask-size: contain;
   mask-size: contain;
   -webkit-mask-repeat: no-repeat;
