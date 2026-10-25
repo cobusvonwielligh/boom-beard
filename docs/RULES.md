@@ -46,7 +46,8 @@ read is worse than a map you cannot see all of.
 | Max boots | **4** → 59 units/tick ≈ 6.9 tiles/s |
 | Slowdown status | speed × 0.5, rounded down |
 | Exhausted | speed × 0.5, rounded down - see §9 |
-| Player hitbox | 20 × 20 units, centred (smaller than a tile - generous) |
+| Movement hitbox | 160 × 160 units (20 × 20 px), centred |
+| Fire-damage hitbox | 104 × 104 units (13/20 of movement), centred |
 
 **Diagonals.** Holding two directions still moves one axis per tick - that is what keeps a tile
 game feeling like one, and what lets remote interpolation draw an L rather than a diagonal. What
@@ -61,7 +62,7 @@ the assist more violent - at `speed × 2` a booted player was moved half a tile 
 single tick, which reads as the game taking the controls off you.
 
 **Corner assist.** This is what makes Bomberman feel good and it is not optional. When you move
-into a blocked tile but the perpendicular offset from the tile centre is **≤ 96 units (0.375
+into a blocked tile but the perpendicular offset from the tile centre is **≤ 112 units (0.44
 tile)**, slide toward that centre at full speed instead of stopping. Without this, players feel
 like they are fighting the grid.
 
@@ -69,8 +70,9 @@ like they are fighting the grid.
 faithful to Game of Bombs and the thing that makes 180 ms latency invisible - see
 [NETCODE.md](NETCODE.md) §1b.
 
-**Bomb pass-through.** You may walk off a bomb you just placed. The moment your hitbox fully
-leaves that tile, the bomb becomes solid to you. Everyone else treats it as solid immediately.
+**Bomb pass-through.** Anyone whose hitbox already overlaps a newly placed bomb may walk off it.
+The moment their hitbox clears that tile, the bomb becomes solid. This prevents a bomb dropped
+beside somebody from freezing them in place through no decision of their own.
 
 ### The slide
 
@@ -80,7 +82,7 @@ fuse ends.
 
 | | |
 |---|---|
-| Gesture | the same direction twice inside **260 ms** (client-side; the server sees one bit) |
+| Gesture | the same direction twice inside **160 ms** (client-side; the server sees one bit) |
 | Launch | **3 ×** your current walking pace - boots included, so the perk still matters |
 | Drag | **× 0.94** of the velocity per tick |
 | Ends at | **26 units/tick**, or on hitting anything solid |
@@ -136,7 +138,7 @@ simulation, the client's prediction, the click sound, and the bots.
 | Fuse | **72 ticks (2.4 s)** **(TUNE)** |
 | Fuse under Fast Detonation | **36 ticks (1.2 s)** |
 | Start bombs | 1 |
-| Max bombs | **16** |
+| Max bombs carried | **5** (16 live bombs globally is the server safety ceiling) |
 | Start fire radius | 1 |
 | Max fire radius | **5** (9 with Blue fire - *not in v1*) |
 
@@ -153,7 +155,10 @@ in each of the four directions. The arm stops when it hits:
 - another bomb → that bomb detonates **this same tick** (chain), and the arm stops,
 - a column → fire passes through, no reduction, arm continues.
 
-Fire lasts **15 ticks (0.5 s)**. Every fire tile records the player who owns it, for kills.
+Fire is drawn for **15 ticks (0.5 s)** and lethal for the first **10**. The final five ticks are
+embers and smoke: visible, but harmless. Damage uses the smaller 104-unit box above, independent
+of the movement hitbox, so imperfect alignment behind a wall does not turn a hidden shoulder into
+a death. Every fire tile records its owner and is drawn in that player's colour.
 
 **Chains are same-tick and bounded.** Resolve chain detonations with a queue in a single tick,
 with a hard cap of 64 bombs per tick, so a 16-player bomb carpet cannot stall the loop.
@@ -274,7 +279,9 @@ and, worse, made a walkable tile look like a wall.
 **Under the boulders.** Every rock out in the sea is the top of something wider: a blurred, almost
 invisible mass in the deep water's own colour, drawn under the rock and its shadow. It is the only
 cue that says the water around a boulder is shallow, and it is what stops the rock reading as a
-sticker on a flat surface.
+sticker on a flat surface. Over that, each boulder carries the island's own sand shelf: the same
+bands, colours and alphas as the coast (three tiles of sand fading out, then the mid and pale
+shallows close in), following the rock's outline and breathing with the bass as the coast does.
 
 **Light.** The map's sun (a hash of its name, pointing anywhere in a half-circle) now lights the
 blocks themselves rather than only throwing shadows: a gradient across each one along the light's
@@ -315,12 +322,12 @@ Touching fire kills you, unless you are Invulnerable or hold a Shield.
 - You respawn by pressing **SPACE** after a **13.5-second** cooldown, with **90 ticks (3 s)**
   Invulnerability.
 
-**Where you respawn.** Every legal spawn is a candidate, weighted by the *square* of the
-distance to the nearest living player - twice as far away is four times as likely. Not "the best
-few, shuffled": that kept sending everyone back to the same handful of corners, and a corner you
-can predict is a corner somebody can camp. Weighting the whole list means any spot on the map
-can come up, a busy one is merely unlikely rather than impossible, and there is no set of tiles
-to watch.
+**Where you respawn.** Every safe map spawn is a candidate, weighted by the *square* of the
+distance to the nearest living player - twice as far away is four times as likely. Safe means the
+full movement hitbox fits, the tile is not occupied by a bomb, lethal fire, a puddle or another
+body, and at least one adjacent tile is an immediate safe exit. If every authored spawn is unsafe,
+the server searches the map for the nearest valid floor; if the entire map is unsafe, you remain
+dead and retry instead of being forced into geometry or damage.
 - While dead you are in observer mode (§9).
 
 Faithful note: Game of Bombs' Heart perk keeps half your bonuses through death. It is a reserved
@@ -449,7 +456,7 @@ A rare destructible block that **detonates on the tick it breaks**, at radius 7 
 
 | | |
 |---|---|
-| Per round | at most 6, at least 1 guaranteed |
+| Per round | at most 12, at least 1 guaranteed |
 | HP | 1 - the point is the explosion, not a siege |
 | Drops | nothing. It holds powder. |
 
@@ -465,20 +472,20 @@ not a guarantee, and a full map is exactly when a keg is most wanted.
 ## 8c. Seagulls
 
 Now and then a gull crosses the island: the first about 25 s into a round, then one every
-40–90 s, never more than two in the air. Each flies a straight line with a lazy weave in it,
-entering and leaving well outside the board, at just under four tiles a second.
+10–22 s, never more than four in the air. Each flies a line with a lazy weave and loiters over the
+island, entering and leaving well outside the board at about three tiles a second.
 
 | | |
 |---|---|
-| Catchable | only at the bottom of a dive - a dip every ~3.5 s, low for ~11 ticks of it |
+| Catchable | whenever lethal fire reaches the tile below it; altitude is visual depth, not armour |
 | Hit by | fire in its lethal window on the tile under it, exactly what kills a player |
-| Drops | **one gold coin**, on the nearest bare floor. Does **not** count against the round's five |
-| Credit | the kill feed names whoever's fire it was; the coin goes to whoever picks it up |
+| Reward | **three gold coins**, credited directly to the fire's owner; no-owner keg fire drops one on nearby floor |
+| Credit | the kill feed names whoever's fire it was; earned coins do not count against the round's five random drops |
 
-It is meant to be hard: one tick in nine of a flight is low enough, it is quick, and over water
-there is nothing to burn it with. The tell is the shadow - at cruising height it sits well off to
-one side of the bird, and in a dive it slides in underneath and turns crisp. Gulls draw from
-their own random stream, so adding them changed no drop or regrowth roll.
+It is meant to reward planning: the bird is moving, a fuse takes 2.4 seconds, and over water there
+is nothing to burn it with. Height changes size, speed, haze and shadow offset so the sky has
+depth, but every layer is equally catchable. Gulls draw from their own random stream, so adding
+them changed no drop or regrowth roll.
 
 ---
 
@@ -534,8 +541,9 @@ spectators follow the action. It is a core feature, not decoration.
 ## 12. Chat
 
 ENTER focuses the input, ENTER again sends, ESC cancels. 140 characters, 1 message per second per
-player, last 50 messages kept. No censorship, no channels, no moderation - it is 12 colleagues.
-Kill feed lines share the chat panel.
+player, last 50 messages kept. Severe English and Afrikaans slurs are replaced with `***`; ordinary
+swearing is allowed. Names containing the blocked terms are rejected rather than masked. Kill feed
+lines share the chat panel.
 
 ### Commands
 

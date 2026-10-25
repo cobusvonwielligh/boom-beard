@@ -1809,6 +1809,39 @@ export function createRenderer(canvas, world) {
     ctx.globalAlpha = 1;
   }
 
+  /* The island's shelf, round every boulder too.
+   *
+   * A rock standing in open water with deep blue right up to its face looks dropped onto the sea;
+   * the island stopped looking like that when its sand carried on under the water (see
+   * SHELF_TILES). The same bands in the same colours and alphas, so the two read as the same
+   * seabed: three tiles of sand fading out, the mid shallows inside a tile and a half, and the
+   * pale shallows hard against the rock. Breathes with the bass exactly as the island's does.
+   *
+   * Each band is the union of the rock's own lumps grown by that band's distance, filled as ONE
+   * path - nonzero winding makes overlapping ellipses a single shape at a single alpha - so the
+   * shelf follows the rock's silhouette and never stacks where two lumps meet. Fifteen fills a
+   * frame for three rocks; cheaper than the cache it would need. The bands are ROCK_SHELF_BANDS,
+   * declared beside SHELF_TONE.
+   */
+  function drawRockShelves(breathe) {
+    for (const k of waterRocks()) {
+      for (const [tiles, alpha, colour] of ROCK_SHELF_BANDS) {
+        // Measured from the rock's edge, which sits a little inside its outermost lumps.
+        const grow = tiles * TILE_PX * 0.85;
+        ctx.globalAlpha = Math.min(1, alpha * breathe);
+        ctx.fillStyle = colour;
+        ctx.beginPath();
+        for (const l of k.lumps) {
+          const rx = l.r + grow, ry = l.r * l.squash + grow;
+          ctx.moveTo(k.x + l.dx + rx * Math.cos(l.turn), k.y + l.dy + rx * Math.sin(l.turn));
+          ctx.ellipse(k.x + l.dx, k.y + l.dy, rx, ry, l.turn, 0, Math.PI * 2);
+        }
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
   function paintWaterRocks(ox, oy, only = null) {
     for (const k of waterRocks()) {
       if (only && k !== only) continue;
@@ -2164,18 +2197,23 @@ export function createRenderer(canvas, world) {
    *
    * ─── and it listens, but only in the ways a jellyfish could ───
    *
-   * Clearly reactive, never a meter. The music is allowed to touch exactly three things, and each
-   * one is something the animal already does on its own:
+   * Clearly reactive, never a meter. Every listener is something the animal already does on its
+   * own, made legible:
    *
-   *   the beat    pulls one squeeze forward. The bell is pulsing anyway; the kick gives it a
-   *               reason to pulse NOW, so the animal swims in time without the pulse rate itself
-   *               being a readout of the tempo.
-   *   the bass    lifts it. A swell brings it up a little, which is the one gesture that makes it
-   *               unmistakably in sympathy with the room - you see the whole animal resolve out
-   *               of the dark when the track opens up.
-   *   the top end brightens the bell and nothing else. The hats are already lighting the
-   *               bioluminescence it is drifting among, so this is the same light reaching the
-   *               same animal.
+   *   the beat    pulls one squeeze forward, and every kick fires a ring of light off the bell's
+   *               margin that spreads and fades over half a second. The squeeze alone was too
+   *               subtle to read as "in time" from across the board; a ring leaving the animal
+   *               on the kick is unmistakable, and it is still what a bioluminescent bell does
+   *               when it is disturbed.
+   *   the bass    lifts it, swells the bell a little, and lets the tentacles out. A swell brings
+   *               it up out of the dark and trailing longer, so a loud passage looks like the
+   *               animal opening up rather than like it being turned up.
+   *   the top end runs a chase of light round the beads on the bell's margin. The hats are
+   *               already lighting the bioluminescence it drifts among, so this is the same light
+   *               reaching the same animal - and a chase reads as rhythm where a flat brighten
+   *               read as nothing.
+   *   the level   warms the four gonads in the middle of the bell, slowly. Quiet passages leave
+   *               it a pale ghost; a full mix has a lit heart.
    *
    * What the music may NOT touch: its heading, its speed, or its depth DIRECTLY. Steering it on a
    * beat would make it dart about like a cursor, and a depth driven by the mix would have it
@@ -2183,11 +2221,16 @@ export function createRenderer(canvas, world) {
    * thing that will not settle. Every term below is small, and all of them are eased: the
    * difference between an animal that is listening and a visualiser shaped like an animal.
    *
-   * One of it, ever. This is scenery at the edge of attention in a game about not being blown up,
-   * and two would be a feature.
+   * Three at most. It was one, on the grounds that two would be a feature; at one the sea was
+   * usually empty, and three spread over different sides and depths still reads as a few animals
+   * passing rather than as an aquarium. Each is independent - own clocks, own depth, own side.
    */
   const JELLY_SPAN_S = 54;            // how long one crossing takes, roughly
-  let jelly = null;
+  const JELLY_MAX = 3;
+  const JELLY_RING_S = 0.55;          // how long a beat ring takes to spread and fade
+  const JELLY_BEADS = 12;             // lights round the bell's margin, for the top end
+  const jellies = [];
+  let jellyBeatWas = 0;
 
   function spawnJelly() {
     const [lx, ly, lw, lh] = landBounds();
@@ -2196,14 +2239,17 @@ export function createRenderer(canvas, world) {
     // island - it is an open-water animal and it must never appear to swim over the sand.
     const horizontal = lw >= lh;
     const from = Math.random() < 0.5 ? -1 : 1;
-    const side = Math.random() < 0.5 ? -1 : 1;
+    // The side of the island with fewer jellyfish on it, so three do not queue up in one lane.
+    const above = jellies.filter(q => q.side < 0).length, below = jellies.length - above;
+    const side = above === below ? (Math.random() < 0.5 ? -1 : 1) : above < below ? -1 : 1;
     const span = (horizontal ? (lw + 4) * TILE_PX : (lh + 4) * TILE_PX) + pad * 2;
     // Closer to the coast than it was (0.7-1.3 of the margin): far enough out that it never
     // appears to swim over the sand, near enough that its path is inside the visible sea rather
     // than hugging the edge of the board where half of it is off screen.
     const offset = side * ((horizontal ? lh : lw) * TILE_PX * 0.5 + pad * (0.45 + Math.random() * 0.45));
     const midx = (lx + lw / 2) * TILE_PX, midy = (ly + lh / 2) * TILE_PX;
-    jelly = {
+    jellies.push({
+      side,
       // Position and heading in world pixels.
       x: horizontal ? midx - from * span / 2 : midx + offset,
       y: horizontal ? midy + offset : midy - from * span / 2,
@@ -2219,9 +2265,11 @@ export function createRenderer(canvas, world) {
       // The eased music terms. See jellyDepth and the beat nudge in drawJelly.
       lift: 0,
       beat: 0,
+      ring: 0,                        // 1 on a kick, falling to 0 over JELLY_RING_S
+      heart: 0,                       // the level, eased slowly; lights the gonads
       size: 11 + Math.random() * 7,
       tint: Math.random() < 0.6 ? 0 : 1,
-    };
+    });
   }
 
   /** 0 deep, 1 at the surface. Two slow sines, so a rise is never on a schedule. */
@@ -2249,26 +2297,32 @@ export function createRenderer(canvas, world) {
 
   function drawJelly(ox, oy, dtMs) {
     const dt = dtMs / 1000;
-    if (!jelly) {
-      /* Four times as likely to arrive as it was: a mean gap of three and a half seconds rather
-       * than fourteen, which is "300% more" with the old rate kept as the unit.
-       *
-       * The gap still exists on purpose. One at a time is the rule that keeps this an animal
-       * rather than an effect - a sea with three jellyfish in it is an aquarium - but at the old
-       * spacing most rounds never showed one at all, which is the same as not having built it.
-       */
-      if (Math.random() < dt / 3.5) spawnJelly();
-      return;
+    /* Three times the arrivals as well as three times the room: a mean gap of just over a second
+     * while there is space, so the sea fills to three soon after a round starts and a departure
+     * is replaced within a couple of seconds rather than leaving a hole for most of a minute. */
+    if (jellies.length < JELLY_MAX && Math.random() < dt / (3.5 / 3)) spawnJelly();
+    /* A kick is a RISE in the beat envelope, not a level of it - a level would fire every frame
+     * the envelope sat above the line. One onset, shared, so every jellyfish rings on the same
+     * kick and the sea answers the music as one thing. */
+    const kick = mood.beat - jellyBeatWas > 0.22 && mood.beat > 0.4;
+    jellyBeatWas = mood.beat;
+    for (let i = jellies.length - 1; i >= 0; i--) {
+      const j = jellies[i];
+      j.age += dt;
+      if (j.age > j.span) { jellies.splice(i, 1); continue; }
+      drawOneJelly(j, ox, oy, dtMs, kick);
     }
-    const j = jelly;
-    j.age += dt;
-    if (j.age > j.span) { jelly = null; return; }
+  }
 
-    // The two eased listeners. Fast up, slow down, like everything else in the sea.
+  function drawOneJelly(j, ox, oy, dtMs, kick) {
+    const dt = dtMs / 1000;
+    // The eased listeners. Fast up, slow down, like everything else in the sea.
     const rise = 1 - Math.exp(-dtMs / 250), fall = 1 - Math.exp(-dtMs / 1800);
     const bass = mood.bass;
     j.lift += (bass - j.lift) * (bass > j.lift ? rise : fall);
     j.beat += (mood.beat - j.beat) * (mood.beat > j.beat ? (1 - Math.exp(-dtMs / 60)) : fall);
+    j.heart += (mood.level - j.heart) * (1 - Math.exp(-dtMs / 900));
+    j.ring = kick ? 1 : Math.max(0, j.ring - dt / JELLY_RING_S);
 
     /* The pulse. One cycle is a squeeze and a recovery, and the recovery is the longer half.
      *
@@ -2305,12 +2359,13 @@ export function createRenderer(canvas, world) {
      * staying invisible - which is exactly the moment you want to notice there is something
      * down there.
      */
-    const alpha = 0.05 + d * d * 0.5 + mood.high * 0.1 * (0.3 + d);
+    // A kick lends it light too, so even a deep one flickers into view on the beat.
+    const alpha = 0.05 + d * d * 0.5 + mood.high * 0.1 * (0.3 + d) + j.ring * 0.1 * (0.4 + d);
     if (alpha < 0.055) return;
 
-    // And it swells a little with the bass, which is the bell doing what a bell does - four
-    // percent at most, felt rather than seen.
-    const r = j.size * (0.82 + d * 0.3) * (1 + j.lift * 0.04);
+    // And it swells with the bass, which is the bell doing what a bell does - a tenth at most,
+    // enough to see the animal breathe with the room.
+    const r = j.size * (0.82 + d * 0.3) * (1 + j.lift * 0.1);
     // The bell: squashed on the squeeze, taller as it relaxes. Real pulsing, from `squeeze`.
     const bell = 1 - squeeze * 0.32;
     const x = ox + j.x, y = oy + j.y;
@@ -2326,65 +2381,148 @@ export function createRenderer(canvas, world) {
 
     /* The halo first, and it is most of the illusion when the animal is deep: a wide soft
      * gradient with no edge to it, because an edge is what tells you how far away something is
-     * and the whole point of a deep one is that you cannot tell. */
-    const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, r * (3.4 - d * 1.2));
+     * and the whole point of a deep one is that you cannot tell. The bass widens it. */
+    const reach = r * (3.4 - d * 1.2) * (1 + j.lift * 0.25);
+    const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, reach);
     halo.addColorStop(0, `rgba(${edge},${(alpha * 0.5).toFixed(3)})`);
     halo.addColorStop(0.45, `rgba(${edge},${(alpha * 0.16).toFixed(3)})`);
     halo.addColorStop(1, `rgba(${edge},0)`);
     ctx.fillStyle = halo;
     ctx.beginPath();
-    ctx.arc(0, 0, r * (3.4 - d * 1.2), 0, 7);
+    ctx.arc(0, 0, reach, 0, 7);
     ctx.fill();
+
+    /* The beat ring: light leaving the margin on the kick, spreading to two and a half bells
+     * and fading as it goes. Eased out, so it leaves fast and lingers - a ring that grows at a
+     * constant rate reads as a radar sweep, not as something the animal did. */
+    if (j.ring > 0) {
+      const t = 1 - j.ring, out = 1 - (1 - t) * (1 - t);
+      const k = 1.05 + out * 1.5;
+      ctx.strokeStyle = `rgba(${core},${Math.min(1, alpha * 1.6 * j.ring * j.ring).toFixed(3)})`;
+      ctx.lineWidth = 0.8 + 2.2 * j.ring;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r * k, r * bell * k, 0, 0, 7);
+      ctx.stroke();
+    }
 
     /* The tentacles, behind the bell, and they LAG it - each one trails by a little more than the
      * one in front, so the whole train whips a beat after the squeeze. A jellyfish whose
-     * tentacles move with its bell looks like a drawing of one. */
+     * tentacles move with its bell looks like a drawing of one.
+     *
+     * Eight fine ones from the margin, each a two-bend wave rather than one arc, so the train
+     * ripples along its length; and they let out with the bass. */
     if (d > 0.18) {
       ctx.globalAlpha = Math.min(1, (d - 0.18) * 1.6);
-      ctx.strokeStyle = `rgba(${core},${(alpha * 0.55).toFixed(3)})`;
+      ctx.strokeStyle = `rgba(${core},${(alpha * 0.5).toFixed(3)})`;
       ctx.lineCap = 'round';
-      for (let i = 0; i < 5; i++) {
-        const off = (i - 2) * r * 0.26;
-        const lag = Math.sin((j.pulse - 0.12 - i * 0.05) * Math.PI * 2) * r * 0.5;
-        const len = r * (1.6 + 0.5 * Math.sin(j.pulse * 1.7 + i));
-        ctx.lineWidth = 1.5 - Math.abs(i - 2) * 0.22;
+      ctx.lineWidth = 0.9;
+      const tau = Math.PI * 2;
+      for (let i = 0; i < 8; i++) {
+        const u = i / 7 - 0.5;                                  // -0.5..0.5 across the margin
+        const sx = u * r * 1.8, sy = Math.sqrt(Math.max(0, 1 - u * u * 4)) * r * 0.55 * bell;
+        const len = r * (1.9 + 0.5 * Math.sin(j.pulse * 1.7 + i)) * (1 + j.lift * 0.45);
+        const w1 = Math.sin((j.pulse - 0.1 - i * 0.04) * tau) * r * 0.32;
+        const w2 = Math.sin((j.pulse - 0.32 - i * 0.04) * tau) * r * 0.5;
         ctx.beginPath();
-        ctx.moveTo(off, r * 0.5 * bell);
-        ctx.quadraticCurveTo(off + lag * 0.5, r * 0.5 + len * 0.55, off + lag, r * 0.5 + len);
+        ctx.moveTo(sx, sy);
+        ctx.bezierCurveTo(sx + w1 * 0.5, sy + len * 0.35, sx * 0.8 + w2, sy + len * 0.7,
+          sx * 0.7 + w2 * 1.3, sy + len);
         ctx.stroke();
       }
-      // Four shorter, thicker oral arms inside them, which is what makes the silhouette read as
-      // an animal rather than as a jellyfish emoji.
-      ctx.strokeStyle = `rgba(${edge},${(alpha * 0.7).toFixed(3)})`;
-      ctx.lineWidth = 2.2;
-      for (let i = 0; i < 4; i++) {
-        const off = (i - 1.5) * r * 0.2;
-        const wob = Math.sin(j.pulse * Math.PI * 2 - 0.5 + i) * r * 0.16;
-        ctx.beginPath();
-        ctx.moveTo(off, r * 0.42 * bell);
-        ctx.quadraticCurveTo(off + wob, r * 0.9, off + wob * 1.6, r * 1.15);
-        ctx.stroke();
+      // Four thicker, frilled oral arms inside them, which is what makes the silhouette read as
+      // an animal rather than as a jellyfish emoji: a broad translucent stroke with a brighter
+      // thread down its middle.
+      for (let pass = 0; pass < 2; pass++) {
+        ctx.strokeStyle = pass === 0
+          ? `rgba(${edge},${(alpha * 0.45).toFixed(3)})`
+          : `rgba(${core},${(alpha * 0.3).toFixed(3)})`;
+        ctx.lineWidth = pass === 0 ? 3.2 : 1;
+        for (let i = 0; i < 4; i++) {
+          const off = (i - 1.5) * r * 0.2;
+          const wob = Math.sin(j.pulse * tau - 0.5 + i) * r * 0.18;
+          const reachArm = r * (1.2 + j.lift * 0.25);
+          ctx.beginPath();
+          ctx.moveTo(off * 0.6, r * 0.2 * bell);
+          ctx.quadraticCurveTo(off + wob, r * 0.8, off + wob * 1.6, reachArm);
+          ctx.stroke();
+        }
       }
       ctx.globalAlpha = 1;
     }
 
-    // The bell itself: a filled dome with a brighter rim, both scaled by the squeeze.
-    const body = ctx.createRadialGradient(0, -r * 0.2 * bell, r * 0.1, 0, 0, r * 1.05);
-    body.addColorStop(0, `rgba(${core},${(alpha * 0.95).toFixed(3)})`);
-    body.addColorStop(0.55, `rgba(${edge},${(alpha * 0.55).toFixed(3)})`);
+    // The bell itself: a filled dome, lit off-centre toward the front, scaled by the squeeze.
+    const body = ctx.createRadialGradient(0, -r * 0.25 * bell, r * 0.08, 0, 0, r * 1.05);
+    body.addColorStop(0, `rgba(${core},${(alpha * 0.75).toFixed(3)})`);
+    body.addColorStop(0.55, `rgba(${edge},${(alpha * 0.42).toFixed(3)})`);
+    body.addColorStop(0.85, `rgba(${edge},${(alpha * 0.3).toFixed(3)})`);
     body.addColorStop(1, `rgba(${edge},0)`);
     ctx.fillStyle = body;
     ctx.beginPath();
     ctx.ellipse(0, 0, r, r * bell, 0, 0, 7);
     ctx.fill();
 
-    // The rim, only once it is close enough for an edge to be honest.
-    if (d > 0.42) {
-      ctx.strokeStyle = `rgba(${core},${(alpha * (d - 0.42) * 1.2).toFixed(3)})`;
-      ctx.lineWidth = 1.2;
+    if (d > 0.3) {
+      const near = Math.min(1, (d - 0.3) * 1.8);              // detail resolves as it rises
+      /* Eight radial canals, centre to margin. Faint, and the thing that turns a glowing disc
+       * into a bell - real moon jellies are ruled with them. */
+      ctx.strokeStyle = `rgba(${core},${(alpha * 0.22 * near).toFixed(3)})`;
+      ctx.lineWidth = 0.6;
       ctx.beginPath();
-      ctx.ellipse(0, 0, r * 0.96, r * bell * 0.96, 0, Math.PI * 0.08, Math.PI * 0.92);
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
+        ctx.moveTo(Math.cos(a) * r * 0.2, Math.sin(a) * r * 0.2 * bell);
+        ctx.lineTo(Math.cos(a) * r * 0.9, Math.sin(a) * r * 0.9 * bell);
+      }
       ctx.stroke();
+
+      /* The four gonads: the horseshoes in the middle of a moon jelly, and its heart here. Pale
+       * on a quiet mix, lit pink-violet as the level comes up, slowly - this is the one part
+       * of the animal that tracks the whole track rather than the beat. */
+      // Kept well under the bell's own light: everything here is additive, and a heart as bright
+      // as the dome fuses the middle of the animal into one white blot.
+      const heart = 0.12 + j.heart * 0.5 + j.ring * 0.15;
+      ctx.strokeStyle = `rgba(255,186,232,${Math.min(1, alpha * heart * near).toFixed(3)})`;
+      ctx.lineWidth = 1.5;
+      for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+        const gx = Math.cos(a) * r * 0.3, gy = Math.sin(a) * r * 0.3 * bell;
+        ctx.beginPath();
+        ctx.arc(gx, gy, r * 0.17, a + 0.9, a + Math.PI * 2 - 0.9);
+        ctx.stroke();
+      }
+
+      /* The margin, frilled: sixteen scallops, rippling round with the pulse, so the edge of the
+       * bell is a living fringe rather than a drawn outline. */
+      ctx.strokeStyle = `rgba(${core},${(alpha * (0.25 + d * 0.5) * near).toFixed(3)})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let s = 0; s <= 64; s++) {
+        const a = (s / 64) * Math.PI * 2;
+        const f = 0.96 + 0.035 * Math.sin(a * 16 + j.pulse * Math.PI * 2);
+        const px = Math.cos(a) * r * f, py = Math.sin(a) * r * bell * f;
+        if (s === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+
+      /* The beads: lights round the margin that the top end chases round the bell. Each one is
+       * dim on its own; the hats run a bright crest round the ring, so a busy top end reads as
+       * a spinning glitter and a quiet one leaves the beads glowing faintly where they are. */
+      const sparkle = mood.high;
+      for (let i = 0; i < JELLY_BEADS; i++) {
+        const a = (i / JELLY_BEADS) * Math.PI * 2;
+        const crest = 0.5 + 0.5 * Math.sin(seaT * 8 - a * 2);
+        const b = 0.2 + sparkle * crest * crest * 1.6;
+        ctx.fillStyle = `rgba(${core},${Math.min(1, alpha * b * near).toFixed(3)})`;
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * r * 0.97, Math.sin(a) * r * bell * 0.97, 0.8 + sparkle * crest, 0, 7);
+        ctx.fill();
+      }
+
+      // A glint of sky on the front of the dome: the bell is wet and convex, and this says so.
+      ctx.fillStyle = `rgba(255,255,255,${(alpha * 0.35 * near).toFixed(3)})`;
+      ctx.beginPath();
+      ctx.ellipse(-r * 0.28, -r * 0.42 * bell, r * 0.22, r * 0.1 * bell, -0.5, 0, 7);
+      ctx.fill();
     }
     ctx.restore();
     ctx.globalCompositeOperation = 'source-over';
@@ -2628,6 +2766,14 @@ export function createRenderer(canvas, world) {
    * the colour, it is that the water gets warmer as it gets shallower. */
   const SHELF_TILES = 3;
   const SHELF_TONE = '#7d6843';
+  // The same steps again round each sea boulder: [tiles out, alpha, colour]. See drawRockShelves.
+  const ROCK_SHELF_BANDS = [
+    [3, 0.07, SHELF_TONE],
+    [2.2, 0.1, SHELF_TONE],
+    [1.6, 0.17, SHELF_TONE],
+    [1.6, 0.16, PALETTE.seaMid],
+    [1, 0.42, PALETTE.seaLight],
+  ];
   let shallowsCanvas = null, shallowsFor = null;
   function shallowsLayer() {
     if (shallowsFor === world.map && shallowsCanvas) return shallowsCanvas;
@@ -2874,6 +3020,7 @@ export function createRenderer(canvas, world) {
     const shallows = shallowsLayer();
     ctx.globalAlpha = (1 + kickLift * 0.3) / SHALLOWS_HEADROOM;
     ctx.drawImage(shallows, -SHALLOWS_PAD * TILE_PX, -SHALLOWS_PAD * TILE_PX);
+    drawRockShelves(1 + kickLift * 0.3);
     // The island's shadow across the shallows, under the glow and everything afloat.
     ctx.globalAlpha = 1;
     ctx.drawImage(islandShadowLayer(), -ISLAND_SHADOW_PAD * TILE_PX, -ISLAND_SHADOW_PAD * TILE_PX);

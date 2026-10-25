@@ -1621,9 +1621,32 @@ export function drawShip(c) {
   // has, and a beamy shape with no edge reads as a rounded rectangle rather than as a boat.
   hull(0, null);
   c.strokeStyle = '#140e08'; c.lineWidth = 2; c.stroke();
+  // Weather at the waterline: a thin desaturated salt/patina edge between wet timber and rail.
+  // It is deliberately broken by the dark hull below and warm gunwale above rather than painted
+  // cyan; real growth reads as a cool grey-green stain, not as a neon stripe.
+  hull(1.8, null);
+  c.strokeStyle = 'rgba(87,126,113,0.34)'; c.lineWidth = 1.2; c.stroke();
   hull(3, '#73512f');                    // gunwale, lit
+  // The cap rail's own grain: one seam along the middle of it, and a lit top edge on the sunward
+  // side. A flat brown band is paint; a band with a seam is two timbers fastened together.
+  hull(3.8, null);
+  c.strokeStyle = 'rgba(40,26,14,0.35)'; c.lineWidth = 0.5; c.stroke();
+  hull(3.2, null);
+  c.strokeStyle = 'rgba(255,226,170,0.16)'; c.lineWidth = 0.6; c.stroke();
   hull(4.5, '#4e381f');                  // inner face of the rail, in shadow
-  hull(7, '#9a7047');                    // deck
+  // The transom gilding: one band of dull gold across the stern, the ornament every ship of the
+  // period carried there, and a row of stern-light frames under it.
+  {
+    const tw = W / 2.6 - 3;
+    px(c, -L / 2 + 0.6, -tw * 0.9, 2.2, tw * 1.8, '#8a6a2c');
+    px(c, -L / 2 + 0.6, -tw * 0.9, 0.8, tw * 1.8, 'rgba(255,224,140,0.35)');
+    for (let y = -tw * 0.7; y <= tw * 0.7; y += tw * 0.35) px(c, -L / 2 + 0.9, y - 0.7, 1.4, 1.4, '#2a1d12');
+  }
+  const deckWood = c.createLinearGradient(-L / 2, -W / 2, L / 2, W / 2);
+  deckWood.addColorStop(0, '#b98a5c');
+  deckWood.addColorStop(0.46, '#9a7047');
+  deckWood.addColorStop(1, '#765334');
+  hull(7, deckWood);                     // deck, lit top-left and weathered aft
 
   // Deck furniture, clipped to the deck so nothing overhangs the rail.
   c.save();
@@ -1640,6 +1663,44 @@ export function drawShip(c) {
   for (let i = 0; i < 26; i++) {         // grain, so it is not a perfect comb
     const gx = -L / 2 + hash(i, 3) * L, gy = -W / 2 + hash(3, i) * W;
     px(c, gx, gy, 2 + hash(i, i) * 6, 1, 'rgba(0,0,0,0.1)');
+  }
+  // Staggered butt joints and knots turn the comb into individual boards. Deterministic hashes
+  // keep the baked ship identical every time while avoiding a tiled pattern.
+  for (let row = 0, y = -W / 2 + 2; y < W / 2; y += 6, row++) {
+    for (let x = -L / 2 + 14 + (row & 1) * 11; x < L / 2 - 10; x += 22) {
+      px(c, x, y, 1, 3, 'rgba(42,27,15,0.24)');
+      c.beginPath(); c.arc(x + 5 + hash(row, x) * 7, y + 1.5, 0.8, 0, 7);
+      c.fillStyle = 'rgba(64,39,21,0.32)'; c.fill();
+    }
+  }
+  // Iron fasteners following both rails. Tiny repeated points read as construction at game scale.
+  c.fillStyle = 'rgba(28,31,34,0.7)';
+  for (let x = -L / 2 + 8; x < L / 2 - 9; x += 9) {
+    for (const y of [-W / 2 + 5.4, W / 2 - 5.4]) {
+      c.beginPath(); c.arc(x, y, 0.55, 0, 7); c.fill();
+    }
+  }
+  /* Wear, which is what makes a deck look used rather than built.
+   *
+   * Three things real decks do and drawn ones never do. Grime gathers where deck meets rail, so
+   * a soft dark band runs round the inside of the bulwark. The middle line is holystoned pale by
+   * feet and scrubbing. And water stands and stains in patches - a few broad, faint, irregular
+   * blotches, never circles. All low alpha and all deterministic, so she bakes the same each time.
+   */
+  hull(7, null);
+  c.strokeStyle = 'rgba(30,18,8,0.16)'; c.lineWidth = 7; c.stroke();
+  c.strokeStyle = 'rgba(30,18,8,0.12)'; c.lineWidth = 3; c.stroke();
+  c.save();
+  c.globalAlpha = 0.09;
+  c.fillStyle = '#f3dcb0';
+  c.beginPath(); c.ellipse(4, 0, L * 0.36, W * 0.13, 0, 0, 7); c.fill();
+  c.restore();
+  for (let i = 0; i < 7; i++) {
+    const sx = -L / 2 + 18 + hash(i, 11) * (L - 40), sy = (hash(11, i) - 0.5) * W * 0.7;
+    c.fillStyle = `rgba(52,34,18,${(0.05 + hash(i, 5) * 0.06).toFixed(3)})`;
+    c.beginPath();
+    c.ellipse(sx, sy, 3 + hash(i, 7) * 6, 1.6 + hash(7, i) * 3, hash(i, 9) * 3, 0, 7);
+    c.fill();
   }
 
   // Raised quarterdeck aft, with its own shadow onto the main deck. This is what reads as a
@@ -1668,6 +1729,10 @@ export function drawShip(c) {
     rr(c, hx + 2, -hh / 2 + 2, hw2 - 4, hh - 4, 1, '#6b4e30');
     for (let gx = hx + 3; gx < hx + hw2 - 2; gx += 4) px(c, gx, -hh / 2 + 2, 1, hh - 4, '#3a2a1c');
     for (let gy = -hh / 2 + 3; gy < hh / 2 - 2; gy += 4) px(c, hx + 2, gy, hw2 - 4, 1, '#3a2a1c');
+    // Brass pull and hinge plates: practical hardware, bright enough to survive the zoom.
+    px(c, hx + hw2 / 2 - 2.5, -1, 5, 1.2, '#d0a54e');
+    px(c, hx + 1, -hh / 2 + 4, 1.2, 4, '#25282c');
+    px(c, hx + hw2 - 2.2, hh / 2 - 8, 1.2, 4, '#25282c');
   }
 
   // The ship's boat, stowed upside down amidships. Instantly readable as "a boat on a boat",
@@ -1689,6 +1754,48 @@ export function drawShip(c) {
     c.strokeStyle = '#c9a874'; c.lineWidth = 1.1;
     for (const r of [1.5, 2.8, 4.1]) { c.beginPath(); c.arc(rx, ry, r, 0, 7); c.stroke(); }
   }
+
+  /* Stores lashed on deck: a pair of casks and a crate in the waist, just forward of the break
+   * of the quarterdeck.
+   *
+   * From above a barrel is its head - a disc with an iron hoop round the chime and the staves
+   * showing as faint spokes - and a crate is its lid boards and a dark rope across it. They are
+   * clutter on purpose: a clean deck reads as a model, and these are the cheapest proof of a
+   * crew. Each throws a small shadow away from the light, like everything else on the board.
+   */
+  const cask = (bx, by, r) => {
+    c.beginPath(); c.arc(bx + 1.2, by + 1.5, r, 0, 7); c.fillStyle = 'rgba(0,0,0,0.25)'; c.fill();
+    c.beginPath(); c.arc(bx, by, r, 0, 7); c.fillStyle = '#7a5532'; c.fill();
+    c.strokeStyle = '#2a2d31'; c.lineWidth = 1.1; c.stroke();
+    c.strokeStyle = 'rgba(40,24,12,0.45)'; c.lineWidth = 0.5;
+    for (let s = 0; s < 6; s++) {
+      const a = (s / 6) * Math.PI;
+      c.beginPath();
+      c.moveTo(bx + Math.cos(a) * r * 0.85, by + Math.sin(a) * r * 0.85);
+      c.lineTo(bx - Math.cos(a) * r * 0.85, by - Math.sin(a) * r * 0.85);
+      c.stroke();
+    }
+    c.beginPath(); c.arc(bx - r * 0.3, by - r * 0.3, r * 0.35, 0, 7);
+    c.fillStyle = 'rgba(255,230,180,0.18)'; c.fill();
+  };
+  cask(-32, W / 2 - 12, 3.6);
+  cask(-30, W / 2 - 19.5, 3.2);
+  px(c, -32.5, -13.5, 8, 8, 'rgba(0,0,0,0.25)');                        // the crate's shadow
+  rr(c, -34, -15, 8, 8, 0.8, '#8b6a42');
+  for (let i = 1; i < 4; i++) px(c, -34, -15 + i * 2, 8, 0.5, 'rgba(50,32,16,0.45)');
+  px(c, -30.5, -15, 1, 8, '#c9a874');                                   // its lashing
+
+  /* The fife rail: a bar of belaying pins just aft of the mainmast, which every line on the ship
+   * is made fast to. Tiny, but a row of identical points is how the eye reads "rigged" from a
+   * distance, and it ties the rigging to something on the deck. Only the mainmast has room for
+   * one - the foremast stands over the stowed boat. */
+  px(c, -24.8, -6, 1.6, 12, '#4a3421');
+  c.fillStyle = '#d9c39a';
+  for (let k = -2; k <= 2; k++) { c.beginPath(); c.arc(-24, k * 2.6, 0.7, 0, 7); c.fill(); }
+
+  // The binnacle forward of the wheel: a small housing with a brass compass bowl in it.
+  rr(c, -L / 2 + 21, -2.6, 5.2, 5.2, 1, '#3a2a1c');
+  c.beginPath(); c.arc(-L / 2 + 23.6, 0, 1.6, 0, 7); c.fillStyle = '#c99a44'; c.fill();
 
   // The fo'c'sle: a short raised deck right forward, mirroring the quarterdeck.
   rr(c, L / 2 - 40, -W / 2 + 14, 26, W - 28, 4, '#3d2c1b');
@@ -1716,8 +1823,27 @@ export function drawShip(c) {
   for (const x of [-22, -2, 18]) {
     for (const sgn of [-1, 1]) {
       const y = sgn * (W / 2 - 3);
+      // Square black port with a warm lid edge behind each barrel.
+      rr(c, x - 2, y + (sgn > 0 ? 0 : -4.5), 6.5, 4.5, 1, '#1a1714');
+      px(c, x - 1.2, y + (sgn > 0 ? 0.4 : -4.1), 5, 0.8, '#9a7047');
       rr(c, x, y - (sgn > 0 ? 1 : 6), 2.6, 7, 1.3, '#23262c');
       px(c, x, y + (sgn > 0 ? 4.5 : -5.5), 2.6, 1.3, '#15181d');  // the muzzle
+      // A lit ridge along the barrel, so it reads as round iron rather than as a dark stick.
+      px(c, x + 0.5, y - (sgn > 0 ? 0.5 : 5.5), 0.7, 5.5, 'rgba(200,210,225,0.22)');
+    }
+  }
+
+  /* Scuppers and the streaks under them.
+   *
+   * Every ship weeps down her sides from the drains in her waterway, and the stains are what
+   * make a hull look like it has been at sea rather than out of a box: short, dark, slightly
+   * rusty runs from the rail to the waterline between the gunports. */
+  // Only where the sides run straight: forward of x≈10 the hull narrows inside these offsets.
+  for (const x of [-40, -12, 8]) {
+    for (const sgn of [-1, 1]) {
+      const edge = sgn * (W / 2 - 4.8);
+      px(c, x, edge - 0.6, 2, 1.2, '#1a120b');                           // the drain itself
+      px(c, x + 0.4, sgn > 0 ? edge + 0.6 : edge - 3.6, 1.1, 3, 'rgba(92,52,28,0.35)');
     }
   }
 
@@ -1731,7 +1857,17 @@ export function drawShip(c) {
     rr(c, x - 1.4, -span / 2, 2.8, span, 1.4, '#3f2e1e');              // the spar
     rr(c, x - 4, -span / 2 + 2, 8, span - 4, 4, '#d8cbab');            // canvas bundled on it
     rr(c, x - 4, -span / 2 + 2, 8, (span - 4) / 2, 4, 'rgba(255,255,255,0.12)');
+    // The canvas is rolled, so it is round: dark along the side away from the light, and
+    // weathered with a few faint folds running along the roll between the gaskets.
+    rr(c, x + 1.2, -span / 2 + 3, 2.6, span - 6, 1.3, 'rgba(70,52,30,0.22)');
+    for (let f = 0; f < 4; f++) {
+      px(c, x - 3 + hash(f, 21) * 5, -span / 2 + 4 + hash(21, f) * (span - 10), 0.5, 4 + hash(f, f) * 5,
+        'rgba(90,70,44,0.3)');
+    }
     for (let i = -2; i <= 2; i++) px(c, x - 4, i * (span / 7), 8, 1.2, 'rgba(60,45,28,0.5)');
+    // Yardarm ends: the iron bands at each tip of the spar.
+    px(c, x - 1.4, -span / 2, 2.8, 1, '#23262c');
+    px(c, x - 1.4, span / 2 - 1, 2.8, 1, '#23262c');
     c.beginPath(); c.arc(x, 0, r, 0, 7); c.fillStyle = '#2a1d12'; c.fill();
     c.beginPath(); c.arc(x - r * 0.3, -r * 0.3, r * 0.45, 0, 7);
     c.fillStyle = 'rgba(255,255,255,0.22)'; c.fill();
@@ -1744,10 +1880,23 @@ export function drawShip(c) {
     for (const sgn of [-1, 1]) {
       c.beginPath(); c.moveTo(x, (sgn * span) / 2); c.lineTo(x - 26, sgn * (W / 2 - 5)); c.stroke();
       c.beginPath(); c.moveTo(x, (sgn * span) / 2); c.lineTo(x + 24, sgn * (W / 2 - 7)); c.stroke();
+      // Ratlines between mast and rail. Three short cross-ropes make the rigging read as usable.
+      for (let rung = 1; rung <= 3; rung++) {
+        const t = rung / 4;
+        const ax = x + (-26 - x) * t, ay = (sgn * span / 2) + (sgn * (W / 2 - 5) - sgn * span / 2) * t;
+        c.beginPath(); c.moveTo(ax - 2.2, ay); c.lineTo(ax + 2.2, ay); c.stroke();
+      }
     }
   }
   mast(-18, W + 8, 4);
   mast(18, W - 4, 3.4);
+
+  // Fore-and-aft stay and a short red pennant aft: one taut structural line and one lived-in mark.
+  c.strokeStyle = 'rgba(24,16,9,0.5)'; c.lineWidth = 0.8;
+  c.beginPath(); c.moveTo(-L / 2 + 7, 0); c.lineTo(L / 2 - 5, 0); c.stroke();
+  c.beginPath();
+  c.moveTo(-L / 2 + 7, -1); c.lineTo(-L / 2 - 3, -5); c.lineTo(-L / 2 + 4, -7); c.closePath();
+  c.fillStyle = '#8f2532'; c.fill();
 
   // The stem: a wedge of dark timber at the cutwater, so the bow comes to a point instead of
   // fading into deck planking.

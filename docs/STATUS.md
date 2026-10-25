@@ -1,7 +1,7 @@
 # Boom Beard - Where We Stand
 
-Last updated: **2026-10-24**, at **v1.0.0**. Live on `boombeard.co.za`. 314 tests, all of which
-now pass on Windows as well as in CI. The security check that went into 1.0 is
+Last updated: **2026-10-25**, at **v1.0.3+**. Live on `boombeard.co.za`. The full Node test suite
+runs on Windows and in CI. The security check that went into 1.0 is
 [DEPLOY.md](DEPLOY.md) §12.
 
 This document replaces the "⬜ The game: not started" line in the README. The game is built, the
@@ -26,6 +26,8 @@ accurate; the parts that describe *what is not built yet* are not.
 | Transport | ✅ **WebTransport over QUIC, with WebSocket as the fallback** |
 | Persistence | ✅ leaderboard, levels, XP - banked on disconnect, round end **and shutdown** |
 | Observer mode | ✅ built - Spectate on the menu, and from the death card |
+| Identity | ✅ password-owned, device-token trusted, normalized unique names, reconnect reservations |
+| Moderation | ✅ severe English/Afrikaans terms rejected in names and starred in chat; ordinary swearing allowed |
 | Mobile | ⬜ out of scope, unchanged |
 
 ---
@@ -95,14 +97,40 @@ it and nobody else - and the only one rare enough to be an event rather than a t
 - **Bots that manage themselves.** At least six the moment anybody joins; all of them gone after
   two rounds with nobody there. A host removing bots by hand turns the top-up off until the room
   has emptied for those two rounds. See [RULES.md](RULES.md) §12.
+- **Owned, unique names.** A name is claimed with a password, then a revocable device token keeps
+  normal returns one-click. Case, repeated whitespace and Unicode compatibility lookalikes share
+  one canonical key, and a disconnected seat keeps its name during the reconnect window. A narrow
+  severe-language policy rejects names and stars the matching words in chat.
+- **Human-sized damage forgiveness.** Movement still collides on the full 160-unit box, but fire
+  tests a 104-unit box and its last five drawn ticks are harmless embers. Safe respawn requires a
+  clear body, no live hazard or occupied tile, and an adjacent exit; if authored spawn markers are
+  bad, the room searches the whole map rather than materialising somebody into damage.
+- **Player dossiers.** Holding the pointer or keyboard focus on a player name for 2.5 seconds
+  opens an animated themed card with round and lifetime stats. Password failures use the same
+  toast channel as the rest of the menu and mark the field itself red.
+- **Owner-coloured blasts and current branding.** Bombs and fire carry the owner's colour through
+  rendering and light. The landing page and README share the generated bearded/bandana Boom Beard
+  wordmark and its single lit bomb, with the original seven-second gold sweep on the live page.
 
 ### (e) Art is still code. The music is not.
 
-Four PNGs live in `public/assets/img/`: the mascot, its cropped face, a stack of kegs and an icon.
-They are landing-page and HUD decoration only. **Everything inside the game - terrain, players,
+Six decorative assets live in `public/assets/img/`: the mascot, its cropped face, a stack of kegs,
+browser icons and the generated bearded/bandana title wordmark with its lit bomb. They are
+landing-page and HUD decoration only. **Everything inside the game - terrain, players,
 bombs, fire, perks, the sea, the moored ship, the boulders, the gulls - is still drawn from
 shapes in code**, and that rule has not moved. The ship (2.5× her original size now) and the
 sea boulders (the largest 3.5×, the rest about 2.5×) are sized in `render.js`.
+
+The ship is still baked once per zoom, so her detail costs nothing per frame: graded deck
+timber with butt joints, knots and fasteners, a worn centreline and grime along the bulwarks,
+a gilded transom, gun ports and lit barrels, scuppers weeping down her sides, casks and a lashed
+crate, a fife rail, a binnacle, ratlines, and rolled canvas with folds and banded yardarms.
+
+Up to **three jellyfish** cross the open water at once (it was one), each on its own side, depth
+and clock. They are moon jellies now - radial canals, four gonads, a frilled margin - and the music
+is readable on them: every kick fires a ring of light off the bell, the bass lifts and swells them
+and lets their tentacles out, the top end chases light round the beads on the margin, and the
+mix's level slowly lights the gonads.
 
 The coast is rounded in quarter-tile steps, not smoothed: every outside corner of the rock loses a
 stepped quarter circle and every inside corner gains one (`COAST_STEPS` in `art.js`). The
@@ -200,14 +228,15 @@ Every one of these is in `shared/constants.js`. Nothing is inline.
 | Tick | 30 Hz, snapshots every 2 ticks (15 Hz) |
 | Round | 10 min, `/roundtime 0.1–60` to change |
 | Speed | `[27, 35, 43, 51, 59]` units/tick by boot count - 3.2 to 6.9 tiles/s |
-| Caps | 8 bombs, radius 6, 4 boots, 2 shields, 4 stims |
-| Stamina | 3450 tenths (+750 per stim), empty = half pace until a third is back |
-| Respawn | 15 s, then weighted-random across every legal spawn |
+| Caps | 5 bombs carried, radius 5, 4 boots, 2 shields, 4 stims |
+| Stamina | 6900 twentieths (+1500 per stim), empty = half pace until a third is back |
+| Respawn | 13.5 s, then distance-weighted across safe spawns; full-map fallback, never forced into danger |
+| Fire | drawn 15 ticks, lethal 10; damage box 13/20 of the movement box |
 | Perk drops | 35% base, scaled by what is on the floor and how fast it is taken |
 | Rum | 2.7% of drops. Softens damage, sways your walk, rolls your camera for 12 s |
 | Gold | 2.1% of drops, ≤5 a round. 400 XP. Changes nothing about the round - it is a collectible |
-| Kegs | ≤6 a round, ≥1 guaranteed, radius 7 |
-| Gulls | first at 25 s, then every 40–90 s, ≤2 aloft, ~4 tiles/s, one coin each when downed |
+| Kegs | ≤12 a round, ≥1 guaranteed, radius 7 |
+| Gulls | first at 25 s, then every 10–22 s, ≤4 aloft, ~3 tiles/s, three coins direct to the fire owner |
 | Bots | ≥6 while anyone plays (`min_bots`), removed after 2 empty rounds |
 | Zoom | fitted to the **island**, floor 0.68, 2 tiles of sea minimum |
 | Levels | 100 hours to Veteran (level 20) |
@@ -255,10 +284,7 @@ Ordered by how much it would change a Friday session.
    assist window pushed flat into the wall and froze there until its own fuse ran out (see
    `steer` in `ai.js`). Next: hunting. Bots bomb walls and wander toward the nearest player;
    nothing tries to trap anyone.
-2. **A browser-side confirmation of WebTransport.** Verified with a real QUIC client from
-   outside AWS (8/8 sessions, ~50 ms to ready) and from the box, but not yet read off a Chrome
-   session. The console logs `transport: webtransport` on connect; somebody needs to look.
-3. **Diseases have no source.** The Gift is gone, so the contagious statuses never start. If they
+2. **Diseases have no source.** The Gift is gone, so the contagious statuses never start. If they
    come back it needs a new way in (a map hazard, a cursed drop); Reduction's old "blast radius
    forced to 1" was never implemented and has been dropped from RULES.md.
 
@@ -266,13 +292,13 @@ Ordered by how much it would change a Friday session.
 
 - `playerWire` omits `moving` for remotes; the client derives it from drawn movement instead.
 - Bans are in memory only and clear on restart. Deliberate: there is no `/unban`.
-- Careers are keyed by name, so anyone can play under yours. The worst they can do is add to it;
-  accounts remain a non-goal.
+- There is no password-recovery workflow. An operator can remove a lost account from the
+  owner-only `accounts.json`; spectators need no password because they hold no identity.
 
 ### Explicitly not doing
 
-Accounts, payments, matchmaking, mobile, anti-cheat, a persistent world. Unchanged from
-[DESIGN.md](DESIGN.md) → Non-goals.
+Email/OAuth profiles, payments, matchmaking, mobile, competitive anti-cheat and a persistent
+world. See [DESIGN.md](DESIGN.md) → Non-goals.
 
 ---
 
