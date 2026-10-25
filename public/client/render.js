@@ -868,7 +868,7 @@ export function createRenderer(canvas, world) {
    * stain. Real growth is YOUNGEST at its edge - thinner, yellower, a little brighter than the
    * mass behind it - so the frontier gets a tone of its own and the patch suddenly has a
    * direction to it. It is the single cheapest thing that turns a blob into something growing. */
-  const MOSS_EDGE = '132,170,78';
+  const MOSS_EDGE = '142,164,100';
 
   /* One blob per third of a tile, which is the resolution the pattern is actually drawn at.
    *
@@ -911,23 +911,24 @@ export function createRenderer(canvas, world) {
 
     // The clip. One path for the whole chunk rather than a save/clip/restore per tile: it is the
     // thing that lets a blob straddle two tiles.
-    const area = new Path2D();
-    let any = false;
+    const floorArea = new Path2D();
+    const wallArea = new Path2D();
+    let hasFloor = false, hasWall = false;
     for (let j = 0; j < CHUNK_TILES; j++) {
       for (let i = 0; i < CHUNK_TILES; i++) {
         const tx = cx * CHUNK_TILES + i, ty = cy * CHUNK_TILES + j;
         if (tx < 0 || ty < 0 || tx >= map.w || ty >= map.h) continue;
         const type = cellType(map.cells[ty * map.w + tx]);
         if (!MOSSY.has(type)) continue;
-        any = true;
         const r = type === BLOCK.FLOOR ? 0 : type === BLOCK.IRON ? ROCK_RADIUS : STONE_RADIUS;
-        area.roundRect(i * S, j * S, S, S, r);
+        (type === BLOCK.FLOOR ? floorArea : wallArea).roundRect(i * S, j * S, S, S, r);
+        if (type === BLOCK.FLOOR) hasFloor = true;
+        else hasWall = true;
       }
     }
-    if (!any) return;
+    if (!hasFloor && !hasWall) return;
 
     cc.save();
-    cc.clip(area);
 
     /* Sampled one tile WIDER than the chunk on every side.
      *
@@ -939,57 +940,66 @@ export function createRenderer(canvas, world) {
     const x1 = x0 + CHUNK_TILES + 2, y1 = y0 + CHUNK_TILES + 2;
     const R = mossDark.width / 2;
 
-    for (let ty = y0; ty <= y1; ty += MOSS_STEP) {
-      for (let tx = x0; tx <= x1; tx += MOSS_STEP) {
-        const m = mossAt(tx, ty);
-        if (m <= 0.04) continue;
+    for (const [area, intensity, present] of [
+      [floorArea, 1.4, hasFloor],
+      [wallArea, 0.58, hasWall],
+    ]) {
+      if (!present) continue;
+      cc.save();
+      cc.clip(area);
+      for (let ty = y0; ty <= y1; ty += MOSS_STEP) {
+        for (let tx = x0; tx <= x1; tx += MOSS_STEP) {
+          const m = mossAt(tx, ty);
+          if (m <= 0.04) continue;
 
-        /* Jittered off the sampling grid, by the field itself.
-         *
-         * Without this the blob centres sit on a lattice a third of a tile apart, and at the
-         * thin end of a patch - where only a few blobs survive the threshold - that lattice is
-         * visible as a dotted texture. The offset is deterministic in the sample position, so it
-         * is the same jitter forever.
-         */
-        const jx = (noiseAt(tx * 7 + 3, ty * 7 + 11, 0.5, 0x3a7c1) - 0.5) * S * 0.42;
-        const jy = (noiseAt(tx * 7 + 17, ty * 7 + 5, 0.5, 0x8b115) - 0.5) * S * 0.42;
-        const px = (tx - cx * CHUNK_TILES) * S + S / 2 + jx;
-        const py = (ty - cy * CHUNK_TILES) * S + S / 2 + jy;
+          /* Jittered off the sampling grid, by the field itself.
+           *
+           * Without this the blob centres sit on a lattice a third of a tile apart, and at the
+           * thin end of a patch - where only a few blobs survive the threshold - that lattice is
+           * visible as a dotted texture. The offset is deterministic in the sample position, so it
+           * is the same jitter forever.
+           */
+          const jx = (noiseAt(tx * 7 + 3, ty * 7 + 11, 0.5, 0x3a7c1) - 0.5) * S * 0.42;
+          const jy = (noiseAt(tx * 7 + 17, ty * 7 + 5, 0.5, 0x8b115) - 0.5) * S * 0.42;
+          const px = (tx - cx * CHUNK_TILES) * S + S / 2 + jx;
+          const py = (ty - cy * CHUNK_TILES) * S + S / 2 + jy;
 
-        /* Size varies with density AND with a field of its own.
-         *
-         * Density alone made every clump at a given thickness the same size, which at the heart
-         * of a patch is a field of identical circles - the eye finds that repetition long before
-         * it finds the colour. A second noise at half a tile breaks the sizes up, so a patch is
-         * built from clumps that differ from their neighbours the way real ones do.
-         */
-        const lump = noiseAt(tx * 3 + 31, ty * 3 + 7, 0.5, 0x1f5a3);
-        const scale = (0.5 + m * 0.6) * (0.72 + lump * 0.62);
-        const w = R * 2 * scale;
-        cc.globalAlpha = m * MOSS_MAX;
-        cc.drawImage(mossDark, px - w / 2, py - w / 2, w, w);
+          /* Size varies with density AND with a field of its own.
+           *
+           * Density alone made every clump at a given thickness the same size, which at the heart
+           * of a patch is a field of identical circles - the eye finds that repetition long before
+           * it finds the colour. A second noise at half a tile breaks the sizes up, so a patch is
+           * built from clumps that differ from their neighbours the way real ones do.
+           */
+          const lump = noiseAt(tx * 3 + 31, ty * 3 + 7, 0.5, 0x1f5a3);
+          const scale = (0.5 + m * 0.6) * (0.72 + lump * 0.62);
+          const w = R * 2 * scale;
+          cc.globalAlpha = m * MOSS_MAX * intensity;
+          cc.drawImage(mossDark, px - w / 2, py - w / 2, w, w);
 
-        /* The frontier, where the moss is thin: younger, yellower, brighter.
-         *
-         * Between 0.12 and 0.4 of thickness - the band a patch fades out through - and brightest
-         * in the middle of that band, so it reads as a rim following the outline rather than as
-         * a second patch inside the first. */
-        if (m > 0.12 && m < 0.42) {
-          const rim = 1 - Math.abs((m - 0.27) / 0.15);
-          if (rim > 0) {
-            cc.globalAlpha = rim * MOSS_MAX * 0.85;
-            const ew = w * 0.72;
-            cc.drawImage(mossEdge, px - ew / 2, py - ew / 2, ew, ew);
+          /* The frontier, where the moss is thin: younger, yellower, brighter.
+           *
+           * Between 0.12 and 0.4 of thickness - the band a patch fades out through - and brightest
+           * in the middle of that band, so it reads as a rim following the outline rather than as
+           * a second patch inside the first. */
+          if (m > 0.12 && m < 0.42) {
+            const rim = 1 - Math.abs((m - 0.27) / 0.15);
+            if (rim > 0) {
+              cc.globalAlpha = rim * MOSS_MAX * 0.85 * intensity;
+              const ew = w * 0.72;
+              cc.drawImage(mossEdge, px - ew / 2, py - ew / 2, ew, ew);
+            }
+          }
+
+          // And the lit half, offset a little toward the light and only where the moss is thick.
+          if (m > 0.45) {
+            cc.globalAlpha = (m - 0.45) * MOSS_MAX * 1.1 * intensity;
+            const lw = w * (0.45 + lump * 0.3);
+            cc.drawImage(mossLit, px - lw / 2 - 1.5, py - lw / 2 - 2, lw, lw);
           }
         }
-
-        // And the lit half, offset a little toward the light and only where the moss is thick.
-        if (m > 0.45) {
-          cc.globalAlpha = (m - 0.45) * MOSS_MAX * 1.1;
-          const lw = w * (0.45 + lump * 0.3);
-          cc.drawImage(mossLit, px - lw / 2 - 1.5, py - lw / 2 - 2, lw, lw);
-        }
       }
+      cc.restore();
     }
     cc.restore();
     cc.globalAlpha = 1;
