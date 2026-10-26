@@ -64,7 +64,7 @@ test('movement', async t => {
     const p = spawn(st, at.tx, at.ty);
     const before = p.x;
     step(st, p, IN_RIGHT);
-    const slow = 0.05 + 0.2 * mossValue(at.tx + 0.5, at.ty + 0.5);
+    const slow = 0.1 + 0.25 * mossValue(at.tx + 0.5, at.ty + 0.5);
     assert.equal(p.x - before, Math.max(1, (SPEED_UNITS_PER_TICK[0] * (1 - slow)) | 0));
   });
 

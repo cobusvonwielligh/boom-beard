@@ -549,7 +549,7 @@ export function step(state, p, mask) {
     // paints the patch drives this, so crossing a ragged edge changes pace smoothly and not as a
     // binary tile effect.
     const intensity = mossValue(tx + 0.5, ty + 0.5);
-    const slow = 0.05 + 0.2 * Math.min(1, intensity);
+    const slow = 0.1 + 0.25 * Math.min(1, intensity);
     speed = Math.max(1, (speed * (1 - slow)) | 0);
   }
   if (wet) speed = Math.max(1, ((speed * PUDDLE_SPEED_NUM) / PUDDLE_SPEED_DEN) | 0);
