@@ -17,7 +17,7 @@
  * what this is. */
 @font-face {
   font-family: "Clegan";
-  src: url("/assets/fonts/clegan.ttf") format("truetype");
+  src: url("/assets/fonts/clegan.7308d830.ttf") format("truetype");
   font-display: block; /* no flash of fallback on the title; it is the first thing seen */
 }
 
@@ -3884,8 +3884,8 @@ body.intermission #dead {
     #cc9434,
     #f6e7a9
   );
-  -webkit-mask-image: url("/assets/img/bomb-barrels.png");
-  mask-image: url("/assets/img/bomb-barrels.png");
+  -webkit-mask-image: url("/assets/img/bomb-barrels.4639014b.webp");
+  mask-image: url("/assets/img/bomb-barrels.4639014b.webp");
   -webkit-mask-size: contain;
   mask-size: contain;
   -webkit-mask-repeat: no-repeat;
@@ -3975,8 +3975,8 @@ body.intermission #dead {
     #cc9434,
     #f6e7a9
   );
-  -webkit-mask-image: url("/assets/img/mascot.png");
-  mask-image: url("/assets/img/mascot.png");
+  -webkit-mask-image: url("/assets/img/mascot.8f66a578.webp");
+  mask-image: url("/assets/img/mascot.8f66a578.webp");
   -webkit-mask-size: contain;
   mask-size: contain;
   -webkit-mask-repeat: no-repeat;
@@ -4208,8 +4208,8 @@ h1 {
   );
   background-size: 260% 100%;
   background-repeat: no-repeat;
-  -webkit-mask-image: url("/assets/img/title-boom-beard-bandanas-bomb.webp");
-  mask-image: url("/assets/img/title-boom-beard-bandanas-bomb.webp");
+  -webkit-mask-image: url("/assets/img/title-boom-beard-bandanas-bomb.1f959c46.webp");
+  mask-image: url("/assets/img/title-boom-beard-bandanas-bomb.1f959c46.webp");
   -webkit-mask-size: contain;
   mask-size: contain;
   -webkit-mask-repeat: no-repeat;

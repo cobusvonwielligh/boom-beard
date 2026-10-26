@@ -72,6 +72,18 @@ test('static caching', async t => {
     assert.equal(ranged.body.length, 2);
   });
 
+  await t.test('only fingerprinted assets are immutable', async () => {
+    const fingerprinted = await fetch(base + '/assets/img/mascot.8f66a578.webp');
+    assert.equal(fingerprinted.status, 200);
+    assert.equal(fingerprinted.headers.get('cache-control'), 'public, max-age=31536000, immutable');
+    await fingerprinted.arrayBuffer();
+
+    const ordinary = await fetch(base + '/assets/img/favicon.ico');
+    assert.equal(ordinary.status, 200);
+    assert.equal(ordinary.headers.get('cache-control'), 'public, max-age=300');
+    await ordinary.arrayBuffer();
+  });
+
   for (const url of ['/client/main.js', '/shared/constants.js', '/assets/art.js', '/style.css']) {
     await t.test(`${url} is revalidated, and a match is a 304`, async () => {
       const first = await fetch(base + url);

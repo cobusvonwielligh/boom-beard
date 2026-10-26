@@ -246,7 +246,7 @@ function serve(req, res) {
     && size >= MIN_GZIP_BYTES
     && !req.headers.range
     && /(?:^|,)\s*gzip\s*(?:,|$)/i.test(req.headers['accept-encoding'] || '');
-  /* Caching, with no build step and no content hashes.
+  /* Caching, with no build step and no content hashes for code.
    *
    * CODE IS NEVER SERVED STALE. It used to be: everything that was not HTML got five minutes of
    * max-age, so for five minutes after every deploy a browser could be running a MIX of old and
@@ -258,13 +258,16 @@ function serve(req, res) {
    * So code - .js, .css, .json, .html - is `no-cache`: always revalidated, never trusted. With an
    * ETag (size and mtime; rsync -a preserves mtimes, so it changes only when the file did) an
    * unchanged file costs a 304 with no body, which on one hostname over one connection is
-   * nothing. Images and fonts keep a short max-age plus the ETag; the music, which never changes
-   * within a deploy and is megabytes, keeps a day. */
+   * nothing. Content-fingerprinted assets are immutable because a changed file necessarily gets
+   * a changed URL. Other images and fonts keep a short max-age plus the ETag; the music, which
+   * never changes within a deploy and is megabytes, keeps a day. */
   const etag = `W/"${size.toString(36)}-${Math.floor(stat.mtimeMs).toString(36)}"`;
   const code = ext === '.html' || ext === '.js' || ext === '.mjs' || ext === '.css' || ext === '.json';
+  const fingerprinted = /\.[0-9a-f]{8}\.[^.]+$/i.test(path.basename(file));
   const head = {
     'Content-Type': MIME[ext] || 'application/octet-stream',
-    'Cache-Control': code ? 'no-cache'
+    'Cache-Control': fingerprinted ? 'public, max-age=31536000, immutable'
+      : code ? 'no-cache'
       : ext === '.mp3' ? 'public, max-age=86400'
       : 'public, max-age=300',
     'Accept-Ranges': 'bytes',
