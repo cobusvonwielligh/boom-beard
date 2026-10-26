@@ -74,7 +74,10 @@ test('water never lands on a wall', () => {
 test('puddles dry up after PUDDLE_TICKS', () => {
   const s = createState(ROOM);
   meltAt(s, 6, 4);
-  s.tick += PUDDLE_TICKS - 1;
+  const expiresAt = s.puddles[0].until;
+  assert.equal(expiresAt - s.puddles[0].at, PUDDLE_TICKS, 'wrong puddle lifetime');
+  assert.ok(s.puddles.every(q => q.until === expiresAt), 'one melt produced mixed expiry ticks');
+  s.tick = expiresAt - 1;
   expirePuddles(s);
   assert.equal(s.puddles.length, 5, 'dried early');
   s.tick += 1;

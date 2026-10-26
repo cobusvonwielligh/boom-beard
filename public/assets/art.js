@@ -202,7 +202,7 @@ const bevel = (c, x, y, w, h, t = 2) => {
  *
  * It is drawing only, as it always was - the simulation is whole tiles - but it is now drawing
  * that MATCHES what the collision does, which is the whole point of changing it. */
-export const STONE_RADIUS = 9;
+export const STONE_RADIUS = 10;
 /* Which types get it: everything solid that sits ON the sand. Not FLOOR (it IS the sand), and
  * not the types that already draw their own shape on a floor of their own - a column, a keg and
  * a block of ice are objects, not cells, and they were never square to begin with. */
