@@ -2548,12 +2548,12 @@ export function createRenderer(canvas, world) {
    * bays and outside corners. The coloured bands keep their old widths; they simply start after
    * the two-cell lip. */
   const COAST_ROCK_CELLS = 2;
-  const COAST_RING_CELLS = 1, LIGHT_WATER_CELLS = 2, SAND_WATER_CELLS = 6;
+  const COAST_RING_CELLS = 2, LIGHT_WATER_CELLS = 2, SAND_WATER_CELLS = 4;
   const SHELF_CELLS = COAST_ROCK_CELLS + COAST_RING_CELLS + LIGHT_WATER_CELLS + SAND_WATER_CELLS;
-  // A little lighter than the old seabed tint so it remains visible under the blue water pass.
-  const SHELF_TONE = '#a08452';
+  // Subtle seabed tint: visible beneath the water without washing out the gold shoreline ring.
+  const SHELF_TONE = '#8f7548';
 
-  const COAST_RING = "#edc24e", COAST_RING_ALPHA = 0.5;
+  const COAST_RING = "#f1cc55", COAST_RING_ALPHA = 0.72;
   /* The seabed round each sea boulder: [tiles out, alpha, colour], outermost first, each band
    * painted over the one beyond it and then the whole thing blurred into a slope (see
    * bakeRockShelf). Sand all the way in - darkest and faintest at the edge of the shelf, warmer
@@ -2647,7 +2647,7 @@ export function createRenderer(canvas, world) {
     };
     /* This is the uninterrupted seabed. Paint it first so a rounded corner, a diagonal step, or
      * a translucent water band can never expose the deep-blue sea between neighbouring pieces. */
-    c.globalAlpha = 0.24;
+    c.globalAlpha = 0.09;
     c.fillStyle = SHELF_TONE;
     for (let i = 0; i < sandBase.length; i += 2) {
       c.fillRect(sandBase[i] * q, sandBase[i + 1] * q, q, q);
@@ -2692,10 +2692,10 @@ export function createRenderer(canvas, world) {
      * quarter-tile steps the rock is cut in - so the shelf follows every bay and headland exactly
      * as the coast does and never shows a square corner.
      */
-    paint([...shelfOut], 0.09, SHELF_TONE);        // the last of the sand, almost gone
-    paint([...shelfIn, ...shelfOut], 0.13, SHELF_TONE);
-    paint([...near, ...far, ...shelfIn], 0.19, SHELF_TONE);
-    // Two quarter-tile cells of light water beyond the one-cell coast ring.
+    paint([...shelfOut], 0.07, SHELF_TONE);        // the last of the sand, almost gone
+    paint([...shelfIn, ...shelfOut], 0.1, SHELF_TONE);
+    paint([...near, ...far, ...shelfIn], 0.17, SHELF_TONE);
+    // Two quarter-tile cells of light water beyond the two-cell coast ring.
     paint([...near, ...far], 0.16, PALETTE.seaMid);
     paint([...near, ...far], 0.42, PALETTE.seaLight);
     paint(near, COAST_RING_ALPHA, COAST_RING);
