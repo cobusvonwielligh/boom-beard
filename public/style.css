@@ -4191,7 +4191,7 @@ h1 {
    derived from the old rendered line, while the beard and bandana artwork grows upward out of
    that box. Bottom-aligning it leaves the slogan and the rest of the card exactly where they were. */
 #titleWrap {
-  width: 100%;
+  width: 150%;
   height: calc(var(--titleBase) * var(--titleScale));
   position: relative;
 }
@@ -4201,7 +4201,7 @@ h1 {
   top: 0;
   bottom: auto;
 
-  width: calc(100% + 100px);
+  width: calc(150% + 100px);
   max-width: none;
   margin: 0;
 
