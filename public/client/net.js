@@ -92,6 +92,7 @@ export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onS
   let hello = null;
   let sinceCorrection = 0;
   let connectedAt = 0;
+  let connectionGeneration = 0;
 
   const secure = location.protocol === 'https:';
   const wsUrl = `${secure ? 'wss' : 'ws'}://${location.host}/ws`;
@@ -150,11 +151,14 @@ export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onS
   }
 
   function open() {
+    const generation = ++connectionGeneration;
     closedByUs = false;
     onStatus?.('connecting');
 
-    ws = createTransport({
+    let transport = null;
+    transport = createTransport({
       onOpen: won => {
+        if (generation !== connectionGeneration) { transport.close(); return; }
         kind = won;
         // Say which pipe won, once, in the console. The only way to tell QUIC from TCP from the
         // outside is latency under loss, which is not something you can eyeball.
@@ -164,9 +168,10 @@ export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onS
         ping();
       },
       onNote: note => console.info(`transport: ${note}`),
-      onClose: ev => onDisconnect(ev),
-      onMessage: handle,
+      onClose: ev => onDisconnect(ev, generation),
+      onMessage: m => { if (generation === connectionGeneration) handle(m); },
     });
+    ws = transport;
     ws.connect({ ws: wsUrl, wt: wtUrl });
   }
 
@@ -223,6 +228,16 @@ export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onS
         // then arrives as a new player instead of being turned away for the same reason.
         if (m.forget) store.remove('bv.playerId');
         closedByUs = true;
+        clearTimeout(reconnectTimer);
+        reconnectTimer = 0;
+        // Authentication rejection is a completed interaction, not a dropped connection. Close
+        // the old transport before the user retries, otherwise every password attempt leaves an
+        // unauthenticated socket behind and the next close can start a reconnect loop.
+        ++connectionGeneration;
+        ws?.close();
+        ws = null;
+        kind = null;
+        pending.clear();
         onStatus?.(`rejected: ${m.why}`);
         onRejected?.(m);
         break;
@@ -238,7 +253,8 @@ export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onS
     }
   }
 
-  function onDisconnect(ev) {
+  function onDisconnect(ev, generation = connectionGeneration) {
+    if (generation !== connectionGeneration) return;
     if (closedByUs) return;
     // Reset the backoff only after a connection that actually lasted. Resetting it in onopen
     // means a connection that opens and immediately dies never backs off at all, which turns
@@ -279,6 +295,13 @@ export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onS
      *   does not carry it, and a crash dump of this tab does not contain it.
      */
     connect(name, observe = false, pw = null) {
+      clearTimeout(reconnectTimer);
+      reconnectTimer = 0;
+      ++connectionGeneration;
+      ws?.close();
+      ws = null;
+      kind = null;
+      pending.clear();
       hello = {
         t: 'hello', name, observe,
         playerId: store.get('bv.playerId') || null,

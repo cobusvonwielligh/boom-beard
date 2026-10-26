@@ -569,9 +569,19 @@ export function attachHub(server, config) {
       if (res.seat < 0) {
         // `forget` tells the client its stored identity is the problem, so it can offer to
         // drop it rather than leaving somebody stuck on a screen that just says no.
-        return sendTo(ws, res.why === 'already-playing'
-          ? { t: 'reject', why: 'that name is already playing in another window', forget: true }
-          : { t: 'reject', why: 'server is full' });
+        if (res.why === 'already-playing') {
+          // A same-device collision is specifically another tab/window. Across devices the
+          // player may be on a different browser entirely, so do not claim otherwise.
+          const namedSeat = room.state.players.findIndex(p => p?.name === name);
+          const current = namedSeat >= 0 ? bySeat.get(namedSeat) : null;
+          const sameBrowser = !!(current && ws.bvDevice && current.bvDevice === ws.bvDevice);
+          return sendTo(ws, {
+            t: 'reject',
+            why: sameBrowser ? 'that name is already playing in another window' : 'player is already logged',
+            forget: true,
+          });
+        }
+        return sendTo(ws, { t: 'reject', why: 'server is full' });
       }
 
       // Resuming a seat whose socket the server had not yet noticed was dead. Close the old
