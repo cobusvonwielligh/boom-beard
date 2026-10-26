@@ -2547,8 +2547,13 @@ export function createRenderer(canvas, world) {
    * The tone is a warm sand, two shades down from the beach itself because it is being seen
    * through water, and it is painted at a sixth of an alpha at most: what the eye reads is not
    * the colour, it is that the water gets warmer as it gets shallower. */
+  /* One quarter-tile of the old iron/stone coast sits between the land and the coloured shelf.
+   * It is deliberately part of this baked water layer: the real iron tiles are drawn later and
+   * cover its inner edge, while the quarter pieces close the little stepped gaps at rounded
+   * headlands and bays. The coloured bands keep their old widths; they simply start after it. */
+  const COAST_ROCK_CELLS = 1;
   const COAST_RING_CELLS = 1, LIGHT_WATER_CELLS = 2, SAND_WATER_CELLS = 4;
-  const SHELF_CELLS = COAST_RING_CELLS + LIGHT_WATER_CELLS + SAND_WATER_CELLS;
+  const SHELF_CELLS = COAST_ROCK_CELLS + COAST_RING_CELLS + LIGHT_WATER_CELLS + SAND_WATER_CELLS;
   const SHELF_TONE = '#7d6843';
 
   const COAST_RING = "#edc24e", COAST_RING_ALPHA = 0.5;
@@ -2597,7 +2602,7 @@ export function createRenderer(canvas, world) {
     const lightEdge = COAST_RING_CELLS + LIGHT_WATER_CELLS;
     const innerSandEdge = lightEdge + SAND_WATER_CELLS / 2;
     // Runs per band: x, y, length, in quarter-tile cells. See the band assignment below.
-    const near = [], far = [], shelfIn = [], shelfOut = [];
+    const quarterRock = [], near = [], far = [], shelfIn = [], shelfOut = [];
     const BANDS = [near, far, shelfIn, shelfOut];
     for (let y = -P * Q; y < MH + P * Q; y++) {
       let run = null;
@@ -2613,10 +2618,13 @@ export function createRenderer(canvas, world) {
         if (x < MW + P * Q && !land(x, y)) {
           for (const [dx, dy, d2] of offsets) {
             if (!land(x + dx, y + dy)) continue;
-            // One cell at the coast for gold, two cells of light water, then four cells of sand.
-            band = d2 <= COAST_RING_CELLS * COAST_RING_CELLS ? 1
-              : d2 <= lightEdge * lightEdge ? 2
-                : d2 <= innerSandEdge * innerSandEdge ? 3 : 4;
+            // The old quarter-block lip comes first. The gold ring, light water and sandy water
+            // retain their original widths, measured from the outside edge of that lip.
+            const shelfD = Math.max(0, Math.sqrt(d2) - COAST_ROCK_CELLS);
+            if (d2 <= COAST_ROCK_CELLS * COAST_ROCK_CELLS) quarterRock.push(x, y);
+            else band = shelfD <= COAST_RING_CELLS ? 1
+              : shelfD <= LIGHT_WATER_CELLS + COAST_RING_CELLS ? 2
+                : shelfD <= innerSandEdge ? 3 : 4;
             break;
           }
         }
@@ -2630,6 +2638,18 @@ export function createRenderer(canvas, world) {
       c.fillStyle = colour;
       for (let i = 0; i < runs.length; i += 3) c.fillRect(runs[i] * q, runs[i + 1] * q, runs[i + 2] * q, q);
     };
+    /* Draw each quarter cell as a scaled rock tile, rather than a flat patch. This brings back
+     * the iron/stone texture and edge treatment while keeping the pieces exactly one quarter of
+     * a normal block. It is baked once, so the small number of shoreline cells is inexpensive. */
+    c.imageSmoothingEnabled = false;
+    for (let i = 0; i < quarterRock.length; i += 2) {
+      const x = quarterRock[i], y = quarterRock[i + 1];
+      c.save();
+      c.translate(x * q, y * q);
+      c.scale(q / TILE_PX, q / TILE_PX);
+      drawRock(c, Math.floor(x / Q), Math.floor(y / Q), 0);
+      c.restore();
+    }
     /* Painted from the outside in, so every band sits on the one beyond it.
      *
      * The shelf is the island's own sand (PALETTE.floor's warm cousin - `sand`) under the water,
