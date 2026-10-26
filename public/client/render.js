@@ -431,6 +431,8 @@ export function createRenderer(canvas, world) {
    * reason a canvas filter is affordable here at all.
    */
   const SHADOW_ALPHA = 0.11;
+  const BLOCK_SHADOW_ALPHA = 0.15;
+  const BLOCK_SHADOW_WIDTH = 1.08;
   const SHADOW_BLUR_PX = 6.5;
   let sunFor = null, sun = { dx: 0, dy: 0 };
 
@@ -633,7 +635,7 @@ export function createRenderer(canvas, world) {
       cc.translate(-cx * CHUNK_PX, -cy * CHUNK_PX);
       cc.clip(floorClipPath(), 'evenodd');
       cc.translate(cx * CHUNK_PX, cy * CHUNK_PX);
-      cc.globalAlpha = SHADOW_ALPHA;
+      cc.globalAlpha = BLOCK_SHADOW_ALPHA;
       cc.fillStyle = '#000';
       const canBlur = 'filter' in cc;
       if (canBlur) cc.filter = `blur(${SHADOW_BLUR_PX}px)`;
@@ -644,6 +646,17 @@ export function createRenderer(canvas, world) {
           const type = cellType(map.cells[ty * map.w + tx]);
           if (!CASTS_SHADOW.has(type)) continue;
           cc.beginPath();
+          /* Broaden the shadow across the light line, not along it. Keeping the sun direction as
+           * the local x-axis means this adds width without making the shadow reach farther away. */
+          const sx = (tx - cx * CHUNK_TILES) * TILE_PX + TILE_PX / 2;
+          const sy = (ty - cy * CHUNK_TILES) * TILE_PX + TILE_PX / 2;
+          const angle = Math.atan2(sdy, sdx);
+          cc.save();
+          cc.translate(sx, sy);
+          cc.rotate(angle);
+          cc.scale(1, BLOCK_SHADOW_WIDTH);
+          cc.rotate(-angle);
+          cc.translate(-sx, -sy);
           appendBlockShape(
             cc, type,
             (tx - cx * CHUNK_TILES) * TILE_PX,
@@ -651,6 +664,7 @@ export function createRenderer(canvas, world) {
             tx, ty, map, sdx, sdy,
           );
           cc.fill();
+          cc.restore();
         }
       }
       if (canBlur) cc.filter = 'none';
