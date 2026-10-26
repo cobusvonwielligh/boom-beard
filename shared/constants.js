@@ -888,7 +888,7 @@ export const BAN_MAX_HOURS = 24;
  * A host removing bots by hand (/kick bot N, or /bots lower than it is) switches the top-up off:
  * re-adding what somebody just deliberately took away is the server arguing with its host. It
  * comes back on only after the room has emptied and stayed empty for those same two rounds. */
-export const AUTO_BOTS_MIN = 6;
+export const AUTO_BOTS_MIN = 4;
 export const AUTO_BOTS_EMPTY_ROUNDS = 2;
 
 // Wall regrowth stops once this much of the open floor is wall again, or a long round silts up
