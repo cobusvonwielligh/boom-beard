@@ -2542,11 +2542,12 @@ export function createRenderer(canvas, world) {
    * The tone is a warm sand, two shades down from the beach itself because it is being seen
    * through water, and it is painted at a sixth of an alpha at most: what the eye reads is not
    * the colour, it is that the water gets warmer as it gets shallower. */
-  /* One quarter-tile of the old iron/stone coast sits between the land and the coloured shelf.
+  /* Two quarter-tiles of the old iron/stone coast sit between the land and the coloured shelf.
    * It is deliberately part of this baked water layer: the real iron tiles are drawn later and
-   * cover its inner edge, while the quarter pieces close the little stepped gaps at rounded
-   * headlands and bays. The coloured bands keep their old widths; they simply start after it. */
-  const COAST_ROCK_CELLS = 1;
+   * cover its inner edge, while the quarter pieces close the stepped gaps at rounded headlands,
+   * bays and outside corners. The coloured bands keep their old widths; they simply start after
+   * the two-cell lip. */
+  const COAST_ROCK_CELLS = 2;
   const COAST_RING_CELLS = 1, LIGHT_WATER_CELLS = 2, SAND_WATER_CELLS = 4;
   const SHELF_CELLS = COAST_ROCK_CELLS + COAST_RING_CELLS + LIGHT_WATER_CELLS + SAND_WATER_CELLS;
   const SHELF_TONE = '#7d6843';
@@ -2597,7 +2598,7 @@ export function createRenderer(canvas, world) {
     const lightEdge = COAST_RING_CELLS + LIGHT_WATER_CELLS;
     const innerSandEdge = lightEdge + SAND_WATER_CELLS / 2;
     // Runs per band: x, y, length, in quarter-tile cells. See the band assignment below.
-    const quarterRock = [], near = [], far = [], shelfIn = [], shelfOut = [];
+    const quarterRock = [], quarterRockSet = new Set(), near = [], far = [], shelfIn = [], shelfOut = [];
     const BANDS = [near, far, shelfIn, shelfOut];
     for (let y = -P * Q; y < MH + P * Q; y++) {
       let run = null;
@@ -2616,7 +2617,10 @@ export function createRenderer(canvas, world) {
             // The old quarter-block lip comes first. The gold ring, light water and sandy water
             // retain their original widths, measured from the outside edge of that lip.
             const shelfD = Math.max(0, Math.sqrt(d2) - COAST_ROCK_CELLS);
-            if (d2 <= COAST_ROCK_CELLS * COAST_ROCK_CELLS) quarterRock.push(x, y);
+            if (d2 <= COAST_ROCK_CELLS * COAST_ROCK_CELLS) {
+              quarterRock.push(x, y);
+              quarterRockSet.add(`${x},${y}`);
+            }
             else band = shelfD <= COAST_RING_CELLS ? 1
               : shelfD <= LIGHT_WATER_CELLS + COAST_RING_CELLS ? 2
                 : shelfD <= innerSandEdge ? 3 : 4;
@@ -2633,17 +2637,36 @@ export function createRenderer(canvas, world) {
       c.fillStyle = colour;
       for (let i = 0; i < runs.length; i += 3) c.fillRect(runs[i] * q, runs[i + 1] * q, runs[i + 2] * q, q);
     };
-    /* Draw each quarter cell as a scaled rock tile, rather than a flat patch. This brings back
-     * the iron/stone texture and edge treatment while keeping the pieces exactly one quarter of
-     * a normal block. It is baked once, so the small number of shoreline cells is inexpensive. */
+    /* Draw the quarter blocks as small, connected stone faces. Scaling the full 32px rock sprite
+     * down made each 8px piece look muddy and gave the corners a checkerboard of dark squares.
+     * These faces keep a readable bevel at this size, share their seams, and round only the outer
+     * edge of the two-quarter-block lip. */
     c.imageSmoothingEnabled = false;
     for (let i = 0; i < quarterRock.length; i += 2) {
       const x = quarterRock[i], y = quarterRock[i + 1];
-      c.save();
-      c.translate(x * q, y * q);
-      c.scale(q / TILE_PX, q / TILE_PX);
-      drawRock(c, Math.floor(x / Q), Math.floor(y / Q), 0);
-      c.restore();
+      const has = (dx, dy) => quarterRockSet.has(`${x + dx},${y + dy}`);
+      const outer = [
+        !has(0, -1) && !has(-1, 0) ? 2 : 0,
+        !has(0, -1) && !has(1, 0) ? 2 : 0,
+        !has(0, 1) && !has(1, 0) ? 2 : 0,
+        !has(0, 1) && !has(-1, 0) ? 2 : 0,
+      ];
+      const px = x * q, py = y * q;
+      c.fillStyle = PALETTE.rockDark;
+      c.fillRect(px, py, q, q);
+      c.beginPath();
+      c.roundRect(px + 0.5, py + 0.5, q - 1, q - 1, outer);
+      c.fillStyle = PALETTE.rock;
+      c.fill();
+
+      // A tiny warm cap and cool foot make the quarter blocks read as stone, not gold pixels.
+      c.strokeStyle = 'rgba(255, 235, 190, 0.34)';
+      c.lineWidth = 0.75;
+      if (!has(0, -1)) { c.beginPath(); c.moveTo(px + 2, py + 1); c.lineTo(px + q - 2, py + 1); c.stroke(); }
+      if (!has(-1, 0)) { c.beginPath(); c.moveTo(px + 1, py + 2); c.lineTo(px + 1, py + q - 2); c.stroke(); }
+      c.strokeStyle = 'rgba(12, 10, 9, 0.42)';
+      if (!has(0, 1)) { c.beginPath(); c.moveTo(px + 2, py + q - 1); c.lineTo(px + q - 2, py + q - 1); c.stroke(); }
+      if (!has(1, 0)) { c.beginPath(); c.moveTo(px + q - 1, py + 2); c.lineTo(px + q - 1, py + q - 2); c.stroke(); }
     }
     /* Painted from the outside in, so every band sits on the one beyond it.
      *
