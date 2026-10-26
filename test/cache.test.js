@@ -6,16 +6,30 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import http from 'node:http';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { gunzipSync } from 'node:zlib';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 8097;
 const base = `http://127.0.0.1:${PORT}`;
+const rawGet = (url, headers = {}) => new Promise((resolve, reject) => {
+  const req = http.get(base + url, { headers }, res => {
+    const chunks = [];
+    res.on('data', chunk => chunks.push(chunk));
+    res.on('end', () => resolve({
+      status: res.statusCode,
+      headers: res.headers,
+      body: Buffer.concat(chunks),
+    }));
+  });
+  req.on('error', reject);
+});
 
 test('static caching', async t => {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bv-cache-'));
@@ -35,6 +49,27 @@ test('static caching', async t => {
     server.kill();
     await once(server, 'exit');
     fs.rmSync(dataDir, { recursive: true, force: true });
+  });
+
+  await t.test('text responses negotiate gzip without changing their contents', async () => {
+    const plain = await rawGet('/style.css');
+    const zipped = await rawGet('/style.css', { 'Accept-Encoding': 'gzip' });
+    assert.equal(plain.headers['content-encoding'], undefined);
+    assert.equal(zipped.headers['content-encoding'], 'gzip');
+    assert.equal(zipped.headers.vary, 'Accept-Encoding');
+    assert.deepEqual(gunzipSync(zipped.body), plain.body);
+    assert.ok(zipped.body.length < plain.body.length / 2,
+      `gzip only reduced ${plain.body.length} bytes to ${zipped.body.length}`);
+  });
+
+  await t.test('range responses are never compressed', async () => {
+    const ranged = await rawGet('/assets/audio/theme.mp3', {
+      Range: 'bytes=0-1',
+      'Accept-Encoding': 'gzip',
+    });
+    assert.equal(ranged.status, 206);
+    assert.equal(ranged.headers['content-encoding'], undefined);
+    assert.equal(ranged.body.length, 2);
   });
 
   for (const url of ['/client/main.js', '/shared/constants.js', '/assets/art.js', '/style.css']) {

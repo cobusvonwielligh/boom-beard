@@ -7,6 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { spawn } from 'node:child_process';
+import { createGzip } from 'node:zlib';
 import { attachHub } from './net.js';
 import { config, usingTls, ROOT, sameSecret } from './config.js';
 import { canonicalTarget } from './canonical.js';
@@ -46,6 +47,8 @@ const MIME = {
   '.ico': 'image/x-icon',
   '.mp3': 'audio/mpeg',
 };
+const COMPRESSIBLE = new Set(['.html', '.js', '.mjs', '.css', '.json', '.xml', '.txt']);
+const MIN_GZIP_BYTES = 1024;
 
 // No external hosts, ever. This is most of why corporate proxies leave us alone, and it means a
 // bug can never leak game state to a third party. Inline script/style are allowed because there
@@ -238,6 +241,11 @@ function serve(req, res) {
   const ext = path.extname(file);
   const stat = fs.statSync(file);
   const size = stat.size;
+  const compressible = COMPRESSIBLE.has(ext);
+  const gzip = compressible
+    && size >= MIN_GZIP_BYTES
+    && !req.headers.range
+    && /(?:^|,)\s*gzip\s*(?:,|$)/i.test(req.headers['accept-encoding'] || '');
   /* Caching, with no build step and no content hashes.
    *
    * CODE IS NEVER SERVED STALE. It used to be: everything that was not HTML got five minutes of
@@ -261,9 +269,16 @@ function serve(req, res) {
       : 'public, max-age=300',
     'Accept-Ranges': 'bytes',
     ETag: etag,
+    ...(compressible ? { Vary: 'Accept-Encoding' } : null),
+    ...(gzip ? { 'Content-Encoding': 'gzip' } : null),
   };
   if (!req.headers.range && req.headers['if-none-match'] === etag) {
-    res.writeHead(304, { 'Cache-Control': head['Cache-Control'], ETag: etag });
+    res.writeHead(304, {
+      'Cache-Control': head['Cache-Control'],
+      ETag: etag,
+      ...(head.Vary ? { Vary: head.Vary } : null),
+      ...(head['Content-Encoding'] ? { 'Content-Encoding': head['Content-Encoding'] } : null),
+    });
     return res.end();
   }
 
@@ -296,6 +311,11 @@ function serve(req, res) {
       'Content-Length': end - start + 1,
     });
     return fs.createReadStream(file, { start, end }).pipe(res);
+  }
+
+  if (gzip) {
+    res.writeHead(200, head);
+    return fs.createReadStream(file).pipe(createGzip()).pipe(res);
   }
 
   res.writeHead(200, { ...head, 'Content-Length': size });
