@@ -3736,9 +3736,16 @@ export function createRenderer(canvas, world) {
 
     const cx0 = Math.floor(cam.x / CHUNK_PX), cx1 = Math.floor((cam.x + vw) / CHUNK_PX);
     const cy0 = Math.floor(cam.y / CHUNK_PX), cy1 = Math.floor((cam.y + vh) / CHUNK_PX);
+    /* Chunk canvases have transparent water cells at their edges. Interpolating those pixels at
+     * a fractional zoom blends the transparency with the ocean and exposes a one- or two-pixel
+     * seam between neighbouring floor chunks. Pixel-art map chunks must meet edge-to-edge; keep
+     * smoothing for the animated scenery, but use nearest-neighbour for this compositing pass. */
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
     for (let cy = cy0; cy <= cy1; cy++)
       for (let cx = cx0; cx <= cx1; cx++)
         ctx.drawImage(chunkAt(cx, cy), ox + cx * CHUNK_PX, oy + cy * CHUNK_PX);
+    ctx.restore();
 
     drawSplashes(ox, oy, dtMs);
     // On the floor, under the perks, bombs and everybody standing in it.
