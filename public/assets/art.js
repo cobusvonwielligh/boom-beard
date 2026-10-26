@@ -247,12 +247,11 @@ function drawTileBody(c, type, tx = 0, ty = 0, dmg = 0) {
 
       // Broad tonal drift: whole tiles a shade lighter or darker than their neighbours.
       const tone = hash(tx * 3, ty * 3);
-      // Halved from the first pass: tile-to-tile drift should be felt, not seen. At the old
-      // range adjacent floor tiles were visibly different colours and the floor read as a
-      // patchwork.
+      // Keep the light lift restrained so the pattern stays calm, while giving the dark end
+      // enough range to make the floor variation readable without turning it into a grid.
       px(c, 0, 0, S, S, tone > 0.5
         ? `rgba(255,255,255,${(tone - 0.5) * 0.05})`
-        : `rgba(0,0,0,${(0.5 - tone) * 0.06})`);
+        : `rgba(0,0,0,${(0.5 - tone) * 0.12})`);
 
       // Grain: a scatter of single pixels, dense enough to texture and sparse enough to stay
       // cheap. Eighteen samples a tile over a cached chunk is nothing.
