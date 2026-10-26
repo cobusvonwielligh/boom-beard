@@ -6,16 +6,18 @@ import {
 } from '../shared/sim/state.js';
 import { createRoom } from '../server/room.js';
 
-test('a streak starts on the second kill within the configured window', () => {
+test('a streak keeps escalating without a time cooldown while alive', () => {
   const player = createPlayer(0, 'captain');
   recordStreakKill(player, 10);
   assert.equal(streakActive(player, 10), false);
   recordStreakKill(player, 10 + STREAK_WINDOW_TICKS);
-  assert.equal(streakActive(player, 10 + STREAK_WINDOW_TICKS), true);
+  recordStreakKill(player, 10 + STREAK_WINDOW_TICKS * 3);
+  assert.equal(player.streakCount, 3);
+  assert.equal(streakActive(player, 10 + STREAK_WINDOW_TICKS * 3), true);
 });
 
-test('a streak remains alive for 11 seconds after the latest kill', () => {
-  assert.equal(STREAK_WINDOW_TICKS, 11 * TICK_HZ);
+test('a streak remains active for 22 seconds after the latest kill', () => {
+  assert.equal(STREAK_WINDOW_TICKS, 22 * TICK_HZ);
 });
 
 test('a streak expires after the window and death resets its count', () => {

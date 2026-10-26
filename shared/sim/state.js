@@ -108,11 +108,9 @@ export function createPlayer(i, name) {
 }
 
 export function recordStreakKill(player, tick) {
-  if (player.streakCount === 0 || tick - player.streakLastKillTick > STREAK_WINDOW_TICKS) {
-    player.streakCount = 1;
-  } else {
-    player.streakCount++;
-  }
+  // This is a same-round kill chain, not a timer combo. Only death resets it; the window controls
+  // the temporary powered/glowing state, never whether the next kill is double, triple or higher.
+  player.streakCount = (player.streakCount || 0) + 1;
   player.streakLastKillTick = tick;
 }
 

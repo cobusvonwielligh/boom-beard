@@ -866,9 +866,10 @@ export const VOLUME_TRIM_MUSIC = 0.375; // -62.5% in all
 export const SFX_MAX_DISTANCE_TILES = 12;
 
 // ─── Kill streaks ─────────────────────────────────────────────────────────────
-// Kills inside this window, without dying, escalate. ACE is separate: everyone else, no deaths.
+// A living player's kills escalate for the whole round; this window only controls how long the
+// active streak power/glow remains visible after the latest kill. ACE is separate.
 
-export const STREAK_WINDOW_TICKS = 11 * TICK_HZ;  // 11 s between kills to keep a streak alive
+export const STREAK_WINDOW_TICKS = 22 * TICK_HZ;  // double the active streak duration: 22 s
 export const STREAK_NAMES = { 2: 'DOUBLE KILL', 3: 'TRIPLE KILL', 4: 'ULTRA KILL', 5: 'RAMPAGE' };
 export const STREAK_ACE = 'ACE';
 
