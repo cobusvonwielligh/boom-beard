@@ -2553,7 +2553,7 @@ export function createRenderer(canvas, world) {
   // Subtle seabed tint: visible beneath the water without washing out the gold shoreline ring.
   const SHELF_TONE = '#8f7548';
 
-  const COAST_RING = "#f1cc55", COAST_RING_ALPHA = 0.72;
+  const COAST_RING = "#eadc8a", COAST_RING_ALPHA = 0.77;
   /* The seabed round each sea boulder: [tiles out, alpha, colour], outermost first, each band
    * painted over the one beyond it and then the whole thing blurred into a slope (see
    * bakeRockShelf). Sand all the way in - darkest and faintest at the edge of the shelf, warmer
