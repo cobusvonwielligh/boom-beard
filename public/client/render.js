@@ -2550,7 +2550,8 @@ export function createRenderer(canvas, world) {
   const COAST_ROCK_CELLS = 2;
   const COAST_RING_CELLS = 1, LIGHT_WATER_CELLS = 2, SAND_WATER_CELLS = 4;
   const SHELF_CELLS = COAST_ROCK_CELLS + COAST_RING_CELLS + LIGHT_WATER_CELLS + SAND_WATER_CELLS;
-  const SHELF_TONE = '#7d6843';
+  // A little lighter than the old seabed tint so it remains visible under the blue water pass.
+  const SHELF_TONE = '#a08452';
 
   const COAST_RING = "#edc24e", COAST_RING_ALPHA = 0.5;
   /* The seabed round each sea boulder: [tiles out, alpha, colour], outermost first, each band
@@ -2617,7 +2618,10 @@ export function createRenderer(canvas, world) {
             // The old quarter-block lip comes first. The gold ring, light water and sandy water
             // retain their original widths, measured from the outside edge of that lip.
             const shelfD = Math.max(0, Math.sqrt(d2) - COAST_ROCK_CELLS);
-            if (d2 <= COAST_ROCK_CELLS * COAST_ROCK_CELLS) {
+            /* The straight edge needs two quarter cells; at a bend the diagonal neighbour can be
+             * almost three quarter-cell steps away even though it is still part of that same
+             * two-cell-thick lip. Include those diagonal cells or the corners show blue holes. */
+            if (d2 <= (COAST_ROCK_CELLS + 1) * (COAST_ROCK_CELLS + 1)) {
               quarterRock.push(x, y);
               quarterRockSet.add(`${x},${y}`);
             }
@@ -2676,9 +2680,9 @@ export function createRenderer(canvas, world) {
      * quarter-tile steps the rock is cut in - so the shelf follows every bay and headland exactly
      * as the coast does and never shows a square corner.
      */
-    paint([...shelfOut], 0.07, SHELF_TONE);        // the last of the sand, almost gone
-    paint([...shelfIn, ...shelfOut], 0.1, SHELF_TONE);
-    paint([...near, ...far, ...shelfIn], 0.17, SHELF_TONE);
+    paint([...shelfOut], 0.09, SHELF_TONE);        // the last of the sand, almost gone
+    paint([...shelfIn, ...shelfOut], 0.13, SHELF_TONE);
+    paint([...near, ...far, ...shelfIn], 0.19, SHELF_TONE);
     // Two quarter-tile cells of light water beyond the one-cell coast ring.
     paint([...near, ...far], 0.16, PALETTE.seaMid);
     paint([...near, ...far], 0.42, PALETTE.seaLight);
