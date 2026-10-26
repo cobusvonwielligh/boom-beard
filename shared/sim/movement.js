@@ -18,7 +18,7 @@ import {
   DIAG_NUM, DIAG_DEN, CORNER_CUT_UNITS,
 } from '../constants.js';
 import { walkable, has, tileCentre, tileAt } from './state.js';
-import { mossyTile } from '../moss.js';
+import { mossValue, mossyTile } from '../moss.js';
 
 const HALF_TILE = UNITS_PER_TILE >> 1;
 
@@ -545,7 +545,12 @@ export function step(state, p, mask) {
   let speed = speedOf(p);
   const tx = p.x >> 8, ty = p.y >> 8;
   if (tileAt(state.map, tx, ty) === BLOCK.FLOOR && mossyTile(tx, ty)) {
-    speed = Math.max(1, ((speed * 17) / 20) | 0); // moss slows the ground by 15%
+    // Faint moss is a 5% drag; a fully dense patch is a 25% drag. The same continuous field that
+    // paints the patch drives this, so crossing a ragged edge changes pace smoothly and not as a
+    // binary tile effect.
+    const intensity = mossValue(tx + 0.5, ty + 0.5);
+    const slow = 0.05 + 0.2 * Math.min(1, intensity);
+    speed = Math.max(1, (speed * (1 - slow)) | 0);
   }
   if (wet) speed = Math.max(1, ((speed * PUDDLE_SPEED_NUM) / PUDDLE_SPEED_DEN) | 0);
   // Sliding is not running: it costs no stamina.

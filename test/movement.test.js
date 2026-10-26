@@ -10,7 +10,7 @@ import {
   SPEED_UNITS_PER_TICK, STATUS, DIR_R, DIR_D, DIR_L, BLOCK_HP, DIAG_NUM, DIAG_DEN,
 } from '../shared/constants.js';
 import { applyStatus } from '../shared/sim/state.js';
-import { mossyTile } from '../shared/moss.js';
+import { mossValue, mossyTile } from '../shared/moss.js';
 
 /** An empty room with an iron border, so tests only see the walls they place. */
 function room(w = 9, h = 9) {
@@ -52,7 +52,7 @@ test('movement', async t => {
     assert.equal(speedOf(p), (SPEED_UNITS_PER_TICK[0] / 2) | 0);
   });
 
-  await t.test('moss slows floor movement by fifteen percent', () => {
+  await t.test('moss slowdown follows floor intensity', () => {
     const st = room();
     let at = null;
     for (let ty = 1; ty < st.map.h - 1 && !at; ty++) {
@@ -64,7 +64,8 @@ test('movement', async t => {
     const p = spawn(st, at.tx, at.ty);
     const before = p.x;
     step(st, p, IN_RIGHT);
-    assert.equal(p.x - before, Math.max(1, ((SPEED_UNITS_PER_TICK[0] * 17) / 20) | 0));
+    const slow = 0.05 + 0.2 * mossValue(at.tx + 0.5, at.ty + 0.5);
+    assert.equal(p.x - before, Math.max(1, (SPEED_UNITS_PER_TICK[0] * (1 - slow)) | 0));
   });
 
   await t.test('stops at a wall instead of entering it', () => {
