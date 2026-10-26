@@ -244,9 +244,14 @@ export function blocked(state, p, x, y, bombsCount = true, chamfer = true) {
   const y0 = (y - h) >> 8, y1 = (y + h - 1) >> 8;
   for (let ty = y0; ty <= y1; ty++)
     for (let tx = x0; tx <= x1; tx++) {
-      const solid = !walkable(state.map, tx, ty, reduced)
-        || (bombsCount && bombSolid(state, p, tx, ty));
+      const terrainSolid = !walkable(state.map, tx, ty, reduced);
+      const bomb = bombsCount && bombSolid(state, p, tx, ty);
+      const solid = terrainSolid || bomb;
       if (!solid) continue;
+      // The chamfer is a kindness for rounding a terrain corner. A bomb is an occupied gameplay
+      // tile, not geometry to shave past: forgiving its diagonal corner lets the player overlap
+      // the bomb even though straight-line movement correctly stops there.
+      if (bomb) return true;
       /* The chamfer. See CORNER_CUT_UNITS.
        *
        * A tile the box only touches with a CORNER - it is in the first or last column of the

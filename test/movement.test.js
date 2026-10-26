@@ -172,6 +172,14 @@ test('the corner chamfer cannot wedge you in a pocket', async t => {
     assert.equal(blocked(st, p, x, y), true, 'the cut opened a pocket to get wedged in');
   });
 
+  await t.test('a diagonal cannot chamfer through a bomb corner', () => {
+    const st = room();
+    const p = spawn(st, 4, 4);
+    st.bombs.push({ id: 1, tx: 5, ty: 5, owner: 1 });
+    const x = tileCentre(4) + 68, y = tileCentre(4) + 68;
+    assert.equal(blocked(st, p, x, y), true, 'the diagonal slipped through the bomb');
+  });
+
   await t.test('and walking a diagonal into a pocket never ends up stuck', () => {
     const st = room();
     const p = spawn(st, 4, 4);
