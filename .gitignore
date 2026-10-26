@@ -1,5 +1,6 @@
 node_modules/
 data/
+.worktrees/
 
 # Written by infra/deploy.sh to stamp what is actually deployed.
 .version
