@@ -878,14 +878,19 @@ export function createRenderer(canvas, world) {
     const R = Math.ceil(TILE_PX * 0.62);
     el.width = el.height = R * 2;
     const c = el.getContext('2d');
-    const g = c.createRadialGradient(R, R, 0, R, R, R);
-    // No hard stop anywhere in it: a blob with an edge is a dot, and a hundred dots is a texture.
-    g.addColorStop(0, `rgba(${tone},0.85)`);
-    g.addColorStop(0.45, `rgba(${tone},0.4)`);
-    g.addColorStop(0.78, `rgba(${tone},0.1)`);
-    g.addColorStop(1, `rgba(${tone},0)`);
-    c.fillStyle = g;
-    c.fillRect(0, 0, R * 2, R * 2);
+    /* Square growth cells rather than a soft circular blob. The field still decides where this
+     * sprite appears, but the mark itself now reads like blocky moss growing over pixel stone. */
+    const cells = [
+      [0, 1, 2, 1], [2, 0, 2, 2], [4, 1, 1, 2],
+      [1, 2, 2, 2], [3, 3, 2, 1], [0, 4, 2, 1], [2, 4, 1, 2],
+    ];
+    const unit = (R * 2) / 6;
+    c.fillStyle = `rgba(${tone},0.78)`;
+    for (const [x, y, w, h] of cells) c.fillRect(x * unit, y * unit, w * unit - 0.8, h * unit - 0.8);
+    c.fillStyle = `rgba(${tone},0.38)`;
+    for (const [x, y, w, h] of [[1, 0, 1, 1], [4, 3, 1, 1], [3, 5, 2, 1]]) {
+      c.fillRect(x * unit, y * unit, w * unit - 0.8, h * unit - 0.8);
+    }
     return el;
   }
   function mossLineSprite() {
@@ -910,21 +915,7 @@ export function createRenderer(canvas, world) {
     }
     return el;
   }
-  function mossBlockSprite() {
-    const el = document.createElement('canvas');
-    const R = Math.ceil(TILE_PX * 0.62);
-    el.width = el.height = R * 2;
-    const c = el.getContext('2d');
-    c.fillStyle = 'rgba(34,70,34,0.72)';
-    for (const [x, y, w, h] of [[5, 7, 8, 6], [17, 4, 7, 8], [25, 13, 9, 7], [9, 21, 10, 6]]) {
-      c.fillRect(x, y, w, h);
-    }
-    c.fillStyle = 'rgba(108,142,62,0.5)';
-    c.fillRect(12, 10, 5, 4);
-    c.fillRect(27, 7, 5, 4);
-    return el;
-  }
-  let mossDark = null, mossLit = null, mossEdge = null, mossLines = null, mossBlocks = null;
+  let mossDark = null, mossLit = null, mossEdge = null, mossLines = null;
 
   /**
    * Moss over one chunk, after the blocks and their lighting, before the occlusion.
@@ -939,7 +930,6 @@ export function createRenderer(canvas, world) {
     mossLit ??= mossSprite(MOSS_LIT);
     mossEdge ??= mossSprite(MOSS_EDGE);
     mossLines ??= mossLineSprite();
-    mossBlocks ??= mossBlockSprite();
 
     // The clip. One path for the whole chunk rather than a save/clip/restore per tile: it is the
     // thing that lets a blob straddle two tiles.
@@ -1008,14 +998,6 @@ export function createRenderer(canvas, world) {
           const w = R * 2 * scale;
           cc.globalAlpha = m * MOSS_MAX * intensity;
           cc.drawImage(mossDark, px - w / 2, py - w / 2, w, w);
-
-          // Square fragments break up the soft blobs into the blocky, old-stone growth pattern.
-          const blockChance = noiseAt(tx * 4 + 13, ty * 4 + 29, 0.6, 0x62c31);
-          if (m > 0.24 && blockChance > 0.34) {
-            cc.globalAlpha = Math.min(0.3, m * 0.6 * intensity);
-            const bw = w * (0.68 + lump * 0.2);
-            cc.drawImage(mossBlocks, px - bw / 2, py - bw / 2, bw, bw);
-          }
 
           // Mature clumps grow dark channels through themselves, like moss on old Minecraft
           // stone. The separate field keeps the lines sparse and prevents a regular stamp pattern.
