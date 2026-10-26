@@ -430,8 +430,8 @@ export function createRenderer(canvas, world) {
    * everything else, so the blur is paid once per chunk and never per frame - which is the only
    * reason a canvas filter is affordable here at all.
    */
-  const SHADOW_ALPHA = 0.17;
-  const SHADOW_BLUR_PX = 5.5;
+  const SHADOW_ALPHA = 0.11;
+  const SHADOW_BLUR_PX = 6.5;
   let sunFor = null, sun = { dx: 0, dy: 0 };
 
   /* Everything a shadow is allowed to fall on: the floor, and never the blocks standing on it.
