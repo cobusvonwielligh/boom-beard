@@ -888,7 +888,29 @@ export function createRenderer(canvas, world) {
     c.fillRect(0, 0, R * 2, R * 2);
     return el;
   }
-  let mossDark = null, mossLit = null, mossEdge = null;
+  function mossLineSprite() {
+    const el = document.createElement('canvas');
+    const R = Math.ceil(TILE_PX * 0.62);
+    el.width = el.height = R * 2;
+    const c = el.getContext('2d');
+    c.strokeStyle = 'rgba(24,50,29,0.72)';
+    c.lineWidth = Math.max(1, TILE_PX * 0.045);
+    c.lineCap = 'round';
+    c.lineJoin = 'round';
+    // Short, broken growth lines: dark enough to read at board scale, irregular enough not to
+    // become a repeated icon stamped over every clump.
+    for (const [a, b, d, e] of [
+      [0.22, 0.78, 0.48, 0.28], [0.42, 0.82, 0.68, 0.36],
+      [0.58, 0.7, 0.8, 0.5], [0.3, 0.5, 0.56, 0.18],
+    ]) {
+      c.beginPath();
+      c.moveTo(R * 2 * a, R * 2 * b);
+      c.quadraticCurveTo(R * 2 * d, R * 2 * e, R * 2 * (d + 0.12), R * 2 * (e + 0.16));
+      c.stroke();
+    }
+    return el;
+  }
+  let mossDark = null, mossLit = null, mossEdge = null, mossLines = null;
 
   /**
    * Moss over one chunk, after the blocks and their lighting, before the occlusion.
@@ -902,6 +924,7 @@ export function createRenderer(canvas, world) {
     mossDark ??= mossSprite(MOSS_DARK);
     mossLit ??= mossSprite(MOSS_LIT);
     mossEdge ??= mossSprite(MOSS_EDGE);
+    mossLines ??= mossLineSprite();
 
     // The clip. One path for the whole chunk rather than a save/clip/restore per tile: it is the
     // thing that lets a blob straddle two tiles.
@@ -970,6 +993,15 @@ export function createRenderer(canvas, world) {
           const w = R * 2 * scale;
           cc.globalAlpha = m * MOSS_MAX * intensity;
           cc.drawImage(mossDark, px - w / 2, py - w / 2, w, w);
+
+          // Mature clumps grow dark channels through themselves, like moss on old Minecraft
+          // stone. The separate field keeps the lines sparse and prevents a regular stamp pattern.
+          const lineChance = noiseAt(tx * 5 + 19, ty * 5 + 7, 0.7, 0x4a11e);
+          if (m > 0.3 && lineChance > 0.48) {
+            cc.globalAlpha = Math.min(0.34, m * 0.55 * intensity);
+            const lw = w * (0.72 + lump * 0.18);
+            cc.drawImage(mossLines, px - lw / 2, py - lw / 2, lw, lw);
+          }
 
           /* The frontier, where the moss is thin: younger, yellower, brighter.
            *
