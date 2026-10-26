@@ -2719,14 +2719,21 @@ export function createRenderer(canvas, world) {
       c.fillStyle = PALETTE.rock;
       c.fill();
 
-      // A tiny warm cap and cool foot make the quarter blocks read as stone, not gold pixels.
-      c.strokeStyle = 'rgba(255, 235, 190, 0.34)';
+      // Use the same cap and foot palette as drawRock, so the quarter pieces are the same stone
+      // material rather than a separate yellow-brown border material.
+      c.strokeStyle = PALETTE.rockLit;
+      c.globalAlpha = 0.72;
       c.lineWidth = 0.75;
       if (!has(0, -1)) { c.beginPath(); c.moveTo(px + 2, py + 1); c.lineTo(px + q - 2, py + 1); c.stroke(); }
       if (!has(-1, 0)) { c.beginPath(); c.moveTo(px + 1, py + 2); c.lineTo(px + 1, py + q - 2); c.stroke(); }
-      c.strokeStyle = 'rgba(12, 10, 9, 0.42)';
+      c.strokeStyle = PALETTE.rockDark;
+      c.globalAlpha = 0.8;
       if (!has(0, 1)) { c.beginPath(); c.moveTo(px + 2, py + q - 1); c.lineTo(px + q - 2, py + q - 1); c.stroke(); }
       if (!has(1, 0)) { c.beginPath(); c.moveTo(px + q - 1, py + 2); c.lineTo(px + q - 1, py + q - 2); c.stroke(); }
+      c.globalAlpha = 0.65;
+      c.fillStyle = PALETTE.rockTop;
+      if (hash01((x * 31) ^ (y * 17)) > 0.45) c.fillRect(px + 2, py + 3, 1, 1);
+      c.globalAlpha = 1;
     }
     /* Painted from the outside in, so every band sits on the one beyond it.
      *
