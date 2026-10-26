@@ -430,8 +430,8 @@ export function createRenderer(canvas, world) {
    * everything else, so the blur is paid once per chunk and never per frame - which is the only
    * reason a canvas filter is affordable here at all.
    */
-  const SHADOW_ALPHA = 0.24;
-  const SHADOW_BLUR_PX = 4.5;
+  const SHADOW_ALPHA = 0.17;
+  const SHADOW_BLUR_PX = 5.5;
   let sunFor = null, sun = { dx: 0, dy: 0 };
 
   /* Everything a shadow is allowed to fall on: the floor, and never the blocks standing on it.
@@ -2548,10 +2548,10 @@ export function createRenderer(canvas, world) {
    * bays and outside corners. The coloured bands keep their old widths; they simply start after
    * the two-cell lip. */
   const COAST_ROCK_CELLS = 2;
-  const COAST_RING_CELLS = 2, LIGHT_WATER_CELLS = 2, SAND_WATER_CELLS = 4;
+  const COAST_RING_CELLS = 2, LIGHT_WATER_CELLS = 2, SAND_WATER_CELLS = 8;
   const SHELF_CELLS = COAST_ROCK_CELLS + COAST_RING_CELLS + LIGHT_WATER_CELLS + SAND_WATER_CELLS;
   // Subtle seabed tint: visible beneath the water without washing out the gold shoreline ring.
-  const SHELF_TONE = '#8f7548';
+  const SHELF_TONE = '#a18858';
 
   const COAST_RING = "#eadc8a", COAST_RING_ALPHA = 0.77;
   /* The seabed round each sea boulder: [tiles out, alpha, colour], outermost first, each band
@@ -2647,7 +2647,7 @@ export function createRenderer(canvas, world) {
     };
     /* This is the uninterrupted seabed. Paint it first so a rounded corner, a diagonal step, or
      * a translucent water band can never expose the deep-blue sea between neighbouring pieces. */
-    c.globalAlpha = 0.09;
+    c.globalAlpha = 0.12;
     c.fillStyle = SHELF_TONE;
     for (let i = 0; i < sandBase.length; i += 2) {
       c.fillRect(sandBase[i] * q, sandBase[i + 1] * q, q, q);
