@@ -352,15 +352,15 @@ export function createRenderer(canvas, world) {
  * overhead and ahead, never behind the camera, so shadows always fall DOWN the screen - a board
  * lit from below reads as though you are looking at it upside down.
  *
- * The length is deliberately short, about two thirds of a tile. Long shadows are prettier and
- * they obscure the floor, and the floor is where you walk.
+ * The length is deliberately short, about half a tile. Long shadows are prettier and they obscure
+ * the floor, and the floor is where you walk.
  */
   /* Inland rock uses the larger block radius; coast corners keep their own smaller radius.
    *
    * Only exposed corners get the larger radius (see the chunk pass), so a wall of rock stays one
    * unbroken mass. STONE_RADIUS is also used for breakable blocks; COAST_RADIUS is independent. */
   const ROCK_RADIUS = Math.max(STONE_RADIUS, 8);
-  const SHADOW_LEN = TILE_PX * 0.72;
+  const SHADOW_LEN = TILE_PX * 0.52;
   /* The light a blast throws onto everything near it.
    *
    * A bomb going off is the brightest thing that ever happens on this board and until now it lit
@@ -423,20 +423,15 @@ export function createRenderer(canvas, world) {
   const perkLive = new Set();
   let lightLayer = null, lightCtx = null;
   let lampLayer = null, lampCtx = null;
-  /* Darker, and SOFT.
+  /* Light, and SOFT.
    *
-   * 0.3 was a shadow you had to be told about. The thing that makes a stronger one look better
-   * rather than merely heavier is the edge: a hard-edged black rectangle at 45% reads as a hole
-   * cut in the floor, and the same shape through a three-pixel blur reads as light not reaching
-   * the sand. Baked into the chunk cache with everything else, so the blur is paid once per chunk
-   * and never per frame - which is the only reason a canvas filter is affordable here at all.
+   * The shadow should be felt rather than mistaken for a second block: a low-opacity black shape
+   * through a broader blur reads as light not reaching the sand. Baked into the chunk cache with
+   * everything else, so the blur is paid once per chunk and never per frame - which is the only
+   * reason a canvas filter is affordable here at all.
    */
-  // A third lighter than the 0.46 it was, on request: at 0.46 a board full of blocks spent more
-  // of its area in shade than in sun, and the shade is scenery - it was competing with fire,
-  // which is information. The blur and the length are unchanged, so it still reads as light not
-  // reaching the sand rather than as a flat grey mat.
-  const SHADOW_ALPHA = 0.31;
-  const SHADOW_BLUR_PX = 3;
+  const SHADOW_ALPHA = 0.24;
+  const SHADOW_BLUR_PX = 4.5;
   let sunFor = null, sun = { dx: 0, dy: 0 };
 
   /* Everything a shadow is allowed to fall on: the floor, and never the blocks standing on it.
