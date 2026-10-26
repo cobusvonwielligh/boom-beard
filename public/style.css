@@ -304,8 +304,9 @@ body {
   /* The landing title. See #title: the base is the size that fits the card, the scale is how far
      past it the title goes, and the card's padding and the title's lift are both derived from
      the pair so nothing can overlap. */
-  --titleBase: clamp(26px, 3.4vw, 44px);
-  --titleScale: 1.875;
+
+  --titleBase: 64px;
+  --titleScale: 1;
 }
 
 /* Explicit width and height, not `auto` with four insets.
@@ -743,7 +744,7 @@ canvas#game {
   /* Seven: the longest map name is "crossroads", and the ellipsis covers anything longer -
      nine left a gap in front of the loadout on every map but that one. */
   min-width: 7ch;
-  max-width: 11.5ch;                   /* "crossroads" whole, with the letter spacing */
+  max-width: 11.5ch; /* "crossroads" whole, with the letter spacing */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -972,10 +973,13 @@ body.observing #who {
   transform: translateY(-50%);
   pointer-events: none;
   display: none;
-  background: linear-gradient(104deg, #fff0 42%, #fff4c4d0 50%, #fff0 58%) no-repeat;
+  background: linear-gradient(104deg, #fff0 42%, #fff4c4d0 50%, #fff0 58%)
+    no-repeat;
   background-size: 260% 100%;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 14.2S1.6 10.2 1.6 5.8a3.2 3.2 0 0 1 6.4-1.1 3.2 3.2 0 0 1 6.4 1.1c0 4.4-6.4 8.4-6.4 8.4z'/%3E%3C/svg%3E") center / contain no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 14.2S1.6 10.2 1.6 5.8a3.2 3.2 0 0 1 6.4-1.1 3.2 3.2 0 0 1 6.4 1.1c0 4.4-6.4 8.4-6.4 8.4z'/%3E%3C/svg%3E") center / contain no-repeat;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 14.2S1.6 10.2 1.6 5.8a3.2 3.2 0 0 1 6.4-1.1 3.2 3.2 0 0 1 6.4 1.1c0 4.4-6.4 8.4-6.4 8.4z'/%3E%3C/svg%3E")
+    center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 14.2S1.6 10.2 1.6 5.8a3.2 3.2 0 0 1 6.4-1.1 3.2 3.2 0 0 1 6.4 1.1c0 4.4-6.4 8.4-6.4 8.4z'/%3E%3C/svg%3E")
+    center / contain no-repeat;
   mix-blend-mode: screen;
 }
 .pip.heart.full .glint {
@@ -983,16 +987,24 @@ body.observing #who {
   animation: heartGlint 7s linear infinite;
 }
 @keyframes heartGlint {
-  from { background-position: 130% 0; }
-  to { background-position: -130% 0; }
+  from {
+    background-position: 130% 0;
+  }
+  to {
+    background-position: -130% 0;
+  }
 }
 /* The moment it drops: a knock, so losing half is felt in the corner of the eye. */
 .pip.heart.hit svg {
   animation: heartHit 0.45s ease-out;
 }
 @keyframes heartHit {
-  0% { transform: scale(1.4); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1.4);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .pip.heart.full .glint,
@@ -1592,13 +1604,21 @@ body.hurt:not(.dead) #avatar {
     smoulder 1.8s ease-in-out infinite;
 }
 @keyframes smoulder {
-  0%, 100% { filter: sepia(0.75) saturate(1.3) brightness(0.72) drop-shadow(0 0 6px #ff6a2a66); }
-  50% { filter: sepia(0.75) saturate(1.5) brightness(0.84) drop-shadow(0 0 14px #ff6a2aaa); }
+  0%,
+  100% {
+    filter: sepia(0.75) saturate(1.3) brightness(0.72)
+      drop-shadow(0 0 6px #ff6a2a66);
+  }
+  50% {
+    filter: sepia(0.75) saturate(1.5) brightness(0.84)
+      drop-shadow(0 0 14px #ff6a2aaa);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   body.hurt:not(.dead) #avatar {
     animation: bob 6s ease-in-out infinite;
-    filter: sepia(0.75) saturate(1.3) brightness(0.78) drop-shadow(0 0 10px #ff6a2a88);
+    filter: sepia(0.75) saturate(1.3) brightness(0.78)
+      drop-shadow(0 0 10px #ff6a2a88);
   }
 }
 
@@ -4173,20 +4193,23 @@ h1 {
 #titleWrap {
   width: 100%;
   height: calc(var(--titleBase) * var(--titleScale));
+  position: relative;
 }
 #title.titleArt {
   position: absolute;
   left: 50%;
-  bottom: 0;
-  width: min(
-    calc(var(--titleBase) * var(--titleScale) * 6.6),
-    calc(100vw - 32px)
-  );
+  top: 0;
+  bottom: auto;
+
+  width: calc(100% + 100px);
   max-width: none;
   margin: 0;
+
   font-size: 0;
   line-height: 0;
-  transform: translateX(-50%);
+  transform: translate(-50%, -48%);
+
+  z-index: 10;
   filter: drop-shadow(0 8px 12px #000a) drop-shadow(0 0 28px #edc24e38);
 }
 #title.titleArt img {
@@ -4222,8 +4245,12 @@ h1 {
   animation: titleArtShine 7s linear infinite;
 }
 @keyframes titleArtShine {
-  from { background-position: -120% 0; }
-  to { background-position: 220% 0; }
+  from {
+    background-position: -120% 0;
+  }
+  to {
+    background-position: 220% 0;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   #title.titleArt::after {
@@ -4919,7 +4946,6 @@ kbd.wide {
   }
 }
 
-
 /* The landing page on a screen that is not very tall.
  *
  * Everything that makes the card tall is one of three numbers: the title's scale, the padding the
@@ -4983,7 +5009,10 @@ kbd.wide {
     margin-bottom: 5px;
   }
   #menuWrap .keys dl {
-    grid-template-columns: max-content minmax(62px, 1fr) max-content minmax(62px, 1fr);
+    grid-template-columns: max-content minmax(62px, 1fr) max-content minmax(
+        62px,
+        1fr
+      );
     column-gap: 8px;
   }
   #menuWrap .keys dt,
