@@ -22,6 +22,7 @@ import {
 } from '/assets/art.js';
 import { placeable } from '/shared/sim/bombs.js';
 import { gullAt } from '/shared/sim/gulls.js';
+import { mossValue } from '/shared/moss.js';
 import { streakActive } from '/shared/sim/state.js';
 import { rockCornerRadii } from './rock-corners.js';
 import {
@@ -814,7 +815,7 @@ export function createRenderer(canvas, world) {
    * makes it read as moss is the SHAPE, not the saturation. So the alpha came down by nearly
    * half and everything that was spent on colour is spent on edges instead.
    */
-  const MOSS_MAX = 0.24;
+  const MOSS_MAX = 0.16;
 
   const smooth = t => t * t * (3 - 2 * t);
 
@@ -836,15 +837,7 @@ export function createRenderer(canvas, world) {
    * term thins it out from the inside so a patch has holes in it.
    */
   function mossAt(x, y) {
-    const patch = noiseAt(x, y, MOSS_PATCH, 0x6d055);
-    const edge = noiseAt(x, y, MOSS_BREAK, 0x9e3779);
-    const v = patch * 0.76 + edge * 0.24;
-    if (v <= MOSS_AT) return 0;
-    const strength = Math.min(1, (v - MOSS_AT) / 0.3);
-    // The grain bites hardest at the thin edges of a patch and barely at all in its heart, so a
-    // patch fades out through clumps rather than through transparency.
-    const grain = noiseAt(x, y, MOSS_GRAIN, 0x5eed9);
-    return Math.max(0, strength - (1 - strength) * 0.8 - (0.5 - grain) * 0.55);
+    return mossValue(x, y);
   }
 
   /* What moss grows on: the sand and every kind of stone. Not a crate - wood on a beach for a few

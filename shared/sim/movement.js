@@ -14,10 +14,11 @@ import {
   SLIDE_PEAK_NUM, SLIDE_PEAK_DEN, SLIDE_DRAG_NUM, SLIDE_DRAG_DEN, SLIDE_EXIT_UNITS,
   SLIDE_MAX_TICKS, SLIDE_STAMINA_COST, SLIDE_COOLDOWN_TICKS,
   CONFUSED_NUM, CONFUSED_DEN,
-  IN_RIGHT, IN_UP, IN_LEFT, IN_DOWN, IN_SLIDE, DIR_R, DIR_U, DIR_L, DIR_D, STATUS,
+  IN_RIGHT, IN_UP, IN_LEFT, IN_DOWN, IN_SLIDE, DIR_R, DIR_U, DIR_L, DIR_D, STATUS, BLOCK,
   DIAG_NUM, DIAG_DEN, CORNER_CUT_UNITS,
 } from '../constants.js';
-import { walkable, has, tileCentre } from './state.js';
+import { walkable, has, tileCentre, tileAt } from './state.js';
+import { mossyTile } from '../moss.js';
 
 const HALF_TILE = UNITS_PER_TILE >> 1;
 
@@ -542,6 +543,10 @@ export function step(state, p, mask) {
   if (!dx && !dy) { p.moving = false; stamina(p, false); return; }
 
   let speed = speedOf(p);
+  const tx = p.x >> 8, ty = p.y >> 8;
+  if (tileAt(state.map, tx, ty) === BLOCK.FLOOR && mossyTile(tx, ty)) {
+    speed = Math.max(1, ((speed * 17) / 20) | 0); // moss slows the ground by 15%
+  }
   if (wet) speed = Math.max(1, ((speed * PUDDLE_SPEED_NUM) / PUDDLE_SPEED_DEN) | 0);
   // Sliding is not running: it costs no stamina.
   stamina(p, !coasting);

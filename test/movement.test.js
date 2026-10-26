@@ -3,13 +3,14 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createState, createPlayer, setTile, tileCentre, hashState } from '../shared/sim/state.js';
+import { createState, createPlayer, setTile, tileAt, tileCentre, hashState } from '../shared/sim/state.js';
 import { step, blocked, speedOf } from '../shared/sim/movement.js';
 import {
   BLOCK, IN_RIGHT, IN_LEFT, IN_DOWN, IN_UP, UNITS_PER_TILE, CORNER_ASSIST_UNITS,
   SPEED_UNITS_PER_TICK, STATUS, DIR_R, DIR_D, DIR_L, BLOCK_HP, DIAG_NUM, DIAG_DEN,
 } from '../shared/constants.js';
 import { applyStatus } from '../shared/sim/state.js';
+import { mossyTile } from '../shared/moss.js';
 
 /** An empty room with an iron border, so tests only see the walls they place. */
 function room(w = 9, h = 9) {
@@ -49,6 +50,21 @@ test('movement', async t => {
     const st = room(); const p = spawn(st, 2, 2);
     applyStatus(st, p, STATUS.SLOWDOWN);
     assert.equal(speedOf(p), (SPEED_UNITS_PER_TICK[0] / 2) | 0);
+  });
+
+  await t.test('moss slows floor movement by fifteen percent', () => {
+    const st = room();
+    let at = null;
+    for (let ty = 1; ty < st.map.h - 1 && !at; ty++) {
+      for (let tx = 1; tx < st.map.w - 1; tx++) {
+        if (tileAt(st.map, tx, ty) === BLOCK.FLOOR && mossyTile(tx, ty)) { at = { tx, ty }; break; }
+      }
+    }
+    assert.ok(at, 'test room has no mossy floor tile');
+    const p = spawn(st, at.tx, at.ty);
+    const before = p.x;
+    step(st, p, IN_RIGHT);
+    assert.equal(p.x - before, Math.max(1, ((SPEED_UNITS_PER_TICK[0] * 17) / 20) | 0));
   });
 
   await t.test('stops at a wall instead of entering it', () => {
