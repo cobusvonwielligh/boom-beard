@@ -102,7 +102,7 @@ export function createPlayer(i, name) {
     slideFor: 0,
     slideCool: 0,
     respawnAt: 0,
-    // Mugged by seagulls this round. Carried on the wire so every scoreboard can say so.
+    // Claimed by the gull raid this round. Carried on the wire so every scoreboard can say so.
     gulled: false,
   };
 }

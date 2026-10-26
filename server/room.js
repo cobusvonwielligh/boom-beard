@@ -693,7 +693,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
      * re-launched or cut short every time a snapshot landed mid-slide. */
     ...(p.slideV ? { sv: p.slideV, sd: p.slideDir, sf: p.slideFor } : null),
     ...(p.slideCool ? { sc: p.slideCool } : null),
-    // Mugged by seagulls. One player a round at most, so it is absent for everybody nearly
+    // Claimed by the gull raid. One player a round at most, so it is absent for everybody nearly
     // always - and it has to be in the snapshot, not only in the event, or a client that joined
     // after the raid would have no idea why the table says what it says.
     ...(p.gulled ? { gl: 1 } : null),

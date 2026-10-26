@@ -236,3 +236,16 @@ test('a coin pays XP and changes nothing else about you', () => {
     assert.equal(p[k], v, `collecting gold changed ${k}, which it must not`);
   }
 });
+
+test('bots leave gold for people to collect', () => {
+  const s = fresh();
+  const bot = createPlayer(0, 'bot');
+  bot.alive = true;
+  bot.isBot = true;
+  bot.x = tileCentre(3); bot.y = tileCentre(3);
+  s.players[0] = bot;
+  drop(s, 3, 3, PERK.GOLD);
+  collect(s);
+  assert.equal(bot.coins, 0, 'a bot collected gold');
+  assert.equal(s.perks.length, 1, 'gold disappeared under a bot');
+});

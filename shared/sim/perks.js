@@ -154,6 +154,9 @@ export function collect(state) {
     for (let k = state.perks.length - 1; k >= 0; k--) {
       const perk = state.perks[k];
       if (perk.tx < x0 || perk.tx > x1 || perk.ty < y0 || perk.ty > y1) continue;
+      // Gold is a human-only prize, like gulls themselves. Bots may still collect every
+      // gameplay perk, but they must leave coins for people to contest.
+      if (perk.type === PERK.GOLD && p.isBot) continue;
       const gained = apply(state, p, perk.type);
       p.score += perk.type === PERK.GOLD ? SCORE.GOLD
         : gained ? SCORE.PERK : SCORE.PERK_CAPPED;

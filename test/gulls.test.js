@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  GULL_FIRST_TICK, GULL_MAX, GULL_LOW_ALT, GULL_COINS, FIRE_TICKS, PERK, AUTO_BOTS_MIN,
+  GULL_FIRST_TICK, GULL_MAX, GULL_LOW_ALT, GULL_COINS, GULL_RAID_COINS, FIRE_TICKS, PERK, AUTO_BOTS_MIN,
   UNITS_PER_TILE, SCORE, BLOCK, GULL_RAID_AT_MIN, GULL_RAID_AT_MAX,
 } from '../shared/constants.js';
 import { MAPS } from '../shared/maps.js';
@@ -177,7 +177,7 @@ test('once a round, two gulls take a real person and kill them', () => {
   assert.equal(raids.length, 1, `the raid fired ${raids.length} times in one round`);
   assert.equal(kills.length, 1);
   assert.equal(raids[0].seat, p.i, 'the gulls went for the bot');
-  assert.equal(bot.gulled, false, 'a bot was mugged by seagulls, which is nobody\'s story');
+  assert.equal(bot.gulled, false, 'a bot was claimed by the gull raid, which is nobody\'s story');
 
   const when = raids[0].tick / s.roundTicks;
   assert.ok(when >= GULL_RAID_AT_MIN && when <= GULL_RAID_AT_MAX,
@@ -187,6 +187,8 @@ test('once a round, two gulls take a real person and kill them', () => {
   assert.equal(s.gulled, p.i);
   assert.equal(p.shields, 0, 'a shield saved them from a bird');
   assert.equal(p.deaths, 1);
+  assert.equal(p.coins, GULL_RAID_COINS, 'the gull raid did not pay its gold');
+  assert.equal(p.score, SCORE.GOLD * GULL_RAID_COINS, 'the gull raid gold was not scored');
 });
 
 test('two gulls, crossing, and no shot credited to anybody', () => {

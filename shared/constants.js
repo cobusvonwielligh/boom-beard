@@ -397,6 +397,8 @@ export const GULL_LOW_ALT = 0.22;
  * reward. A blast with no owner - a powder keg - still leaves a coin on the floor; see gulls.js.
  */
 export const GULL_COINS = 3;
+// A gull raid is a rough day, but it still pays the person who survived the story nine coins.
+export const GULL_RAID_COINS = 9;
 /* The raid: once a round, two gulls pick somebody and kill them.
  *
  * Late in the round, two birds come in fast and low from opposite sides, cross over one player
@@ -407,7 +409,7 @@ export const GULL_COINS = 3;
  * credited to nobody, and everyone in the room watches it happen. A death you could have avoided
  * is a mistake; this is weather. Both are funny, and only one of them is your fault.
  *
- * Only a real person - a bot being mugged by seagulls is nobody's story. Between 70% and 90% of
+ * Only a real person - a bot being claimed by the gull raid is nobody's story. Between 70% and 90% of
  * the round, so it always lands while people are still playing but never at the whistle, where
  * it would read as a bug in the scoring rather than as a bird.
  */

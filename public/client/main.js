@@ -583,13 +583,14 @@ const net = createNet({
         case 'gullkill': {
           renderer?.addDeathDust(e.i, e.x, e.y);
           sfx.playAtUnits('gullmug', e.x, e.y, { theirs: e.i !== world.you });
-          killFeed(`${nameOf(e.i)} was mugged by seagulls`, { youDied: e.i === world.you });
+          const reward = e.coins ? ` Â· +${e.coins} gold` : '';
+          killFeed(`${nameOf(e.i)} was claimed by the gull raid${reward}`, { youDied: e.i === world.you });
           if (e.i === world.you) {
             renderer?.alertRim(1);
             music.dip(0.7, 1.1);
             renderer?.addFlash(0.6, '240,230,200');   // feathers, not blood
             renderer?.addShake(0.6);
-            showDeadBanner('mugged by seagulls');
+            showDeadBanner(`claimed by the gull raid${reward}`);
             quips.gulled();
           }
           break;
@@ -1935,10 +1936,10 @@ function gullMark() {
   svg.append(use);
   svg.setAttribute('class', 'gullMark');
   svg.setAttribute('role', 'img');
-  svg.setAttribute('aria-label', 'mugged by seagulls');
+  svg.setAttribute('aria-label', 'claimed by the gull raid');
   // Native tooltip: the icon is a joke, and a joke nobody can look up is just a bird.
   const t = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-  t.textContent = 'mugged by seagulls';
+  t.textContent = 'claimed by the gull raid';
   svg.append(t);
   return svg;
 }

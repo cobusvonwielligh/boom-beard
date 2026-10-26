@@ -14,7 +14,7 @@ import {
   GULL_OFFMAP_TILES, GULL_WEAVE_UNITS, GULL_WEAVE_TICKS, GULL_DIVE_EVERY_TICKS, GULL_DIVE_TICKS,
   GULL_LOITER, GULL_COINS, GULL_DEPTH_MIN, GULL_DEPTH_MAX, SCORE,
   GULL_RAID_AT_MIN, GULL_RAID_AT_MAX, GULL_RAID_SPEED_UNITS, GULL_RAID_RUN_TILES,
-  GULL_RAID_RETRY_TICKS, RESPAWN_DELAY_TICKS, START_BOMBS, START_RADIUS,
+  GULL_RAID_RETRY_TICKS, RESPAWN_DELAY_TICKS, START_BOMBS, START_RADIUS, GULL_RAID_COINS,
 } from '../constants.js';
 import { tileAt } from './state.js';
 import { drop, scatterOnDeath } from './perks.js';
@@ -169,9 +169,12 @@ function strikeRaid(state) {
   p.shields = 0;                     // a shield is for bombs; this is a bird
   p.status = 0;
   p.statusUntil = {};
+  p.coins = (p.coins || 0) + GULL_RAID_COINS;
+  p.score += SCORE.GOLD * GULL_RAID_COINS;
   p.respawnAt = state.tick + RESPAWN_DELAY_TICKS;
   state.events.push({
     e: 'gullkill', tick: state.tick, i: p.i, x: Math.round(p.x), y: Math.round(p.y),
+    coins: GULL_RAID_COINS,
   });
 }
 
