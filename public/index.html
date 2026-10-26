@@ -799,9 +799,9 @@
            old line opened with "Online multiplayer", which is a category rather than a hook -
            and the PLAY button two inches below it already says that. -->
         <p class="sub sub-split">
-          <span>Sixteen pirates.</span>
-          <span>One island.</span>
-          <span>Light the fuse and run.</span>
+          <span>Plant bombs...</span>
+          <span>Cause chaos...</span>
+          <span>try to survive!</span>
         </p>
         <div class="playerid-group">
           <label for="name">PLAYER ID:</label>
@@ -1037,9 +1037,9 @@
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
       align-items: center;
-      width: 95%;
+      width: 100%;
       margin: 80px auto 0;
-      gap: 20px;
+      gap: 60px;
     }
 
     .sub-split span {
@@ -1048,17 +1048,18 @@
 
     .sub-split span:first-child {
       text-align: left;
-      justify-self: start;
+      justify-self: center;
     }
 
     .sub-split span:nth-child(2) {
-      text-align: center;
+      text-align: left;
       justify-self: left;
+      transform: translateX(-45px);
     }
 
     .sub-split span:last-child {
       text-align: right;
-      justify-self: end;
+      justify-self: center;
     }
   </style>
 </html>
