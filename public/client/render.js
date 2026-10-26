@@ -3739,9 +3739,13 @@ export function createRenderer(canvas, world) {
     // Keep the normal fractional-zoom smoothing here. Disabling it for chunk blits makes every
     // block and floor detail look harsh and pixelated; seam protection belongs in the chunk edge
     // coverage, not in a global nearest-neighbour pass.
+    const chunkOverlap = 1 / (view.dpr * zoom);
     for (let cy = cy0; cy <= cy1; cy++)
       for (let cx = cx0; cx <= cx1; cx++)
-        ctx.drawImage(chunkAt(cx, cy), ox + cx * CHUNK_PX, oy + cy * CHUNK_PX);
+        // One device pixel of overlap prevents the transparent edge sample from being blended with
+        // the ocean. The later chunk is drawn over the overlap, so no texture is duplicated.
+        ctx.drawImage(chunkAt(cx, cy), ox + cx * CHUNK_PX, oy + cy * CHUNK_PX,
+          CHUNK_PX + chunkOverlap, CHUNK_PX + chunkOverlap);
 
     drawSplashes(ox, oy, dtMs);
     // On the floor, under the perks, bombs and everybody standing in it.
