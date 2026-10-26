@@ -285,10 +285,8 @@ function drawTileBody(c, type, tx = 0, ty = 0, dmg = 0) {
       if (r > 0.72) px(c, ((r * 23) | 0) + 3, ((hash(ty, tx) * 23) | 0) + 3, 3, 2, PALETTE.sand);
       if (r < 0.18) px(c, ((r * 120) | 0) + 5, ((hash(tx + 7, ty) * 20) | 0) + 5, 2, 2, PALETTE.floorAccent);
 
-      // The seam where the chunk cache joins tiles. A hair of shadow on two sides gives the
-      // floor a grid without drawing a grid, and hides the join entirely.
-      px(c, 0, 0, S, 2, 'rgba(24, 24, 24, 0.04)');
-      px(c, 0, 0, 2, S, 'rgba(35, 35, 35, 0.04)');
+      // No artificial seam: floor tiles meet edge-to-edge. The chunk compositor handles its own
+      // boundaries, and a dark line here reads as ocean showing through rather than as texture.
       break;
     }
 
