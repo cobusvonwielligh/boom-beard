@@ -2548,7 +2548,7 @@ export function createRenderer(canvas, world) {
    * bays and outside corners. The coloured bands keep their old widths; they simply start after
    * the two-cell lip. */
   const COAST_ROCK_CELLS = 2;
-  const COAST_RING_CELLS = 1, LIGHT_WATER_CELLS = 2, SAND_WATER_CELLS = 4;
+  const COAST_RING_CELLS = 1, LIGHT_WATER_CELLS = 2, SAND_WATER_CELLS = 6;
   const SHELF_CELLS = COAST_ROCK_CELLS + COAST_RING_CELLS + LIGHT_WATER_CELLS + SAND_WATER_CELLS;
   // A little lighter than the old seabed tint so it remains visible under the blue water pass.
   const SHELF_TONE = '#a08452';
@@ -2599,7 +2599,8 @@ export function createRenderer(canvas, world) {
     const lightEdge = COAST_RING_CELLS + LIGHT_WATER_CELLS;
     const innerSandEdge = lightEdge + SAND_WATER_CELLS / 2;
     // Runs per band: x, y, length, in quarter-tile cells. See the band assignment below.
-    const quarterRock = [], quarterRockSet = new Set(), near = [], far = [], shelfIn = [], shelfOut = [];
+    const quarterRock = [], quarterRockSet = new Set(), sandBase = [];
+    const near = [], far = [], shelfIn = [], shelfOut = [];
     const BANDS = [near, far, shelfIn, shelfOut];
     for (let y = -P * Q; y < MH + P * Q; y++) {
       let run = null;
@@ -2615,13 +2616,16 @@ export function createRenderer(canvas, world) {
         if (x < MW + P * Q && !land(x, y)) {
           for (const [dx, dy, d2] of offsets) {
             if (!land(x + dx, y + dy)) continue;
+            // Every shelf cell gets a continuous seabed underneath it. The water bands are
+            // translucent, so this remains visible as the light brown sand beneath the blue.
+            sandBase.push(x, y);
             // The old quarter-block lip comes first. The gold ring, light water and sandy water
             // retain their original widths, measured from the outside edge of that lip.
             const shelfD = Math.max(0, Math.sqrt(d2) - COAST_ROCK_CELLS);
             /* The straight edge needs two quarter cells; at a bend the diagonal neighbour can be
              * almost three quarter-cell steps away even though it is still part of that same
              * two-cell-thick lip. Include those diagonal cells or the corners show blue holes. */
-            if (d2 <= (COAST_ROCK_CELLS + 1) * (COAST_ROCK_CELLS + 1)) {
+            if (Math.max(Math.abs(dx), Math.abs(dy)) <= COAST_ROCK_CELLS) {
               quarterRock.push(x, y);
               quarterRockSet.add(`${x},${y}`);
             }
@@ -2641,6 +2645,14 @@ export function createRenderer(canvas, world) {
       c.fillStyle = colour;
       for (let i = 0; i < runs.length; i += 3) c.fillRect(runs[i] * q, runs[i + 1] * q, runs[i + 2] * q, q);
     };
+    /* This is the uninterrupted seabed. Paint it first so a rounded corner, a diagonal step, or
+     * a translucent water band can never expose the deep-blue sea between neighbouring pieces. */
+    c.globalAlpha = 0.24;
+    c.fillStyle = SHELF_TONE;
+    for (let i = 0; i < sandBase.length; i += 2) {
+      c.fillRect(sandBase[i] * q, sandBase[i + 1] * q, q, q);
+    }
+    c.globalAlpha = 1;
     /* Draw the quarter blocks as small, connected stone faces. Scaling the full 32px rock sprite
      * down made each 8px piece look muddy and gave the corners a checkerboard of dark squares.
      * These faces keep a readable bevel at this size, share their seams, and round only the outer
