@@ -798,8 +798,10 @@
            tells you there is nowhere to go, and the last tells you what you actually DO. The
            old line opened with "Online multiplayer", which is a category rather than a hook -
            and the PLAY button two inches below it already says that. -->
-        <p class="sub" style="margin-top: 5px">
-          Sixteen pirates. One island. Light the fuse and run.
+        <p class="sub sub-split">
+          <span>Sixteen pirates.</span>
+          <span>One island.</span>
+          <span>Light the fuse and run.</span>
         </p>
         <div class="playerid-group">
           <label for="name">PLAYER ID:</label>
@@ -1029,6 +1031,34 @@
 
       /* Keep it above the game canvas */
       z-index: 9999;
+    }
+
+    .sub-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      align-items: center;
+      width: 95%;
+      margin: 80px auto 0;
+      gap: 20px;
+    }
+
+    .sub-split span {
+      white-space: nowrap;
+    }
+
+    .sub-split span:first-child {
+      text-align: left;
+      justify-self: start;
+    }
+
+    .sub-split span:nth-child(2) {
+      text-align: center;
+      justify-self: left;
+    }
+
+    .sub-split span:last-child {
+      text-align: right;
+      justify-self: end;
     }
   </style>
 </html>
