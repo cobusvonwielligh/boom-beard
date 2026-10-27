@@ -40,3 +40,11 @@ test('the landing meter and owner signup diagnostics occupy their intended surfa
   assert.match(main, /perfSignup7/);
   assert.match(main, /perfSignup30/);
 });
+
+test('the signup meter is scaled down from its bottom-right anchor', () => {
+  const css = read('public/style.css');
+  const meter = css.slice(css.indexOf('#signupMeter {'), css.indexOf('.signupLabel'));
+
+  assert.match(meter, /transform:\s*scale\(0\.75\)/);
+  assert.match(meter, /transform-origin:\s*bottom right/);
+});

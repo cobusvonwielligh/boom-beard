@@ -17,6 +17,20 @@ function ringPath(ring) {
   return `M${project(ring[0])}${ring.slice(1).map(point => `L${project(point)}`).join('')}Z`;
 }
 
+function ringOutlinePath(ring) {
+  if (!ring.length) return '';
+  const points = ring[0][0] === ring.at(-1)[0] && ring[0][1] === ring.at(-1)[1]
+    ? ring
+    : [...ring, ring[0]];
+  let path = `M${project(points[0])}`;
+  for (let i = 1; i < points.length; i++) {
+    const previous = points[i - 1];
+    const point = points[i];
+    path += `${Math.abs(point[0] - previous[0]) > 180 ? 'M' : 'L'}${project(point)}`;
+  }
+  return path;
+}
+
 function geometryPath(geometry) {
   if (geometry.type === 'Polygon') {
     return geometry.coordinates.map(ringPath).join('');
@@ -27,17 +41,29 @@ function geometryPath(geometry) {
   return '';
 }
 
+function geometryOutlinePath(geometry) {
+  if (geometry.type === 'Polygon') {
+    return geometry.coordinates.map(ringOutlinePath).join('');
+  }
+  if (geometry.type === 'MultiPolygon') {
+    return geometry.coordinates.flatMap(polygon => polygon.map(ringOutlinePath)).join('');
+  }
+  return '';
+}
+
 const WORLD_FEATURES = feature(topology, topology.objects.countries).features
   .map(item => {
     const numeric = String(item.id ?? '').padStart(3, '0');
     const country = countries.numericToAlpha2(numeric)
       ?? countries.getAlpha2Code(item.properties?.name ?? '', 'en');
     const path = geometryPath(item.geometry);
-    if (!country || !path) return null;
+    const outlinePath = geometryOutlinePath(item.geometry);
+    if (!country || !path || !outlinePath) return null;
     return Object.freeze({
       country,
       name: countries.getName(country, 'en') ?? item.properties?.name ?? country,
       path,
+      outlinePath,
     });
   })
   .filter(Boolean);

@@ -253,6 +253,13 @@ async function loadWorldMap() {
     title.textContent = country.name;
     shape.append(title);
     group.append(shape);
+
+    const outline = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    outline.classList.add('countryOutline');
+    outline.dataset.country = country.country;
+    outline.setAttribute('d', country.outlinePath);
+    outline.setAttribute('aria-hidden', 'true');
+    group.append(outline);
   }
   renderGeography();
 }
@@ -285,7 +292,7 @@ function renderGeography() {
     const countsForCountry = counts.get(shape.dataset.country);
     const value = metricValue(countsForCountry);
     shape.style.fill = value > 0 ? heatColor(Math.log1p(value) / Math.log1p(maximum)) : '#17232f';
-    shape.classList.toggle('hasActivity', value > 0);
+    shape.nextElementSibling?.classList.toggle('hasActivity', value > 0);
     const title = shape.querySelector('title');
     if (title && country) {
       title.textContent = countsForCountry

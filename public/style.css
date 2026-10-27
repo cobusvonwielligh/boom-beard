@@ -4103,6 +4103,8 @@ body.intermission #dead {
   right: 18px;
   bottom: 18px;
   z-index: 3;
+  transform: scale(0.75);
+  transform-origin: bottom right;
   width: max-content;
   max-width: 220px;
   min-height: 52px;

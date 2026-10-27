@@ -841,15 +841,23 @@ td.tableEmpty { height: 88px; color: var(--muted); text-align: center; }
 
 .countryShape {
   fill: #17232f;
+  stroke: none;
+  transition: fill 180ms ease, filter 180ms ease;
+}
+
+.countryOutline {
+  fill: none;
   stroke: #60718478;
   stroke-width: 0.65;
   stroke-linejoin: round;
   vector-effect: non-scaling-stroke;
-  transition: fill 180ms ease, stroke 180ms ease, filter 180ms ease;
+  pointer-events: none;
+  transition: stroke 180ms ease, filter 180ms ease;
 }
 
-.countryShape.hasActivity { stroke: #d3d9df8a; }
-.countryShape:hover { stroke: #fff3c9; stroke-width: 1.2; filter: brightness(1.2); }
+.countryOutline.hasActivity { stroke: #d3d9df8a; }
+.countryShape:hover { filter: brightness(1.2); }
+.countryShape:hover + .countryOutline { stroke: #fff3c9; stroke-width: 1.2; filter: brightness(1.2); }
 
 .mapStatus {
   position: absolute;

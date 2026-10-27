@@ -75,6 +75,16 @@ test('resource and registration charts clear their previous pixels before redraw
   assert.match(registration, /ctx\.clearRect\(0,\s*0,\s*width,\s*height\)/);
 });
 
+test('world map uses separate paths for fills and antimeridian-safe outlines', () => {
+  const script = read('public/admin.js');
+  const styles = read('public/admin.css');
+
+  assert.match(script, /country\.outlinePath/);
+  assert.match(script, /countryOutline/);
+  assert.match(styles, /\.countryShape\s*\{[^}]*stroke:\s*none;/s);
+  assert.match(styles, /\.countryOutline/);
+});
+
 test('player registration dates display and filter in UTC', () => {
   const html = read('public/admin.html');
   const script = read('public/admin.js');
