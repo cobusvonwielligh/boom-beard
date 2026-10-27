@@ -19,6 +19,12 @@ Bomb capacity, rum, gold, statuses, health, and every other mechanic are not sol
 
 There are no refunds or cart-decrement controls. Each accepted click buys one bundle. A button becomes unavailable when the player lacks one gold or the queued grant has reached the existing simulation cap.
 
+## Floor Drop Frequency
+
+Ordinary floor powerups become 20% less frequent, while gold keeps its current absolute drop rate. After the existing drop logic selects a non-gold perk, an independent 80% keep roll decides whether that perk is created; the remaining 20% becomes no drop. A selected gold drop bypasses this thinning roll.
+
+The removed non-gold probability is not redistributed into gold or another perk. Existing adaptive supply/demand, block eligibility, forced-drop rules, per-type weights, round caps, and death-scatter behavior otherwise remain unchanged. The keep roll uses the simulation's deterministic RNG so identical seeds still produce identical matches.
+
 ## Persistent Economy
 
 The leaderboard remains the one persistent gameplay store. Account/password storage will not carry economy data.
@@ -153,4 +159,5 @@ Automated tests will cover:
 - spendable-wallet HUD versus lifetime-collected profile stats;
 - exact reuse of coin/perk SVG symbols, floor-perk palettes, and cast-gold classes;
 - correct existing pickup and warning sounds;
+- deterministic 20% thinning of newly selected non-gold floor drops, with gold's absolute drop behavior unchanged;
 - full server, simulation, persistence, browser-module, source, and UI test suites.
