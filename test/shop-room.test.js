@@ -10,7 +10,7 @@ import {
 import { createLeaderboard, careerKey } from '../server/leaderboard.js';
 import { createRoom } from '../server/room.js';
 
-const RESPAWN_COUNTDOWN_TICKS = Math.round(4.5 * TICK_HZ);
+const RESPAWN_COUNTDOWN_TICKS = 3 * TICK_HZ;
 
 async function setup(t, onBroadcast = () => {}) {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'bv-shop-room-'));

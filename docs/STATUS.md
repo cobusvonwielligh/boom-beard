@@ -228,7 +228,7 @@ Every one of these is in `shared/constants.js`. Nothing is inline.
 | Speed | `[27, 35, 43, 51, 59]` units/tick by boot count - 3.2 to 6.9 tiles/s |
 | Caps | 5 bombs carried, radius 5, 4 boots, 2 shields, 4 stims |
 | Stamina | 6900 twentieths (+1500 per stim), empty = half pace until a third is back |
-| Respawn | 11 s death cooldown, then a 4.5 s 3-2-1 countdown; safe spawns are distance-weighted with a full-map fallback |
+| Respawn | 11 s death cooldown, then a 3 s 3-2-1 countdown; safe spawns are distance-weighted with a full-map fallback |
 | Fire | drawn 15 ticks, lethal 10; damage box 13/20 of the movement box |
 | Health | 2 hits (`MAX_HP`): shields first, then half, then dead; same-tick blasts each cost one, 0.6 s grace after |
 | Radar | your light and maroon foe blips ride the canvas frame, which is cut down so it is never more than 4 tiles of sea from the island (`SEA_MAX_MARGIN_TILES`) |

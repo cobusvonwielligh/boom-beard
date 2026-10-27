@@ -702,7 +702,7 @@ export const DRUNK_STAGGER_TICKS = 4;      // how long one lasts
 /* The death-screen cooldown happens before SPACE is accepted. Once requested, a separate
  * countdown gives the player a clear 3, 2, 1 before the server places them. */
 export const RESPAWN_DELAY_TICKS = 11 * TICK_HZ;
-export const RESPAWN_COUNTDOWN_TICKS = Math.round(4.5 * TICK_HZ);
+export const RESPAWN_COUNTDOWN_TICKS = 3 * TICK_HZ;
 
 export const CONTAGIOUS = STATUS.PACIFISM | STATUS.SLOWDOWN | STATUS.INVISIBLE |
                           STATUS.CHANGELING | STATUS.REDUCTION | STATUS.FAST_DET;

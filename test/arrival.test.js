@@ -7,7 +7,7 @@ import {
   ARRIVE_DELAY_TICKS, COUNT_IN_TICKS, STATUS, TICK_HZ,
 } from '../shared/constants.js';
 
-const RESPAWN_COUNTDOWN_TICKS = Math.round(4.5 * TICK_HZ);
+const RESPAWN_COUNTDOWN_TICKS = 3 * TICK_HZ;
 
 function room() {
   const snaps = [];

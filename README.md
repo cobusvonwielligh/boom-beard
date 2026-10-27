@@ -34,7 +34,7 @@ Ten minutes a round, five islands in rotation. Drop a bomb, get clear, be standi
 Fire runs in a cross, stops at walls, and carries its owner's colour. It sets off any bomb it
 touches, and chains are where rounds are decided. Fire is lethal for the first ten of its fifteen
 drawn ticks; the ember tail is safe, and damage uses a smaller hitbox than movement so a shoulder
-behind cover is forgiven. A death costs an 11-second cooldown, then a 4.5-second respawn countdown.
+behind cover is forgiven. A death costs an 11-second cooldown, then a 3-second respawn countdown.
 
 ## <img src="docs/readme/icons/fire.svg" width="20" align="middle"> On the island
 

@@ -5,7 +5,7 @@
 When a player joins an already-running round for the first time, keep the shop and
 respawn dialog open with the Respawn button ready immediately. After the player
 clicks Respawn, close the dialog and show an animated 3, 2, 1 countdown. Spawn the
-player as soon as the server-owned 4.5-second countdown ends.
+player as soon as the server-owned 3-second countdown ends.
 
 ## Decision
 
@@ -16,7 +16,8 @@ count-in ends. Hide the death/shop dialog once a respawn request is accepted.
 
 The existing server `respawn()` path remains unchanged. It applies the spawn pop
 and ring animation event and grants the current 3-second invulnerability effect.
-The 11-second death cooldown and the 4.5-second post-click countdown do not change.
+The 11-second death cooldown remains unchanged. Each countdown number lasts one
+second, for a 3-second post-click countdown.
 
 ## Alternatives
 

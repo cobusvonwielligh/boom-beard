@@ -1,20 +1,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  RESPAWN_DELAY_TICKS, TICK_HZ,
+  RESPAWN_COUNTDOWN_TICKS, RESPAWN_DELAY_TICKS, TICK_HZ,
 } from '../shared/constants.js';
 import { createRoom } from '../server/room.js';
 import { IN_BOMB } from '../shared/constants.js';
-
-const RESPAWN_COUNTDOWN_TICKS = Math.round(4.5 * TICK_HZ);
 
 function room() {
   return createRoom({ countIn: 0, onBroadcast: () => {} });
 }
 
-test('death cooldown is 11 seconds and the post-click countdown is 4.5 seconds', () => {
+test('death cooldown is 11 seconds and each countdown digit lasts one second', () => {
   assert.equal(RESPAWN_DELAY_TICKS, 11 * TICK_HZ);
-  assert.equal(RESPAWN_COUNTDOWN_TICKS, 4.5 * TICK_HZ);
+  assert.equal(RESPAWN_COUNTDOWN_TICKS, 3 * TICK_HZ);
+  assert.equal(RESPAWN_COUNTDOWN_TICKS / 3, TICK_HZ);
 });
 
 test('a respawn request counts down 3, 2, 1 before spawning', () => {

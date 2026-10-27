@@ -12,7 +12,7 @@ import { createRoom } from '../server/room.js';
 import { AUTO_BOTS_MIN } from '../shared/constants.js';
 
 const room = opts => createRoom({ onBroadcast: () => {}, ...opts });
-const RESPAWN_COUNTDOWN_TICKS = Math.round(4.5 * TICK_HZ);
+const RESPAWN_COUNTDOWN_TICKS = 3 * TICK_HZ;
 
 test('a person cannot move or bomb until the count-in is over', () => {
   const r = room({});
