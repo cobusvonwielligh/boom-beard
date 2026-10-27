@@ -43,10 +43,16 @@ The selected region's hostname is passed to the existing WebSocket/WebTransport
 connection code. The resulting account, career, and operational data are written only
 to that instance's existing local stores. No production user database is copied to the
 new server, and no cross-region account or score synchronization is introduced.
+The browser namespaces player IDs and trusted-browser tokens by region so registering
+on one server cannot overwrite the identity or trust token used on the other. The
+player name may be reused, but a first visit to a region can require claiming that
+name there.
 
 `/admin` remains same-origin on each regional hostname. The ZA dashboard reads only
 ZA accounts, metrics, and geography; the US dashboard reads only US-local data.
-Each instance has its own server-side admin key and password configuration.
+Each instance has its own server-side admin key and password configuration. The
+owner's browser enrolls each regional key on that host with the existing
+`/?admin=<key>` flow.
 
 ## Production setup
 
