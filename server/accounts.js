@@ -223,6 +223,23 @@ export function createAccounts({ dataDir }) {
   load();
 
   const has = name => accounts.has(accountKey(name));
+  const DAY_MS = 24 * 3600_000;
+
+  /** Aggregate account creation only; names and credentials never leave this store. */
+  function stats(now = Date.now()) {
+    const at = Number(now);
+    const safeNow = Number.isFinite(at) ? at : Date.now();
+    const out = { total: accounts.size, last24h: 0, last7d: 0, last30d: 0 };
+    for (const rec of accounts.values()) {
+      const created = Number(rec?.created);
+      if (!Number.isFinite(created) || created > safeNow) continue;
+      const age = safeNow - created;
+      if (age <= DAY_MS) out.last24h++;
+      if (age <= 7 * DAY_MS) out.last7d++;
+      if (age <= 30 * DAY_MS) out.last30d++;
+    }
+    return out;
+  }
 
   /** Milliseconds until this name will answer again, or 0. */
   function lockedFor(name) {
@@ -261,6 +278,7 @@ export function createAccounts({ dataDir }) {
 
   return Object.freeze({
     has,
+    stats,
     lockedFor,
     get size() { return accounts.size; },
 

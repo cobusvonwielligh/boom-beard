@@ -192,3 +192,32 @@ test('DEVICE_TTL_MS is a month, not a session', () => {
   // asked for a password every week, which is the thing this whole file exists to avoid.
   assert.ok(DEVICE_TTL_MS >= 7 * 24 * 3600_000);
 });
+
+test('signup statistics count unique accounts in inclusive rolling windows', async () => {
+  const d = dir();
+  const a = createAccounts({ dataDir: d });
+  for (const name of ['fresh', 'day-edge', 'week-edge', 'month-edge', 'old', 'legacy']) {
+    assert.equal((await a.register(name, PW)).ok, true);
+  }
+  a.flushSync();
+
+  const DAY = 24 * 3600_000;
+  const now = Date.UTC(2026, 9, 27, 12);
+  const file = path.join(d, 'accounts.json');
+  const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+  data.accounts.fresh.created = now - 1;
+  data.accounts['day-edge'].created = now - DAY;
+  data.accounts['week-edge'].created = now - 7 * DAY;
+  data.accounts['month-edge'].created = now - 30 * DAY;
+  data.accounts.old.created = now - 30 * DAY - 1;
+  delete data.accounts.legacy.created;
+  fs.writeFileSync(file, JSON.stringify(data));
+
+  const loaded = createAccounts({ dataDir: d });
+  assert.deepEqual(loaded.stats(now), {
+    total: 6,
+    last24h: 2,
+    last7d: 3,
+    last30d: 4,
+  });
+});
