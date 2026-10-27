@@ -13,6 +13,11 @@ export const REGIONS = Object.freeze([
   }),
 ]);
 
+export function regionIdForOrigin(origin) {
+  const hostname = new URL(origin).hostname;
+  return REGIONS.find(region => new URL(region.origin).hostname === hostname)?.id ?? 'za';
+}
+
 export function regionOrigin(regionId, currentOrigin) {
   const region = REGIONS.find(item => item.id === regionId);
   if (!region) throw new RangeError(`unknown region: ${regionId}`);

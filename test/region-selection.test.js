@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { closestReachable, selectedRegionId } from '../shared/region-selection.js';
+import { regionIdForOrigin } from '../shared/regions.js';
 
 test('chooses the reachable region with the lowest measured RTT', () => {
   assert.equal(closestReachable([
@@ -30,4 +31,10 @@ test('keeps a manual choice and refuses an offline manual region', () => {
   ];
   assert.equal(selectedRegionId(results, 'za'), 'za');
   assert.equal(selectedRegionId(results, 'us'), null);
+});
+
+test('identifies the regional host and defaults local origins to ZA', () => {
+  assert.equal(regionIdForOrigin('https://boombeard.co.za'), 'za');
+  assert.equal(regionIdForOrigin('https://us.boombeard.co.za'), 'us');
+  assert.equal(regionIdForOrigin('http://localhost:8080'), 'za');
 });
