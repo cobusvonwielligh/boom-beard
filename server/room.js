@@ -59,9 +59,8 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
    * which is what the room did before the freeze existed.
    */
   countIn = COUNT_IN_TICKS,
-  /* Ticks a joining or rejoining player is held off the board before being placed. See
-   * ARRIVE_DELAY_TICKS. Zero by default, like `minBots`, so a test room seats people exactly as
-   * its test expects; the real server passes the constant in (server/net.js). */
+  /* Ticks a living reconnect is held off the board before being placed. A first-time entrant
+   * now waits in the shop instead. See ARRIVE_DELAY_TICKS. */
   arriveIn = 0,
   botEmoteRandom = Math.random,
 }) {
@@ -206,11 +205,12 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     seats[seat] = {
       playerId: id, name, admin, mask: 0, inputs: new Map(), lastAckTick: 0,
       connected: true, goneSince: 0, lastInputAt: state.tick, colour: pickColour(seat),
+      firstSpawnPending: true, firstSpawnRequested: false,
     };
     streaks[seat] = newStreak();
     const p = createPlayer(seat, name);
     state.players[seat] = p;
-    if (arriveIn > 0) holdArrival(p); else respawn(p);
+    p.respawnAt = state.tick;
     topUpBots();
     return { seat, resumed: false, playerId: id, displaced };
   }
@@ -228,7 +228,13 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     p.respawnAt = p.arriveAt;
   }
   function placeArrivals() {
-    for (const p of state.players) {
+    for (let i = 0; i < state.players.length; i++) {
+      const p = state.players[i];
+      const seat = seats[i];
+      if (p && seat?.firstSpawnPending && seat.firstSpawnRequested && state.tick >= countIn) {
+        respawn(p);
+        continue;
+      }
       if (!p?.arriving || state.tick < p.arriveAt) continue;
       p.arriving = false;
       p.arriveAt = 0;
@@ -374,6 +380,10 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     p.x = tileCentre(pick.tx);
     p.y = tileCentre(pick.ty);
     p.alive = true;
+    if (seats[p.i]?.firstSpawnPending) {
+      seats[p.i].firstSpawnPending = false;
+      seats[p.i].firstSpawnRequested = false;
+    }
     p.hp = MAX_HP;                               // everybody starts whole; see MAX_HP
     applyStatus(state, p, STATUS.INVULN, STATUS_TICKS[STATUS.INVULN]);
     // Godmode is a property of the SEAT, not of the body. `respawn` clears every status, and a
@@ -657,7 +667,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     // as well or the next bank would compute a negative delta and the board would ignore it.
     const carried = seats.map(s =>
       (s ? { ...s, inputs: new Map(), mask: 0, goneSince: 0, lastAckTick: 0, lastInputAt: 0,
-             banked: null } : null));
+             firstSpawnRequested: false, banked: null } : null));
     state = createState(MAPS[mapIndex]);
     // The only thing the simulation is told about the clock, and only the gull raid reads it:
     // see GULL_RAID_AT_MIN. Everything else that cares about the end of the round is up here.
@@ -670,7 +680,8 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
       // Carried across the round boundary with the seat; see setBots.
       if (carried[i].isBot) p.isBot = true;
       state.players[i] = p;
-      respawn(p);
+      if (carried[i].firstSpawnPending) p.respawnAt = state.tick;
+      else respawn(p);
     }
     // The one moment colours may move: nobody is mid-fight, and the welcome below repaints all.
     settleColours();
@@ -691,7 +702,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     b: p.bombs, f: p.radius, sp: p.speed, sh: p.shields,
     // Health: whole or half. Only sent when it is not whole, which is the rare case.
     ...(p.alive && p.hp < MAX_HP ? { hp: p.hp } : null),
-    // Arriving, not dead: off the board for a moment after joining. See holdArrival.
+    // Arriving, not dead: lifted off the board briefly after a living reconnect. See holdArrival.
     ...(p.arriving ? { ar: 1, art: p.arriveAt } : null),
     s: p.score, k: p.kills, dd: p.deaths, stat: p.status,
     sk: p.streakCount || 0, skt: p.streakLastKillTick ?? -1,
@@ -1147,7 +1158,13 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
   /** Pressing SPACE while dead. Kept separate from the input mask so the intent is explicit. */
   function requestRespawn(seat) {
     const p = state.players[seat];
-    if (p && !p.alive && state.tick >= p.respawnAt) respawn(p);
+    if (!p || p.alive || between || state.tick < p.respawnAt) return;
+    const playerSeat = seats[seat];
+    if (playerSeat?.firstSpawnPending && state.tick < countIn) {
+      playerSeat.firstSpawnRequested = true;
+      return;
+    }
+    respawn(p);
   }
 
   const roundInfo = () => ({ tick: state.tick, endsAt: roundTicks, between, map: state.map.id });

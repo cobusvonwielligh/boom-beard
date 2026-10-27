@@ -55,6 +55,7 @@ test('the server sends health only when it is not whole, and only for the living
   const r = createRoom({ countIn: 0, onBroadcast: m => { const x = typeof m === 'function' ? m(0) : m; if (x.t === 'snap') sent.push(x); } });
   try {
     const { seat } = r.join('a', 'alice');
+    r.requestRespawn(seat);
     r.tick(); r.tick();
     const whole = sent.at(-1).players.find(p => p.i === seat);
     assert.equal(whole.hp, undefined, 'whole health was put on the wire');

@@ -28,7 +28,7 @@ const startServer = () => new Promise((resolve, reject) => {
       // produce, which five frozen seconds of count-in would simply swallow. The freeze has its
       // own test in test/countin.test.js.
       COUNT_IN: '0',
-      // Same for the three seconds a joiner waits to be placed: see test/arrival.test.js.
+      // Same for the reconnect arrival effect: see test/arrival.test.js.
       ARRIVE_IN: '0' },
     stdio: ['ignore', 'pipe', 'inherit'],
   });
@@ -65,6 +65,7 @@ async function client(name, playerId = null) {
       ws.send(JSON.stringify({ t: 'input', tick: fromTick + i, m: mask }));
     }
   };
+  c.respawn = () => ws.send(JSON.stringify({ t: 'respawn' }));
   return c;
 }
 
@@ -84,9 +85,16 @@ test('room end to end', async t => {
     const own = a.welcome.players.find(p => p.i === a.welcome.you);
     assert.equal(own.sk, 0);
     assert.equal(own.skt, -1);
+    assert.equal(own.st, 0, 'a new player was spawned before seeing the shop');
+    assert.equal(own.dd, 0, 'a first spawn was counted as a death');
+    assert.equal(own.ar, undefined, 'a new player was treated as an arrival');
+    a.respawn();
+    b.respawn();
     await wait(200);
     const names = a.snaps.at(-1).players.map(p => p.i).sort();
     assert.ok(names.length >= 2, 'both players present in snapshots');
+    assert.equal(a.me().st, 1, 'the first respawn action did not spawn immediately');
+    assert.equal(b.me().st, 1, 'the other first respawn action did not spawn immediately');
   });
 
   await t.test('spawns are far apart, not stacked', async () => {

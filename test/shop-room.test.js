@@ -28,6 +28,7 @@ test('room-authoritative gold shop', async t => {
     const human = room.join('human-id', 'ann').seat;
     const p = room.state.players[human];
     p.coins = 2;
+    room.requestRespawn(human);
 
     assert.equal(room.buyShop(human, 'speed').why, 'shop is closed');
     assert.equal(leaderboard.economy(careerKey('human-id', 'ann')), null,
@@ -45,6 +46,35 @@ test('room-authoritative gold shop', async t => {
     const bot = room.state.players.findIndex(player => player?.isBot);
     assert.equal(room.buyShop(bot, 'speed').why, 'shop unavailable');
     assert.equal(room.shopState(-1).ok, false);
+  });
+
+  await t.test('a new player can buy from the first-spawn shop and respawn immediately', async t => {
+    const { room } = await setup(t);
+    const seat = room.join('human-id', 'ann').seat;
+    const p = room.state.players[seat];
+    p.coins = 1;
+
+    assert.equal(p.alive, false);
+    assert.equal(p.deaths, 0);
+    assert.equal(room.buyShop(seat, 'speed').ok, true);
+    assert.equal(p.alive, false, 'buying from the shop spawned the player');
+
+    room.requestRespawn(seat);
+    assert.equal(p.alive, true, 'the first spawn waited for a death cooldown');
+    assert.equal(p.speed, 2, 'the queued upgrade did not apply on first spawn');
+  });
+
+  await t.test('an unspawned player stays in the shop across a round reset', async t => {
+    const { room } = await setup(t);
+    const seat = room.join('human-id', 'ann').seat;
+
+    room.restartRound();
+    const p = room.state.players[seat];
+    assert.equal(p.alive, false, 'the pending first spawn was auto-spawned by the reset');
+    assert.equal(p.deaths, 0);
+
+    room.requestRespawn(seat);
+    assert.equal(p.alive, true, 'the player could not choose their first spawn after reset');
   });
 
   await t.test('purchased upgrades apply on the next respawn', async t => {
@@ -101,6 +131,7 @@ test('room-authoritative gold shop', async t => {
     });
     const seat = room.join('human-id', 'ann').seat;
     const p = room.state.players[seat];
+    room.requestRespawn(seat);
     p.alive = false;
     p.coins = 7;
     for (const item of ['bombs', 'bombs', 'fire', 'speed', 'shield', 'stim']) {
@@ -129,6 +160,7 @@ test('room-authoritative gold shop', async t => {
   await t.test("disconnected queues apply on that player's next spawn", async t => {
     const { leaderboard, room } = await setup(t);
     const held = room.join('held-id', 'held').seat;
+    room.requestRespawn(held);
     room.state.players[held].alive = false;
     room.state.players[held].coins = 1;
     assert.equal(room.buyShop(held, 'speed').ok, true);
@@ -141,6 +173,7 @@ test('room-authoritative gold shop', async t => {
     leaderboard.buy(lateKey, 'fire');
     room.restartRound();
     const late = room.join('late-id', 'late').seat;
+    room.requestRespawn(late);
     assert.equal(room.state.players[late].radius, START_RADIUS + 1);
     assert.equal(leaderboard.economy(lateKey).pending.fire, 0);
     room.restartRound();

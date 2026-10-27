@@ -85,6 +85,8 @@ The between-round intermission changes from 20 seconds to 16 seconds.
 
 The same shop shelf appears in the existing death/intermission card:
 
+- before a player's first spawn in a round, immediately, with the respawn action available and no
+  death cooldown; a click during the opening count-in waits for the shared start tick;
 - while dead, below the death content and above the manual respawn action;
 - between rounds, below the standings/countdown content.
 

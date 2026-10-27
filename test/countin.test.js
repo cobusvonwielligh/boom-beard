@@ -1,8 +1,7 @@
 // The count-in is a rule, not a caption: nobody moves until it reaches zero.
 //
-// It is also the one rule in the project that every other room test opts out of (`countIn: 0`),
-// so this file is the only thing standing between "five seconds of fairness at the top of a
-// round" and "a number on the screen that means nothing".
+// Most room tests opt out with `countIn: 0`; this file verifies the shared freeze and start tick,
+// while arrival tests cover how a first-spawn request joins that same boundary.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -17,18 +16,21 @@ test('a person cannot move or bomb until the count-in is over', () => {
   try {
     const { seat } = r.join('p1', 'cobus');
     const me = r.state.players[seat];
-    const from = { x: me.x, y: me.y };
+    r.requestRespawn(seat);
 
     // Hold right and the bomb key for the whole count-in.
     for (let i = 0; i < COUNT_IN_TICKS; i++) {
       r.input(seat, r.state.tick, IN_RIGHT | IN_BOMB);
       r.tick();
     }
-    assert.equal(me.x, from.x, 'moved during the count-in');
-    assert.equal(me.y, from.y, 'moved during the count-in');
+    assert.equal(me.alive, false, 'spawned during the count-in');
     assert.equal(r.state.bombs.length, 0, 'placed a bomb during the count-in');
 
-    // And the moment it lifts, the same input works.
+    // At the shared start tick the requested spawn is placed, then movement resumes.
+    r.input(seat, r.state.tick, 0);
+    r.tick();
+    assert.equal(me.alive, true, 'the requested spawn did not happen at the shared start');
+    const from = { x: me.x, y: me.y };
     for (let i = 0; i < 6; i++) {
       r.input(seat, r.state.tick, IN_RIGHT);
       r.tick();
@@ -80,6 +82,7 @@ test('countIn: 0 is the old behaviour, exactly', () => {
   const r = room({ countIn: 0 });
   try {
     const { seat } = r.join('p1', 'cobus');
+    r.requestRespawn(seat);
     const me = r.state.players[seat];
     const x0 = me.x;
     for (let i = 0; i < 6; i++) {

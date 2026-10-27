@@ -64,6 +64,7 @@ test('the room broadcasts a bot reaction when the bot earns a kill', () => {
   try {
     room.setBots(1);
     const { seat: victimSeat } = room.join('human-id', 'Human');
+    room.requestRespawn(victimSeat);
     const victim = room.state.players[victimSeat];
     victim.status = 0;
     victim.statusUntil = {};

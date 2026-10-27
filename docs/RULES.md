@@ -345,12 +345,12 @@ Fire hurts you unless you are Invulnerable. **Two hits kill.**
 - You respawn by pressing **SPACE** after a **13.5-second** cooldown, with **90 ticks (3 s)**
   Invulnerability.
 
-**Joining, or coming back.** A player who joins before the round's opening count-in ends waits
-off-board and spawns with everyone on the start tick. A player who joins after play has started
-(or rejoins while alive) waits **3 seconds** (`ARRIVE_DELAY_TICKS`; `arrive_in` in config.ini),
-with a personal animated countdown, then uses the ordinary arrival effect: a beam of their colour,
-four arrows closing in and a gold YOU. Arriving is not dead - no death, no card, and the respawn
-key cannot place you early. Rejoining while dead stays dead.
+**First spawn, or coming back.** A player who has not spawned in the current round enters in the
+shop immediately, with no death cooldown. If the opening count-in is still running, a requested
+spawn waits for the shared start tick; otherwise it is immediate. The player chooses when to
+leave the shop. Rejoining while alive keeps the **3-second** arrival effect
+(`ARRIVE_DELAY_TICKS`; `arrive_in` in config.ini): a personal countdown, a beam of their colour,
+four arrows closing in and a gold YOU. Rejoining while dead keeps the ordinary death cooldown.
 
 **Where you respawn.** Every safe map spawn is a candidate, weighted by the *square* of the
 distance to the nearest living player - twice as far away is four times as likely. Safe means the

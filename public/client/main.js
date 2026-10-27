@@ -385,7 +385,7 @@ syncAudio();
 
 // ─── net ──────────────────────────────────────────────────────────────────────
 
-const PASSWORD_TOAST_MS = Math.round(1600 * 1.33);
+const PASSWORD_TOAST_MS = 5000;
 
 const toast = (msg, duration = 1600) => {
   const el = $('toast');
@@ -1578,7 +1578,7 @@ function drawXp(p) {
  *
  * Timed from the tick your own `alive` flag went false rather than from anything on the wire:
  * the server owns `respawnAt` but never sends it, and re-deriving it here is accurate to the two
- * ticks of snapshot granularity - which nobody can see in a number that counts whole seconds.
+ * ticks of snapshot granularity. A new player has no prior death, so their first spawn is ready.
  *
  * The button is genuinely disabled while it counts. A button that looks pressable and does
  * nothing is worse than one that tells you to wait.
@@ -1587,7 +1587,8 @@ function drawRespawn(me) {
   const btn = $('respawn');
   if (me.alive || me.arriving) { diedAtTick = -1; return; }
   if (diedAtTick < 0) diedAtTick = world.tick;
-  const left = Math.max(0, RESPAWN_DELAY_TICKS - (world.tick - diedAtTick));
+  const firstSpawn = me.deaths === 0;
+  const left = firstSpawn ? 0 : Math.max(0, RESPAWN_DELAY_TICKS - (world.tick - diedAtTick));
   const secs = Math.ceil(left / TICK_HZ);
   // The moment it becomes pressable, once. You have been watching a number for ten seconds;
   // this is what lets you stop watching it.
@@ -1911,11 +1912,13 @@ function showDeadBanner(by) {
  * then another half second on top so the two do not cross-fade into each other.
  */
 // The banner runs for 4.4s (see #deadBanner in style.css) and the dialog takes over the instant
-// it clears, so the screen is never empty and the two never overlap.
+// it clears after an actual death. A first-time entrant has no death banner to wait for.
 const DEAD_DIALOG_DELAY_TICKS = Math.round(4.4 * TICK_HZ);
 
 function showDead(dead) {
-  const held = dead && diedAtTick >= 0 && world.tick - diedAtTick < DEAD_DIALOG_DELAY_TICKS;
+  const firstSpawn = world.me()?.deaths === 0;
+  const held = dead && !firstSpawn && diedAtTick >= 0
+    && world.tick - diedAtTick < DEAD_DIALOG_DELAY_TICKS;
   const visible = dead && !held;
   $('dead').style.display = visible ? 'grid' : 'none';
   if (!roundOverUntil) {
@@ -2609,8 +2612,8 @@ function askPassword(mode, why) {
   $('pwGroup').style.animation = '';
   input.focus();
   toast(pwMode === 'signup'
-    ? `"${nameInput.value.trim()}" is yours - pick a password`
-    : (why || 'that name needs its password'));
+    ? `Ahoy, ${nameInput.value.trim()}! Pick a password to claim your pirate name.`
+    : (why || 'that name needs its password'), PASSWORD_TOAST_MS);
 }
 
 function passwordErrorMessage(why) {
