@@ -34,7 +34,7 @@ test('death and intermission shop reuse the approved game assets and palette', a
     assert.ok(shop.includes(`<span class="shopBundle">${bundle}</span>`),
       `${item} has the correct bundle size`);
     has(itemMarkup, /class="shopIcon"/, `${item} icon has a glow wrapper`);
-    has(itemMarkup, new RegExp(`<span class="shopPrice"><svg[^>]*><use href="#i-coin"\\s*\\/><\\/svg>\\s*${cost}</span>`),
+    has(itemMarkup, new RegExp(`<span class="shopPrice"\\s*>\\s*<svg[^>]*><use href="#i-coin"\\s*\\/><\\/svg>\\s*${cost}\\s*<\\/span\\s*>`),
       `${item} displays its gold cost`);
   }
   for (const [item, id, colour] of [
