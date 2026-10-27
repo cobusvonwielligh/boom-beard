@@ -41,7 +41,7 @@ function renderSignupMeter(count) {
     return wheel;
   }));
   root.setAttribute('aria-label', count === null
-    ? 'signup count unavailable' : `${count} humans registered`);
+    ? 'signup count unavailable' : `${count} players registered`);
 }
 
 async function refreshSignupMeter() {
