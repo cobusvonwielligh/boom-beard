@@ -67,4 +67,5 @@ test('IP bootstrap installs Certbot on Python 3.11 and checks IP-certificate sup
   assert.match(script, /python3\.11 -m venv "\$CERTBOT_HOME"/);
   assert.match(script, /CERTBOT_HELP=\$\("\$CERTBOT_HOME\/bin\/certbot" certonly --help all/);
   assert.match(script, /--ip-address/);
+  assert.match(script, /ExecStart=\/opt\/certbot311\/bin\/certbot renew/);
 });

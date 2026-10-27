@@ -294,7 +294,7 @@ sudo tee /etc/systemd/system/certbot-renew.service >/dev/null <<'UNIT'
 Description=Renew TLS certificates
 [Service]
 Type=oneshot
-ExecStart=$CERTBOT_HOME/bin/certbot renew --quiet --standalone --pre-hook "systemctl stop boom-beard" --post-hook "systemctl start boom-beard"
+ExecStart=/opt/certbot311/bin/certbot renew --quiet --standalone --pre-hook "systemctl stop boom-beard" --post-hook "systemctl start boom-beard"
 UNIT
 sudo tee /etc/systemd/system/certbot-renew.timer >/dev/null <<'UNIT'
 [Unit]
