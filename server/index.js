@@ -17,6 +17,7 @@ import { createAdminAuth } from './admin-auth.js';
 import { createAdminData, createMetricHistory } from './admin-data.js';
 import { createAdminHttpHandler } from './admin-http.js';
 import { createGeography } from './geography.js';
+import { createRegionStatusHandler } from './region-status.js';
 import geoip from 'geoip-country';
 import { startWebTransport } from './webtransport.js';
 import { createGuard } from './guard.js';
@@ -64,7 +65,7 @@ const CSP = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://pagead2.googlesyndication.com https://www.google.com",
   "media-src 'self'",
-  "connect-src 'self' ws: wss: https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://pagead2.googlesyndication.com https://www.google.com https://ad.doubleclick.net",
+  "connect-src 'self' ws: wss: https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://pagead2.googlesyndication.com https://www.google.com https://ad.doubleclick.net https://us.boombeard.co.za",
   "frame-src https://www.googletagmanager.com",
   "object-src 'none'",
   "base-uri 'none'",
@@ -142,6 +143,7 @@ function handleDeploy(req, res) {
 const started = Date.now();
 const guard = createGuard();
 let adminHttp;
+let regionStatusHttp;
 let geography = null;
 let lastProcessSample = { at: process.hrtime.bigint(), usage: process.cpuUsage() };
 
@@ -259,6 +261,8 @@ async function serve(req, res) {
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
     return res.end(body);
   }
+
+  if (url === '/region-status' && regionStatusHttp(req, res)) return;
 
   if (req.method === 'GET' && url === '/') {
     geography?.recordHit(req.socket.remoteAddress);
@@ -453,6 +457,10 @@ const hub = attachHub(server, {
   ...config, leaderboard, guard,
   geography,
   accounts: config.requirePassword ? accounts : null,
+});
+regionStatusHttp = createRegionStatusHandler({
+  regionId: config.regionId,
+  getStats: () => hub.health(),
 });
 
 /**

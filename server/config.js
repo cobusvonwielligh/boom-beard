@@ -40,10 +40,15 @@ const pick = (env, section, key, fallback) =>
   process.env[env] ?? ini[section]?.[key] ?? fallback;
 
 const num = (...a) => Number(pick(...a));
+const regionId = String(pick('REGION_ID', 'server', 'region_id', 'za')).toLowerCase();
+if (regionId !== 'za' && regionId !== 'us') {
+  throw new RangeError(`invalid region id: ${regionId}`);
+}
 
 export const config = {
   iniPath: fs.existsSync(iniPath) ? iniPath : null,
 
+  regionId,
   port: num('PORT', 'server', 'port', 8080),
   redirectPort: num('REDIRECT_PORT', 'server', 'redirect_port', 80),
   publicHost: pick('PUBLIC_HOST', 'server', 'public_host', 'localhost'),

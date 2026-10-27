@@ -62,6 +62,62 @@ test('the admin dashboard password is read from server configuration', () => {
   assert.equal(result.stdout, 'admin-secret-for-test');
 });
 
+test('region id defaults to za when no region is configured', () => {
+  const env = { ...process.env, CONFIG: path.join(ROOT, '.missing-region-config.ini') };
+  delete env.REGION_ID;
+  const result = spawnSync(process.execPath, [
+    '--input-type=module',
+    '-e',
+    "import { config } from './server/config.js'; process.stdout.write(config.regionId)",
+  ], { cwd: ROOT, env, encoding: 'utf8' });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, 'za');
+});
+
+test('region id falls back to server.region_id in the INI file', () => {
+  const env = { ...process.env, CONFIG: path.join(ROOT, 'config.example.ini') };
+  delete env.REGION_ID;
+  const result = spawnSync(process.execPath, [
+    '--input-type=module',
+    '-e',
+    "import { config } from './server/config.js'; process.stdout.write(config.regionId)",
+  ], { cwd: ROOT, env, encoding: 'utf8' });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, 'za');
+});
+
+test('region id is read from the environment and normalized to lowercase', () => {
+  const result = spawnSync(process.execPath, [
+    '--input-type=module',
+    '-e',
+    "import { config } from './server/config.js'; process.stdout.write(config.regionId)",
+  ], {
+    cwd: ROOT,
+    env: { ...process.env, CONFIG: path.join(ROOT, 'config.example.ini'), REGION_ID: 'US' },
+    encoding: 'utf8',
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, 'us');
+});
+
+test('invalid region id rejects configuration with a RangeError', () => {
+  const result = spawnSync(process.execPath, [
+    '--input-type=module',
+    '-e',
+    "import './server/config.js'",
+  ], {
+    cwd: ROOT,
+    env: { ...process.env, CONFIG: path.join(ROOT, '.missing-region-config.ini'), REGION_ID: 'moon' },
+    encoding: 'utf8',
+  });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /RangeError: invalid region id: moon/);
+});
+
 test('a name cannot pass for the server in chat', () => {
   assert.equal(playerName('SERVER'), 'anon');
   assert.equal(playerName(' server '), 'anon');
