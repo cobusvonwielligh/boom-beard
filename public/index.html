@@ -44,11 +44,7 @@
     />
 
     <!-- Fallback for older browsers -->
-    <link
-      rel="shortcut icon"
-      type="image/x-icon"
-      href="/favicon.ico"
-    />
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
 
     <!-- Apple devices -->
     <link
@@ -401,7 +397,8 @@
           <span class="sep"></span>
           <span class="right">
             <span class="stat" id="mapStat"
-              ><span class="k">map</span><span class="v" id="vMap">-</span></span
+              ><span class="k">map</span
+              ><span class="v" id="vMap">-</span></span
             >
             <button id="leave" title="esc">leave</button>
           </span>
@@ -530,29 +527,58 @@
           </div>
           <div class="shopShelf">
             <button class="shopItem bombs" type="button" data-shop-item="bombs">
-              <span class="shopIcon"><svg aria-hidden="true"><use href="#i-bomb" /></svg></span>
-              <span class="shopName">bombs</span><span class="shopBundle">+2</span>
-              <span class="shopPrice"><svg aria-hidden="true"><use href="#i-coin" /></svg>1</span>
+              <span class="shopIcon"
+                ><svg aria-hidden="true"><use href="#i-bomb" /></svg
+              ></span>
+              <span class="shopName">bombs</span
+              ><span class="shopBundle">+2</span>
+              <span class="shopPrice"
+                ><svg aria-hidden="true"><use href="#i-coin" /></svg>1</span
+              >
             </button>
             <button class="shopItem fire" type="button" data-shop-item="fire">
-              <span class="shopIcon"><svg aria-hidden="true"><use href="#i-fire" /></svg></span>
-              <span class="shopName">fire</span><span class="shopBundle">+1</span>
-              <span class="shopPrice"><svg aria-hidden="true"><use href="#i-coin" /></svg>1</span>
+              <span class="shopIcon"
+                ><svg aria-hidden="true"><use href="#i-fire" /></svg
+              ></span>
+              <span class="shopName">fire</span
+              ><span class="shopBundle">+1</span>
+              <span class="shopPrice"
+                ><svg aria-hidden="true"><use href="#i-coin" /></svg>1</span
+              >
             </button>
             <button class="shopItem speed" type="button" data-shop-item="speed">
-              <span class="shopIcon"><svg aria-hidden="true"><use href="#i-boot" /></svg></span>
-              <span class="shopName">speed</span><span class="shopBundle">+2</span>
-              <span class="shopPrice"><svg aria-hidden="true"><use href="#i-coin" /></svg>1</span>
+              <span class="shopIcon"
+                ><svg aria-hidden="true"><use href="#i-boot" /></svg
+              ></span>
+              <span class="shopName">speed</span
+              ><span class="shopBundle">+2</span>
+              <span class="shopPrice"
+                ><svg aria-hidden="true"><use href="#i-coin" /></svg>1</span
+              >
             </button>
-            <button class="shopItem shield" type="button" data-shop-item="shield">
-              <span class="shopIcon"><svg aria-hidden="true"><use href="#i-shield" /></svg></span>
-              <span class="shopName">shield</span><span class="shopBundle">+1</span>
-              <span class="shopPrice"><svg aria-hidden="true"><use href="#i-coin" /></svg>2</span>
+            <button
+              class="shopItem shield"
+              type="button"
+              data-shop-item="shield"
+            >
+              <span class="shopIcon"
+                ><svg aria-hidden="true"><use href="#i-shield" /></svg
+              ></span>
+              <span class="shopName">shield</span
+              ><span class="shopBundle">+1</span>
+              <span class="shopPrice"
+                ><svg aria-hidden="true"><use href="#i-coin" /></svg>2</span
+              >
             </button>
             <button class="shopItem stim" type="button" data-shop-item="stim">
-              <span class="shopIcon"><svg aria-hidden="true"><use href="#i-bolt" /></svg></span>
-              <span class="shopName">stim</span><span class="shopBundle">+2</span>
-              <span class="shopPrice"><svg aria-hidden="true"><use href="#i-coin" /></svg>1</span>
+              <span class="shopIcon"
+                ><svg aria-hidden="true"><use href="#i-bolt" /></svg
+              ></span>
+              <span class="shopName">stim</span
+              ><span class="shopBundle">+2</span>
+              <span class="shopPrice"
+                ><svg aria-hidden="true"><use href="#i-coin" /></svg>1</span
+              >
             </button>
           </div>
           <p id="shopHint">powerups are activated on next spawn</p>
@@ -887,7 +913,7 @@
           <p class="sub sub-split">
             <span>Plant bombs...</span>
             <span>Cause chaos...</span>
-            <span>try to survive!</span>
+            <span>...try to survive!</span>
           </p>
           <form id="playerForm" autocomplete="on">
             <div class="playerid-group">
@@ -933,7 +959,9 @@
                 <!-- Strength, as a bar and never as a sentence. It is only shown while setting a new
                  password, because telling somebody their EXISTING password is weak while they are
                  trying to sign in is noise they cannot act on. -->
-                <div class="pwMeter" id="pwMeter" aria-hidden="true"><i></i></div>
+                <div class="pwMeter" id="pwMeter" aria-hidden="true">
+                  <i></i>
+                </div>
               </div>
             </div>
           </form>
@@ -946,14 +974,14 @@
             class="regionDialog"
             aria-labelledby="regionDialogHeading"
           >
-            <h2 class="regionHeading" id="regionDialogHeading">Choose your region</h2>
-            <div
-              id="regionPicker"
-              role="group"
-              aria-label="Game region"
-            ></div>
+            <h2 class="regionHeading" id="regionDialogHeading">
+              Choose your region
+            </h2>
+            <div id="regionPicker" role="group" aria-label="Game region"></div>
             <div class="regionDialogActions">
-              <button id="regionCancel" class="ghost" type="button">cancel</button>
+              <button id="regionCancel" class="ghost" type="button">
+                cancel
+              </button>
               <button id="regionConfirm" type="button">continue</button>
             </div>
           </dialog>
@@ -1129,8 +1157,9 @@
         grid-template-columns: 1fr 1fr 1fr;
         align-items: center;
         width: 100%;
-        margin: 80px auto 0;
+        margin: 10px auto 0;
         gap: 60px;
+        transform: translateY(-43px);
       }
 
       .sub-split span {
