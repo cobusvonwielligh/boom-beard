@@ -13,7 +13,6 @@ const digest = value => crypto.createHash('sha256').update(value).digest('hex');
 export function createAdminAuth({
   accounts,
   adminName = 'cobusvw',
-  adminKey = '',
   password = '',
   sessionTtlMs = ADMIN_SESSION_TTL_MS,
   failureLimit = FAILURE_LIMIT,
@@ -21,7 +20,7 @@ export function createAdminAuth({
   lockMs = LOCK_MS,
   now = Date.now,
 } = {}) {
-  const enabled = !!accounts?.checkDevice && !!adminKey && !!password;
+  const enabled = !!accounts?.checkDevice && !!password;
   const sessions = new Map();
   const failures = new Map();
   const expectedName = String(adminName).trim().toLowerCase();
@@ -56,7 +55,7 @@ export function createAdminAuth({
     }
   }
 
-  function login({ name, deviceToken, adminKey: givenKey, password: givenPassword, ip } = {}) {
+  function login({ name, deviceToken, password: givenPassword, ip } = {}) {
     if (!enabled) return { ok: false };
     const at = now();
     sweep(at);
@@ -69,7 +68,6 @@ export function createAdminAuth({
     const normalizedName = typeof name === 'string' ? name.trim().toLowerCase() : '';
     const authorized = normalizedName === expectedName
       && accounts.checkDevice(expectedName, deviceToken)
-      && sameSecret(givenKey, adminKey)
       && sameSecret(givenPassword, password);
     if (!authorized) {
       fail(address, at);

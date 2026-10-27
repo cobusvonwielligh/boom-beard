@@ -13,7 +13,6 @@ import { createLeaderboard } from '../server/leaderboard.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DASHBOARD_PASSWORD = 'admin-integration-test-password';
-const ADMIN_KEY = 'admin-integration-test-key';
 
 async function unusedPort() {
   const server = net.createServer();
@@ -32,7 +31,6 @@ async function startServer(port, dataDir) {
       ...globalThis.process.env,
       PORT: String(port),
       DATA_DIR: dataDir,
-      ADMIN_KEY,
       ADMIN_DASHBOARD_PASSWORD: DASHBOARD_PASSWORD,
       REQUIRE_PASSWORD: '1',
       MIN_BOTS: '0',
@@ -121,7 +119,6 @@ test('configured admin dashboard authenticates and returns only safe player data
     body: JSON.stringify({
       name: 'cobusvw',
       deviceToken: registered.token,
-      adminKey: ADMIN_KEY,
       password: DASHBOARD_PASSWORD,
     }),
   });

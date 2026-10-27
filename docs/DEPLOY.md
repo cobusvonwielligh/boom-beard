@@ -158,7 +158,7 @@ Precedence is **environment variable > `config.ini` > built-in default**, so a o
 | | `min_bots` | `MIN_BOTS` | `6` | Bots kept topped up while anyone plays; 0 turns it off |
 | `deploy` | `token` | `DEPLOY_TOKEN` | blank | Secret for `POST /deploy`. **Blank disables the endpoint entirely** - correct on a laptop. |
 | | `ssh_host` / `ssh_user` / `ssh_key` | same | - | Used by `infra/deploy.sh`. |
-| `admin` | `key` | `ADMIN_KEY` | blank | Whoever's browser presents it is always host. Open `https://<host>/?admin=<key>` once; the browser keeps it and the address bar drops it. `bootstrap.sh` generates one. |
+| `admin` | `key` | `ADMIN_KEY` | blank | Optional game-host flag. Open `https://<host>/?admin=<key>` once; the browser keeps it and the address bar drops it. It is not required for the Command Deck. `bootstrap.sh` generates one. |
 | | `name` | `ADMIN_NAME` | `cobusvw` | Only used when `key` is blank, which is right on a laptop and wrong anywhere else: names are not secret. |
 | | `dashboard_password` | `ADMIN_DASHBOARD_PASSWORD` | blank | Second factor for `/admin`; blank disables the dashboard. Set the secret only in the server environment or ignored `config.ini`, never in the repository. |
 | `dev` | `lag` / `jitter` | `LAG` / `JITTER` | `0` | Outbound delay in ms. The process **refuses to start** if either is non-zero while TLS is configured. |
@@ -170,10 +170,10 @@ Precedence is **environment variable > `config.ini` > built-in default**, so a o
 resource charts between ZA-local and authenticated US-local machine metrics; live
 occupancy remains regional, while the leaderboard and player account totals are global. Requests to
 `/admin` on the US IP redirect to this ZA dashboard; the US instance is game-only.
-The dashboard requires `ADMIN_KEY`, `ADMIN_DASHBOARD_PASSWORD`, and
-`REQUIRE_PASSWORD=1`. Open the ZA bootstrap-provided `/?admin=<key>` link once in the
-trusted `cobusvw` browser, then use `/admin` and the dashboard passphrase. The second
-factor is never shipped to the browser or stored in git; it is accepted only over TLS.
+The dashboard requires `ADMIN_DASHBOARD_PASSWORD`, `REQUIRE_PASSWORD=1`, and a trusted
+`cobusvw` device token in the same browser. Open `/admin` and enter the dashboard
+passphrase; the optional `ADMIN_KEY` is only for in-game host privileges. The passphrase
+is never shipped to the browser or stored in git; it is accepted only over TLS.
 `bootstrap.sh` preserves an existing dashboard password and accepts a new one through the
 `ADMIN_DASHBOARD_PASSWORD` environment variable.
 The dashboard currently requires TLS to terminate directly in the app. It is not supported with

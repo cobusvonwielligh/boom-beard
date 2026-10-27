@@ -510,7 +510,6 @@ const authPreflightHttp = config.regionId === 'za'
 const adminAuth = createAdminAuth({
   accounts: config.requirePassword ? accounts : null,
   adminName: 'cobusvw',
-  adminKey: config.adminKey,
   password: config.adminDashboardPassword,
 });
 const adminMetrics = createMetricHistory(processMetrics);

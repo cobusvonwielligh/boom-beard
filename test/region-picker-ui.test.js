@@ -263,9 +263,9 @@ test('picker styles preserve focus and use the requested ping colors responsivel
   assert.match(index, /id="play"[^>]*>\s*LET'?S GO!\s*</i);
   assert.match(index, /transform:\s*translateY\(-43px\)/);
   assert.match(index, /width:\s*80%/);
-  assert.match(index, /transform:\s*translateX\(30px\)/);
-  assert.match(index, /transform:\s*translateX\(-80px\)/);
-  assert.match(index, /transform:\s*translateX\(80px\)/);
+  assert.match(index, /\.sub-split span:first-child\s*\{[^}]*translateX\(45px\)/);
+  assert.match(index, /\.sub-split span:nth-child\(2\)\s*\{[^}]*translateX\(-140px\)/);
+  assert.match(index, /\.sub-split span:last-child\s*\{[^}]*translateX\(60px\)/);
   assert.match(css, /#regionPicker\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);
   assert.match(css, /@media\s*\(max-width:\s*600px\)[\s\S]*?\.regionDialog[\s\S]*?width:/);
 });

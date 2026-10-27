@@ -93,7 +93,6 @@ test('admin HTTP routes require same-origin login and an HttpOnly session cookie
     body: JSON.stringify({
       name: 'cobusvw',
       deviceToken: 'trusted-device',
-      adminKey: 'server-flag',
       password: 'second-factor',
     }),
   });

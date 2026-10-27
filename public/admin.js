@@ -94,7 +94,6 @@ async function api(url, options = {}) {
 async function unlock() {
   const name = String(store.get('bv.name') ?? '').trim().toLowerCase();
   const deviceToken = store.get(trustKey(regionId, name));
-  const adminKey = store.get('bv.adminKey');
   const password = $('adminPassword').value;
   if (name !== 'cobusvw') {
     throw new Error('Sign in to the game as cobusvw in this browser first.');
@@ -102,16 +101,13 @@ async function unlock() {
   if (!deviceToken) {
     throw new Error('Sign in to the game as cobusvw in this browser before opening the Command Deck.');
   }
-  if (!adminKey) {
-    throw new Error('Open the configured admin link once in this browser to save its admin flag.');
-  }
 
   const response = await fetch('/admin/api/login', {
     method: 'POST',
     cache: 'no-store',
     credentials: 'same-origin',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, deviceToken, adminKey, password }),
+    body: JSON.stringify({ name, deviceToken, password }),
   });
   if (response.status === 429) {
     const seconds = Number(response.headers.get('Retry-After')) || 1;
