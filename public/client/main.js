@@ -26,12 +26,15 @@ import { createQuips, MENU_QUIPS } from './quips.js';
 import { createMenuViz } from './menuviz.js';
 import { signupDigits, fetchSignupCount } from './signup-meter.js';
 import { store } from './store.js';
+import { createRegionPicker } from './region-picker.js';
 import { placeable } from '/shared/sim/bombs.js';
 import { streakActive } from '/shared/sim/state.js';
 import { MAPS } from '/shared/maps.js';
 import { SHOP_ITEMS, normaliseShopQueue } from '/shared/shop.js';
 
 const $ = id => document.getElementById(id);
+const regionPicker = createRegionPicker({ root: $('regionPicker'), store });
+regionPicker.start();
 
 function renderSignupMeter(count) {
   const digits = signupDigits(count);
@@ -2424,7 +2427,7 @@ nameInput.value = store.get('bv.name') || '';
  * @param observe watch instead of play. A spectator takes no seat, so this is also the way in
  *   when the server is full - which is the whole reason the feature exists.
  */
-function play(observe = false) {
+async function play(observe = false) {
   const name = nameInput.value.trim();
   /* Everything that can be checked here is checked here, and every answer is a toast.
    *
@@ -2468,6 +2471,18 @@ function play(observe = false) {
     }
   }
   $('play').disabled = true;
+  let regionId;
+  try {
+    regionId = await regionPicker.prepareJoin();
+  } catch (error) {
+    toast(`server check failed: ${error.message}`);
+    $('play').disabled = false;
+    return;
+  }
+  if (!regionId) {
+    $('play').disabled = false;
+    return;
+  }
   observing = observe;
   document.body.classList.toggle('observing', observe);
   store.set('bv.name', name);
@@ -2549,7 +2564,7 @@ function play(observe = false) {
     const mine = (bomb.o ?? bomb.owner) === world.you;
     renderer?.addShake((mine ? 0.75 : 0.5) * (1 - d / 8));
   };
-  net.connect(name || 'watcher', observe, pw || null);
+  net.connect(name || 'watcher', observe, pw || null, regionId);
   // Out of the DOM as soon as it has gone down the socket. There is no reason for it to still be
   // in a form field behind the game, and a cleared field is also the signal that a retry needs
   // it typed again rather than silently re-sending the one that was just refused.

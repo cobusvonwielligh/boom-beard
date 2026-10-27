@@ -5,6 +5,8 @@
 // parallel socket would share the same wifi, NAT and server, so it would die in the same breath.
 
 import { PING_EVERY_MS, RTT_SAMPLES, CLOCK_SAFETY_MS, TICK_MS } from '/shared/constants.js';
+import { REGIONS, regionOrigin, transportUrls } from '/shared/regions.js';
+import { playerIdKey, trustKey } from '/shared/region-keys.js';
 import { createTransport } from './transport.js';
 // Every value this module keeps goes through the seal: the identity, the device id, the trusted
 // browser tokens and the admin key. See client/store.js for what sealing does and does not buy.
@@ -36,14 +38,12 @@ function deviceId() {
  * as it is not copied, and that it expires (DEVICE_TTL_MS) - and the server can revoke every one
  * of them for a name at once. See docs/DESIGN.md on the anti-cheat position.
  */
-const trustKey = name => `bv.trust.${String(name ?? '').trim().toLowerCase()}`;
-
-function trustFor(name) {
-  return store.get(trustKey(name)) || null;
+function trustFor(name, regionId) {
+  return store.get(trustKey(regionId, name)) || null;
 }
 
-function rememberTrust(name, token) {
-  store.set(trustKey(name), token);
+function rememberTrust(name, token, regionId) {
+  store.set(trustKey(regionId, name), token);
 }
 
 /**
@@ -68,6 +68,7 @@ adminKey();
 export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onScores, onStreak,
   onRoundTime, onRejected, onShop }) {
   let ws = null;
+  let connectionRegionId = 'za';
   // serverTick ≈ performance.now()/tickMs + tickOffset. Keeping an offset rather than a
   // timestamped sample means the estimate is continuous: a new ping nudges it instead of
   // restarting it, which is the difference between smooth remote players and a hitch every
@@ -94,10 +95,6 @@ export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onS
   let connectedAt = 0;
   let connectionGeneration = 0;
 
-  const secure = location.protocol === 'https:';
-  const wsUrl = `${secure ? 'wss' : 'ws'}://${location.host}/ws`;
-  // WebTransport needs a publicly trusted certificate, so it only exists on the real site.
-  const wtUrl = secure ? `https://${location.host}/wt` : null;
   let kind = null;
 
   const rttMin = () => (rtts.length ? Math.min(...rtts) : 0);
@@ -154,6 +151,8 @@ export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onS
     const generation = ++connectionGeneration;
     closedByUs = false;
     onStatus?.('connecting');
+    const origin = regionOrigin(connectionRegionId, globalThis.location?.origin ?? 'http://localhost:8080');
+    const { ws: wsUrl, wt: wtUrl } = transportUrls(origin);
 
     let transport = null;
     transport = createTransport({
@@ -183,7 +182,7 @@ export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onS
         // Guarded: a welcome with no id must not overwrite a good token with "undefined",
         // which the server would then accept as a real id.
         if (m.playerId) {
-          store.set('bv.playerId', m.playerId);
+          store.set(playerIdKey(connectionRegionId), m.playerId);
           hello = { ...hello, playerId: m.playerId };
         }
         /* Signed in. Keep the token, and forget the password.
@@ -193,10 +192,10 @@ export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onS
          * variable being re-sent every wifi blip is a password with a much larger surface than
          * it needs. The token that just arrived covers every one of those reconnects.
          */
-        if (m.trust && hello?.name) rememberTrust(hello.name, m.trust);
+        if (m.trust && hello?.name) rememberTrust(hello.name, m.trust, connectionRegionId);
         if (hello?.pw) {
           const { pw, ...rest } = hello;
-          hello = { ...rest, trust: trustFor(hello.name) };
+          hello = { ...rest, trust: trustFor(hello.name, connectionRegionId) };
         }
         connectedAt = performance.now();
         // The rate first: the tick below is converted to a clock using it.
@@ -225,7 +224,7 @@ export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onS
       case 'reject':
         // `forget` means the stored identity is what was refused, so drop it: the next attempt
         // then arrives as a new player instead of being turned away for the same reason.
-        if (m.forget) store.remove('bv.playerId');
+        if (m.forget) store.remove(playerIdKey(connectionRegionId));
         closedByUs = true;
         clearTimeout(reconnectTimer);
         reconnectTimer = 0;
@@ -294,7 +293,11 @@ export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onS
      *   dropped from `hello` the moment the server accepts it - so a reconnect an hour later
      *   does not carry it, and a crash dump of this tab does not contain it.
      */
-    connect(name, observe = false, pw = null) {
+    connect(name, observe = false, pw = null, regionId = 'za') {
+      if (!REGIONS.some(region => region.id === regionId)) {
+        throw new RangeError(`unknown region: ${regionId}`);
+      }
+      connectionRegionId = regionId;
       clearTimeout(reconnectTimer);
       reconnectTimer = 0;
       ++connectionGeneration;
@@ -304,14 +307,14 @@ export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onS
       pending.clear();
       hello = {
         t: 'hello', name, observe,
-        playerId: store.get('bv.playerId') || null,
+        playerId: store.get(playerIdKey(connectionRegionId)) || null,
         // This browser, for the server's sessions-per-browser limit. Separate from the player
         // identity, so signing out does not reset it.
         device: deviceId(),
         adminKey: adminKey(),
         // This browser's proof that it has signed in as this name before, if it has one. The
         // reason the password box is not part of joining a game. See server/accounts.js.
-        trust: trustFor(name),
+        trust: trustFor(name, connectionRegionId),
         ...(pw ? { pw } : null),
       };
       open();
@@ -329,7 +332,7 @@ export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onS
     },
     /** Drop the stored identity. The seat is only released if the server is told as well. */
     forgetIdentity() {
-      store.remove('bv.playerId');
+      store.remove(playerIdKey(connectionRegionId));
       hello = hello ? { ...hello, playerId: null } : hello;
     },
 

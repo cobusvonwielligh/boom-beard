@@ -63,7 +63,7 @@ test('picker renders two named buttons with counts, selected state, and offline 
   const picker = createRegionPicker({
     root,
     regions,
-    store: { getItem: () => 'za', setItem() {} },
+    store: { get: () => 'za', set() {} },
     fetchImpl: async url => ({
       ok: true,
       json: async () => status(url.includes('za.example') ? 'za' : 'us'),
@@ -74,6 +74,8 @@ test('picker renders two named buttons with counts, selected state, and offline 
   const buttons = root.children.filter(child => child.tagName === 'BUTTON');
 
   assert.equal(buttons.length, 2);
+  assert.equal(buttons[0].attributes['data-region'], 'za');
+  assert.equal(buttons[1].attributes['data-region'], 'us');
   assert.match(buttons[0].textContent, /🇿🇦.*South Africa/s);
   assert.match(buttons[0].textContent, /3\/16.*2 bots/s);
   assert.equal(buttons[0].attributes['aria-pressed'], 'true');
@@ -82,13 +84,37 @@ test('picker renders two named buttons with counts, selected state, and offline 
   picker.stop();
 });
 
+test('local development probes its own ZA server and remote US server', async t => {
+  const root = makeRoot();
+  root.ownerDocument = {
+    ...documentStub,
+    defaultView: { location: { origin: 'http://localhost:8080' } },
+  };
+  const requests = [];
+  const picker = createRegionPicker({
+    root,
+    regions,
+    store: { get: () => null, set() {} },
+    fetchImpl: async url => {
+      requests.push(url);
+      const region = url.includes('us.example') ? 'us' : 'za';
+      return { ok: true, json: async () => status(region) };
+    },
+  });
+  t.after(() => picker.stop());
+
+  await picker.start();
+  assert.ok(requests.includes('http://localhost:8080/region-status'));
+  assert.ok(requests.includes('https://us.example/region-status'));
+});
+
 test('choosing a region persists the selection and updates pressed styling', async t => {
   const root = makeRoot();
   let saved;
   const picker = createRegionPicker({
     root,
     regions,
-    store: { getItem: () => null, setItem: (_key, value) => { saved = value; } },
+    store: { get: () => null, set: (_key, value) => { saved = value; } },
     fetchImpl: async url => ({
       ok: true,
       json: async () => status(url.includes('za.example') ? 'za' : 'us'),
@@ -113,7 +139,7 @@ test('a saved offline choice stays selected and blocks joining with its reason v
   const picker = createRegionPicker({
     root,
     regions,
-    store: { getItem: () => 'us', setItem() {} },
+    store: { get: () => 'us', set() {} },
     fetchImpl: async url => url.includes('us.example')
       ? { ok: false, status: 503 }
       : { ok: true, json: async () => status('za') },
@@ -125,6 +151,9 @@ test('a saved offline choice stays selected and blocks joining with its reason v
   assert.equal(picker.selectedRegion(), 'us');
   assert.equal(buttons[1].attributes['aria-pressed'], 'true');
   assert.equal(buttons[1].disabled, true);
+  assert.match(buttons[1].textContent, /OFFLINE/);
+  assert.doesNotMatch(buttons[1].textContent, /Network error/i);
+  assert.match(buttons[1].attributes.title, /HTTP 503/i);
   assert.equal(await picker.prepareJoin(), null);
   buttons = root.children.filter(child => child.tagName === 'BUTTON');
   assert.equal(picker.selectedRegion(), 'us');
@@ -138,7 +167,7 @@ test('a late probe cannot repaint a stopped picker', async t => {
   const picker = createRegionPicker({
     root,
     regions,
-    store: { getItem: () => null, setItem() {} },
+    store: { get: () => null, set() {} },
     fetchImpl: url => new Promise(resolve => pending.push({
       region: url.includes('za.example') ? 'za' : 'us',
       resolve,
