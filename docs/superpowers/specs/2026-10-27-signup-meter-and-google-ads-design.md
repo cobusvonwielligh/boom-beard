@@ -6,7 +6,7 @@ Show a durable human-signup total on the desktop landing page, give the `cobusvw
 
 ## Signup Definition
 
-A signup is one successfully registered account in the existing account store. Account keys are normalized names and cannot be registered twice, so the metric is a unique human-account count. Bots never register accounts and are excluded automatically.
+A signup is one successfully registered account in the existing account store. Account keys are normalized names and cannot be registered twice, so the metric is a unique player-account count. Bots never register accounts and are excluded automatically. The confirmed owner/test accounts `cobus`, `cobusvw`, and `cobusvonw` are excluded from the total and every rolling window; no unverified identity is removed.
 
 The account store already writes a millisecond `created` timestamp for new records. It will expose a pure `stats(now)` aggregate with:
 
@@ -39,7 +39,7 @@ The component is intentionally compact and does not alter the centered card's di
 - a weathered brass casing and small screw details;
 - a restrained glass highlight;
 - a rust-red least-significant digit;
-- the label `HUMANS REGISTERED`;
+- the label `PIRATES REGISTERED`;
 - at least five zero-padded wheels, expanding rather than truncating for larger totals.
 
 There is no mobile layout or mobile-specific behavior. The project remains desktop-only.

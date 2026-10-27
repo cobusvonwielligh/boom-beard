@@ -74,6 +74,7 @@ const TOKEN_BYTES = 32;
 // which is also the only cleanup this ever needs.
 export const DEVICE_TTL_MS = 30 * 24 * 3600_000;
 export const MAX_DEVICES = 5;
+const SIGNUP_COUNT_EXCLUSIONS = new Set(['cobus', 'cobusvw', 'cobusvonw']);
 
 /* Guessing limits, in memory only.
  *
@@ -229,8 +230,10 @@ export function createAccounts({ dataDir }) {
   function stats(now = Date.now()) {
     const at = Number(now);
     const safeNow = Number.isFinite(at) ? at : Date.now();
-    const out = { total: accounts.size, last24h: 0, last7d: 0, last30d: 0 };
-    for (const rec of accounts.values()) {
+    const out = { total: 0, last24h: 0, last7d: 0, last30d: 0 };
+    for (const [key, rec] of accounts) {
+      if (SIGNUP_COUNT_EXCLUSIONS.has(key)) continue;
+      out.total++;
       const created = Number(rec?.created);
       if (!Number.isFinite(created) || created > safeNow) continue;
       const age = safeNow - created;

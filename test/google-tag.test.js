@@ -7,12 +7,12 @@ const server = fs.readFileSync(new URL('../server/index.js', import.meta.url), '
 
 test('Google Ads tag has denied Consent Mode v2 defaults before loading', () => {
   assert.equal((html.match(/AW-18535357585/g) || []).length, 2);
-  const consent = html.indexOf("gtag('consent', 'default'");
+  const consent = html.search(/gtag\((['"])consent\1,\s*(['"])default\2/);
   const loader = html.indexOf('googletagmanager.com/gtag/js?id=AW-18535357585');
-  const config = html.indexOf("gtag('config', 'AW-18535357585')");
+  const config = html.search(/gtag\((['"])config\1,\s*(['"])AW-18535357585\2/);
   assert.ok(consent > 0 && consent < loader && loader < config, 'consent/tag/config order is unsafe');
   for (const key of ['ad_storage', 'ad_user_data', 'ad_personalization', 'analytics_storage']) {
-    assert.match(html, new RegExp(`'${key}': 'denied'`));
+    assert.match(html, new RegExp(`${key}\\s*:\\s*['"]denied['"]`));
   }
 });
 

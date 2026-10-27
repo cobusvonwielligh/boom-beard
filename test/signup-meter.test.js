@@ -28,6 +28,8 @@ test('the landing meter and owner signup diagnostics occupy their intended surfa
   const menu = html.slice(html.indexOf('<div id="menu">'), html.indexOf('<script type="module"'));
   assert.match(menu, /id="signupMeter"/);
   assert.match(menu, /id="signupDigits"/);
+  assert.match(menu, /pirates registered/);
+  assert.doesNotMatch(menu, /players registered|humans registered/);
   assert.match(html, /id="perfSignup24"/);
   assert.match(html, /id="perfSignup7"/);
   assert.match(html, /id="perfSignup30"/);

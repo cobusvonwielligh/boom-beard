@@ -196,7 +196,10 @@ test('DEVICE_TTL_MS is a month, not a session', () => {
 test('signup statistics count unique accounts in inclusive rolling windows', async () => {
   const d = dir();
   const a = createAccounts({ dataDir: d });
-  for (const name of ['fresh', 'day-edge', 'week-edge', 'month-edge', 'old', 'legacy']) {
+  for (const name of [
+    'fresh', 'day-edge', 'week-edge', 'month-edge', 'old', 'legacy',
+    'cobus', 'cobusvw', 'cobusvonw',
+  ]) {
     assert.equal((await a.register(name, PW)).ok, true);
   }
   a.flushSync();
