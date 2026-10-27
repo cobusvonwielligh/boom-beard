@@ -1,6 +1,6 @@
 {
   "name": "boom-beard",
-  "version": "1.0.6",
+  "version": "1.0.8",
   "private": true,
   "type": "module",
   "description": "16-player browser Bomberman for Friday office games",

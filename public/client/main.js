@@ -26,7 +26,8 @@ import { createQuips, MENU_QUIPS } from './quips.js';
 import { createMenuViz } from './menuviz.js';
 import { signupDigits, fetchSignupCount } from './signup-meter.js';
 import { store } from './store.js';
-import { createRegionPicker } from './region-picker.js';
+import { createRegionPicker, pingClass } from './region-picker.js';
+import { readTrustToken, trustKey } from '/shared/region-keys.js';
 import { placeable } from '/shared/sim/bombs.js';
 import { streakActive } from '/shared/sim/state.js';
 import { MAPS } from '/shared/maps.js';
@@ -398,13 +399,37 @@ syncAudio();
 
 const PASSWORD_TOAST_MS = 5000;
 
+let toastGeneration = 0;
+let toastDeadline = 0;
 const toast = (msg, duration = 1600) => {
-  const el = $('toast');
+  const inRegionDialog = regionPicker.isHoldingForConnect();
+  const el = $(inRegionDialog ? 'regionStatus' : 'toast');
+  const generation = ++toastGeneration;
   el.textContent = msg;
-  el.style.opacity = '1';
+  if (!inRegionDialog) el.style.opacity = '1';
+  toastDeadline = performance.now() + duration + 250;
   clearTimeout(toast.t);
-  toast.t = setTimeout(() => { el.style.opacity = '0'; }, duration);
+  toast.t = setTimeout(() => {
+    if (generation !== toastGeneration) return;
+    if (inRegionDialog) {
+      if (regionPicker.isHoldingForConnect()) el.textContent = '';
+    } else {
+      el.style.opacity = '0';
+    }
+  }, duration);
 };
+
+function waitForToastDismissal() {
+  const generation = toastGeneration;
+  const delay = Math.max(0, toastDeadline - performance.now());
+  return new Promise(resolve => setTimeout(() => {
+    if (generation !== toastGeneration) {
+      waitForToastDismissal().then(resolve);
+      return;
+    }
+    resolve();
+  }, delay));
+}
 
 let shopVisible = false;
 let shopSnapshot = null;
@@ -503,16 +528,24 @@ const net = createNet({
     renderer?.invalidateAll();
     renderer?.mapChanged();          // a different map size means a different scale
     if (!m.mapOnly) {
-      $('menu').style.display = 'none';
-      $('hud').classList.add('on');
-      menuViz.stop();                 // the menu is gone; stop drawing to a hidden canvas
-      if (!running) {
-        running = true;
-        last = performance.now();
-        acc = 0;                      // a stale accumulator would replay however long the menu was up
-        requestAnimationFrame(loop);
+      const enterMap = () => {
+        if (regionPicker.isHoldingForConnect()) regionPicker.close();
+        $('menu').style.display = 'none';
+        $('hud').classList.add('on');
+        menuViz.stop();               // the menu is gone; stop drawing to a hidden canvas
+        if (!running) {
+          running = true;
+          last = performance.now();
+          acc = 0;                    // a stale accumulator would replay however long the menu was up
+          requestAnimationFrame(loop);
+        }
+        renderer?.resize();           // the canvas was behind the menu; make sure it measured right
+      };
+      if (regionPicker.isHoldingForConnect()) {
+        waitForToastDismissal().then(enterMap);
+      } else {
+        enterMap();
       }
-      renderer?.resize();             // the canvas was behind the menu; make sure it measured right
     }
   },
   onSnap: snap => {
@@ -736,8 +769,10 @@ const net = createNet({
     clearStreakGlow();
     $('respawn').disabled = true;
 
-    const won = (m.standings || [])[0]?.i === world.you;
-    $('deadTitle').textContent = won ? 'you won the round' : 'round over';
+    const place = (m.standings || []).findIndex(player => player.i === world.you);
+    const podium = place >= 0 && place < 3;
+    const won = place === 0;
+    $('deadTitle').textContent = won ? 'you won the round!!' : 'round over';
     /* The CARD, not `firstElementChild`.
      *
      * `#dead`'s first element child is the round visualiser canvas, which was added later - so
@@ -747,6 +782,7 @@ const net = createNet({
      * landing on something that does not care. */
     const deadCard = $('dead').querySelector('.card');
     deadCard.classList.toggle('won', won);
+    deadCard.classList.toggle('podium', podium);
     deadCard.classList.add('round');
     $('dead').style.display = 'grid';
     sfx.play(won ? 'fanfare' : 'playoff');
@@ -941,6 +977,7 @@ const net = createNet({
      * long". `auth` tells us which of the three it is; see askPassword.
      */
     if (m.auth) {
+      regionPicker.close();
       // Initial signup/sign-in prompts explain why the field appeared. A failed attempt is
       // different: keep the field in place, mark it red and put the actionable reason in the
       // existing toast instead of growing a second inline error below the form.
@@ -957,6 +994,9 @@ const net = createNet({
     // net.js has already dropped the stored id, so pressing play again simply works - which is
     // the whole message, and it fits in the toast that has just said why.
     if (m.forget) toast(`${m.why} - press play to start again`);
+    if (regionPicker.isHoldingForConnect()) {
+      waitForToastDismissal().then(() => regionPicker.close());
+    }
   },
   // The connection readout lives in the HUD, which is hidden until you are in a game. Before
   // that, a full server or an unreachable one has to say so somewhere you can actually see it.
@@ -965,13 +1005,30 @@ const net = createNet({
     // thousand, and a label that almost never changes is a label nobody reads. The state still
     // goes on the title, so hovering says exactly what it is.
     $('conn').dataset.state = s;
+    if (s !== 'open') delete $('conn').dataset.ping;
     // The transport rides along in the tooltip: "open · webtransport". Worth having somewhere
     // visible, because a silent fallback to WebSocket is invisible by design.
     $('conn').title = s === 'open' && net.transport ? `${s} \u00b7 ${net.transport}` : s;
     if (running) return;
     toast(s);
+    if (regionPicker.isHoldingForConnect() && s !== 'connecting' && s !== 'open') {
+      waitForToastDismissal().then(() => {
+        if (regionPicker.isHoldingForConnect()) regionPicker.close();
+      });
+    }
     $('play').disabled = s === 'connecting' || s === 'open';
     if (s.startsWith('rejected')) $('play').disabled = false;
+  },
+  onPing: rtt => {
+    const conn = $('conn');
+    const state = conn.dataset.state || 'open';
+    if (!Number.isFinite(rtt)) {
+      delete conn.dataset.ping;
+      conn.title = state === 'open' && net.transport ? `${state} \u00b7 ${net.transport}` : state;
+      return;
+    }
+    conn.dataset.ping = pingClass(rtt);
+    conn.title = `${state}${net.transport ? ` \u00b7 ${net.transport}` : ''} \u00b7 ${rtt} ms`;
   },
 });
 
@@ -1819,7 +1876,7 @@ function endIntermission() {
   $('dead').style.display = 'none';
   $('respawn').style.display = '';
   $('deadTitle').textContent = 'you died';
-  $('dead').querySelector('.card').classList.remove('round', 'won');
+  $('dead').querySelector('.card').classList.remove('round', 'won', 'podium');
   // Cleared with it: onRoundEnd hides the button inline, and an inline style outlives a class.
   $('respawn').style.display = '';
   $('roundRows').textContent = '';
@@ -2430,6 +2487,61 @@ const nameInput = $('name');
 nameInput.maxLength = NAME_MAX_CHARS;
 nameInput.value = store.get('bv.name') || '';
 
+async function preflightAuth(name, password) {
+  const trust = readTrustToken(store, 'za', name) || readTrustToken(store, 'us', name);
+  let response;
+  try {
+    response = await fetch('/auth/preflight', {
+      method: 'POST',
+      cache: 'no-store',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        ...(password ? { password } : null),
+        ...(trust ? { trust } : null),
+      }),
+    });
+  } catch (error) {
+    console.error('password preflight failed', error);
+    toast('Could not check the password. Please try again.');
+    if (pwOpen) $('pw').value = '';
+    return { ok: false };
+  }
+
+  let result;
+  try {
+    result = await response.json();
+  } catch (error) {
+    console.error('password preflight returned invalid JSON', error);
+    toast('Could not check the password. Please try again.');
+    if (pwOpen) $('pw').value = '';
+    return { ok: false };
+  }
+  if (!response.ok || !result || typeof result !== 'object') {
+    toast(`Sign-in check failed: ${result?.error || `HTTP ${response.status}`}`);
+    if (pwOpen) $('pw').value = '';
+    return { ok: false };
+  }
+  if (!result.ok) {
+    if (result.auth === 'need' || result.auth === 'signup') {
+      askPassword(result.auth, result.why);
+    } else if (result.auth === 'bad' || result.auth === 'wait') {
+      passwordError(result.why);
+    } else {
+      toast(result.why || 'The player name could not be checked.');
+      if (result.auth === 'name') nameInput.focus();
+    }
+    if (pwOpen) $('pw').value = '';
+    return { ok: false };
+  }
+
+  const token = result.token || trust || null;
+  if (result.token) store.set(trustKey('za', name), result.token);
+  closePassword();
+  return { ok: true, token };
+}
+
 /**
  * @param observe watch instead of play. A spectator takes no seat, so this is also the way in
  *   when the server is full - which is the whole reason the feature exists.
@@ -2454,14 +2566,7 @@ async function play(observe = false) {
     return;
   }
   if ($('play').disabled) return;          // double-click would otherwise open a second socket
-  /* The password, if the box is open, and the box is only open because the server asked.
-   *
-   * Read here and passed straight down to `connect`: it is never stored, never kept in a module
-   * variable, and the field is cleared the moment it has been sent. The only thing that persists
-   * is the token the server sends back, which is what stops the box ever opening again on this
-   * machine. See trustFor in client/net.js.
-   */
-  const pw = pwOpen && !observe ? $('pw').value : '';
+  let pw = pwOpen && !observe ? $('pw').value : '';
   if (pwOpen && !observe) {
     if (!pw) { passwordError('a password is needed'); return; }
     if (pw.length > PASSWORD_MAX) {
@@ -2478,6 +2583,15 @@ async function play(observe = false) {
     }
   }
   $('play').disabled = true;
+  let authenticated = { ok: true, token: null };
+  if (!observe) {
+    authenticated = await preflightAuth(name, pw);
+    pw = '';
+    if (!authenticated.ok) {
+      $('play').disabled = false;
+      return;
+    }
+  }
   let regionId;
   try {
     regionId = await regionPicker.chooseRegion();
@@ -2490,6 +2604,7 @@ async function play(observe = false) {
     $('play').disabled = false;
     return;
   }
+  if (authenticated.token) store.set(trustKey(regionId, name), authenticated.token);
   observing = observe;
   document.body.classList.toggle('observing', observe);
   store.set('bv.name', name);
@@ -2571,7 +2686,7 @@ async function play(observe = false) {
     const mine = (bomb.o ?? bomb.owner) === world.you;
     renderer?.addShake((mine ? 0.75 : 0.5) * (1 - d / 8));
   };
-  net.connect(name || 'watcher', observe, pw || null, regionId);
+  net.connect(name || 'watcher', observe, null, regionId);
   // Out of the DOM as soon as it has gone down the socket. There is no reason for it to still be
   // in a form field behind the game, and a cleared field is also the signal that a retry needs
   // it typed again rather than silently re-sending the one that was just refused.

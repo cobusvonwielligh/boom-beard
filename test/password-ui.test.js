@@ -36,6 +36,28 @@ test('password prompts and validation toasts stay visible for five seconds', asy
     'the signup prompt is friendly and pirate-themed');
 });
 
+test('password preflight finishes before region selection and game connection', async () => {
+  const main = await read('public/client/main.js');
+  const server = await read('server/index.js');
+  const start = main.indexOf('async function play(');
+  const end = main.indexOf('/* The password box:', start);
+  const play = main.slice(start, end);
+  const preflight = play.indexOf('await preflightAuth(name, pw)');
+  const region = play.indexOf('await regionPicker.chooseRegion()');
+  const connect = play.indexOf('net.connect(');
+
+  assert.ok(preflight >= 0 && region > preflight && connect > region,
+    'the password must be checked before the user can choose a region');
+  assert.match(play, /if \(!authenticated\.ok\)\s*\{\s*\$\('play'\)\.disabled = false;\s*return;/);
+  assert.match(play, /net\.connect\(name\s*\|\|\s*'watcher',\s*observe,\s*null,\s*regionId\)/);
+  assert.match(main, /fetch\('\/auth\/preflight'/);
+  assert.match(main, /readTrustToken\(store,\s*'za',\s*name\)\s*\|\|\s*readTrustToken\(store,\s*'us',\s*name\)/);
+  assert.match(main, /store\.set\(trustKey\('za',\s*name\),\s*result\.token\)/);
+  assert.match(server, /authPreflightHttp\(req,\s*res\)/);
+  assert.match(server, /createAuthPreflightHandler/);
+  assert.match(main, /if \(result\.auth === 'name'\) nameInput\.focus\(\);[\s\S]*?if \(pwOpen\) \$\('pw'\)\.value = '';\s*return \{ ok: false \};/);
+});
+
 test('player id and password fields preserve their responsive form layout', async () => {
   const css = await read('public/style.css');
 

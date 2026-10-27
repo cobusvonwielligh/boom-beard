@@ -874,6 +874,18 @@ body.observing #who {
   background: var(--good);
   color: var(--good);
 }
+#conn[data-state="open"][data-ping="pingGood"] {
+  background: #70dc91;
+  color: #70dc91;
+}
+#conn[data-state="open"][data-ping="pingFair"] {
+  background: #ffb84d;
+  color: #ffb84d;
+}
+#conn[data-state="open"][data-ping="pingPoor"] {
+  background: #ff6d6d;
+  color: #ff6d6d;
+}
 /* Amber, not the accent. The dot is nine pixels wide and exists to be read without being
    looked at, which only works while its three states are three different hues. The accent
    used to be blue and could carry "in flight"; now that it is a red it collides with the
@@ -3280,7 +3292,7 @@ body.hurt:not(.dead) #avatar {
   text-align: left;
 }
 .card.round {
-  width: 460px;
+  width: min(500px, calc(100vw - 24px));
 }
 .card.round #roundTable {
   display: block;
@@ -3292,11 +3304,36 @@ body.hurt:not(.dead) #avatar {
   color: var(--gold);
 }
 
-/* You won it. The only place in the interface that gets the cast treatment on demand - and the
-   only time this card ever says something worth looking at twice. */
-.card.round.won {
-  width: min(500px, calc(100vw - 24px));
+@keyframes podiumRgbPulse {
+  0%, 100% {
+    border-color: #ff526d;
+    box-shadow: 0 0 0 1px #ff526d66, 0 0 16px #ff526d55, 0 0 36px #ff526d22;
+  }
+  16% {
+    border-color: #ff526d;
+    box-shadow: 0 0 0 2px #ff526dba, 0 0 34px #ff526d99, 0 0 68px #ff526d55;
+  }
+  33%, 34% {
+    border-color: #50ed82;
+    box-shadow: 0 0 0 1px #50ed8266, 0 0 16px #50ed8255, 0 0 36px #50ed8222;
+  }
+  50% {
+    border-color: #50ed82;
+    box-shadow: 0 0 0 2px #50ed82ba, 0 0 34px #50ed8299, 0 0 68px #50ed8255;
+  }
+  66% {
+    border-color: #56bdff;
+    box-shadow: 0 0 0 1px #56bdff66, 0 0 16px #56bdff55, 0 0 36px #56bdff22;
+  }
+  83% {
+    border-color: #56bdff;
+    box-shadow: 0 0 0 2px #56bdffba, 0 0 34px #56bdff99, 0 0 68px #56bdff55;
+  }
 }
+.card.round.podium {
+  animation: podiumRgbPulse 3s ease-in-out infinite;
+}
+/* You won it. The title still gets its cast treatment; the podium glow wraps the whole card. */
 .card.round.won #deadTitle {
   font-family: var(--display);
   font-size: clamp(26px, 3.2vw, 38px);
@@ -4512,9 +4549,20 @@ h1 {
 }
 .sub-split {
   color: #c4213a;
+  background: linear-gradient(
+    90deg,
+    #6d101e,
+    #c4213a 28%,
+    var(--gold) 50%,
+    #c4213a 72%,
+    #6d101e
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
   font-size: calc(14.5px - 1pt);
   font-weight: 600;
-  text-shadow: 0 1px 0 #000, 0 2px 4px #000c;
+  filter: drop-shadow(0 1px 0 #000) drop-shadow(0 2px 4px #000c);
 }
 #menuWrap > .card > .sub {
   margin: 6px 0 16px;
@@ -4677,18 +4725,13 @@ input[type="text"]:focus,
   box-shadow: 0 0 0 3px #edc24e1f;
 }
 
-/* PLAY is the only thing on this page anyone needs to find, so it is the only filled control. */
-#play {
-  width: 100%;
-  margin-top: 16px;
-  padding: 15px;
-  font-size: 32px;
-  letter-spacing: 0.2em;
+.goldAction {
+  padding: 11px 16px;
+  font-size: 15px;
+  letter-spacing: 0.12em;
   font-family: var(--display);
   line-height: 1;
   color: var(--on-gold);
-  /* Dark text on gold, so the rim is a light one: it thickens the strokes and keeps the word
-     from dissolving into the brightest part of the gradient. */
   text-shadow:
     0 1px 0 #fff6,
     0 0 2px #0006,
@@ -4708,6 +4751,14 @@ input[type="text"]:focus,
     transform 0.08s,
     box-shadow 0.12s,
     filter 0.12s;
+}
+/* PLAY is the only thing on this page anyone needs to find, so it is the only filled control. */
+#play {
+  width: 100%;
+  margin-top: 16px;
+  padding: 15px;
+  font-size: 32px;
+  letter-spacing: 0.2em;
 }
 #menuWrap #play {
   margin-top: 20px;
@@ -4890,22 +4941,29 @@ input[type="text"]:focus,
 #regionConfirm {
   margin-right: auto;
   padding-inline: 16px;
-  color: #17130a;
-  background: var(--cast);
-  background-size: 260% 100%, 100% 100%;
-  background-repeat: no-repeat;
-  border-color: var(--gold);
-  font-weight: 700;
-  animation: castShine 7s linear infinite;
-}
-#regionConfirm:hover:not(:disabled) {
-  filter: brightness(1.08);
 }
 #regionConfirm:disabled {
   color: var(--dim);
   background: #303741;
   border-color: #536173;
   animation: none;
+}
+.goldAction:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow:
+    0 4px 0 var(--gold-shadow),
+    0 12px 34px #edc24e55;
+}
+.goldAction:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow:
+    0 1px 0 var(--gold-shadow),
+    0 5px 16px #edc24e33;
+}
+.goldAction:disabled {
+  filter: grayscale(0.7) brightness(0.8);
+  box-shadow: none;
+  transform: none;
 }
 #regionCancel {
   width: auto;
@@ -4915,23 +4973,6 @@ input[type="text"]:focus,
   padding: 5px 9px;
   font-size: 10px;
   letter-spacing: 0.06em;
-}
-#play:hover {
-  filter: brightness(1.08);
-  box-shadow:
-    0 4px 0 var(--gold-shadow),
-    0 12px 34px #edc24e55;
-}
-#play:active {
-  transform: translateY(3px);
-  box-shadow:
-    0 1px 0 var(--gold-shadow),
-    0 5px 16px #edc24e33;
-}
-#play:disabled {
-  filter: grayscale(0.7) brightness(0.8);
-  box-shadow: none;
-  transform: none;
 }
 
 label {
@@ -5086,7 +5127,7 @@ kbd.wide {
   padding-top: 15px;
   border-top: 1px solid #ffffff12;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   font-size: 11px;
   color: var(--dim);
@@ -5104,6 +5145,9 @@ kbd.wide {
   align-items: center;
   gap: 5px;
 }
+.menuFoot a.bug {
+  font-size: 10px;
+}
 .menuFoot a:hover {
   color: var(--ink);
 }
@@ -5111,8 +5155,8 @@ kbd.wide {
   color: var(--bad);
 }
 .menuFoot svg {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
 }
 .geoPrivacyDisclosure {
   margin: 8px 0 0;
@@ -5565,7 +5609,7 @@ kbd.wide {
   #pwGroup,
   #pw.invalid,
   #regionRefresh[aria-busy="true"] svg,
-  #regionConfirm,
+  .card.round.podium,
   .regionPing {
     animation: none;
   }

@@ -91,9 +91,18 @@
             <h2>Command <span>Deck</span></h2>
             <p class="sectionLead">A clear signal from the server, the island, and everyone playing.</p>
           </div>
-          <div class="clockBlock">
-            <span class="clockLabel">LOCAL TIME</span>
-            <time id="localClock">--:--:--</time>
+          <div class="introControls">
+            <label class="selectWrap instanceSelectWrap">
+              <span>INSTANCE TELEMETRY</span>
+              <select id="instanceSelect" aria-label="Select server instance">
+                <option value="za">South Africa</option>
+                <option value="us">United States</option>
+              </select>
+            </label>
+            <div class="clockBlock">
+              <span class="clockLabel">LOCAL TIME</span>
+              <time id="localClock">--:--:--</time>
+            </div>
           </div>
         </section>
 

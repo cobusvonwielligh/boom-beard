@@ -67,7 +67,7 @@ function adminKey() {
 adminKey();
 
 export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onScores, onStreak,
-  onRoundTime, onRejected, onShop }) {
+  onRoundTime, onRejected, onShop, onPing }) {
   let ws = null;
   let connectionRegionId = 'za';
   // serverTick ≈ performance.now()/tickMs + tickOffset. Keeping an offset rather than a
@@ -216,6 +216,7 @@ export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onS
           pending.delete(m.c);
           rtts.push(performance.now() - sent);
           if (rtts.length > RTT_SAMPLES) rtts.shift();
+          onPing?.(Math.round(rttMin()));
           // Rolling minimum, not an average: one jitter spike should not shove the clock.
           observeServerTick(m.tick);
           // The very first real RTT sample: re-seed the lead, which until now was computed as
@@ -312,6 +313,7 @@ export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onS
       kind = null;
       pending.clear();
       rtts.length = 0;
+      onPing?.(null);
       tickOffset = null;
       sinceCorrection = 0;
       hello = {

@@ -18,8 +18,8 @@ test('player id and password use a real form submission', async () => {
   assert.ok(formStart >= 0 && formEnd > formStart, 'player form is present');
   assert.match(form, /id="name"/, 'player id belongs to the form');
   assert.match(form, /id="pw"/, 'password belongs to the same form');
-  assert.match(html, /<button id="play" type="submit" form="playerForm">play<\/button>/,
-    'PLAY submits the player form');
+  assert.match(html, /<button id="play" class="goldAction" type="submit" form="playerForm">LETS GO!<\/button>/,
+    'LETS GO submits the player form using the shared gold action design');
   assert.match(html, /<button id="watch" type="button"/,
     'spectating does not submit the player form');
   assert.match(main, /\$\('playerForm'\)\.addEventListener\('submit',\s*event => \{\s*event\.preventDefault\(\);\s*play\(false\);\s*\}\)/,

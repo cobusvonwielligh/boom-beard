@@ -133,6 +133,10 @@ test('every connection attempt opens the dialog and saves only a confirmed choic
   await confirmButton.click();
   assert.equal(await firstChoice, 'us');
   assert.equal(saved, 'us');
+  assert.equal(dialog.open, true);
+  assert.equal(picker.isHoldingForConnect(), true);
+  assert.equal(refreshButton.disabled, true);
+  await picker.close();
   assert.equal(dialog.open, false);
 
   const canceledChoice = picker.chooseRegion();
@@ -143,6 +147,33 @@ test('every connection attempt opens the dialog and saves only a confirmed choic
   await cancelButton.click();
   assert.equal(await canceledChoice, null);
   assert.equal(saved, 'us');
+  picker.stop();
+});
+
+test('double-clicking an online region confirms the selection', async () => {
+  const { root, dialog, confirmButton, cancelButton, refreshButton, statusMessage } = elements();
+  const picker = createRegionPicker({
+    root, dialog, confirmButton, cancelButton, refreshButton, statusMessage, regions,
+    store: { get: () => null, set() {} },
+    fetchImpl: successfulFetch,
+    WebSocketImpl: FastPongSocket,
+    pingGapMs: 0,
+    now: () => 0,
+  });
+
+  const choice = picker.chooseRegion();
+  await flushProbes();
+  root.children.find(button => button.attributes['data-region'] === 'us').click();
+  root.children.find(button => button.attributes['data-region'] === 'us').click();
+
+  const selected = await Promise.race([
+    choice,
+    new Promise(resolve => setTimeout(() => resolve('not selected'), 50)),
+  ]);
+  assert.equal(selected, 'us');
+  assert.equal(dialog.open, true);
+  assert.equal(picker.isHoldingForConnect(), true);
+  await picker.close();
   picker.stop();
 });
 
@@ -206,13 +237,31 @@ test('picker styles preserve focus and use the requested ping colors responsivel
   assert.match(css, /\.regionPing\s*\{[^}]*animation:\s*regionPingUpdate/s);
   assert.match(css, /@keyframes\s+regionPingUpdate/);
   assert.match(css, /\.regionFlag\s*\{[^}]*width:\s*26px[^}]*height:\s*26px[^}]*object-fit:\s*contain/s);
-  assert.match(css, /#regionConfirm\s*\{[^}]*var\(--cast\)/s);
+  assert.match(css, /\.goldAction\s*\{[^}]*var\(--gold-lit\)[\s\S]*?var\(--gold-deep\)/s);
+  assert.match(index, /id="play"[^>]*class="goldAction"/);
+  assert.match(index, /id="regionConfirm"[^>]*class="goldAction"/);
   assert.match(css, /#regionCancel\s*\{[^}]*width:\s*auto[^}]*margin-top:\s*0/s);
   assert.match(css, /#regionRefresh/);
-  assert.match(css, /\.sub-split\s*\{[^}]*color:\s*#c4213a[^}]*font-size:\s*calc\(14\.5px\s*-\s*1pt\)[^}]*text-shadow:/s);
+  assert.match(css, /\.sub-split\s*\{[^}]*linear-gradient\([^}]*#6d101e[^}]*#c4213a[^}]*var\(--gold\)/s);
   assert.match(index, /class="sub sub-split"/);
+  assert.match(index, /id="play"[^>]*>\s*LET'?S GO!\s*</i);
+  assert.match(index, /transform:\s*translateY\(-43px\)/);
   assert.match(css, /#regionPicker\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);
   assert.match(css, /@media\s*\(max-width:\s*600px\)[\s\S]*?\.regionDialog[\s\S]*?width:/);
+});
+
+test('menu footer keeps only the smaller report-a-bug link', async () => {
+  const html = await read('public/index.html');
+  const css = await read('public/style.css');
+  const footer = html.slice(html.indexOf('<p class="menuFoot">'), html.indexOf('</p>', html.indexOf('<p class="menuFoot">')));
+
+  assert.equal((footer.match(/<a\b/g) || []).length, 1);
+  assert.match(footer, /class="bug"/);
+  assert.match(footer, /report a bug/);
+  assert.doesNotMatch(footer, />source</);
+  assert.match(css, /\.menuFoot\s*\{[^}]*justify-content:\s*flex-end/s);
+  assert.match(css, /\.menuFoot a\.bug\s*\{[^}]*font-size:\s*10px/s);
+  assert.match(css, /\.menuFoot svg\s*\{[^}]*width:\s*15px[^}]*height:\s*15px/s);
 });
 
 test('refresh re-probes both regions without changing the saved selection', async () => {

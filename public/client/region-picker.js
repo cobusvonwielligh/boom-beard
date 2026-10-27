@@ -4,6 +4,7 @@ import { selectedRegionId } from '../../shared/region-selection.js';
 import { startPingBurst } from './ping-burst.js';
 
 const REGION_STORE_KEY = 'bv.region';
+const REGION_DOUBLE_CLICK_MS = 450;
 let nextPingId = 0;
 
 class PingProbeError extends Error {}
@@ -293,6 +294,8 @@ export function createRegionPicker({
   let refreshGeneration = 0;
   let activeController = null;
   let refreshing = false;
+  let holdingForConnect = false;
+  let lastRegionClick = null;
   let resolveChoice = null;
   let rejectChoice = null;
 
@@ -304,7 +307,7 @@ export function createRegionPicker({
       button.className = 'regionOption';
       button.setAttribute('data-region', region.id);
       button.setAttribute('aria-pressed', String(selectedId === region.id));
-      button.disabled = refreshing || !result?.online;
+      button.disabled = holdingForConnect || refreshing || !result?.online;
 
       const flag = doc.createElement('img');
       flag.className = 'regionFlag';
@@ -344,20 +347,28 @@ export function createRegionPicker({
           : `${region.name}, offline`);
       button.append(flag, title, details);
       button.addEventListener('click', () => {
-        if (!result?.online) return;
+        if (holdingForConnect || refreshing || !result?.online) return;
+        const clickedAt = now();
+        const elapsed = lastRegionClick?.id === region.id
+          ? clickedAt - lastRegionClick.at : Infinity;
+        const doubleClick = elapsed >= 0 && elapsed <= REGION_DOUBLE_CLICK_MS;
+        lastRegionClick = doubleClick ? null : { id: region.id, at: clickedAt };
         selectedId = region.id;
         statusMessage.textContent = '';
         render();
+        if (doubleClick) confirmSelection();
       });
       return button;
     });
 
     root.replaceChildren(...buttons);
     const selected = results.find(result => result.id === selectedId);
-    confirmButton.disabled = refreshing || !selected?.online;
+    confirmButton.disabled = holdingForConnect || refreshing || !selected?.online;
+    cancelButton.disabled = holdingForConnect;
+    refreshButton.disabled = holdingForConnect || refreshing;
   }
 
-  function finishChoice(value, error = null) {
+  function finishChoice(value, error = null, { closeDialog = true } = {}) {
     if (!resolveChoice) return;
     const resolve = resolveChoice;
     const reject = rejectChoice;
@@ -368,9 +379,12 @@ export function createRegionPicker({
     activeController?.abort();
     activeController = null;
     refreshing = false;
-    refreshButton.disabled = false;
+    holdingForConnect = !closeDialog && !error && value !== null;
+    refreshButton.disabled = holdingForConnect;
     refreshButton.setAttribute('aria-busy', 'false');
-    dialog.close();
+    if (closeDialog) dialog.close();
+    else statusMessage.textContent = 'Connecting to the selected region…';
+    render();
     if (error) reject(error);
     else resolve(value);
   }
@@ -468,7 +482,7 @@ export function createRegionPicker({
         return;
       }
       store.set(REGION_STORE_KEY, selectedId);
-      finishChoice(selectedId);
+      finishChoice(selectedId, null, { closeDialog: false });
     } catch (error) {
       if (error?.name === 'AbortError' && expectedRefresh !== refreshGeneration) return;
       finishChoice(null, error);
@@ -488,12 +502,15 @@ export function createRegionPicker({
   refreshButton.addEventListener('click', () => refreshRegions().catch(reportRefreshFailure));
   dialog.addEventListener('cancel', event => {
     event.preventDefault();
+    if (holdingForConnect) return;
     finishChoice(null);
   });
 
   function chooseRegion() {
     if (resolveChoice) return Promise.reject(new Error('A region choice is already open.'));
     const savedId = store.get(REGION_STORE_KEY);
+    holdingForConnect = false;
+    lastRegionClick = null;
     selectedId = regions.some(region => region.id === savedId) ? savedId : null;
     results = [];
     statusMessage.textContent = '';
@@ -509,8 +526,19 @@ export function createRegionPicker({
     return choice;
   }
 
+  function close() {
+    if (resolveChoice) {
+      finishChoice(null);
+      return;
+    }
+    holdingForConnect = false;
+    statusMessage.textContent = '';
+    dialog.close();
+    render();
+  }
+
   function stop() {
-    finishChoice(null);
+    close();
   }
 
   render();
@@ -518,6 +546,8 @@ export function createRegionPicker({
     chooseRegion,
     refreshRegions,
     selectedRegion: () => selectedId,
+    isHoldingForConnect: () => holdingForConnect,
+    close,
     stop,
   };
 }

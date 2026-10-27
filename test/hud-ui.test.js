@@ -140,8 +140,19 @@ test('lifetime player popup is 25 percent smaller without a name hover effect on
     'TAB scoreboard names remain eligible to open their lifetime popup');
 });
 
-test('the winner round-over dialog is slightly wider while remaining mobile-safe', async () => {
-  const css = await read('public/style.css');
-  has(css, /\.card\.round\.won\s*\{[^}]*width:\s*min\(500px,\s*calc\(100vw - 24px\)\);/s,
-    'the winner card gets a modest desktop width increase without overflowing mobile');
+test('podium round-over dialogs are wider and glow for every top-three finish', async () => {
+  const [css, main] = await Promise.all([
+    read('public/style.css'), read('public/client/main.js'),
+  ]);
+  has(css, /\.card\.round\s*\{[^}]*width:\s*min\(500px,\s*calc\(100vw - 24px\)\);/s,
+    'every round-over card gets a modest width increase without overflowing mobile');
+  has(main, /const podium = place >= 0 && place < 3;/,
+    'only first-, second-, and third-place finishes get the podium treatment');
+  has(main, /won \? 'you won the round!!' : 'round over'/,
+    'the winner title has the requested emphatic punctuation');
+  has(main, /deadCard\.classList\.toggle\('podium',\s*podium\)/,
+    'the card exposes the podium state to its visual treatment');
+  has(css, /\.card\.round\.podium\s*\{[^}]*animation:\s*podiumRgbPulse/s,
+    'podium cards pulse through the RGB glow');
+  has(css, /@keyframes\s+podiumRgbPulse/);
 });

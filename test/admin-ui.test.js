@@ -15,6 +15,9 @@ test('admin page contains the protected dashboard, filters, and no embedded pass
 
   assert.match(html, /id="adminPassword"/);
   assert.match(html, /id="resourceMetrics"/);
+  assert.match(html, /id="instanceSelect"/);
+  assert.match(html, /<option value="za">South Africa<\/option>/);
+  assert.match(html, /<option value="us">United States<\/option>/);
   assert.match(html, /id="registrationChart"/);
   assert.match(html, /id="worldMap"/);
   assert.match(html, /id="geographyPeriod"/);
@@ -32,6 +35,14 @@ test('admin page contains the protected dashboard, filters, and no embedded pass
   assert.match(script, /bv\.adminKey/);
   assert.match(script, /\/admin\/api\/login/);
   assert.match(script, /\/admin\/api\/players/);
+  assert.match(script, /instance:\s*regionId/);
+  assert.match(script, /\/admin\/api\/metrics\?region=\$\{encodeURIComponent\(instance\)\}/);
+  assert.match(script, /\$\('instanceSelect'\)\.addEventListener\('change'/);
+  assert.match(script, /const request = \+\+metricsRequest;\s*const instance = state\.instance;/);
+  assert.match(script, /if \(request !== metricsRequest\) return;/);
+  assert.match(script, /if \(request !== metricsRequest\) return;\s*throw error;/);
+  assert.match(script, /function clearMetrics\(\)[\s\S]*?drawSparkline\(\$\(`\$\{id\}Chart`\),\s*\[\],\s*colour\)/);
+  assert.match(script, /state\.metrics = \[\];\s*clearMetrics\(\)/);
   assert.match(script, /\/admin\/api\/geography/);
   assert.match(script, /\/admin\/api\/worldmap/);
   assert.doesNotMatch(script, /\.innerHTML\s*=/);

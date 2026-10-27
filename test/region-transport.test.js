@@ -20,6 +20,14 @@ test('regional secure transport URLs use the selected host', () => {
   });
 });
 
+test('every TLS region starts WebTransport and reports whether its listener is available', async () => {
+  const source = await readFile(new URL('../server/index.js', import.meta.url), 'utf8');
+  assert.match(source, /if \(usingTls\) \{\s*startWebTransport\(\{/);
+  assert.match(source, /port:\s*config\.port/);
+  assert.match(source, /transports:\s*\{\s*\.\.\.hub\.transportCounts,\s*webtransport:\s*wt\s*\?\s*hub\.transportCounts\.webtransport\s*:\s*null/);
+  assert.doesNotMatch(source, /if\s*\(config\.regionId\s*===\s*'za'[^)]*\)\s*\{\s*startWebTransport/);
+});
+
 test('local HTTP uses WebSocket without WebTransport', () => {
   assert.deepEqual(transportUrls('http://localhost:8080'), {
     ws: 'ws://localhost:8080/ws',
@@ -51,6 +59,30 @@ test('game ping starts with the shared burst and resets across region changes', 
   const connect = source.slice(source.indexOf('connect(name, observe'));
   assert.match(connect, /rtts\.length\s*=\s*0/);
   assert.match(source, /let pingSequence\s*=\s*0/);
+});
+
+test('in-game connection dot uses the same RTT colors as region cards', async () => {
+  const [main, net, css] = await Promise.all([
+    readFile(new URL('../public/client/main.js', import.meta.url), 'utf8'),
+    readFile(new URL('../public/client/net.js', import.meta.url), 'utf8'),
+    readFile(new URL('../public/style.css', import.meta.url), 'utf8'),
+  ]);
+  assert.match(main, /onPing:\s*rtt\s*=>[\s\S]*?conn\.dataset\.ping\s*=\s*pingClass\(rtt\)/);
+  assert.match(net, /onPing\?\.\(Math\.round\(rttMin\(\)\)\)/);
+  assert.match(net, /onPing\?\.\(null\)/);
+  assert.match(css, /#conn\[data-state="open"\]\[data-ping="pingGood"\]/);
+  assert.match(css, /#conn\[data-state="open"\]\[data-ping="pingFair"\]/);
+  assert.match(css, /#conn\[data-state="open"\]\[data-ping="pingPoor"\]/);
+});
+
+test('region dialog stays visible until the current toast has faded', async () => {
+  const main = await readFile(new URL('../public/client/main.js', import.meta.url), 'utf8');
+  assert.match(main, /regionPicker\.isHoldingForConnect\(\)[\s\S]*?waitForToastDismissal\(\)\.then\(enterMap\)/);
+  assert.match(main, /if \(regionPicker\.isHoldingForConnect\(\)\) regionPicker\.close\(\);/);
+  assert.match(main, /const inRegionDialog = regionPicker\.isHoldingForConnect\(\);/);
+  assert.match(main, /toastDeadline = performance\.now\(\) \+ duration \+ 250;/);
+  assert.match(main, /waitForToastDismissal\(\)\.then\(\(\) => regionPicker\.close\(\)\)/);
+  assert.match(main, /regionPicker\.isHoldingForConnect\(\)\s*&&\s*s !== 'connecting'\s*&&\s*s !== 'open'[\s\S]*?waitForToastDismissal\(\)/);
 });
 
 test('ZA security policy allows direct US probes without a regional hostname', async () => {

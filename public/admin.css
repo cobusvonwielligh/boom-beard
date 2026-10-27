@@ -439,6 +439,14 @@ select:focus-visible {
 
 .sectionLead { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
 
+.introControls {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+.instanceSelectWrap { min-width: 154px; }
+
 .clockBlock {
   display: grid;
   gap: 4px;
@@ -964,6 +972,8 @@ td.tableEmpty { height: 88px; color: var(--muted); text-align: center; }
   .pageIntro { padding-top: 25px; align-items: start; }
   .pageIntro h2 { font-size: 29px; }
   .sectionLead { max-width: 240px; font-size: 11px; }
+  .introControls { flex-direction: column; align-items: flex-end; gap: 8px; }
+  .instanceSelectWrap { min-width: 132px; }
   .clockBlock { padding-top: 3px; }
   #localClock { font-size: 10px; }
   .panel { padding: 15px 12px; }

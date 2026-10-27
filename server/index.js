@@ -22,6 +22,12 @@ import { createAdminData, createMetricHistory } from './admin-data.js';
 import { createAdminHttpHandler } from './admin-http.js';
 import { createGeography } from './geography.js';
 import { createRegionStatusHandler } from './region-status.js';
+import { createAuthPreflightHandler } from './auth-preflight.js';
+import {
+  createAdminInstanceMetricsClient,
+  createAdminInstanceMetricsHandler,
+} from './admin-instance.js';
+import { REGIONS } from '../shared/regions.js';
 import geoip from 'geoip-country';
 import { startWebTransport } from './webtransport.js';
 import { createGuard } from './guard.js';
@@ -212,6 +218,12 @@ async function serve(req, res) {
   if (usingTls) res.setHeader('Strict-Transport-Security', 'max-age=31536000');
 
   const url = req.url.split('?')[0];
+
+  if (url === '/internal/instance-metrics' && instanceMetricsHttp
+    && await instanceMetricsHttp(req, res)) return;
+
+  if (url === '/auth/preflight' && authPreflightHttp
+    && await authPreflightHttp(req, res)) return;
 
   if (url === '/internal/shared-data' && sharedDataHttp
     && await sharedDataHttp(req, res)) return;
@@ -487,6 +499,14 @@ geography = createGeography({
   dataDir: config.dataDir,
   lookupCountry: ip => geoip.lookup(ip)?.country ?? null,
 });
+const authPreflightHttp = config.regionId === 'za'
+  ? createAuthPreflightHandler({
+    accounts: localAccounts,
+    enabled: config.requirePassword,
+    geography,
+    usingTls,
+  })
+  : null;
 const adminAuth = createAdminAuth({
   accounts: config.requirePassword ? accounts : null,
   adminName: 'cobusvw',
@@ -494,8 +514,23 @@ const adminAuth = createAdminAuth({
   password: config.adminDashboardPassword,
 });
 const adminMetrics = createMetricHistory(processMetrics);
+const remoteMetrics = config.regionId === 'za' && config.sharedDataToken
+  ? createAdminInstanceMetricsClient({
+    origin: REGIONS.find(region => region.id === 'us').origin,
+    token: config.sharedDataToken,
+  })
+  : null;
+const instanceMetricsHttp = config.regionId === 'us'
+  ? createAdminInstanceMetricsHandler({
+    regionId: config.regionId,
+    token: config.sharedDataToken,
+    metrics: adminMetrics,
+  })
+  : null;
 const adminData = createAdminData({
   accounts, leaderboard, metrics: adminMetrics, geography,
+  remoteMetrics,
+  regionId: config.regionId,
 });
 adminHttp = createAdminHttpHandler({
   auth: adminAuth,

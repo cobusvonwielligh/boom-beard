@@ -11,7 +11,9 @@ Both instances run the same `main` commit. ZA is the authority for player accoun
 lifetime career stats, wallet, and shop progress; US forwards account operations and
 career mutations to ZA over an authenticated internal HTTPS API. Live rooms, bots,
 occupancy, geography, and machine metrics remain regional. `/admin` is served only
-by ZA and combines the global player career with ZA-local operational metrics.
+by ZA; its instance selector reads ZA metrics locally or fetches US metrics through
+an authenticated server-to-server endpoint. Player career and account data remain
+global.
 
 ---
 
@@ -35,7 +37,9 @@ by ZA and combines the global player career with ZA-local operational metrics.
 ```
 
 Each region is one Node process under systemd, with HTTPS/WSS on TCP 443 and the HTTP
-redirect on TCP 80. The US instance uses a browser-trusted IP-address certificate;
+redirect on TCP 80. Both TLS instances start a WebTransport listener on UDP 443 when
+the native transport is available; WebSocket remains the fallback when UDP is blocked.
+The US instance uses a browser-trusted IP-address certificate;
 no US DNS record is required. The ZA page probes each region's credential-free
 `/region-status` endpoint, then opens the game transport directly to the selected
 origin. The US server redirects website and admin requests to ZA. There is no load
@@ -91,7 +95,7 @@ systemd timer. No DNS record or regional hostname is needed.
    the game-only US instance is in `us-east-1`.
 2. **Elastic IP** - allocate, associate to the instance. (Since Feb 2024 every public IPv4 costs
    $0.005/h; Free Tier covers 750 h/month for 12 months, so one is free for a year.)
-3. **Security group** - three required inbound rules on each instance, plus optional UDP
+3. **Security group** - three required inbound rules on each instance; add UDP/443
    for WebTransport:
 
    | Port | Source | Purpose |
@@ -100,8 +104,8 @@ systemd timer. No DNS record or regional hostname is needed.
    | 80 | `0.0.0.0/0` | HTTPS redirect + ACME renewal |
    | 22 | your IP | SSH |
 
-   Optionally allow UDP/443 from `0.0.0.0/0` for WebTransport. TCP/443 WebSocket
-   fallback remains available without it. Specifically **not** 8080 - that is local dev only.
+   Allow UDP/443 from `0.0.0.0/0` on both instances for WebTransport. TCP/443 WebSocket
+   fallback remains available if a player network blocks UDP. Specifically **not** 8080 - that is local dev only.
 
 ### On the box (once, ~3 minutes)
 
@@ -162,8 +166,9 @@ Precedence is **environment variable > `config.ini` > built-in default**, so a o
 | | `host` | `SHARED_DATA_HOST` | blank | US-only ZA Elastic IP, `15.240.88.189`; connects by IP to avoid depending on apex DNS. |
 | | `servername` | `SHARED_DATA_SERVERNAME` | `boombeard.co.za` | TLS name for certificate verification and the internal HTTP Host header. |
 
-`https://boombeard.co.za/admin` is served by ZA. Its live occupancy and machine metrics
-are ZA-local; the leaderboard and player account totals are global. Requests to
+`https://boombeard.co.za/admin` is served by ZA. The instance selector switches
+resource charts between ZA-local and authenticated US-local machine metrics; live
+occupancy remains regional, while the leaderboard and player account totals are global. Requests to
 `/admin` on the US IP redirect to this ZA dashboard; the US instance is game-only.
 The dashboard requires `ADMIN_KEY`, `ADMIN_DASHBOARD_PASSWORD`, and
 `REQUIRE_PASSWORD=1`. Open the ZA bootstrap-provided `/?admin=<key>` link once in the
@@ -201,6 +206,9 @@ The dashboard currently requires TLS to terminate directly in the app. It is not
 The browser probes each public `/region-status` endpoint. It returns only that
 instance's region ID, connected human count, bot count, and seat limit; it does not
 expose `/healthz`, player names, scores, registrations, or geography.
+For player joins, the ZA page verifies or registers the password through its same-origin
+`/auth/preflight` endpoint before opening the region picker. The chosen game server then
+validates the shared trusted-device token again during the socket handshake.
 
 The admin geography panel counts home-page views and new registrations by country. It performs
 GeoLite2 country lookups locally, persists only daily ISO country totals in

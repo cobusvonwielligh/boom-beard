@@ -42,8 +42,15 @@ test('admin HTTP routes require same-origin login and an HttpOnly session cookie
       return true;
     },
   };
+  let remoteMetricsAvailable = true;
   const data = {
     metrics: () => [{ at: 1, cpuPct: 10, memoryPct: 2, diskPct: 40 }],
+    instanceMetrics: region => {
+      if (region === 'us' && !remoteMetricsAvailable) throw new Error('upstream offline');
+      return region === 'us'
+        ? [{ at: 2, cpuPct: 82, memoryPct: 61, diskPct: 14 }]
+        : [{ at: 1, cpuPct: 10, memoryPct: 2, diskPct: 40 }];
+    },
     registrations: () => ({ days: [], currentTotal: 0 }),
     geography: options => ({ period: options.period, countries: [{ country: 'US', hits: 3, registrations: 1 }] }),
     worldMap: () => [{ country: 'US', name: 'United States', path: 'M0,0L1,1Z' }],
@@ -99,6 +106,24 @@ test('admin HTTP routes require same-origin login and an HttpOnly session cookie
   const metrics = await fetch(`${base}/admin/api/metrics`, { headers: { Cookie: cookie.split(';')[0] } });
   assert.equal(metrics.status, 200);
   assert.deepEqual(await metrics.json(), [{ at: 1, cpuPct: 10, memoryPct: 2, diskPct: 40 }]);
+
+  const usMetrics = await fetch(`${base}/admin/api/metrics?region=us`, {
+    headers: { Cookie: cookie.split(';')[0] },
+  });
+  assert.equal(usMetrics.status, 200);
+  assert.deepEqual(await usMetrics.json(), [
+    { at: 2, cpuPct: 82, memoryPct: 61, diskPct: 14 },
+  ]);
+  const invalidRegion = await fetch(`${base}/admin/api/metrics?region=ca`, {
+    headers: { Cookie: cookie.split(';')[0] },
+  });
+  assert.equal(invalidRegion.status, 400);
+  remoteMetricsAvailable = false;
+  const unavailable = await fetch(`${base}/admin/api/metrics?region=us`, {
+    headers: { Cookie: cookie.split(';')[0] },
+  });
+  assert.equal(unavailable.status, 503);
+  assert.deepEqual(await unavailable.json(), { error: 'US instance metrics unavailable' });
 
   const map = await fetch(`${base}/admin/api/worldmap`, { headers: { Cookie: cookie.split(';')[0] } });
   assert.equal(map.status, 200);

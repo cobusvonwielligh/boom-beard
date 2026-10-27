@@ -25,6 +25,7 @@ const state = {
   geography: null,
   worldMap: [],
   geoMetric: 'hits',
+  instance: regionId,
   period: $('registrationPeriod').value,
   search: '',
   from: '',
@@ -38,6 +39,7 @@ const state = {
 };
 
 let metricsTimer = null;
+let metricsRequest = 0;
 let refreshTimer = null;
 let searchTimer = null;
 
@@ -177,12 +179,34 @@ function showDashboardError(error) {
 }
 
 async function loadMetrics() {
-  state.metrics = await api('/admin/api/metrics');
+  const request = ++metricsRequest;
+  const instance = state.instance;
+  let metrics;
+  try {
+    metrics = await api(`/admin/api/metrics?region=${encodeURIComponent(instance)}`);
+  } catch (error) {
+    if (request !== metricsRequest) return;
+    throw error;
+  }
+  if (request !== metricsRequest) return;
+  state.metrics = metrics;
   const latest = state.metrics.at(-1);
   if (!latest) return;
   setMetric('cpu', latest.cpuPct, 'cpuPct', '#edc24e');
   setMetric('memory', latest.memoryPct, 'memoryPct', '#70c4ff');
   setMetric('storage', latest.diskPct, 'diskPct', '#67d8ab');
+}
+
+function clearMetrics() {
+  for (const [id, colour] of [
+    ['cpu', '#edc24e'],
+    ['memory', '#70c4ff'],
+    ['storage', '#67d8ab'],
+  ]) {
+    $(`${id}Value`).textContent = '--';
+    $(`${id}Time`).textContent = 'WAITING FOR SAMPLE';
+    drawSparkline($(`${id}Chart`), [], colour);
+  }
 }
 
 function setMetric(id, value, key, colour) {
@@ -503,6 +527,15 @@ function canvasContext(canvas) {
 $('registrationPeriod').addEventListener('change', () => {
   state.period = $('registrationPeriod').value;
   loadRegistrations().catch(showDashboardError);
+});
+
+$('instanceSelect').value = state.instance;
+$('instanceSelect').addEventListener('change', () => {
+  state.instance = $('instanceSelect').value;
+  state.metrics = [];
+  clearMetrics();
+  adminNotice.textContent = '';
+  loadMetrics().catch(showDashboardError);
 });
 
 $('geographyPeriod').addEventListener('change', () => {

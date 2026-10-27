@@ -90,6 +90,27 @@ test('admin metrics are returned from the bounded resource-history provider', ()
   assert.deepEqual(data.metrics(), [{ at: now, cpuPct: 12, memoryPct: 3, diskPct: 70 }]);
 });
 
+test('instance metrics select local ZA samples or the US instance provider', async () => {
+  const za = [{ at: now, region: 'za' }];
+  const us = [{ at: now, region: 'us' }];
+  let requests = 0;
+  const data = createAdminData({
+    accounts: { listForAdmin: () => [] },
+    leaderboard: { all: () => [] },
+    metrics: { history: () => za },
+    remoteMetrics: async region => {
+      requests++;
+      assert.equal(region, 'us');
+      return us;
+    },
+  });
+
+  assert.deepEqual(await data.instanceMetrics('za'), za);
+  assert.deepEqual(await data.instanceMetrics('us'), us);
+  assert.equal(requests, 1);
+  await assert.rejects(data.instanceMetrics('ca'), /region/);
+});
+
 test('geography summaries and static country boundaries are exposed to the admin UI', () => {
   const geography = {
     summary: ({ period }) => ({ period, countries: [{ country: 'US', hits: 3, registrations: 1 }] }),

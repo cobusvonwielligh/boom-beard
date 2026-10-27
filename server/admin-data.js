@@ -34,7 +34,8 @@ const nameKey = name => String(name ?? '').trim().toLowerCase();
 const dayLabel = at => new Date(at).toISOString().slice(0, 10);
 
 export function createAdminData({
-  accounts, leaderboard, metrics, geography, worldMap = worldMapFeatures, now = Date.now,
+  accounts, leaderboard, metrics, geography, remoteMetrics, regionId = 'za',
+  worldMap = worldMapFeatures, now = Date.now,
 }) {
   function players({
     from, to, search = '', sort = 'registered', direction = 'desc', page = 1, pageSize = 25,
@@ -162,10 +163,22 @@ export function createAdminData({
     };
   }
 
+  async function instanceMetrics(instanceId) {
+    if (instanceId === regionId) return metrics.history();
+    if (instanceId !== 'za' && instanceId !== 'us') {
+      throw new RangeError('invalid instance region');
+    }
+    if (typeof remoteMetrics !== 'function') {
+      throw new Error(`${instanceId.toUpperCase()} instance metrics are unavailable`);
+    }
+    return remoteMetrics(instanceId);
+  }
+
   return Object.freeze({
     players,
     registrations,
     metrics: () => metrics.history(),
+    instanceMetrics,
     geography: options => geography.summary(options),
     worldMap: () => worldMap(),
   });

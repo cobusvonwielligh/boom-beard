@@ -185,7 +185,29 @@ export function createAdminHttpHandler({ auth, data, pageFile, usingTls = false 
     const params = url.searchParams;
     try {
       if (endpoint === 'metrics') {
-        sendJson(res, 200, data.metrics());
+        const region = params.get('region');
+        if (region === null) {
+          sendJson(res, 200, data.metrics());
+          return true;
+        }
+        if (region !== 'za' && region !== 'us') {
+          sendJson(res, 400, { error: 'invalid instance region' });
+          return true;
+        }
+        if (typeof data.instanceMetrics !== 'function') {
+          sendJson(res, 503, { error: `${region.toUpperCase()} instance metrics unavailable` });
+          return true;
+        }
+        try {
+          sendJson(res, 200, await data.instanceMetrics(region));
+        } catch (error) {
+          if (error instanceof RangeError) {
+            sendJson(res, 400, { error: error.message });
+            return true;
+          }
+          console.warn(`admin metrics ${region} unavailable (${error.message})`);
+          sendJson(res, 503, { error: `${region.toUpperCase()} instance metrics unavailable` });
+        }
         return true;
       }
       if (endpoint === 'registrations') {

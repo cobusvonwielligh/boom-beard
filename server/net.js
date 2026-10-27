@@ -12,6 +12,7 @@ import { createRoom } from './room.js';
 import { createGuard, addressOf } from './guard.js';
 import { sameSecret } from './config.js';
 import { hasBlockedLanguage, maskBlockedLanguage } from './names.js';
+import { authenticateAccount } from './authenticate.js';
 
 // Open sessions - playing or watching - one browser may hold at once. See claimDevice.
 export const MAX_SESSIONS_PER_DEVICE = 2;
@@ -650,35 +651,24 @@ export function attachHub(server, config) {
      * it in "choose one" mode, `bad` reopens it with the error.
      */
     async function authorise(socket, name, msg) {
-      const pw = typeof msg.pw === 'string' ? msg.pw : null;
-      const token = typeof msg.trust === 'string' ? msg.trust : null;
-
-      if (token && await accounts.checkDevice(name, token)) return { ok: true, trust: null };
-
-      if (!await accounts.has(name)) {
-        if (!pw) {
-          return { ok: false, reject: { why: `pick a password for "${name}"`, auth: 'signup' } };
+      const result = await authenticateAccount(accounts, name, {
+        password: typeof msg.pw === 'string' ? msg.pw : null,
+        trust: typeof msg.trust === 'string' ? msg.trust : null,
+      });
+      if (!result.ok) {
+        const why = result.auth === 'wait'
+          ? `too many tries - wait ${humanDuration(result.waitMs)}`
+          : result.why;
+        if (result.auth === 'bad') {
+          console.warn(`auth   wrong password for "${name}" from ${socket.bvIp ?? '?'}`);
         }
-        const made = await accounts.register(name, pw);
-        if (!made.ok) return { ok: false, reject: { why: made.why, auth: 'signup' } };
+        return { ok: false, reject: { why, auth: result.auth } };
+      }
+      if (result.registered) {
         config.geography?.recordRegistration(socket.bvIp);
         console.log(`signup "${name}"`);           // the name only. Never the password, ever.
-        return { ok: true, trust: made.token };
       }
-
-      if (!pw) return { ok: false, reject: { why: `"${name}" needs its password`, auth: 'need' } };
-
-      const waitMs = await accounts.lockedFor(name);
-      if (waitMs) {
-        return { ok: false,
-          reject: { why: `too many tries - wait ${humanDuration(waitMs)}`, auth: 'wait' } };
-      }
-      const check = await accounts.verify(name, pw);
-      if (!check.ok) {
-        console.warn(`auth   wrong password for "${name}" from ${socket.bvIp ?? '?'}`);
-        return { ok: false, reject: { why: check.why, auth: 'bad' } };
-      }
-      return { ok: true, trust: check.token };
+      return { ok: true, trust: result.trust };
     }
 
     ws.on('close', () => {
