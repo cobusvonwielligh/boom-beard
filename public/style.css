@@ -3795,6 +3795,77 @@ body.intermission #dead {
   background: radial-gradient(120% 90% at 50% 0%, #2a1018 0%, #0d1117 60%);
 }
 
+/* A real account total, built like the brass water meter in an old scullery. It sits outside the
+   join card on purpose: social proof without making the form taller or stealing the PLAY line. */
+#signupMeter {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 3;
+  width: max-content;
+  max-width: 220px;
+  min-height: 52px;
+  box-sizing: border-box;
+  padding: 8px 12px 8px 10px;
+  border: 2px solid #7a5527;
+  border-radius: 9px;
+  background:
+    linear-gradient(112deg, #fff3 0 8%, transparent 9% 72%, #fff1 73% 78%, transparent 79%),
+    linear-gradient(#9f793d, #3d2b15 24%, #18130c 76%, #77562b);
+  box-shadow: inset 0 0 0 2px #d7ac5a33, inset 0 -8px 16px #0007, 0 8px 24px #0009;
+  color: #d8c7a0;
+  pointer-events: none;
+  user-select: none;
+}
+.signupLabel {
+  display: block;
+  margin: 0 0 5px 2px;
+  color: #e0bd72;
+  font: 700 7px/1 var(--nums);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+#signupDigits {
+  display: flex;
+  gap: 2px;
+}
+.signupDigit {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 27px;
+  overflow: hidden;
+  border: 1px solid #a9874e55;
+  border-radius: 3px;
+  background: linear-gradient(#222 0 44%, #050505 48% 53%, #1a1a1a 57%, #020202 100%);
+  box-shadow: inset 0 0 7px #000, 0 1px 0 #e8c98233;
+  color: #f3e7c8;
+  font: 700 18px/1 var(--nums);
+  text-shadow: 0 0 5px #fff3;
+}
+.signupDigit::after {
+  content: "";
+  position: absolute;
+  inset: 48% 0 auto;
+  border-top: 1px solid #000;
+  box-shadow: 0 1px #ffffff0e;
+}
+.signupDigitLast {
+  color: #ff8064;
+  text-shadow: 0 0 6px #a83442;
+}
+.signupScrew {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #e0c184, #4a3218 70%);
+  box-shadow: 0 1px 2px #000;
+}
+.signupScrewA { top: 5px; right: 5px; }
+.signupScrewB { bottom: 5px; right: 5px; }
+
 /* The visualiser, behind everything on the menu and out of the centring grid.
  *
  * `position: absolute` rather than a grid cell: in the grid it would be centred and sized to its

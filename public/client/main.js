@@ -23,12 +23,32 @@ import { createSfx } from './audio/sfx.js';
 import { createListener } from './audio/listen.js';
 import { createQuips, MENU_QUIPS } from './quips.js';
 import { createMenuViz } from './menuviz.js';
+import { signupDigits, fetchSignupCount } from './signup-meter.js';
 import { store } from './store.js';
 import { placeable } from '/shared/sim/bombs.js';
 import { streakActive } from '/shared/sim/state.js';
 import { MAPS } from '/shared/maps.js';
 
 const $ = id => document.getElementById(id);
+
+function renderSignupMeter(count) {
+  const digits = signupDigits(count);
+  const root = $('signupDigits');
+  root.replaceChildren(...[...digits].map((digit, i) => {
+    const wheel = document.createElement('span');
+    wheel.className = `signupDigit${i === digits.length - 1 ? ' signupDigitLast' : ''}`;
+    wheel.textContent = digit;
+    return wheel;
+  }));
+  root.setAttribute('aria-label', count === null
+    ? 'signup count unavailable' : `${count} humans registered`);
+}
+
+async function refreshSignupMeter() {
+  renderSignupMeter(await fetchSignupCount());
+}
+
+refreshSignupMeter();
 
 /**
  * What floats up off you when you pick something up, in the perk's own colour so the label and
@@ -1032,6 +1052,13 @@ function sampleServerHealth(h) {
   perfCell('perfSrvUp', hrs ? `UP ${hrs}h${String(mins).padStart(2, '0')}` : `UP ${mins}m`,
     // A server that has been up for under two minutes restarted while you were looking at it.
     up < 120);
+
+  const signups = h.signups;
+  const signupText = (key, label) => Number.isFinite(signups?.[key])
+    ? `${label} ${Math.max(0, signups[key] | 0)}` : `${label} --`;
+  perfCell('perfSignup24', signupText('last24h', '24H'), false);
+  perfCell('perfSignup7', signupText('last7d', '7D'), false);
+  perfCell('perfSignup30', signupText('last30d', '30D'), false);
 
   // Everything that is only worth a word when it is wrong.
   const flags = [];
@@ -2236,6 +2263,7 @@ function leave() {
   music.playFrom('theme');
   $('play').disabled = false;
   $('name').focus();
+  refreshSignupMeter();
 }
 
 // ─── menu ─────────────────────────────────────────────────────────────────────

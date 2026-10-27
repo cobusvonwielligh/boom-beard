@@ -647,6 +647,12 @@
         <span id="perfSrvUp">UP --</span>
         <span id="perfSrvFlags"></span>
       </div>
+      <div class="perfRow perfSignups">
+        <span>SIGNUPS</span><span class="perfSep">·</span>
+        <span id="perfSignup24">24H --</span><span class="perfSep">·</span>
+        <span id="perfSignup7">7D --</span><span class="perfSep">·</span>
+        <span id="perfSignup30">30D --</span>
+      </div>
     </div>
     <div id="perfLocal">
       <span id="perfFps">-- FPS</span><span class="perfSep">·</span>
@@ -940,6 +946,16 @@
         <!-- What he says when you hover PLAY. Inside #mascot so it rides the bob with him. -->
         <div id="menuSay"></div>
       </div>
+    </div>
+    <div id="signupMeter" aria-label="human signup count">
+      <span class="signupScrew signupScrewA"></span>
+      <span class="signupScrew signupScrewB"></span>
+      <span class="signupLabel">humans registered</span>
+      <span id="signupDigits" aria-live="polite" aria-label="signup count unavailable">
+        <span class="signupDigit">-</span><span class="signupDigit">-</span>
+        <span class="signupDigit">-</span><span class="signupDigit">-</span>
+        <span class="signupDigit signupDigitLast">-</span>
+      </span>
     </div>
   </div>
 
