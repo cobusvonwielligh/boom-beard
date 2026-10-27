@@ -16,11 +16,6 @@ export function createRegionStatusHandler({ regionId, getStats }) {
       return true;
     }
 
-    const stats = getStats();
-    if (!stats || !isCount(stats.players) || !isCount(stats.bots) || !isCount(stats.maxPlayers)) {
-      throw new TypeError('invalid region statistics');
-    }
-
     const headers = {
       'Content-Type': 'application/json; charset=utf-8',
       'Cache-Control': 'no-store',
@@ -30,6 +25,15 @@ export function createRegionStatusHandler({ regionId, getStats }) {
     if (REGIONS.some(region => region.origin === origin)) {
       headers['Access-Control-Allow-Origin'] = origin;
     }
+
+    const stats = getStats();
+    if (!stats || !isCount(stats.players) || !isCount(stats.bots) || !isCount(stats.maxPlayers)) {
+      console.error('region status: invalid room statistics');
+      res.writeHead(500, headers);
+      res.end(JSON.stringify({ error: 'region status unavailable' }));
+      return true;
+    }
+
     res.writeHead(200, headers);
     res.end(JSON.stringify({
       region: regionId,

@@ -96,14 +96,18 @@ test('region status does not handle other paths', () => {
   assert.equal(handler({ url: '/healthz', method: 'GET', headers: {} }, response), false);
 });
 
-test('region status surfaces invalid player statistics', () => {
+test('region status returns a server error for invalid player statistics', async t => {
   const handler = createRegionStatusHandler({
     regionId: 'za',
     getStats: () => ({ players: 'many', bots: 1, maxPlayers: 16 }),
   });
-  const response = { writeHead() {}, end() {} };
-  assert.throws(
-    () => handler({ url: '/region-status', method: 'GET', headers: {} }, response),
-    /invalid region statistics/,
-  );
+  const { server, base } = await startHandler(handler);
+  t.after(async () => {
+    server.close();
+    await once(server, 'close');
+  });
+
+  const response = await fetch(`${base}/region-status`);
+  assert.equal(response.status, 500);
+  assert.deepEqual(await response.json(), { error: 'region status unavailable' });
 });
