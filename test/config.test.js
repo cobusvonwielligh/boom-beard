@@ -7,6 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseIni, sameSecret } from '../server/config.js';
 import { playerName } from '../server/net.js';
+import { AUTO_BOTS_MIN } from '../shared/constants.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -103,6 +104,37 @@ test('region id is read from the environment and normalized to lowercase', () =>
 
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout, 'us');
+});
+
+test('US defaults to four auto bots without changing ZA or explicit overrides', () => {
+  const configDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bv-region-bots-'));
+  const configPath = path.join(configDir, 'empty.ini');
+  fs.writeFileSync(configPath, '');
+
+  const loadMinBots = (regionId, minBots) => {
+    const env = { ...process.env, CONFIG: configPath, REGION_ID: regionId };
+    delete env.MIN_BOTS;
+    if (minBots !== undefined) env.MIN_BOTS = String(minBots);
+    return spawnSync(process.execPath, [
+      '--input-type=module',
+      '-e',
+      "import { config } from './server/config.js'; process.stdout.write(`${config.regionId}:${config.minBots}`)",
+    ], { cwd: ROOT, env, encoding: 'utf8' });
+  };
+
+  try {
+    const us = loadMinBots('us');
+    const za = loadMinBots('za');
+    const overridden = loadMinBots('us', 7);
+    assert.equal(us.status, 0, us.stderr);
+    assert.equal(us.stdout, 'us:4');
+    assert.equal(za.status, 0, za.stderr);
+    assert.equal(za.stdout, `za:${AUTO_BOTS_MIN}`);
+    assert.equal(overridden.status, 0, overridden.stderr);
+    assert.equal(overridden.stdout, 'us:7');
+  } finally {
+    fs.rmSync(configDir, { recursive: true, force: true });
+  }
 });
 
 test('shared-data client settings are read from server-only environment variables', () => {

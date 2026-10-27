@@ -156,7 +156,7 @@ Precedence is **environment variable > `config.ini` > built-in default**, so a o
 | | `tls_cert` / `tls_key` | `TLS_CERT` / `TLS_KEY` | blank | Blank → plain HTTP, which is local dev. |
 | | `data_dir` | `DATA_DIR` | `./data` | Leaderboard and certificate copies. |
 | | `max_players` | `MAX_PLAYERS` | `16` | |
-| | `min_bots` | `MIN_BOTS` | `6` | Bots kept topped up while anyone plays; 0 turns it off |
+| | `min_bots` | `MIN_BOTS` | `5 (ZA), 4 (US)` | Bots kept topped up while anyone plays; 0 turns it off. Explicit config/env values override these defaults. `config.example.ini` sets 6 as an example override. |
 | `deploy` | `token` | `DEPLOY_TOKEN` | blank | Secret for `POST /deploy`. **Blank disables the endpoint entirely** - correct on a laptop. |
 | | `ssh_host` / `ssh_user` / `ssh_key` | same | - | Used by `infra/deploy.sh`. |
 | `admin` | `key` | `ADMIN_KEY` | blank | Optional game-host flag. Open `https://<host>/?admin=<key>` once; the browser keeps it and the address bar drops it. It is not required for the Command Deck. `bootstrap.sh` generates one. |

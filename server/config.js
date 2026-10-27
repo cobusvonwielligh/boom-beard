@@ -44,6 +44,7 @@ const regionId = String(pick('REGION_ID', 'server', 'region_id', 'za')).toLowerC
 if (regionId !== 'za' && regionId !== 'us') {
   throw new RangeError(`invalid region id: ${regionId}`);
 }
+const defaultMinBots = regionId === 'us' ? 4 : AUTO_BOTS_MIN;
 
 export const config = {
   iniPath: fs.existsSync(iniPath) ? iniPath : null,
@@ -57,7 +58,7 @@ export const config = {
   dataDir: path.resolve(ROOT, pick('DATA_DIR', 'server', 'data_dir', './data')),
   maxPlayers: num('MAX_PLAYERS', 'server', 'max_players', 16),
   // Bots kept topped up while anybody is playing. 0 switches the policy off. See AUTO_BOTS_MIN.
-  minBots: num('MIN_BOTS', 'server', 'min_bots', AUTO_BOTS_MIN),
+  minBots: num('MIN_BOTS', 'server', 'min_bots', defaultMinBots),
 
   // Shared secret for POST /deploy. Empty disables the endpoint entirely.
   deployToken: pick('DEPLOY_TOKEN', 'deploy', 'token', ''),
