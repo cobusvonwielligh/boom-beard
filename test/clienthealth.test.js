@@ -50,6 +50,20 @@ test('another pirate goes to half health', () => {
   assert.equal(w.players[1].hp, MAX_HP);
 });
 
+test('a remote respawn appears at its new position without showing its stale position', () => {
+  const w = worldWith([wire(0), wire(1, { x: 700, y: 700, st: 0 })]);
+  snap(w, 12, [wire(0), wire(1, { x: 700, y: 700, st: 0 })]);
+  snap(w, 14, [wire(0), wire(1, { x: 700, y: 700, st: 0 })]);
+
+  snap(w, 16, [wire(0), wire(1, { x: 2600, y: 700, st: 1 })]);
+
+  assert.equal(w.players[1].alive, true);
+  assert.equal(w.players[1].rx, 2600, 'the remote player briefly appeared at their old position');
+  assert.equal(w.players[1].ry, 700);
+  assert.deepEqual(w.players[1].buf.map(point => point.tick), [16],
+    'pre-respawn snapshots remained in the interpolation buffer');
+});
+
 test('the server sends health only when it is not whole, and only for the living', () => {
   const sent = [];
   const r = createRoom({ countIn: 0, onBroadcast: m => { const x = typeof m === 'function' ? m(0) : m; if (x.t === 'snap') sent.push(x); } });

@@ -37,13 +37,18 @@ test('password prompts and validation toasts stay visible for five seconds', asy
 });
 
 test('player id and password fields share aligned label and input columns', async () => {
-  const html = await read('public/index.html');
   const css = await read('public/style.css');
 
-  has(html, /\.playerid-group label\s*{[^}]*width:\s*92px/s,
-    'both form rows reserve the same label width');
+  has(css, /\.playerid-group\s*{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0,\s*215px\)\s+minmax\(0,\s*1fr\)/s,
+    'the form rows use a shared grid for their label and input columns');
+  has(css, /\.playerid-group label\s*{[^}]*justify-content:\s*flex-end;[^}]*text-align:\s*right;/s,
+    'labels align against the same right edge');
+  has(css, /\.playerid-group input\s*{[^}]*grid-column:\s*2;[^}]*width:\s*100%;[^}]*box-sizing:\s*border-box;/s,
+    'inputs fill the same grid column and share a right edge');
   has(css, /#pwLabel\s*{\s*font-size:\s*0\.78em;/,
     'the password label is smaller to fit the shared label column');
+  has(css, /@media \(max-width: 600px\)[\s\S]*?\.playerid-group\s*{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/,
+    'the form stacks into one aligned column on narrow screens');
   has(css, /#pwGroup\s*{[^}]*margin-bottom:\s*16px/s,
     'the password field has more space beneath it');
   has(css, /#menuWrap #play\s*{\s*margin-top:\s*20px;/,

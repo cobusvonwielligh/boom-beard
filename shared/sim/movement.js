@@ -12,6 +12,7 @@ import {
   DRUNK_STAGGER_EVERY, DRUNK_STAGGER_TICKS,
   PUDDLE_SPEED_NUM, PUDDLE_SPEED_DEN, PUDDLE_SLIDE_TICKS,
   SLIDE_PEAK_NUM, SLIDE_PEAK_DEN, SLIDE_DRAG_NUM, SLIDE_DRAG_DEN, SLIDE_EXIT_UNITS,
+  SLIDE_SKATE_BONUS_SHAVE_NUM, SLIDE_SKATE_BONUS_SHAVE_DEN,
   SLIDE_MAX_TICKS, SLIDE_STAMINA_COST, SLIDE_COOLDOWN_TICKS,
   CONFUSED_NUM, CONFUSED_DEN,
   IN_RIGHT, IN_UP, IN_LEFT, IN_DOWN, IN_SLIDE, DIR_R, DIR_U, DIR_L, DIR_D, STATUS, BLOCK,
@@ -116,8 +117,12 @@ function startSlide(state, p, mask) {
   if (p.stamina <= 0) { p.stamina = 0; p.tired = true; }
   p.dir = dir;
   p.slideDir = dir;
-  // The launch, from the pace you would have walked at - boots included, statuses included.
-  p.slideV = Math.max(SLIDE_EXIT_UNITS + 1, ((speedOf(p) * SLIDE_PEAK_NUM) / SLIDE_PEAK_DEN) | 0);
+  const bootPace = SPEED_UNITS_PER_TICK[Math.min(p.speed, SPEED_UNITS_PER_TICK.length - 1)];
+  const bootBonus = Math.max(0, bootPace - SPEED_UNITS_PER_TICK[0]);
+  const shave = (bootBonus * SLIDE_SKATE_BONUS_SHAVE_NUM / SLIDE_SKATE_BONUS_SHAVE_DEN) | 0;
+  const slidePace = Math.max(1, speedOf(p) - shave);
+  // Keep the full base slide, while shaving a tenth of the bonus pace from boots.
+  p.slideV = Math.max(SLIDE_EXIT_UNITS + 1, ((slidePace * SLIDE_PEAK_NUM) / SLIDE_PEAK_DEN) | 0);
   p.slideFor = 0;
   state.events?.push({ e: 'slide', tick: state.tick, i: p.i, x: p.x, y: p.y, d: dir });
   return true;

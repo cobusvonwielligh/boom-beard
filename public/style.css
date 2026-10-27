@@ -299,7 +299,7 @@ body {
 
 :root {
   --bar: 52px;
-  --side: 340px;
+  --side: 289px;
   --gap: 10px;
   /* The landing title. See #title: the base is the size that fits the card, the scale is how far
      past it the title goes, and the card's padding and the title's lift are both derived from
@@ -1311,6 +1311,11 @@ button:hover {
   background: var(--gold);
   color: #11161e;
 }
+#leave:hover {
+  background: var(--bad);
+  border-color: var(--bad);
+  color: #11161e;
+}
 button:disabled {
   opacity: 0.4;
   cursor: default;
@@ -1503,6 +1508,7 @@ input[type="range"] {
 .slot input[type="range"]:focus {
   outline: none;
 }
+
 .slot input[type="range"]:focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 4px;
@@ -1981,7 +1987,8 @@ body.hurt:not(.dead) #avatar {
   gap: 5px;
   color: var(--gold);
 }
-.coinStat .coin {
+.coinStat .coin,
+.shopWallet #shopCoin {
   width: 13px;
   height: 13px;
   display: block;
@@ -2979,6 +2986,10 @@ body.hurt:not(.dead) #avatar {
   filter: drop-shadow(0 0 7px #edc24e4d);
   outline: none;
 }
+#scores .playerHoverTarget:hover {
+  text-decoration-color: transparent;
+  filter: none;
+}
 /* The dossier is a CARD, with the card's own numbers.
  *
  * It had its own fill, its own padding, its own shadow and a two-degree tilt, which is three
@@ -2997,7 +3008,7 @@ body.hurt:not(.dead) #avatar {
   pointer-events: none;
   opacity: 0;
   visibility: hidden;
-  transform: translateY(10px) scale(0.94);
+  transform: translateY(10px) scale(0.7);
   transform-origin: 22px 0;
   box-shadow:
     0 0 80px #80203238,
@@ -3020,7 +3031,7 @@ body.hurt:not(.dead) #avatar {
 #playerHover.show {
   opacity: 1;
   visibility: visible;
-  transform: translateY(0) scale(1);
+  transform: translateY(0) scale(0.75);
   transition-delay: 0s;
 }
 .phHead {
@@ -3474,7 +3485,6 @@ body.hurt:not(.dead) #avatar {
   fill: currentColor;
 }
 .shopWallet #shopCoin {
-  color: #fff0ae;
   transition:
     color 0.15s,
     filter 0.15s;
@@ -4939,8 +4949,8 @@ kbd.wide {
   /* The tick. Every whole second the class is re-applied (see the count-in block in
      client/main.js), which restarts this: the digit lands hard, overshoots a hair, and rocks
      back - the motion an escapement makes, not a fade. */
-  filter: var(--cast-edge) drop-shadow(0 4px 0 #000)
-    drop-shadow(0 8px 18px #000d) drop-shadow(0 0 28px #edc24e66);
+  filter: var(--cast-edge) drop-shadow(0 5px 0 #000)
+    drop-shadow(0 12px 24px #000f) drop-shadow(0 0 34px #edc24e99);
   animation:
     countTick 1s cubic-bezier(0.2, 1.4, 0.3, 1) both,
     castShine 7s linear infinite;
@@ -4949,8 +4959,8 @@ kbd.wide {
    warning that the round is about to be live. */
 #countIn.hot .n {
   font-size: 124px;
-  filter: var(--cast-edge) drop-shadow(0 4px 0 #000)
-    drop-shadow(0 8px 18px #000d) drop-shadow(0 0 22px #edc24ebb);
+  filter: var(--cast-edge) drop-shadow(0 5px 0 #000)
+    drop-shadow(0 12px 24px #000f) drop-shadow(0 0 30px #edc24ecc);
 }
 #countIn .n.go {
   font-size: 146px;
@@ -4980,8 +4990,8 @@ kbd.wide {
   mask: radial-gradient(circle, #0000 72px, #000 73px, #000 80px, #0000 81px);
   animation: countSweep 1s linear infinite;
   opacity: 0.85;
-  filter: drop-shadow(0 3px 0 #000) drop-shadow(0 7px 14px #000b)
-    drop-shadow(0 0 22px #edc24e70);
+  filter: drop-shadow(0 4px 0 #000) drop-shadow(0 12px 22px #000e)
+    drop-shadow(0 0 28px #edc24ea6);
 }
 #countIn .ring::after {
   /* The face: twelve faint marks, so the sweep has something to sweep past. */
@@ -5159,6 +5169,42 @@ kbd.wide {
    THE PASSWORD BOX
    Hidden until the server asks. See server/accounts.js.
    ======================================== */
+.playerid-group {
+  display: grid;
+  grid-template-columns: minmax(0, 215px) minmax(0, 1fr);
+  column-gap: 15px;
+  align-items: center;
+  width: 100%;
+}
+.playerid-group label {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  grid-column: 1;
+  min-width: 0;
+  width: auto;
+  white-space: nowrap;
+  margin: 0;
+  padding: 0;
+  line-height: 1;
+  font-size: calc(1em + 1px);
+  text-align: right;
+  text-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.8),
+    0 1px 2px rgba(0, 0, 0, 0.6);
+}
+.playerid-group input {
+  grid-column: 2;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  margin: 0;
+}
+.playerid-group > .pwField {
+  grid-column: 2;
+  width: 100%;
+  min-width: 0;
+}
 #pwGroup {
   margin-top: 16px;
   margin-bottom: 16px;
@@ -5185,6 +5231,7 @@ kbd.wide {
   position: relative;
   flex: 1;
   min-width: 0;
+  width: 100%;
   display: flex;
   align-items: center;
 }
@@ -5291,6 +5338,22 @@ kbd.wide {
   #pwGroup,
   #pw.invalid {
     animation: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .playerid-group {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 6px;
+  }
+  .playerid-group label,
+  .playerid-group input,
+  .playerid-group > .pwField {
+    grid-column: 1;
+  }
+  .playerid-group label {
+    justify-content: flex-start;
+    text-align: left;
   }
 }
 

@@ -19,8 +19,8 @@ test('top bar centers larger loadout stats and keeps only the requested status i
     'clock and ping share the left status group');
   has(html.slice(clockIndex, pingIndex), /<span class="sep"><\/span>/,
     'a vertical separator divides the clock label from ping');
-  has(html, /id="topbarRight"[\s\S]*id="vMap"[\s\S]*class="right"/,
-    'map and utility controls share the right status group');
+  has(html, /id="topbarRight"[\s\S]*class="right"[\s\S]*id="vMap"[\s\S]*id="leave"/,
+    'the map indicator sits with the leave control in the right status group');
   assert.doesNotMatch(html, /<span class="k">alive<\/span>|id="vOnline"/,
     'the alive stat is removed');
   assert.doesNotMatch(main, /vOnline/, 'the removed alive stat is no longer updated');
@@ -44,6 +44,26 @@ test('top bar centers larger loadout stats and keeps only the requested status i
     'the current stat number is enlarged');
   has(css, /\.pip \.cap\s*\{[^}]*font-size:\s*13px/s,
     'the stat cap remains unchanged');
+});
+
+test('the game toolbar drops external links and expands the board beside a narrower side panel', async () => {
+  const [html, css] = await Promise.all([
+    read('public/index.html'), read('public/style.css'),
+  ]);
+  const start = html.indexOf('<div id="topbar"');
+  const end = html.indexOf('<img id="avatar"', start);
+  const topbar = html.slice(start, end);
+
+  assert.doesNotMatch(topbar, /class="iconBtn(?: bug)?"/,
+    'GitHub and report-bug controls are removed from the in-game toolbar');
+  assert.doesNotMatch(topbar, /href="https:\/\/github\.com/,
+    'the in-game toolbar has no external GitHub links');
+  has(css, /:root\s*{[^}]*--side:\s*289px;/s,
+    'the side panel is 15 percent narrower than its 340px width');
+  has(css, /canvas#game\s*{[^}]*width:\s*calc\(100vw - var\(--side\)/s,
+    'the game canvas fills the width released by the side panel');
+  has(css, /#leave:hover\s*{[^}]*background:\s*var\(--bad\);/s,
+    'the leave control turns red on hover');
 });
 
 test('heart states are larger and become desaturated as health falls', async () => {
@@ -74,4 +94,28 @@ test('heart states are larger and become desaturated as health falls', async () 
     'the periodic heart shake respects reduced-motion preferences');
   has(css, /\.pip\.heart\.empty svg\s*\{[^}]*grayscale\(1\)/s,
     'the empty heart is grayscale');
+});
+
+test('count-in numbers and clock ring have stronger drop shadows', async () => {
+  const css = await read('public/style.css');
+
+  has(css, /#countIn \.n\s*\{[^}]*drop-shadow\(0 5px 0 #000\)[^}]*drop-shadow\(0 12px 24px #000f\)/s,
+    'the count-in number has stronger dark depth shadows');
+  has(css, /#countIn\.hot \.n\s*\{[^}]*drop-shadow\(0 5px 0 #000\)[^}]*drop-shadow\(0 12px 24px #000f\)/s,
+    'the emphasized count-in number keeps the stronger shadow');
+  has(css, /#countIn \.ring\s*\{[^}]*drop-shadow\(0 4px 0 #000\)[^}]*drop-shadow\(0 12px 22px #000e\)/s,
+    'the clock ring has a stronger cast shadow');
+});
+
+test('lifetime player popup is 25 percent smaller without a name hover effect on the tab board', async () => {
+  const [css, main] = await Promise.all([
+    read('public/style.css'), read('public/client/main.js'),
+  ]);
+
+  has(css, /#playerHover\.show\s*\{[^}]*scale\(0\.75\)/s,
+    'the visible lifetime popup is scaled to 75 percent');
+  has(css, /#scores \.playerHoverTarget:hover\s*\{[^}]*text-decoration-color:\s*transparent;[^}]*filter:\s*none;/s,
+    'TAB scoreboard names do not gain underline or glow on mouse hover');
+  has(main, /markPlayerHover\(nameCell,\s*\{ seat: p\.i \}\)/,
+    'TAB scoreboard names remain eligible to open their lifetime popup');
 });

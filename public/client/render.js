@@ -432,7 +432,7 @@ export function createRenderer(canvas, world) {
    * reason a canvas filter is affordable here at all.
    */
   const SHADOW_ALPHA = 0.11;
-  const BLOCK_SHADOW_ALPHA = 0.15;
+  const BLOCK_SHADOW_ALPHA = 0.18;
   const BLOCK_SHADOW_WIDTH = 1.08;
   const SHADOW_BLUR_PX = 6.5;
   let sunFor = null, sun = { dx: 0, dy: 0 };

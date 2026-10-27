@@ -83,10 +83,10 @@ fuse ends.
 | | |
 |---|---|
 | Gesture | the same direction twice inside **160 ms** (client-side; the server sees one bit) |
-| Launch | **3 ×** your current walking pace - boots included, so the perk still matters |
+| Launch | **3 ×** your walking pace; only 90% of the boots bonus counts toward a slide |
 | Drag | **× 0.94** of the velocity per tick |
 | Ends at | **26 units/tick**, or on hitting anything solid |
-| Distance | about **3½ tiles over 18 ticks**, against 1¾ walking the same ticks |
+| Distance | about **3.2 tiles at base speed**, with a modest increase from boots |
 | Cost | **700 stamina**, a fifth of a fresh bar, taken in full at the launch |
 | Cooldown | **18 ticks** before another |
 | Refused when | already sliding, cooling down, exhausted, or short of the cost |

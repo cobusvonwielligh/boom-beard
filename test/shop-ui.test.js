@@ -87,8 +87,8 @@ test('death and intermission shop reuse the approved game assets and palette', a
     'the shop dialog widens to fit five full-width buttons and stays within the viewport');
   has(css, /\.shopWallet #shopCoin\.empty\s*\{[^}]*grayscale\(1\)/s,
     'an empty wallet coin is grayscale');
-  has(css, /\.shopWallet #shopCoin\s*\{[^}]*#fff0ae/s,
-    'a funded wallet coin matches the gold price icons');
+  has(css, /\.coinStat \.coin,\s*\.shopWallet #shopCoin\s*\{[^}]*width:\s*13px;[^}]*height:\s*13px;[^}]*color:\s*var\(--gold\);[^}]*filter:\s*drop-shadow\(0 1px 0 #0008\) drop-shadow\(0 0 5px #edc24e4d\)/s,
+    'the shop wallet coin matches the player-stats coin size, color and glow');
   has(css, /\.card\.small:not\(\.round\) #shop\s*\{[^}]*margin-top:\s*-2px/s,
     'death-shop header has the same 18px top inset as the Leave button bottom inset');
   has(css, /\.shopIcon\s*\{[^}]*top:\s*-4px/s,

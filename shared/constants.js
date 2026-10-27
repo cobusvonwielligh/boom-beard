@@ -154,10 +154,9 @@ export const DIR_R = 0, DIR_U = 1, DIR_L = 2, DIR_D = 3;
  * The physics, and all three parts matter:
  *
  *   SLIDE_PEAK_NUM/DEN  the launch, as a multiple of your walking pace. Three times, so the first
- *                       tick is unmistakably not running. It scales WITH your boots
- *                       rather than being a flat number: a booted player who slides should still
- *                       be faster than an unbooted one who slides, or the perk stops mattering at
- *                       exactly the moment the perk matters most.
+ *                       tick is unmistakably not running. It scales with 90% of the extra pace
+ *                       from boots, preserving the perk while keeping a fully booted slide from
+ *                       becoming disproportionately long.
  *   SLIDE_DRAG_NUM/DEN  friction, applied to the velocity every tick. Ninety-four percent - the slide
  *                       decelerates the whole way out, which is what makes it read as momentum
  *                       rather than as a teleport, and it is the reason you can be carried past
@@ -167,14 +166,15 @@ export const DIR_R = 0, DIR_U = 1, DIR_L = 2, DIR_D = 3;
  *                       than by a timer expiring. A timer gives every slide the same length
  *                       whatever the surface or the boots; drag gives each one its own.
  *
- * SLIDE_MAX_TICKS is a seatbelt against a tuning accident, not the mechanic: at these numbers the
- * exit speed arrives first, after about eighteen ticks - six tenths of a second and three and a
- * half tiles, against the one and three quarters that running the same ticks would cover. The
- * first pass at this was a 2.5x launch against a tenth of drag a tick, which decayed so fast that
- * the whole slide was worth about a sixth of a tile more than walking: a stamina cost for nothing.
+ * SLIDE_MAX_TICKS is a seatbelt against a tuning accident, not the mechanic. At base pace the
+ * slide ends after about sixteen ticks and covers just over three tiles, against about 1.7 tiles
+ * walking the same time. Boots still extend the slide, but only 90% of their bonus pace counts.
+ * The first pass was a 2.5x launch against a tenth of drag a tick, which decayed so fast that the
+ * whole slide was worth about a sixth of a tile more than walking: a stamina cost for nothing.
  * The lesson is that the DRAG, not the launch, decides what a dash is worth.
  */
 export const SLIDE_PEAK_NUM = 3, SLIDE_PEAK_DEN = 1;
+export const SLIDE_SKATE_BONUS_SHAVE_NUM = 1, SLIDE_SKATE_BONUS_SHAVE_DEN = 10;
 export const SLIDE_DRAG_NUM = 47, SLIDE_DRAG_DEN = 50;
 export const SLIDE_EXIT_UNITS = 26;
 export const SLIDE_MAX_TICKS = 30;

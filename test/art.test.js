@@ -136,3 +136,9 @@ test('iron rocks cast shadows in the shared sun direction', () => {
   assert.match(projected, /map, sdx, sdy/,
     'projected blocks do not share the scene’s sun direction');
 });
+
+test('projected shadows from blocks and walls are 20 percent stronger', () => {
+  const source = fs.readFileSync(new URL('../public/client/render.js', import.meta.url), 'utf8');
+  const alpha = Number(source.match(/const BLOCK_SHADOW_ALPHA = ([\d.]+);/)?.[1]);
+  assert.equal(alpha, 0.18, 'block and wall shadow intensity was not increased by 20 percent');
+});

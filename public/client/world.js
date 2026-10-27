@@ -184,7 +184,15 @@ export function createWorld() {
         reconcile(me, wire, snap.ack);
         continue;
       }
+      const respawned = existing && !existing.alive && wire.st === 1;
       const p = existing ? hydrate(wire, existing) : (w.players[wire.i] = hydrate(wire));
+      if (respawned) {
+        p.rx = wire.x;
+        p.ry = wire.y;
+        p.moving = false;
+        p.trail.length = 0;
+        p.buf.length = 0;
+      }
       // Snapshots arrive every 2 ticks and remotes are drawn INTERP_DELAY_TICKS behind, so the
       // pair that brackets the render time can be three entries back. Keeping only three meant
       // the right pair had usually already been shifted out.

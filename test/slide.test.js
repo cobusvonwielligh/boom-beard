@@ -8,7 +8,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  IN_RIGHT, IN_LEFT, IN_SLIDE, IN_BOMB, UNITS_PER_TILE, BLOCK, STATUS,
+  IN_RIGHT, IN_LEFT, IN_SLIDE, IN_BOMB, UNITS_PER_TILE, BLOCK, STATUS, MAX_SKATES,
   SLIDE_STAMINA_COST, SLIDE_COOLDOWN_TICKS, STAMINA_MAX, DIR_R,
 } from '../shared/constants.js';
 import { MAPS } from '../shared/maps.js';
@@ -36,6 +36,23 @@ function arena() {
   return { s, p, at };
 }
 
+function slideDistance(speed) {
+  const s = createState(MAPS[0]);
+  s.map.cells.fill(BLOCK.FLOOR);
+  const p = createPlayer(0, 'you');
+  p.alive = true;
+  p.speed = speed;
+  p.x = tileCentre(3);
+  p.y = tileCentre(11);
+  p.dir = DIR_R;
+  s.players[0] = p;
+  const start = p.x;
+
+  step(s, p, IN_RIGHT | IN_SLIDE);
+  while (p.slideV > 0) step(s, p, 0);
+  return p.x - start;
+}
+
 test('a double-tap costs stamina up front and covers more ground than running', () => {
   const { s, p } = arena();
   const start = p.x;
@@ -58,6 +75,17 @@ test('a double-tap costs stamina up front and covers more ground than running', 
   assert.ok(slid > walked * 1.5,
     `a slide covered ${slid} units against ${walked} walking the same ${ticks} ticks`);
   assert.ok(ticks < 30, `the slide ran for ${ticks} ticks - that is a vehicle, not a slide`);
+});
+
+test('max-speed boots only add a little extra slide distance', () => {
+  const unboosted = slideDistance(0);
+  const fullyBoosted = slideDistance(MAX_SKATES);
+
+  assert.equal(unboosted, 813, 'the base-speed slide was unintentionally changed');
+  assert.ok(
+    fullyBoosted >= 8.4 * UNITS_PER_TILE && fullyBoosted <= 8.6 * UNITS_PER_TILE,
+    `a fully boosted slide covered ${(fullyBoosted / UNITS_PER_TILE).toFixed(2)} tiles`,
+  );
 });
 
 test('it cannot be chained, and cannot be bought without the wind for it', () => {
