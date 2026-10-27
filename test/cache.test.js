@@ -93,6 +93,12 @@ test('static caching', async t => {
     );
   });
 
+  await t.test('the landing page uses the root favicon URL', async () => {
+    const home = await fetch(base + '/');
+    const html = await home.text();
+    assert.match(html, /rel="shortcut icon"[\s\S]*?href="\/favicon\.ico"/);
+  });
+
   for (const url of ['/client/main.js', '/shared/constants.js', '/assets/art.js', '/style.css']) {
     await t.test(`${url} is revalidated, and a match is a 304`, async () => {
       const first = await fetch(base + url);
