@@ -52,7 +52,8 @@ name there.
 ZA accounts, metrics, and geography; the US dashboard reads only US-local data.
 Each instance has its own server-side admin key and password configuration. The
 owner's browser enrolls each regional key on that host with the existing
-`/?admin=<key>` flow.
+`/?admin=<key>` flow. Dashboard login reads the trusted-browser token scoped to that
+host's region.
 
 ## Production setup
 

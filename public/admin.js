@@ -1,6 +1,9 @@
 import { store } from '/client/store.js';
+import { regionIdForOrigin } from '/shared/regions.js';
+import { trustKey } from '/shared/region-keys.js';
 
 const $ = id => document.getElementById(id);
+const regionId = regionIdForOrigin(location.origin);
 const loginView = $('loginView');
 const dashboard = $('dashboard');
 const loginForm = $('adminLogin');
@@ -88,7 +91,7 @@ async function api(url, options = {}) {
 
 async function unlock() {
   const name = String(store.get('bv.name') ?? '').trim().toLowerCase();
-  const deviceToken = store.get('bv.trust.cobusvw');
+  const deviceToken = store.get(trustKey(regionId, name));
   const adminKey = store.get('bv.adminKey');
   const password = $('adminPassword').value;
   if (name !== 'cobusvw') {

@@ -26,7 +26,9 @@ test('admin page contains the protected dashboard, filters, and no embedded pass
   assert.match(html, /\/admin\.js/);
   assert.match(html, /\/admin\.css/);
   assert.match(html, /name="robots" content="noindex, nofollow"/);
-  assert.match(script, /bv\.trust\.cobusvw/);
+  assert.match(script, /regionIdForOrigin\(location\.origin\)/);
+  assert.match(script, /store\.get\(trustKey\(regionId,\s*name\)\)/);
+  assert.doesNotMatch(script, /bv\.trust\.cobusvw/);
   assert.match(script, /bv\.adminKey/);
   assert.match(script, /\/admin\/api\/login/);
   assert.match(script, /\/admin\/api\/players/);

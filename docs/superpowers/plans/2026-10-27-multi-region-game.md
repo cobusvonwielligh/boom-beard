@@ -21,6 +21,7 @@
 - `public/client/region-picker.js` — bounded probes, saved manual selection, and visible status.
 - `public/client/net.js` — selected-origin transport and region-scoped player/trust keys.
 - `public/client/main.js` — create the picker and re-probe immediately before joining.
+- `public/admin.js` — use the current host's region-scoped trusted-browser token.
 - `public/index.html`, `public/style.css` — branded, responsive region selector.
 - `config.example.ini`, `infra/bootstrap.sh`, `docs/DEPLOY.md` — region configuration and NA setup.
 - `test/cache.test.js` and new region-focused tests — HTTP behavior, selection, probe failures,
@@ -513,10 +514,12 @@ git commit -m "feat(regions): add landing server selector"
 **Files:**
 - Modify: `public/client/net.js`
 - Modify: `public/client/main.js`
+- Modify: `public/admin.js`
 - Modify: `shared/regions.js`
 - Create: `shared/region-keys.js`
 - Create: `test/region-transport.test.js`
 - Create: `test/region-credentials.test.js`
+- Modify: `test/admin-ui.test.js`
 
 - [ ] **Step 1: Add transport URL tests**
 
@@ -587,6 +590,11 @@ Import and use these helpers in `public/client/net.js` for player ID and trust r
 and writes. Keep `bv.name` and `bv.device` shared. Keep the existing admin key scoped
 to the current page origin; each server receives a unique key, so host privileges only
 apply when the browser is on that regional origin.
+
+In `public/admin.js`, import `regionIdForOrigin` and `trustKey`, set
+`const regionId = regionIdForOrigin(location.origin)`, and read the login token with
+`store.get(trustKey(regionId, name))`. Update `test/admin-ui.test.js` to assert that
+the region helper and region-scoped trust key are used instead of the ZA-only literal.
 
 Create `test/region-credentials.test.js`:
 
