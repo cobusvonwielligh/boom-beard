@@ -253,3 +253,49 @@ test('signup exclusions do not apply to future accounts using the same name', as
   const restarted = createAccounts({ dataDir: d });
   assert.equal(restarted.stats().total, 1, 'the new account was excluded after restart');
 });
+
+test('one-time account cleanup deletes known test accounts but preserves cobusvw', async () => {
+  const d = dir();
+  const file = path.join(d, 'accounts.json');
+  const bakFile = `${file}.bak`;
+  const accounts = Object.fromEntries(
+    ['cobus', 'cobusvw', 'cobusvonw', 'test', 'awe', 'mock', 'captain'].map(name => [
+      name, { created: 0, ...(name === 'cobusvw' ? { signupCountExcluded: true } : {}) },
+    ]),
+  );
+  fs.writeFileSync(file, JSON.stringify({
+    version: 1,
+    signupCountExclusionsVersion: 1,
+    accounts,
+  }));
+  fs.writeFileSync(bakFile, JSON.stringify({
+    version: 1,
+    signupCountExclusionsVersion: 1,
+    accounts: { cobus: { created: 0 }, cobusvw: { created: 0 } },
+  }));
+
+  const cleaned = createAccounts({ dataDir: d });
+  for (const name of ['cobus', 'cobusvonw', 'test', 'awe', 'mock']) {
+    assert.equal(cleaned.has(name), false, `${name} was not removed`);
+  }
+  assert.equal(cleaned.has('cobusvw'), true, 'the protected account was removed');
+  assert.equal(cleaned.has('captain'), true, 'an unrelated account was removed');
+  assert.equal(cleaned.stats().total, 1, 'the preserved cobusvw account counted as a signup');
+
+  const saved = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const backup = JSON.parse(fs.readFileSync(bakFile, 'utf8'));
+  assert.equal(saved.accountCleanupVersion, 1);
+  for (const name of ['cobus', 'cobusvonw', 'test', 'awe', 'mock']) {
+    assert.equal(saved.accounts[name], undefined, `${name} remained in the account file`);
+    assert.equal(backup.accounts[name], undefined, `${name} remained in the backup`);
+  }
+  assert.ok(saved.accounts.cobusvw, 'the protected account was removed from the account file');
+  assert.ok(backup.accounts.cobusvw, 'the protected account was removed from the backup');
+  assert.equal(cleaned.has('cobusvw'), true);
+
+  assert.equal((await cleaned.register('mock', PW)).ok, true);
+  await cleaned.flush();
+  const restarted = createAccounts({ dataDir: d });
+  assert.equal(restarted.has('mock'), true, 'a future signup was deleted after restart');
+  assert.equal(restarted.has('cobusvw'), true);
+});

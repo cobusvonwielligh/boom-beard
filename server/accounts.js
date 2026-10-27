@@ -44,9 +44,11 @@ import crypto from 'node:crypto';
 import { PASSWORD_MIN, PASSWORD_MAX } from '../shared/constants.js';
 
 const VERSION = 1;
-// Existing records with these names are excluded once; future signups count normally.
+// Retained existing records with these names are excluded once; future signups count normally.
 const SIGNUP_COUNT_EXCLUSIONS = new Set(['cobus', 'cobusvw', 'cobusvonw', 'test', 'awe']);
 const SIGNUP_COUNT_EXCLUSIONS_VERSION = 1;
+const ACCOUNT_CLEANUP_KEYS = new Set(['cobus', 'cobusvonw', 'test', 'awe', 'mock']);
+const ACCOUNT_CLEANUP_VERSION = 1;
 
 /* scrypt, at the parameters Node's own documentation suggests for interactive logins.
  *
@@ -134,6 +136,8 @@ export function createAccounts({ dataDir }) {
   const bakFile = `${file}.bak`;
   let accounts = new Map();        // key -> record
   let signupCountExclusionsVersion = SIGNUP_COUNT_EXCLUSIONS_VERSION;
+  let accountCleanupVersion = ACCOUNT_CLEANUP_VERSION;
+  let scrubBackupOnNextSyncFlush = false;
   let dirty = false;
   let saving = null;
   let tmpSeq = 0;
@@ -170,6 +174,16 @@ export function createAccounts({ dataDir }) {
           signupCountExclusionsVersion = SIGNUP_COUNT_EXCLUSIONS_VERSION;
           dirty = true;
         }
+        const storedCleanupVersion = Number(parsed.accountCleanupVersion);
+        accountCleanupVersion = Number.isSafeInteger(storedCleanupVersion)
+          ? Math.max(0, storedCleanupVersion)
+          : 0;
+        if (accountCleanupVersion < ACCOUNT_CLEANUP_VERSION) {
+          for (const key of ACCOUNT_CLEANUP_KEYS) accounts.delete(key);
+          accountCleanupVersion = ACCOUNT_CLEANUP_VERSION;
+          scrubBackupOnNextSyncFlush = true;
+          dirty = true;
+        }
         if (candidate === bakFile) console.warn('accounts: loaded the backup copy');
         return;
       } catch {
@@ -187,6 +201,7 @@ export function createAccounts({ dataDir }) {
   const snapshot = () => JSON.stringify({
     version: VERSION,
     signupCountExclusionsVersion,
+    accountCleanupVersion,
     accounts: Object.fromEntries(accounts),
   });
 
@@ -228,13 +243,28 @@ export function createAccounts({ dataDir }) {
   function flushSync() {
     dirty = false;
     const tmp = `${file}.${process.pid}.sync.tmp`;
+    const scrubBackup = scrubBackupOnNextSyncFlush;
     try {
       const fd = fs.openSync(tmp, 'w', MODE);
       try { fs.writeFileSync(fd, snapshot()); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
-      try { fs.copyFileSync(file, bakFile); } catch { /* first save */ }
+      if (scrubBackup) {
+        try { fs.unlinkSync(bakFile); } catch (err) {
+          if (err.code !== 'ENOENT') throw err;
+        }
+      } else {
+        try { fs.copyFileSync(file, bakFile); } catch { /* first save */ }
+      }
       fs.renameSync(tmp, file);
+      if (scrubBackup) {
+        fs.copyFileSync(file, bakFile);
+        fs.chmodSync(bakFile, MODE);
+        scrubBackupOnNextSyncFlush = false;
+      }
     } catch (err) {
+      dirty = true;
       console.error('accounts: sync save failed', err.message);
+      if (scrubBackup) throw err;
+      try { fs.unlinkSync(tmp); } catch { /* nothing to clean up */ }
     }
   }
 

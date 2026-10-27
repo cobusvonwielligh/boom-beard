@@ -12,8 +12,8 @@ function room() {
   return createRoom({ countIn: 0, onBroadcast: () => {} });
 }
 
-test('death cooldown is 12 seconds and the post-click countdown is 4.5 seconds', () => {
-  assert.equal(RESPAWN_DELAY_TICKS, 12 * TICK_HZ);
+test('death cooldown is 11 seconds and the post-click countdown is 4.5 seconds', () => {
+  assert.equal(RESPAWN_DELAY_TICKS, 11 * TICK_HZ);
   assert.equal(RESPAWN_COUNTDOWN_TICKS, 4.5 * TICK_HZ);
 });
 

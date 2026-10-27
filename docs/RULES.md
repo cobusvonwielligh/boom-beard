@@ -342,7 +342,7 @@ Fire hurts you unless you are Invulnerable. **Two hits kill.**
 - **Kill streaks** continue when you get another kill within **11 seconds**; dying or letting that
   window expire ends the run. Streak text cycles through RGB colours while active.
 - On death you drop **up to 3 perks** on nearby free tiles, so a good kill is rewarded.
-- After a **12-second** death cooldown, press **SPACE** to start a **4.5-second 3-2-1**
+- After an **11-second** death cooldown, press **SPACE** to start a **4.5-second 3-2-1**
   countdown. First spawn skips the death cooldown. Respawns have **90 ticks (3 s)**
   Invulnerability.
 

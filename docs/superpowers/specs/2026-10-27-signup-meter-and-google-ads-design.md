@@ -6,7 +6,7 @@ Show a durable human-signup total on the desktop landing page, give the `cobusvw
 
 ## Signup Definition
 
-A signup is one successfully registered account in the existing account store. Account keys are normalized names and cannot be registered twice, so the metric is a unique player-account count. Bots never register accounts and are excluded automatically. Existing accounts named `cobus`, `cobusvw`, `cobusvonw`, `test`, and `awe` are marked excluded once during migration. Future registrations with those names count normally; no other identity or name pattern is excluded.
+A signup is one successfully registered account in the existing account store. Account keys are normalized names and cannot be registered twice, so the metric is a unique player-account count. Bots never register accounts and are excluded automatically. A one-time cleanup removes existing accounts named `cobus`, `cobusvonw`, `test`, `awe`, and `mock`, while preserving `cobusvw`. The preserved existing `cobusvw` record is excluded from counts once; future registrations with these names count normally. No other identity or name pattern is removed.
 
 The account store already writes a millisecond `created` timestamp for new records. It will expose a pure `stats(now)` aggregate with:
 
