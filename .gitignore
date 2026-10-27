@@ -1,6 +1,7 @@
 node_modules/
 data/
 .worktrees/
+.superpowers/
 
 # Written by infra/deploy.sh to stamp what is actually deployed.
 .version
