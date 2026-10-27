@@ -937,15 +937,26 @@
               </div>
             </div>
           </form>
-          <div
-            id="regionPicker"
-            role="group"
-            aria-label="Game region"
-          ></div>
           <button id="play" type="submit" form="playerForm">play</button>
           <!-- Always available, including when every seat is taken: a spectator costs nobody a
            place, so "full" is not a reason to turn one away. -->
           <button id="watch" type="button" class="ghost">spectate only</button>
+          <dialog
+            id="regionDialog"
+            class="regionDialog"
+            aria-labelledby="regionDialogHeading"
+          >
+            <h2 class="regionHeading" id="regionDialogHeading">Choose your region</h2>
+            <div
+              id="regionPicker"
+              role="group"
+              aria-label="Game region"
+            ></div>
+            <div class="regionDialogActions">
+              <button id="regionCancel" class="ghost" type="button">cancel</button>
+              <button id="regionConfirm" type="button">continue</button>
+            </div>
+          </dialog>
           <div class="keys">
             <h2>Controls</h2>
             <dl>
@@ -1003,9 +1014,6 @@
             >
               <svg><use href="#i-bug" /></svg>report a bug
             </a>
-          </p>
-          <p class="geoPrivacyDisclosure">
-            Country-level visit and sign-up counts only; IP addresses are not included in analytics.
           </p>
         </div>
         <!-- A stack of powder kegs sitting on the top edge of the card, over it rather than behind

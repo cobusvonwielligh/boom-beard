@@ -19,7 +19,7 @@ test('admin page contains the protected dashboard, filters, and no embedded pass
   assert.match(html, /id="worldMap"/);
   assert.match(html, /id="geographyPeriod"/);
   assert.match(html, /id="geoMetricSwitch"|class="geoMetricSwitch"/);
-  assert.match(home, /Country-level visit and sign-up counts only; IP addresses are not included in analytics/);
+  assert.doesNotMatch(home, /geoPrivacyDisclosure/);
   assert.match(html, /id="fromDate"/);
   assert.match(html, /id="toDate"/);
   assert.match(html, /id="playerRows"/);

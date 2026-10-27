@@ -10,7 +10,7 @@ import { spawn } from 'node:child_process';
 import { createGzip } from 'node:zlib';
 import { attachHub } from './net.js';
 import { config, usingTls, ROOT, sameSecret } from './config.js';
-import { canonicalTarget } from './canonical.js';
+import { canonicalTarget, gameOnlyRedirect } from './canonical.js';
 import { createLeaderboard } from './leaderboard.js';
 import { createAccounts } from './accounts.js';
 import { createAdminAuth } from './admin-auth.js';
@@ -65,7 +65,7 @@ const CSP = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://pagead2.googlesyndication.com https://www.google.com",
   "media-src 'self'",
-  "connect-src 'self' ws: wss: https://boombeard.co.za https://us.boombeard.co.za https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://pagead2.googlesyndication.com https://www.google.com https://ad.doubleclick.net",
+  "connect-src 'self' ws: wss: https://boombeard.co.za https://52.21.210.27 https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://pagead2.googlesyndication.com https://www.google.com https://ad.doubleclick.net",
   "frame-src https://www.googletagmanager.com",
   "object-src 'none'",
   "base-uri 'none'",
@@ -206,6 +206,12 @@ async function serve(req, res) {
   if (usingTls) res.setHeader('Strict-Transport-Security', 'max-age=31536000');
 
   const url = req.url.split('?')[0];
+
+  const gameOnly = gameOnlyRedirect({ regionId: config.regionId, url: req.url });
+  if (gameOnly) {
+    res.writeHead(302, { Location: gameOnly, 'Cache-Control': 'no-store' });
+    return res.end();
+  }
 
   // Before anything else: www, the sslip.io name and the bare IP all bounce to the canonical one.
   const to = canonicalTarget({ host: req.headers.host, url: req.url, want: config.publicHost, tls: usingTls });

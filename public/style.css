@@ -4711,25 +4711,47 @@ input[type="text"]:focus,
   margin-top: 16px;
   padding: 7px;
 }
-#regionPicker {
-  margin-top: 14px;
+.regionDialog {
+  width: min(420px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  margin: auto;
+  padding: 22px;
+  overflow: auto;
+  color: var(--ink);
+  background: linear-gradient(150deg, #242b35, #11151c 76%);
+  border: 1px solid #687386;
+  border-radius: 12px;
+  box-shadow: 0 24px 80px #000b, inset 0 1px 0 #ffffff12;
+}
+.regionDialog::backdrop {
+  background: #070a0dd9;
+  backdrop-filter: blur(4px);
 }
 .regionHeading {
-  margin: 0 0 7px;
+  margin: 0 0 14px;
   color: var(--gold-hi);
-  font: 12px var(--nums);
-  letter-spacing: 0.12em;
-  text-align: left;
+  font: 15px var(--nums);
+  letter-spacing: 0.14em;
+  text-align: center;
   text-transform: uppercase;
 }
+#regionPicker {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
 .regionOption {
-  display: flex;
+  display: grid;
   min-width: 0;
-  flex: 1;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
-  padding: 9px 10px;
+  min-height: 84px;
+  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-areas:
+    "flag name"
+    "details details";
+  align-items: center;
+  gap: 10px 8px;
+  padding: 10px;
   color: var(--ink);
   text-align: left;
   background:
@@ -4741,15 +4763,6 @@ input[type="text"]:focus,
     border-color 0.12s,
     background-color 0.12s,
     box-shadow 0.12s;
-}
-#regionPicker {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 7px;
-}
-.regionHeading,
-.regionStatus {
-  grid-column: 1 / -1;
 }
 .regionOption:hover:not(:disabled) {
   border-color: var(--gold);
@@ -4768,20 +4781,68 @@ input[type="text"]:focus,
   cursor: not-allowed;
   opacity: 0.76;
 }
-.regionName {
-  font: 14px var(--text);
+.regionFlag {
+  width: 30px;
+  height: 20px;
+  grid-area: flag;
+  object-fit: cover;
+  border: 1px solid #ffffff3d;
+  border-radius: 3px;
+  box-shadow: 0 2px 6px #0008;
 }
-.regionDetails,
-.regionStatus {
+.regionName {
+  min-width: 0;
+  grid-area: name;
+  overflow: hidden;
+  font: 12px var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.regionDetails {
+  display: grid;
+  grid-area: details;
+  justify-items: start;
+  gap: 3px;
   color: var(--dim);
   font: 10px var(--nums);
 }
-.regionDetails {
-  overflow-wrap: anywhere;
+.regionOnline {
+  color: var(--dim);
+  text-transform: uppercase;
+  white-space: nowrap;
 }
-.regionStatus {
-  min-height: 1em;
-  margin: 1px 0 0;
+.regionPing {
+  white-space: nowrap;
+}
+.regionPing.pingGood {
+  color: #70dc91;
+}
+.regionPing.pingFair {
+  color: #ffb84d;
+}
+.regionPing.pingPoor {
+  color: #ff6d6d;
+}
+.regionDialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+#regionConfirm {
+  padding-inline: 16px;
+  color: #17130a;
+  background: linear-gradient(180deg, var(--gold-lit), var(--gold) 70%, var(--gold-deep));
+  border-color: var(--gold);
+  font-weight: 700;
+}
+#regionConfirm:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+#regionConfirm:disabled {
+  color: var(--dim);
+  background: #303741;
+  border-color: #536173;
 }
 #play:hover {
   filter: brightness(1.08);
@@ -5437,7 +5498,15 @@ kbd.wide {
 
 @media (max-width: 600px) {
   #regionPicker {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .regionDialog {
+    width: calc(100vw - 20px);
+    padding: 14px;
+  }
+  .regionOption {
+    min-height: 80px;
+    padding: 8px;
   }
   .playerid-group {
     grid-template-columns: minmax(0, 1fr);

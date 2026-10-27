@@ -7,24 +7,25 @@
 #                                 ALT_HOSTS="www.boombeard.co.za 15.240.88.189.sslip.io" \
 #                                 EMAIL=you@example.com bash /tmp/bootstrap.sh'
 #
-# HOST is the canonical name. Everything in ALT_HOSTS is answered and then 301d to HOST, so the
-# address bar only ever shows one URL - see the canonical-host block in server/index.js.
+# HOST is the canonical name or public IP. Everything in ALT_HOSTS is answered and then 301d to
+# HOST, so the address bar only ever shows one URL - see the canonical-host block in server/index.js.
 #
 # Variables:
-#   HOST       required. Primary hostname. Must already resolve to this box.
-#   ALT_HOSTS  optional. Space-separated extra names for the same certificate (e.g. www).
+#   HOST       required. Primary hostname or IP address; it must point/reach this box.
+#   ALT_HOSTS  optional. Space-separated extra DNS names for the same certificate (e.g. www).
 #   REGION_ID  `za` or `us`; defaults to an existing config value or `za`.
 #   EMAIL      required unless SKIP_TLS=1. For certificate expiry notices.
 #   SKIP_TLS=1 provision everything except the certificate; serve plain HTTP on 8080. Use this
-#   before DNS has propagated, or behind a load balancer that terminates TLS. The /admin dashboard
+#   before DNS or ingress is ready, or behind a load balancer that terminates TLS. The /admin dashboard
 #   requires app-level TLS and is unavailable in this mode.
+#   IP HOSTs use Let's Encrypt's six-day `shortlived` profile and renew daily.
 #   REPO       git remote to clone if /opt/boom-beard is not already a clone.
 #
 # Note: no apostrophes inside ${VAR:?msg} - bash parses them as a quote and dies at EOF.
 
 set -euo pipefail
 
-HOST="${HOST:?set HOST to the public hostname, e.g. boombeard.co.za}"
+HOST="${HOST:?set HOST to the public hostname or IP, e.g. boombeard.co.za}"
 ALT_HOSTS="${ALT_HOSTS:-}"
 SKIP_TLS="${SKIP_TLS:-0}"
 EMAIL="${EMAIL:-}"
@@ -158,7 +159,15 @@ case "$REGION_ID" in
   za|us) ;;
   *) echo "REGION_ID must be za or us" >&2; exit 1 ;;
 esac
-if [ "$SKIP_TLS" != 1 ] && [ -z "$DASHBOARD_PASSWORD" ]; then
+HOST_IS_IP=0
+if python3 -c 'import ipaddress, sys; ipaddress.ip_address(sys.argv[1])' "$HOST" >/dev/null 2>&1; then
+  HOST_IS_IP=1
+fi
+if [ "$REGION_ID" = us ] && [ "$HOST_IS_IP" != 1 ]; then
+  echo "REGION_ID=us requires HOST to be an IP address; no regional hostname is used" >&2
+  exit 1
+fi
+if [ "$REGION_ID" = za ] && [ "$SKIP_TLS" != 1 ] && [ -z "$DASHBOARD_PASSWORD" ]; then
   echo "ADMIN_DASHBOARD_PASSWORD is required for TLS deployments" >&2
   exit 1
 fi
@@ -204,7 +213,10 @@ if [ "$SKIP_TLS" = 1 ]; then
   write_config 8080 0 "" ""
   install_unit
   echo
-  echo "bootstrap done (no TLS). Re-run without SKIP_TLS once DNS and ports 80/443 are ready."
+  echo "bootstrap done (no TLS). Re-run without SKIP_TLS once the public host and ports 80/443 are reachable."
+  if [ "$REGION_ID" = us ]; then
+    echo "US game server is game-only; the website and dashboard remain on https://boombeard.co.za"
+  fi
   echo "deploy token: $TOKEN"
   exit 0
 fi
@@ -212,21 +224,34 @@ fi
 echo "==> certbot"
 if [ ! -x /opt/certbot/bin/certbot ]; then
   sudo python3 -m venv /opt/certbot
-  sudo /opt/certbot/bin/pip install -q --upgrade pip certbot
+fi
+sudo /opt/certbot/bin/pip install -q --upgrade pip certbot
+
+CERT_IDENTIFIER_ARGS=()
+if [ "$HOST_IS_IP" = 1 ]; then
+  [ -z "$ALT_HOSTS" ] || { echo "ALT_HOSTS cannot be used with an IP certificate" >&2; exit 1; }
+  CERT_IDENTIFIER_ARGS=(--ip-address "$HOST" --preferred-profile shortlived)
+else
+  CERT_IDENTIFIER_ARGS=(-d "$HOST")
+  for h in $ALT_HOSTS; do CERT_IDENTIFIER_ARGS+=(-d "$h"); done
 fi
 
 # Certbot standalone binds :80, so the game server must be out of the way for the moment it runs.
 sudo systemctl stop boom-beard 2>/dev/null || true
 
-DOMAIN_ARGS=(-d "$HOST")
-for h in $ALT_HOSTS; do DOMAIN_ARGS+=(-d "$h"); done
-
 echo "==> certificate for $HOST ${ALT_HOSTS:+(+ $ALT_HOSTS)}"
 # --cert-name pins the lineage to $HOST. Without it certbot names the directory after whichever
 # domain happened to come first and can fork a second lineage when the list changes, at which
 # point the deploy hook below is copying from a path that no longer gets renewed.
-sudo /opt/certbot/bin/certbot certonly --standalone --non-interactive --agree-tos \
-  --cert-name "$HOST" --keep-until-expiring --expand -m "$EMAIL" "${DOMAIN_ARGS[@]}"
+if ! sudo /opt/certbot/bin/certbot certonly --standalone --non-interactive --agree-tos \
+  --cert-name "$HOST" --keep-until-expiring --expand -m "$EMAIL" "${CERT_IDENTIFIER_ARGS[@]}"; then
+  if ! sudo systemctl start boom-beard; then
+    echo "certificate request failed and the game service could not be restarted" >&2
+  else
+    echo "certificate request failed; the previous game service was restarted" >&2
+  fi
+  exit 1
+fi
 
 # Node runs unprivileged and cannot read /etc/letsencrypt. Copy the pair somewhere it can,
 # on issue and on every renewal.
@@ -236,12 +261,19 @@ sudo tee /etc/letsencrypt/renewal-hooks/deploy/boom-beard.sh >/dev/null <<HOOK
 set -eu
 install -o ec2-user -g ec2-user -m 0644 "/etc/letsencrypt/live/$HOST/fullchain.pem" "$CERT_DIR/fullchain.pem"
 install -o ec2-user -g ec2-user -m 0600 "/etc/letsencrypt/live/$HOST/privkey.pem"  "$CERT_DIR/privkey.pem"
-systemctl restart boom-beard || true
+systemctl restart boom-beard
 HOOK
 sudo chmod +x /etc/letsencrypt/renewal-hooks/deploy/boom-beard.sh
-sudo /etc/letsencrypt/renewal-hooks/deploy/boom-beard.sh || true
+if ! sudo /etc/letsencrypt/renewal-hooks/deploy/boom-beard.sh; then
+  if ! sudo systemctl start boom-beard; then
+    echo "certificate install failed and the game service could not be restarted" >&2
+  else
+    echo "certificate install failed; the previous game service was restarted" >&2
+  fi
+  exit 1
+fi
 
-echo "==> renewal timer (03:00 Sunday - nobody is playing)"
+echo "==> daily certificate renewal"
 sudo tee /etc/systemd/system/certbot-renew.service >/dev/null <<'UNIT'
 [Unit]
 Description=Renew TLS certificates
@@ -251,9 +283,9 @@ ExecStart=/opt/certbot/bin/certbot renew --quiet --standalone --pre-hook "system
 UNIT
 sudo tee /etc/systemd/system/certbot-renew.timer >/dev/null <<'UNIT'
 [Unit]
-Description=Weekly certificate renewal
+Description=Daily certificate renewal
 [Timer]
-OnCalendar=Sun *-*-* 03:00:00
+OnCalendar=daily
 Persistent=true
 [Install]
 WantedBy=timers.target
@@ -272,4 +304,8 @@ echo "GitHub repo secrets to set (Settings > Secrets and variables > Actions):"
 echo "  DEPLOY_URL   = https://$HOST/deploy"
 echo "  DEPLOY_TOKEN = $TOKEN"
 echo
-echo "Host link, open once in your own browser: https://$HOST/?admin=$ADMIN_KEY"
+if [ "$REGION_ID" = za ]; then
+  echo "Host link, open once in your own browser: https://$HOST/?admin=$ADMIN_KEY"
+else
+  echo "US game server is game-only; the website and dashboard remain on https://boombeard.co.za"
+fi

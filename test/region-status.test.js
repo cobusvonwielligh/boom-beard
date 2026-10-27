@@ -62,6 +62,11 @@ test('region status allows CORS only for an exact configured region origin', asy
   assert.equal(allowed.headers.get('vary'), 'Origin');
   assert.equal(allowed.headers.get('cache-control'), 'no-store');
 
+  const gameOrigin = await fetch(`${base}/region-status`, {
+    headers: { Origin: 'https://52.21.210.27' },
+  });
+  assert.equal(gameOrigin.headers.get('access-control-allow-origin'), null);
+
   const unlisted = await fetch(`${base}/region-status`, {
     headers: { Origin: 'https://attacker.example' },
   });

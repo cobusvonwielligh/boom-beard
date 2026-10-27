@@ -13,6 +13,8 @@ const LOOPBACK = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
 // Endpoints that must answer on whatever name they are called by: /healthz is polled over
 // https://localhost by infra/deploy.sh, /deploy by the self-update webhook.
 const NEVER_REDIRECT = new Set(['/healthz', '/deploy']);
+const GAME_ONLY_ALLOWED_PATHS = new Set(['/healthz', '/region-status', '/deploy']);
+const LANDING_ORIGIN = 'https://boombeard.co.za';
 
 /** Hostname only: port stripped, lowercased. Null if it is not a plausible hostname. */
 export function requestHost(hostHeader) {
@@ -40,4 +42,13 @@ export function canonicalTarget({ host, url, want, tls }) {
   // rejected control characters in it. The destination host comes from config, never from the
   // request, so there is nothing of the client's in the authority part of this Location.
   return `https://${want}${url}`;
+}
+
+/** Redirect every US web page to ZA while leaving status and deploy endpoints local. */
+export function gameOnlyRedirect({ regionId, url }) {
+  if (regionId !== 'us') return null;
+  const pathname = String(url ?? '/').split(/[?#]/, 1)[0] || '/';
+  if (GAME_ONLY_ALLOWED_PATHS.has(pathname)) return null;
+  if (pathname === '/admin' || pathname.startsWith('/admin/')) return `${LANDING_ORIGIN}/admin`;
+  return `${LANDING_ORIGIN}/`;
 }

@@ -1,12 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { closestReachable, selectedRegionId } from '../shared/region-selection.js';
-import { probeRegion, probeRegions } from '../public/client/region-picker.js';
+import { REGIONS } from '../shared/regions.js';
+import { pingClass, probeRegion, probeRegions } from '../public/client/region-picker.js';
 
-const regions = [
-  { id: 'za', name: 'South Africa', flag: '🇿🇦', origin: 'https://za.example' },
-  { id: 'us', name: 'North America', flag: '🇺🇸', origin: 'https://us.example' },
-];
+const regions = REGIONS;
 
 const status = (region, overrides = {}) => ({
   region,
@@ -46,11 +44,11 @@ test('probes regions in parallel with no-cache, credential-free CORS requests', 
 
   assert.deepEqual(await probes, [
     {
-      ...status('za'), id: 'za', name: 'South Africa', flag: '🇿🇦',
+      ...status('za'), id: 'za', name: 'South Africa', flag: '/assets/img/flags/za.svg',
       online: true, rttMs: 13, reason: null,
     },
     {
-      ...status('us'), id: 'us', name: 'North America', flag: '🇺🇸',
+      ...status('us'), id: 'us', name: 'United States', flag: '/assets/img/flags/us.svg',
       online: true, rttMs: 13, reason: null,
     },
   ]);
@@ -108,4 +106,13 @@ test('a saved manual region is never replaced by the faster reachable region', (
 
   assert.equal(closestReachable(results), 'za');
   assert.equal(selectedRegionId(results, 'us'), null);
+});
+
+test('ping colors use the requested boundaries', () => {
+  assert.equal(pingClass(0), 'pingGood');
+  assert.equal(pingClass(50), 'pingGood');
+  assert.equal(pingClass(51), 'pingFair');
+  assert.equal(pingClass(99), 'pingFair');
+  assert.equal(pingClass(100), 'pingPoor');
+  assert.equal(pingClass(null), '');
 });

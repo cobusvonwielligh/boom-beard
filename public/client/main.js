@@ -33,8 +33,13 @@ import { MAPS } from '/shared/maps.js';
 import { SHOP_ITEMS, normaliseShopQueue } from '/shared/shop.js';
 
 const $ = id => document.getElementById(id);
-const regionPicker = createRegionPicker({ root: $('regionPicker'), store });
-regionPicker.start();
+const regionPicker = createRegionPicker({
+  root: $('regionPicker'),
+  dialog: $('regionDialog'),
+  confirmButton: $('regionConfirm'),
+  cancelButton: $('regionCancel'),
+  store,
+});
 
 function renderSignupMeter(count) {
   const digits = signupDigits(count);
@@ -2473,7 +2478,7 @@ async function play(observe = false) {
   $('play').disabled = true;
   let regionId;
   try {
-    regionId = await regionPicker.prepareJoin();
+    regionId = await regionPicker.chooseRegion();
   } catch (error) {
     toast(`server check failed: ${error.message}`);
     $('play').disabled = false;

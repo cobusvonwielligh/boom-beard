@@ -1,15 +1,15 @@
 # Boom Beard - Deployment
 
-The game runs as two independent regional instances:
+`boombeard.co.za` is the only public website and admin origin. It serves the landing
+page, game assets, and `/admin` from the South Africa instance (`af-south-1`,
+`region_id=za`). The US instance (`us-east-1`, EIP `52.21.210.27`,
+`region_id=us`) is a game backend only: players choose a game region in a dialog
+on the ZA page, then connect directly to the selected game server. The US instance
+has no hostname and does not serve its own landing page or admin dashboard.
 
-- **South Africa:** `boombeard.co.za`, EC2 in `af-south-1`, `region_id=za`.
-- **North America:** `us.boombeard.co.za`, EIP `52.21.210.27`, EC2 in `us-east-1`,
-  `region_id=us`.
-
-Both hosts run the same `main` commit. The root landing page probes each region, shows
-the measured browser RTT and available capacity, and connects to the selected host.
-Each instance owns its accounts, leaderboard, geography, metrics, and `/admin` data;
-there is no shared database or cross-region progression sync.
+Both instances run the same `main` commit and keep independent accounts, scores,
+and game state. The ZA `/admin` dashboard is ZA-local; there is no cross-region
+progression sync.
 
 ---
 
@@ -18,31 +18,32 @@ there is no shared database or cross-region progression sync.
 ```
                       ┌───────────────────────────────┐
  browser ──HTTPS──►   │ boombeard.co.za · ZA         │
-                      │ landing page + game server   │
-                      └───────────────┬───────────────┘
-                                      │ HTTPS status probes
-                      ┌───────────────┴───────────────┐
-                      │                               │
-              WSS/WT to ZA                     WSS/WT to US
-                      │                               │
-          ┌───────────▼────────┐          ┌───────────▼────────┐
-          │ EC2 · af-south-1   │          │ EC2 · us-east-1    │
-          │ boombeard.co.za    │          │ us.boombeard.co.za │
-          │ local data + admin │          │ local data + admin│
-          └────────────────────┘          └───────────────────┘
+                      │ landing page + /admin        │
+                      └───────┬───────────────┬───────┘
+                              │ status probes │ game
+                              │               └──────► WSS/WT to selected region
+                              │
+                    ┌─────────▼────────┐       ┌───────────────────┐
+                    │ EC2 · af-south-1 │       │ EC2 · us-east-1   │
+                    │ site + game      │       │ game only         │
+                    │ local ZA data    │       │ 52.21.210.27      │
+                    └──────────────────┘       └───────────────────┘
 ```
 
-Each region is one Node process under systemd, with HTTPS/WSS on 443 and the HTTP redirect
-on 80. The WebSocket shares that region's HTTPS origin. The root page makes a credential-free
-status request to the other region; CORS exposes only the minimal region status payload.
-There is no load balancer, CDN, or central database.
+Each region is one Node process under systemd, with HTTPS/WSS on TCP 443 and the HTTP
+redirect on TCP 80. The US instance uses a browser-trusted IP-address certificate;
+no US DNS record is required. The ZA page probes each region's credential-free
+`/region-status` endpoint, then opens the game transport directly to the selected
+origin. The US server redirects website and admin requests to ZA. There is no load
+balancer, CDN, or central database.
 
 **No Docker.** Each region is one Node process and one systemd service. systemd restarts it
 on crash and survives reboots; `npm run deploy` is an rsync instead of an image build. If
 this moves to ECS Fargate, add a container definition then.
 
-**No load balancer.** The player selects a region in the landing page and connects directly
-to that region's hostname. This keeps `/admin` and all persistent game data instance-local.
+**No load balancer or regional hostname.** The player selects a region after pressing
+Play and connects directly to the selected game origin. Only the ZA host renders the
+website and dashboard.
 
 ---
 
@@ -54,32 +55,27 @@ Each row is a thing that commonly gets a game blocked, and the choice that avoid
 |---|---|
 | Non-standard ports | **All game traffic on 443.** Port 80 is open only for the HTTPS redirect and certificate renewal. |
 | Plain `ws://` on 80 | **`wss://` on 443.** TLS-wrapped, so proxies pass it as ordinary HTTPS. |
-| Multiple domains / CDNs | **Two regional hosts under one domain.** `boombeard.co.za` and `us.boombeard.co.za` are the game origins; the status endpoint allows only these origins. |
+| Regional hostnames | **One website hostname.** ZA serves `boombeard.co.za`; the US game transport uses its fixed Elastic IP with an IP certificate. |
 | Web fonts, analytics | None. Zero external requests. |
 | UDP | WebRTC is not used. WebTransport optionally uses UDP/443; if blocked, the game falls back to WebSocket over TCP/443. |
-| Category filters ("games") | Prefer a neutral hostname on an eezi domain over something obviously a game. |
+| Category filters ("games") | Keep the website on its existing domain; the US game connection uses its fixed IP. |
 
 **Ticket text for IT, paste as-is:**
 
-> Please allow outbound HTTPS (TCP 443) to `boombeard.co.za` and `us.boombeard.co.za` for
-> the dev team. It is an internally hosted tool on infrastructure we control. The game uses
-> standard HTTPS and secure WebSockets over TCP/443 on those two hosts. UDP/443 is optional
-> for WebTransport performance; blocking UDP still leaves the WebSocket game available.
+> Please allow outbound HTTPS (TCP 443) to `boombeard.co.za` and `52.21.210.27` for
+> the dev team. It is an internally hosted tool on infrastructure we control. The
+> website uses `boombeard.co.za`; the selected US game connection uses secure
+> WebSockets over TCP/443 to the US Elastic IP. UDP/443 is optional for WebTransport;
+> blocking UDP still leaves the WebSocket game available.
 
 ---
 
-## 3. Hostname without a domain
+## 3. US game server without a hostname
 
-`sslip.io` resolves any embedded IP, so `15.240.88.189.sslip.io` → `15.240.88.189`, free, instant,
-no account. Let's Encrypt issues for it happily.
-
-```
-$ dig +short 15.240.88.189.sslip.io
-15.240.88.189
-```
-
-Swapping to a real eezi hostname later is a DNS record plus re-running `bootstrap.sh` with the
-new `HOST`. Nothing in the code knows the name.
+The US game server is addressed directly at `52.21.210.27`. Let's Encrypt supports
+IP-address certificates with the `shortlived` profile; these certificates are valid
+for six days. Certbot must run daily to renew them, so the bootstrap installs a daily
+systemd timer. No DNS record or regional hostname is needed.
 
 ---
 
@@ -87,14 +83,16 @@ new `HOST`. Nothing in the code knows the name.
 
 ### On AWS (console)
 
-1. **Instance** - `t3.micro`, Amazon Linux 2023, 16–20 GB gp3, in `af-south-1`.
+1. **Instance** - `t3.micro`, Amazon Linux 2023, 16–20 GB gp3. ZA is in `af-south-1`;
+   the game-only US instance is in `us-east-1`.
 2. **Elastic IP** - allocate, associate to the instance. (Since Feb 2024 every public IPv4 costs
    $0.005/h; Free Tier covers 750 h/month for 12 months, so one is free for a year.)
-3. **Security group** - three required inbound rules, plus optional UDP for WebTransport:
+3. **Security group** - three required inbound rules on each instance, plus optional UDP
+   for WebTransport:
 
    | Port | Source | Purpose |
    |---|---|---|
-   | 443 | `0.0.0.0/0` | the game |
+   | 443 | `0.0.0.0/0` | HTTPS, status, and game transport |
    | 80 | `0.0.0.0/0` | HTTPS redirect + ACME renewal |
    | 22 | your IP | SSH |
 
@@ -111,9 +109,9 @@ ssh -i ~/Downloads/bombs-away.pem ec2-user@15.240.88.189 \
 
 `bootstrap.sh` is idempotent - re-run it any time. It installs Node, creates
 `/opt/boom-beard` and `/var/lib/boom-beard`, issues the certificate, installs a deploy hook
-that copies the cert somewhere the unprivileged service can read it, and arms a weekly renewal
-timer for 03:00 Sunday. Set `REGION_ID=za` on the South Africa instance and `REGION_ID=us`
-on the North America instance.
+that copies the cert somewhere the unprivileged service can read it, and arms a daily renewal
+timer. Set `REGION_ID=za` on the South Africa instance. On the US game instance, use
+`HOST=52.21.210.27 REGION_ID=us`; bootstrap requests the six-day IP certificate.
 
 ### From your laptop, every deploy after that
 
@@ -154,36 +152,35 @@ Precedence is **environment variable > `config.ini` > built-in default**, so a o
 | | `dashboard_password` | `ADMIN_DASHBOARD_PASSWORD` | blank | Second factor for `/admin`; blank disables the dashboard. Set the secret only in the server environment or ignored `config.ini`, never in the repository. |
 | `dev` | `lag` / `jitter` | `LAG` / `JITTER` | `0` | Outbound delay in ms. The process **refuses to start** if either is non-zero while TLS is configured. |
 
-`/admin` is instance-local: `https://boombeard.co.za/admin` reports ZA data, and
-`https://us.boombeard.co.za/admin` reports US data. Each instance requires `ADMIN_KEY`,
-`ADMIN_DASHBOARD_PASSWORD`, and `REQUIRE_PASSWORD=1`. Open the bootstrap-provided
-`/?admin=<key>` link once in the trusted `cobusvw` browser on each host, then use that
-host's `/admin` and the dashboard passphrase. A new regional instance has its own empty
-account store; the owner must claim `cobusvw` there before the trusted-browser check can
-succeed. The second factor is never shipped to the browser or stored in git; it is
-accepted only over TLS.
+`https://boombeard.co.za/admin` is served by ZA and reports ZA-local data. Requests to
+`/admin` on the US IP redirect to this ZA dashboard; the US instance is game-only.
+The dashboard requires `ADMIN_KEY`, `ADMIN_DASHBOARD_PASSWORD`, and
+`REQUIRE_PASSWORD=1`. Open the ZA bootstrap-provided `/?admin=<key>` link once in the
+trusted `cobusvw` browser, then use `/admin` and the dashboard passphrase. The second
+factor is never shipped to the browser or stored in git; it is accepted only over TLS.
 `bootstrap.sh` preserves an existing dashboard password and accepts a new one through the
 `ADMIN_DASHBOARD_PASSWORD` environment variable.
 The dashboard currently requires TLS to terminate directly in the app. It is not supported with
 `SKIP_TLS=1` behind a TLS-terminating load balancer.
 
-## Regional server setup
+## US game server setup
 
-1. Add the Route 53 record `us.boombeard.co.za A 52.21.210.27` and confirm it resolves before
-   requesting a certificate.
-2. Allow inbound TCP 443 (game), TCP 80 (redirect and ACME renewal), and TCP 22 only from the
-   administrator's current IP.
-3. Use `REGION_ID=us`, `HOST=us.boombeard.co.za`, and the North America key with
-   `infra/bootstrap.sh`. Bootstrap creates a unique admin key for the host and prints a
-   one-time enrollment link; do not copy the ZA admin key. Supply the dashboard password
-   through the server environment. Keep `/var/lib/boom-beard` on that instance; do not copy
-   the ZA accounts or leaderboard.
-4. Deploy the same `main` commit to both hosts. Set `region_id=za` on the existing instance
-   (the default) and `region_id=us` on the new instance.
+1. Keep the existing Elastic IP `52.21.210.27`; no DNS record or regional hostname is used.
+2. Allow inbound TCP 443 for the game/status endpoint, TCP 80 for redirect and ACME
+   certificate renewal, and TCP 22 only from the administrator's current IP. Optionally
+   allow UDP/443 for WebTransport; WebSocket over TCP/443 remains available without it.
+3. Secure `~/Downloads/bombs-away-na.pem` with mode `600`, then run
+   `infra/bootstrap.sh` with `HOST=52.21.210.27 REGION_ID=us` and the Let's Encrypt
+   contact email. The IP certificate uses the `shortlived` profile and renews daily.
+4. Keep `/var/lib/boom-beard` on the US instance; do not copy ZA accounts or game data.
+   Deploy the same `main` commit to both instances, using `SSH_HOST=52.21.210.27`,
+   `SSH_USER=ec2-user`, and the US key for the US manual deployment.
+5. Verify `/healthz` and `/region-status` on each instance. The US `/` and `/admin`
+   routes redirect to the ZA website; game clients load all page assets from ZA.
 
-The browser probes the public `/region-status` endpoint on each host. It returns only the
-region ID, connected human count, bot count, and seat limit; it does not expose `/healthz`,
-player names, scores, registrations, or geography.
+The browser probes each public `/region-status` endpoint. It returns only that
+instance's region ID, connected human count, bot count, and seat limit; it does not
+expose `/healthz`, player names, scores, registrations, or geography.
 
 The admin geography panel counts home-page views and new registrations by country. It performs
 GeoLite2 country lookups locally, persists only daily ISO country totals in
@@ -255,31 +252,23 @@ of truth.
 
 ---
 
-## 7. Regional DNS and deployment
+## 7. One website, two game regions
 
-The South Africa host remains `boombeard.co.za`. For North America:
+The website and dashboard remain on `boombeard.co.za`. The US game server has no
+regional hostname:
 
-1. Add the Route 53 A record `us.boombeard.co.za` → `52.21.210.27`. Wait until
-   `dig +short us.boombeard.co.za` returns that EIP before requesting a certificate.
-2. Confirm the NA security group allows inbound TCP 443, TCP 80, and SSH (TCP 22)
-   from the administrator's IP. Optionally allow UDP/443 to enable WebTransport; the
-   game falls back to WebSocket if UDP is blocked.
-3. Secure the provided key with `chmod 600 ~/Downloads/bombs-away-na.pem`, copy
-   `infra/bootstrap.sh` to the NA host, and run it with
-   `HOST=us.boombeard.co.za REGION_ID=us` and the existing Let's Encrypt contact.
-   Bootstrap generates a unique admin key and prints a one-time enrollment link.
-   Supply the dashboard password through the environment and do not copy the ZA key
-   or `/var/lib/boom-beard` directory.
-4. Merge and push the verified code to `main`, then deploy that exact commit to ZA and
-   NA. For the NA manual deploy, override `SSH_HOST=52.21.210.27`,
-   `SSH_USER=ec2-user`, and `KEY=~/Downloads/bombs-away-na.pem`.
-5. Verify `/version`, `/region-status`, and `/admin` on both hosts. Each region returns
-   its own metrics and local accounts; a first visit to NA may require claiming the
-   `cobusvw` account there before the trusted-browser admin check succeeds.
-
-Do not use the bare IP as the production game origin. TLS certificates and canonical
-redirects are tied to the regional hostnames. `/healthz` and `/deploy` remain available
-on the local host name for deployment health checks.
+1. Keep EIP `52.21.210.27` associated with the US instance. Do not create a DNS record.
+2. Confirm its security group allows inbound TCP 443 and TCP 80 from `0.0.0.0/0`, and
+   SSH/TCP 22 only from the administrator's IP. Optionally allow UDP/443 for WebTransport.
+3. Secure `~/Downloads/bombs-away-na.pem` with `chmod 600`. Run bootstrap using
+   `HOST=52.21.210.27 REGION_ID=us` and the Let's Encrypt contact email. This requests
+   an IP-address certificate with the six-day `shortlived` profile and daily renewal.
+4. Deploy the same verified `main` commit to both instances. For manual US deployment,
+   set `SSH_HOST=52.21.210.27`, `SSH_USER=ec2-user`, and
+   `KEY=~/Downloads/bombs-away-na.pem`.
+5. Verify `/version`, `/healthz`, and `/region-status` on each instance. US root and
+   `/admin` requests must redirect to `https://boombeard.co.za`; US WebSocket and
+   WebTransport connections remain direct to the EIP.
 
 ---
 
@@ -289,7 +278,7 @@ on the local host name for deployment health checks.
 |---|---|---|
 | Compute | Two EC2 instances + systemd | Same two regions in private subnets - or ECS with a six-line Dockerfile per service |
 | TLS | Let's Encrypt on each app | ACM on an ALB for game traffic; `/admin` needs trusted-proxy support before using TLS termination there |
-| Hostnames | `boombeard.co.za` and `us.boombeard.co.za` | Regional hostnames under the eezi domain |
+| Public endpoint | `boombeard.co.za` + US EIP `52.21.210.27` | One website hostname and a game-only IP endpoint |
 | Access | Public internet | VPC + VPN or an internal ALB - **then IT does not need to unblock anything at all** |
 | Data | Separate `/var/lib/boom-beard/` per region | Separate region-specific mounts or prefixes |
 | Config | `/etc/boom-beard.env` | Task definition env or SSM Parameter Store |
@@ -320,9 +309,9 @@ seconds and a reboot comes back unattended. On SIGTERM the server closes sockets
 **Backup.** `leaderboard.json` is the only state. A daily `cp` to a dated file, keep seven. If it
 is ever lost, everyone's lifetime score resets and we live.
 
-**Certificates.** Renewed by `certbot-renew.timer` at 03:00 Sunday. The deploy hook copies the
-new pair into `/var/lib/boom-beard/certs` and restarts the service. Check with
-`systemctl list-timers certbot-renew`.
+**Certificates.** Renewed daily by `certbot-renew.timer`. The US IP certificate is valid for
+six days; the deploy hook copies the renewed pair into `/var/lib/boom-beard/certs` and
+restarts the service. Check with `systemctl list-timers certbot-renew`.
 
 ---
 
@@ -334,7 +323,7 @@ new pair into `/var/lib/boom-beard/certs` and restarts the service. Check with
 | Public IPv4 | Two Elastic IPs; billed per address under current AWS pricing |
 | Egress | Combined game traffic; estimate from both regions' usage |
 | TLS | $0 (Let's Encrypt on each instance) |
-| Hostname | Existing `boombeard.co.za` plus `us.boombeard.co.za` |
+| Public website | Existing `boombeard.co.za`; US game endpoint uses its Elastic IP |
 
 The Free Tier allowance is shared across the account and may not cover two
 always-on instances; check the AWS billing dashboard before launch.

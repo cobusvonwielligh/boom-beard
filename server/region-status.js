@@ -1,6 +1,5 @@
-import { REGIONS } from '../shared/regions.js';
-
 const isCount = value => Number.isSafeInteger(value) && value >= 0;
+const LANDING_ORIGIN = 'https://boombeard.co.za';
 
 export function createRegionStatusHandler({ regionId, getStats }) {
   return function handleRegionStatus(req, res) {
@@ -22,7 +21,7 @@ export function createRegionStatusHandler({ regionId, getStats }) {
       Vary: 'Origin',
     };
     const origin = req.headers.origin;
-    if (REGIONS.some(region => region.origin === origin)) {
+    if (origin === LANDING_ORIGIN) {
       headers['Access-Control-Allow-Origin'] = origin;
     }
 

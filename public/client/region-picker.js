@@ -1,7 +1,6 @@
 import { REGIONS } from '../../shared/regions.js';
 import { selectedRegionId } from '../../shared/region-selection.js';
 
-const POLL_INTERVAL_MS = 30_000;
 const REGION_STORE_KEY = 'bv.region';
 
 function offlineResult(region, reason) {
@@ -29,6 +28,12 @@ function validStatus(status, region) {
     && Number.isSafeInteger(status.maxPlayers)
     && status.maxPlayers > 0
     && status.humanPlayers + status.bots <= status.maxPlayers;
+}
+
+export function pingClass(rttMs) {
+  if (!Number.isFinite(rttMs) || rttMs < 0) return '';
+  if (rttMs <= 50) return 'pingGood';
+  return rttMs <= 99 ? 'pingFair' : 'pingPoor';
 }
 
 export async function probeRegion(
@@ -84,13 +89,10 @@ export async function probeRegion(
   }
 
   if (!response || response.ok !== true) {
-    const status = Number.isFinite(response?.status) ? ` (HTTP ${response.status})` : '';
-    return offlineResult(region, `Region status unavailable${status}.`);
+    const statusCode = Number.isFinite(response?.status) ? ` (HTTP ${response.status})` : '';
+    return offlineResult(region, `Region status unavailable${statusCode}.`);
   }
-  if (invalidStatus) {
-    return offlineResult(region, 'Invalid region status response.');
-  }
-  if (!validStatus(status, region)) {
+  if (invalidStatus || !validStatus(status, region)) {
     return offlineResult(region, 'Invalid region status response.');
   }
 
@@ -114,11 +116,16 @@ export function probeRegions(regions, options) {
 
 export function createRegionPicker({
   root,
+  dialog,
+  confirmButton,
+  cancelButton,
   store,
   regions = REGIONS,
   fetchImpl = fetch,
 }) {
-  if (!root || !store) throw new TypeError('A root element and region store are required.');
+  if (!root || !dialog || !confirmButton || !cancelButton || !store) {
+    throw new TypeError('The region picker requires its dialog, controls, root, and store.');
+  }
 
   const doc = root.ownerDocument ?? document;
   const currentOrigin = doc.defaultView?.location?.origin ?? globalThis.location?.origin;
@@ -128,31 +135,11 @@ export function createRegionPicker({
   const probeTargets = localOrigin
     ? regions.map(region => region.id === 'za' ? { ...region, origin: localOrigin } : region)
     : regions;
-  const savedId = store.get(REGION_STORE_KEY);
-  let manualId = regions.some(region => region.id === savedId) ? savedId : null;
-  let selectedId = manualId;
+  let selectedId = null;
   let results = [];
-  let pollTimer = null;
-  let running = false;
   let generation = 0;
-  let refreshSequence = 0;
-
-  const heading = doc.createElement('h2');
-  heading.className = 'regionHeading';
-  heading.textContent = 'Choose your waters';
-  const statusLine = doc.createElement('p');
-  statusLine.className = 'regionStatus';
-  statusLine.setAttribute('role', 'status');
-  statusLine.setAttribute('aria-live', 'polite');
-
-  function updateStatus() {
-    const selected = results.find(result => result.id === selectedId);
-    statusLine.textContent = selected && !selected.online
-      ? `${selected.name}: ${selected.reason}`
-      : selected
-        ? `${selected.name} server ready.`
-        : 'Checking for reachable waters…';
-  }
+  let resolveChoice = null;
+  let rejectChoice = null;
 
   function render() {
     const buttons = regions.map(region => {
@@ -164,100 +151,122 @@ export function createRegionPicker({
       button.setAttribute('aria-pressed', String(selectedId === region.id));
       button.disabled = !!result && !result.online;
 
+      const flag = doc.createElement('img');
+      flag.className = 'regionFlag';
+      flag.setAttribute('src', region.flag);
+      flag.setAttribute('alt', `${region.name} flag`);
+
       const title = doc.createElement('span');
       title.className = 'regionName';
-      title.textContent = `${region.flag} ${region.name}`;
+      title.textContent = region.name;
+
       const details = doc.createElement('span');
       details.className = 'regionDetails';
-      details.textContent = !result
-        ? 'Checking…'
-        : result.online
-          ? `${result.rttMs} ms · ${result.humanPlayers}/${result.maxPlayers} players · ${result.bots} bots`
-          : 'OFFLINE';
-      button.setAttribute('title', result?.online ? '' : result?.reason || '');
+      if (!result) {
+        details.textContent = 'CHECKING…';
+      } else if (result.online) {
+        const ping = doc.createElement('span');
+        ping.className = `regionPing ${pingClass(result.rttMs)}`;
+        ping.textContent = `${result.rttMs} ms`;
+        const online = doc.createElement('span');
+        online.className = 'regionOnline';
+        online.textContent = `${result.humanPlayers}/${result.maxPlayers} players`;
+        details.append(ping, online);
+      } else {
+        details.textContent = 'OFFLINE';
+      }
+
+      button.title = result?.online ? '' : result?.reason || '';
       button.setAttribute('aria-label', !result
         ? `${region.name}, checking server status`
         : result.online
-          ? `${region.name}, ${result.rttMs} milliseconds, ${result.humanPlayers} humans of ` +
-            `${result.maxPlayers}, ${result.bots} bots`
-          : `${region.name}, offline: ${result.reason}`);
-      button.append(title, details);
+          ? `${region.name}, ${result.rttMs} milliseconds, ${result.humanPlayers} of ` +
+            `${result.maxPlayers} players online`
+          : `${region.name}, offline`);
+      button.append(flag, title, details);
       button.addEventListener('click', () => {
-        manualId = region.id;
+        if (!result?.online) return;
         selectedId = region.id;
-        store.set(REGION_STORE_KEY, region.id);
-        updateStatus();
         render();
       });
       return button;
     });
 
-    root.replaceChildren(heading, ...buttons, statusLine);
-    updateStatus();
+    root.replaceChildren(...buttons);
+    const selected = results.find(result => result.id === selectedId);
+    confirmButton.disabled = !selected?.online;
   }
 
-  async function refresh(expectedGeneration = generation) {
-    const sequence = ++refreshSequence;
+  function finishChoice(value, error = null) {
+    if (!resolveChoice) return;
+    const resolve = resolveChoice;
+    const reject = rejectChoice;
+    resolveChoice = null;
+    rejectChoice = null;
+    generation++;
+    dialog.close();
+    if (error) reject(error);
+    else resolve(value);
+  }
+
+  async function refresh(expectedGeneration) {
     const refreshed = await probeRegions(probeTargets, { fetchImpl });
-    if (!running || expectedGeneration !== generation || sequence !== refreshSequence) return results;
+    if (!resolveChoice || expectedGeneration !== generation) return;
     results = refreshed;
-    if (manualId) {
-      selectedId = manualId;
-    } else {
-      selectedId = selectedRegionId(results);
-    }
+    if (!selectedId) selectedId = selectedRegionId(results);
     render();
-    return results;
   }
 
-  async function start() {
-    if (running) return results;
-    running = true;
-    const currentGeneration = ++generation;
-    const initialProbe = refresh(currentGeneration);
-    const showRefreshError = error => {
-      if (running && currentGeneration === generation) {
-        statusLine.textContent = `Server check failed: ${error.message}`;
-      }
-    };
-    pollTimer = setInterval(() => {
-      refresh(currentGeneration).catch(showRefreshError);
-    }, POLL_INTERVAL_MS);
-    return initialProbe.catch(error => {
-      showRefreshError(error);
-      return results;
-    });
-  }
-
-  async function prepareJoin() {
-    const currentGeneration = generation;
-    const latest = await refresh(currentGeneration);
-    if (!running || currentGeneration !== generation) return null;
-    const id = selectedRegionId(latest, manualId);
-    if (!id) {
-      const selected = latest.find(result => result.id === selectedId)
-        ?? latest.find(result => !result.online);
-      statusLine.textContent = selected?.reason
-        ? `${selected.name}: ${selected.reason}`
-        : 'No region is reachable right now.';
-      return null;
+  async function confirmSelection() {
+    if (!resolveChoice || !selectedId || confirmButton.disabled) return;
+    const expectedGeneration = generation;
+    const selectedRegion = probeTargets.find(region => region.id === selectedId);
+    confirmButton.disabled = true;
+    try {
+      const latest = await probeRegion(selectedRegion, { fetchImpl });
+      if (!resolveChoice || expectedGeneration !== generation) return;
+      results = results.map(result => result.id === selectedId ? latest : result);
+      render();
+      if (!latest.online) return;
+      store.set(REGION_STORE_KEY, selectedId);
+      finishChoice(selectedId);
+    } catch (error) {
+      finishChoice(null, error);
     }
-    return id;
+  }
+
+  confirmButton.addEventListener('click', confirmSelection);
+  cancelButton.addEventListener('click', () => finishChoice(null));
+  dialog.addEventListener('cancel', event => {
+    event.preventDefault();
+    finishChoice(null);
+  });
+
+  function chooseRegion() {
+    if (resolveChoice) return Promise.reject(new Error('A region choice is already open.'));
+    const savedId = store.get(REGION_STORE_KEY);
+    selectedId = regions.some(region => region.id === savedId) ? savedId : null;
+    results = [];
+    render();
+    dialog.showModal();
+
+    const expectedGeneration = ++generation;
+    const choice = new Promise((resolve, reject) => {
+      resolveChoice = resolve;
+      rejectChoice = reject;
+    });
+    refresh(expectedGeneration).catch(error => finishChoice(null, error));
+    return choice;
   }
 
   function stop() {
-    running = false;
-    generation++;
-    refreshSequence++;
-    if (pollTimer !== null) clearInterval(pollTimer);
-    pollTimer = null;
+    finishChoice(null);
   }
 
   render();
   return {
-    start,
+    chooseRegion,
     selectedRegion: () => selectedId,
-    prepareJoin,
     stop,
   };
 }

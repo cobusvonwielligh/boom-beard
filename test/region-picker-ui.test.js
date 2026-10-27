@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRegionPicker } from '../public/client/region-picker.js';
+import { REGIONS } from '../shared/regions.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = file => readFile(path.join(ROOT, file), 'utf8');
@@ -17,6 +18,8 @@ class Element {
     this.disabled = false;
     this._text = '';
     this.className = '';
+    this.open = false;
+    this.showCount = 0;
     this.ownerDocument = documentStub;
   }
 
@@ -29,21 +32,26 @@ class Element {
   replaceChildren(...children) { this.children = children; }
   setAttribute(name, value) { this.attributes[name] = String(value); }
   addEventListener(name, callback) { this.listeners[name] = callback; }
-  click() { this.listeners.click?.(); }
+  click() { return this.listeners.click?.(); }
+  showModal() { this.open = true; this.showCount++; }
+  close() { this.open = false; }
 }
 
-const documentStub = { createElement: tag => new Element(tag) };
+const documentStub = {
+  createElement: tag => new Element(tag),
+  defaultView: { location: { origin: 'https://boombeard.co.za' } },
+};
 
-function makeRoot() {
-  const root = new Element('div');
-  root.attributes.id = 'regionPicker';
-  return root;
+function elements() {
+  return {
+    root: new Element('div'),
+    dialog: new Element('dialog'),
+    confirmButton: new Element('button'),
+    cancelButton: new Element('button'),
+  };
 }
 
-const regions = [
-  { id: 'za', name: 'South Africa', flag: '🇿🇦', origin: 'https://za.example' },
-  { id: 'us', name: 'North America', flag: '🇺🇸', origin: 'https://us.example' },
-];
+const regions = REGIONS;
 
 const status = region => ({
   region,
@@ -52,144 +60,105 @@ const status = region => ({
   maxPlayers: 16,
 });
 
-test('landing page exposes an accessible labeled region-picker group', async () => {
+const successfulFetch = async url => ({
+  ok: true,
+  json: async () => status(url.includes('boombeard.co.za') ? 'za' : 'us'),
+});
+
+test('landing page places a labeled region dialog after the play controls', async () => {
   const html = await read('public/index.html');
-  assert.match(html, /id="regionPicker"[^>]*role="group"/);
-  assert.match(html, /id="regionPicker"[^>]*aria-label="[^"]+"/);
+  const dialogStart = html.indexOf('<dialog');
+  const picker = html.indexOf('id="regionPicker"');
+  assert.ok(dialogStart >= 0);
+  assert.ok(picker > dialogStart, 'picker belongs inside the dialog');
+  assert.match(html, /id="regionDialog"[^>]*aria-labelledby="regionDialogHeading"/);
+  assert.match(html, /id="regionDialogHeading"[^>]*>Choose your region</);
+  assert.match(html, /id="regionConfirm"/);
+  assert.match(html, /id="regionCancel"/);
+  assert.doesNotMatch(html, /geoPrivacyDisclosure/);
+  assert.doesNotMatch(html, /Choose your waters|South Africa server ready/);
 });
 
-test('picker renders two named buttons with counts, selected state, and offline disablement', async t => {
-  const root = makeRoot();
+test('every connection attempt opens the dialog and saves only a confirmed choice', async () => {
+  const { root, dialog, confirmButton, cancelButton } = elements();
+  let saved = null;
   const picker = createRegionPicker({
-    root,
-    regions,
-    store: { get: () => 'za', set() {} },
-    fetchImpl: async url => ({
-      ok: true,
-      json: async () => status(url.includes('za.example') ? 'za' : 'us'),
-    }),
+    root, dialog, confirmButton, cancelButton, regions,
+    store: { get: () => saved, set: (_key, value) => { saved = value; } },
+    fetchImpl: successfulFetch,
   });
-  t.after(() => picker.stop());
-  await picker.start();
+
+  const firstChoice = picker.chooseRegion();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(dialog.open, true);
+  assert.ok(['za', 'us'].includes(picker.selectedRegion()));
   const buttons = root.children.filter(child => child.tagName === 'BUTTON');
-
-  assert.equal(buttons.length, 2);
-  assert.equal(buttons[0].attributes['data-region'], 'za');
-  assert.equal(buttons[1].attributes['data-region'], 'us');
-  assert.match(buttons[0].textContent, /🇿🇦.*South Africa/s);
-  assert.match(buttons[0].textContent, /3\/16.*2 bots/s);
-  assert.equal(buttons[0].attributes['aria-pressed'], 'true');
-  assert.equal(buttons[1].attributes['aria-pressed'], 'false');
-  assert.equal(buttons.every(button => !button.disabled), true);
-  picker.stop();
-});
-
-test('local development probes its own ZA server and remote US server', async t => {
-  const root = makeRoot();
-  root.ownerDocument = {
-    ...documentStub,
-    defaultView: { location: { origin: 'http://localhost:8080' } },
-  };
-  const requests = [];
-  const picker = createRegionPicker({
-    root,
-    regions,
-    store: { get: () => null, set() {} },
-    fetchImpl: async url => {
-      requests.push(url);
-      const region = url.includes('us.example') ? 'us' : 'za';
-      return { ok: true, json: async () => status(region) };
-    },
-  });
-  t.after(() => picker.stop());
-
-  await picker.start();
-  assert.ok(requests.includes('http://localhost:8080/region-status'));
-  assert.ok(requests.includes('https://us.example/region-status'));
-});
-
-test('choosing a region persists the selection and updates pressed styling', async t => {
-  const root = makeRoot();
-  let saved;
-  const picker = createRegionPicker({
-    root,
-    regions,
-    store: { get: () => null, set: (_key, value) => { saved = value; } },
-    fetchImpl: async url => ({
-      ok: true,
-      json: async () => status(url.includes('za.example') ? 'za' : 'us'),
-    }),
-  });
-  t.after(() => picker.stop());
-  await picker.start();
-  const buttons = root.children.filter(child => child.tagName === 'BUTTON');
-
   buttons[1].click();
-
-  const updatedButtons = root.children.filter(child => child.tagName === 'BUTTON');
+  await confirmButton.click();
+  assert.equal(await firstChoice, 'us');
   assert.equal(saved, 'us');
+  assert.equal(dialog.open, false);
+
+  const canceledChoice = picker.chooseRegion();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(dialog.open, true);
+  assert.equal(dialog.showCount, 2);
   assert.equal(picker.selectedRegion(), 'us');
-  assert.equal(updatedButtons[0].attributes['aria-pressed'], 'false');
-  assert.equal(updatedButtons[1].attributes['aria-pressed'], 'true');
+  await cancelButton.click();
+  assert.equal(await canceledChoice, null);
+  assert.equal(saved, 'us');
   picker.stop();
 });
 
-test('a saved offline choice stays selected and blocks joining with its reason visible', async t => {
-  const root = makeRoot();
+test('cards show local flags, latency, online capacity, and offline state without a footer', async () => {
+  const { root, dialog, confirmButton, cancelButton } = elements();
   const picker = createRegionPicker({
-    root,
-    regions,
-    store: { get: () => 'us', set() {} },
-    fetchImpl: async url => url.includes('us.example')
-      ? { ok: false, status: 503 }
-      : { ok: true, json: async () => status('za') },
-  });
-  t.after(() => picker.stop());
-  await picker.start();
-  let buttons = root.children.filter(child => child.tagName === 'BUTTON');
-
-  assert.equal(picker.selectedRegion(), 'us');
-  assert.equal(buttons[1].attributes['aria-pressed'], 'true');
-  assert.equal(buttons[1].disabled, true);
-  assert.match(buttons[1].textContent, /OFFLINE/);
-  assert.doesNotMatch(buttons[1].textContent, /Network error/i);
-  assert.match(buttons[1].attributes.title, /HTTP 503/i);
-  assert.equal(await picker.prepareJoin(), null);
-  buttons = root.children.filter(child => child.tagName === 'BUTTON');
-  assert.equal(picker.selectedRegion(), 'us');
-  assert.match(root.textContent, /North America: Region status unavailable \(HTTP 503\)/);
-  assert.equal(buttons[1].attributes['aria-pressed'], 'true');
-});
-
-test('a late probe cannot repaint a stopped picker', async t => {
-  const root = makeRoot();
-  const pending = [];
-  const picker = createRegionPicker({
-    root,
-    regions,
+    root, dialog, confirmButton, cancelButton, regions,
     store: { get: () => null, set() {} },
-    fetchImpl: url => new Promise(resolve => pending.push({
-      region: url.includes('za.example') ? 'za' : 'us',
-      resolve,
-    })),
+    fetchImpl: async url => url.includes('boombeard.co.za')
+      ? { ok: true, json: async () => status('za') }
+      : { ok: false, status: 503 },
   });
-  t.after(() => picker.stop());
 
-  const initial = picker.start();
-  assert.equal(pending.length, 2);
-  const checkingText = root.children.at(-1).textContent;
+  const choice = picker.chooseRegion();
+  await new Promise(resolve => setImmediate(resolve));
+  const buttons = root.children.filter(child => child.tagName === 'BUTTON');
+  const southAfrica = buttons.find(button => button.attributes['data-region'] === 'za');
+  const unitedStates = buttons.find(button => button.attributes['data-region'] === 'us');
+  const flag = southAfrica.children.find(child => child.tagName === 'IMG');
+  const details = southAfrica.children.find(child => child.className === 'regionDetails');
+  const ping = details.children.find(child => child.className.includes('ping'));
+
+  assert.equal(flag.attributes.src, '/assets/img/flags/za.svg');
+  assert.equal(flag.attributes.alt, 'South Africa flag');
+  assert.match(southAfrica.textContent, /South Africa/);
+  assert.match(southAfrica.textContent, /3\/16 players/);
+  assert.doesNotMatch(southAfrica.textContent, /2 bots/);
+  assert.match(ping.className, /pingGood|pingFair|pingPoor/);
+  assert.match(unitedStates.textContent, /OFFLINE/);
+  assert.equal(unitedStates.disabled, true);
+  assert.doesNotMatch(root.textContent, /server ready|waters/i);
+  await cancelButton.click();
+  assert.equal(await choice, null);
   picker.stop();
-  for (const request of pending) {
-    request.resolve({ ok: true, json: async () => status(request.region) });
-  }
-  await initial;
-
-  assert.match(checkingText, /Checking/);
-  assert.equal(root.children.at(-1).textContent, checkingText);
 });
 
-test('picker styles show keyboard focus and stack choices on narrow screens', async () => {
+test('flag assets are self-hosted SVGs with country-specific artwork', async () => {
+  const southAfrica = await read('public/assets/img/flags/za.svg');
+  const unitedStates = await read('public/assets/img/flags/us.svg');
+  assert.match(southAfrica, /<svg[^>]+viewBox="0 0 30 20"/);
+  assert.match(southAfrica, /#007a4d/i);
+  assert.match(unitedStates, /<svg[^>]+viewBox="0 0 30 20"/);
+  assert.match(unitedStates, /#b22234/i);
+});
+
+test('picker styles preserve focus and use the requested ping colors responsively', async () => {
   const css = await read('public/style.css');
-  assert.match(css, /#regionPicker[^{}]*:focus-visible|\.regionOption:focus-visible/);
-  assert.match(css, /@media\s*\(max-width:\s*600px\)[\s\S]*?#regionPicker[\s\S]*?grid-template-columns:\s*1fr/);
+  assert.match(css, /\.regionDialog::backdrop/);
+  assert.match(css, /\.regionOption:focus-visible/);
+  assert.match(css, /\.regionPing\.pingGood/);
+  assert.match(css, /\.regionPing\.pingFair/);
+  assert.match(css, /\.regionPing\.pingPoor/);
+  assert.match(css, /#regionPicker\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);
+  assert.match(css, /@media\s*\(max-width:\s*600px\)[\s\S]*?\.regionDialog[\s\S]*?width:/);
 });

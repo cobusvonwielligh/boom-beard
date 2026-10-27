@@ -33,8 +33,9 @@ test('keeps a manual choice and refuses an offline manual region', () => {
   assert.equal(selectedRegionId(results, 'us'), null);
 });
 
-test('identifies the regional host and defaults local origins to ZA', () => {
+test('identifies the US game IP and defaults other origins to ZA', () => {
   assert.equal(regionIdForOrigin('https://boombeard.co.za'), 'za');
-  assert.equal(regionIdForOrigin('https://us.boombeard.co.za'), 'us');
+  assert.equal(regionIdForOrigin('https://52.21.210.27'), 'us');
+  assert.equal(regionIdForOrigin('https://us.boombeard.co.za'), 'za');
   assert.equal(regionIdForOrigin('http://localhost:8080'), 'za');
 });

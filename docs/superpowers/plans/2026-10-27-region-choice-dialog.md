@@ -110,20 +110,21 @@ Extend `test/bootstrap-config.test.js` to assert that the IP-host path requests 
 assert.match(script, /--preferred-profile shortlived/);
 assert.match(script, /--ip-address "\$HOST"/);
 assert.match(script, /OnCalendar=daily/);
+assert.match(script, /REGION_ID=us requires HOST to be an IP address/);
 ```
 
-Keep coverage for the existing named-host path, regional identity, password, and generated admin key.
+Also assert IP/alternate-host validation occurs before stopping the service and a failed Certbot request restores the previous service. Keep coverage for the existing named-host path, regional identity, password, and generated admin key.
 
 Run: `node --test test/bootstrap-config.test.js`
 Expected: FAIL because bootstrap only requests domain certificates and the timer is weekly.
 
 - [ ] **Step 2: Add IP/domain identifier handling**
 
-In `infra/bootstrap.sh`, detect whether `HOST` is an IP address with Python's standard-library `ipaddress`. For an IP, pass `--ip-address "$HOST" --preferred-profile shortlived`; for a DNS hostname, preserve the current `-d "$HOST"` and `ALT_HOSTS` behavior. Keep the existing standalone HTTP-01 challenge and certificate deploy hook.
+In `infra/bootstrap.sh`, detect whether `HOST` is an IP address with Python's standard-library `ipaddress`. Require an IP whenever `REGION_ID=us`, including `SKIP_TLS=1`. For an IP, pass `--ip-address "$HOST" --preferred-profile shortlived`; for a ZA DNS hostname, preserve the current `-d "$HOST"` and `ALT_HOSTS` behavior. Keep the existing standalone HTTP-01 challenge and certificate deploy hook.
 
 - [ ] **Step 3: Schedule reliable six-day certificate renewal**
 
-Change the Certbot systemd timer from weekly to daily. Preserve the existing pre-hook that stops the HTTP listener and post-hook that restarts it. Continue copying the renewed certificate and private key into the data directory and restarting Boom Beard after renewal.
+Change the Certbot systemd timer from weekly to daily. Preserve the existing pre-hook that stops the HTTP listener and post-hook that restarts it. If issuance or certificate installation fails, report the error and restore the previous service before exiting. Continue copying the renewed certificate and private key into the data directory and restarting Boom Beard after renewal.
 
 - [ ] **Step 4: Update deployment documentation**
 
@@ -164,7 +165,7 @@ Extend the DOM stubs in `test/region-picker-ui.test.js` with a dialog that recor
 
 - [ ] **Step 3: Test card content and offline handling**
 
-Assert that each button uses an image with descriptive alt text, shows country name, RTT class, and `humanPlayers/maxPlayers online`; an offline region shows `OFFLINE` and cannot be confirmed. Ensure the picker has no “server ready” footer.
+Assert that each button uses an image with descriptive alt text, shows country name, RTT class, and the compact `humanPlayers/maxPlayers players` count; its accessible label describes the count as players online. An offline region shows `OFFLINE` and cannot be confirmed. Ensure the picker has no “server ready” footer.
 
 - [ ] **Step 4: Implement dialog choice API**
 
@@ -210,7 +211,7 @@ Remove `regionPicker.start()` from page initialization. In `play()`, call `await
 
 - [ ] **Step 4: Style a compact, responsive toggle**
 
-Style two equal-width country choices as a segmented/toggle-like pair, with selected gold outline, legible flags, online count, and colored RTT. Use green for `<=50`, orange for `51..99`, red for `>=100`; keep offline state neutral. Ensure keyboard focus, native dialog backdrop, Escape/cancel behavior, and single-column layout below 600px.
+Style two equal-width country choices as a segmented/toggle-like pair, with selected gold outline, legible flags, online count, and colored RTT. Use green for `<=50`, orange for `51..99`, red for `>=100`; keep offline state neutral. Ensure keyboard focus, native dialog backdrop, Escape/cancel behavior, and a compact two-column layout down to 320px.
 
 - [ ] **Step 5: Run UI and transport tests**
 

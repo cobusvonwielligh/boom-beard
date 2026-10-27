@@ -3,7 +3,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { canonicalTarget, requestHost } from '../server/canonical.js';
+import { canonicalTarget, gameOnlyRedirect, requestHost } from '../server/canonical.js';
 
 const live = over => canonicalTarget({ url: '/', want: 'boombeard.co.za', tls: true, ...over });
 
@@ -51,4 +51,17 @@ test('a junk Host header cannot reach the Location', () => {
   assert.equal(live({ host: 'anything.at.all' }), 'https://boombeard.co.za/');
   assert.equal(requestHost(undefined), null);
   assert.equal(requestHost(''), null);
+});
+
+test('the US game host redirects site and admin routes to ZA without forwarding queries', () => {
+  assert.equal(gameOnlyRedirect({ regionId: 'us', url: '/' }), 'https://boombeard.co.za/');
+  assert.equal(gameOnlyRedirect({ regionId: 'us', url: '/client/main.js' }), 'https://boombeard.co.za/');
+  assert.equal(gameOnlyRedirect({ regionId: 'us', url: '/admin' }), 'https://boombeard.co.za/admin');
+  assert.equal(gameOnlyRedirect({ regionId: 'us', url: '/admin/api/login?secret=value' }),
+    'https://boombeard.co.za/admin');
+  assert.equal(gameOnlyRedirect({ regionId: 'us', url: '/?admin=secret' }), 'https://boombeard.co.za/');
+  assert.equal(gameOnlyRedirect({ regionId: 'us', url: '/region-status' }), null);
+  assert.equal(gameOnlyRedirect({ regionId: 'us', url: '/healthz' }), null);
+  assert.equal(gameOnlyRedirect({ regionId: 'us', url: '/deploy' }), null);
+  assert.equal(gameOnlyRedirect({ regionId: 'za', url: '/' }), null);
 });
