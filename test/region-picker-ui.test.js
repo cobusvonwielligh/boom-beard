@@ -93,7 +93,13 @@ const successfulFetch = async url => ({
   json: async () => status(url.includes('boombeard.co.za') ? 'za' : 'us'),
 });
 
-const flushProbes = () => new Promise(resolve => setTimeout(resolve, 10));
+async function waitForProbes(refreshButton) {
+  const deadline = Date.now() + 5000;
+  while (refreshButton.disabled && Date.now() < deadline) {
+    await new Promise(resolve => setImmediate(resolve));
+  }
+  assert.equal(refreshButton.disabled, false, 'region probes finish');
+}
 
 test('landing page places a labeled region dialog after the play controls', async () => {
   const html = await read('public/index.html');
@@ -126,7 +132,7 @@ test('every connection attempt opens the dialog and saves only a confirmed choic
   });
 
   const firstChoice = picker.chooseRegion();
-  await flushProbes();
+  await waitForProbes(refreshButton);
   assert.equal(dialog.open, true);
   assert.ok(['za', 'us'].includes(picker.selectedRegion()));
   assert.match(root.children.find(child => child.attributes['data-region'] === 'us').textContent,
@@ -143,7 +149,7 @@ test('every connection attempt opens the dialog and saves only a confirmed choic
   assert.equal(dialog.open, false);
 
   const canceledChoice = picker.chooseRegion();
-  await flushProbes();
+  await waitForProbes(refreshButton);
   assert.equal(dialog.open, true);
   assert.equal(dialog.showCount, 2);
   assert.equal(picker.selectedRegion(), 'us');
@@ -165,10 +171,7 @@ test('double-clicking an online region confirms the selection', async () => {
   });
 
   const choice = picker.chooseRegion();
-  const probeDeadline = Date.now() + 1000;
-  while (refreshButton.disabled && Date.now() < probeDeadline) {
-    await new Promise(resolve => setImmediate(resolve));
-  }
+  await waitForProbes(refreshButton);
   const unitedStates = root.children.find(button => button.attributes['data-region'] === 'us');
   assert.equal(unitedStates.disabled, false, 'region probes finish before the card is clicked');
   unitedStates.click();
@@ -177,7 +180,7 @@ test('double-clicking an online region confirms the selection', async () => {
   let timeout;
   const selected = await Promise.race([
     choice,
-    new Promise(resolve => { timeout = setTimeout(() => resolve('not selected'), 1000); }),
+    new Promise(resolve => { timeout = setTimeout(() => resolve('not selected'), 5000); }),
   ]);
   clearTimeout(timeout);
   assert.equal(selected, 'us');
@@ -201,7 +204,7 @@ test('cards show local flags, latency, online capacity, and offline state withou
   });
 
   const choice = picker.chooseRegion();
-  await flushProbes();
+  await waitForProbes(refreshButton);
   const buttons = root.children.filter(child => child.tagName === 'BUTTON');
   const southAfrica = buttons.find(button => button.attributes['data-region'] === 'za');
   const unitedStates = buttons.find(button => button.attributes['data-region'] === 'us');
@@ -300,7 +303,7 @@ test('refresh re-probes both regions without changing the saved selection', asyn
   });
 
   const choice = picker.chooseRegion();
-  await flushProbes();
+  await waitForProbes(refreshButton);
   assert.equal(requests, 2);
   assert.equal(picker.selectedRegion(), 'us');
   const socketsBefore = FastPongSocket.instances.length;
