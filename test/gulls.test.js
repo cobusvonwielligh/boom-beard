@@ -243,6 +243,18 @@ test('two empty rounds send the bots home', () => {
   } finally { r.stop(); }
 });
 
+test('the US room starts with four bots and keeps them through empty rounds', () => {
+  const r = createRoom({ regionId: 'us', minBots: 4, countIn: 0, onBroadcast: () => {} });
+  try {
+    assert.equal(r.botCount(), 4);
+    round(r);
+    round(r);
+    round(r);
+    assert.equal(r.botCount(), 4);
+    assert.equal(r.autoBots, true);
+  } finally { r.stop(); }
+});
+
 test('a host removing bots by hand is not overruled until the room has emptied', () => {
   const r = room();
   try {

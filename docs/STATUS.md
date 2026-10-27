@@ -24,7 +24,7 @@ and ZA is the authority for global account, career, wallet and shop data. See
 | Region selection | ✅ live ping, capacity, map, final server recheck and staged connection feedback |
 | Shared player data | ✅ ZA authority for accounts, career, wallet and shop; US forwards writes |
 | Command Deck | ✅ ZA `/admin`, trusted `cobusvw` browser and dashboard password |
-| Bots | ✅ up to 15, pathfinding and fleeing; per-region auto-top-up fills on human arrival and retires after two empty rounds. US target is 4. `npm run botbench` measures them |
+| Bots | ✅ up to 15, pathfinding and fleeing; US starts and keeps four bots even while idle. ZA keeps its existing two-empty-round retirement policy. `npm run botbench` measures them |
 | Maps | ✅ 5 |
 | Art and audio | ✅ art in code; music is four produced files (see §2e) |
 | Transport | ✅ **WebTransport over QUIC, with WebSocket as the fallback** |
@@ -250,7 +250,7 @@ Every one of these is in `shared/constants.js`. Nothing is inline.
 | Gold | 2.1% of drops, ≤5 a round. 400 XP. Changes nothing about the round - it is a collectible |
 | Kegs | ≤12 a round, ≥1 guaranteed, radius 7 |
 | Gulls | first at 25 s, then every 10–22 s, ≤4 aloft, ~3 tiles/s, three coins direct to the fire owner |
-| Bots | `min_bots` target while people play; US defaults to 4, removed after 2 empty rounds |
+| Bots | US keeps its configured target of 4 while idle; ZA retires after 2 empty rounds |
 | Zoom | fitted to the **island**, floor 0.68, 2 tiles of sea minimum |
 | Levels | 100 hours to Veteran (level 20) |
 
@@ -326,7 +326,8 @@ world. See [DESIGN.md](DESIGN.md) → Non-goals.
   `npm ci` deletes `node_modules`. The deploy script restores it; if that step ever disappears,
   WebTransport dies silently at the next lockfile change. See [DEPLOY.md](DEPLOY.md) §9.
 - **Bots:** `min_bots` in config.ini (env `MIN_BOTS`) overrides the built-in target (5 in ZA, 4
-  in US); 0 switches automatic top-up off. `/healthz` reports `autoBots`.
+  in US); 0 switches bots off. US keeps its configured target while idle; `/healthz` reports
+  `autoBots`.
 - **In-game owner commands:** `/restart`, `/godmode`, `/kick`, `/map`, `/gamespeed`, `/roundtime`.
   The configured admin seat has owner privileges; otherwise the longest-standing human can run
   host commands. The separate Command Deck at `/admin` requires a trusted `cobusvw` browser login

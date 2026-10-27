@@ -874,16 +874,16 @@ export const STREAK_ACE = 'ACE';
 export const GAMESPEED_MIN = 10, GAMESPEED_MAX = 200;   // percent of TICK_HZ
 export const BAN_MAX_HOURS = 24;
 
-/* Bots, kept topped up by the room itself.
+/* The ZA room's automatic bot policy.
  *
  * The moment a person joins there are at least AUTO_BOTS_MIN bots, so one or two early arrivals
  * have something to fight instead of an empty island. Once no human has been present for
- * AUTO_BOTS_EMPTY_ROUNDS whole rounds the bots are all removed - sixteen brains playing to nobody
- * all weekend is wasted CPU.
+ * AUTO_BOTS_EMPTY_ROUNDS whole rounds the ZA bots are removed. US keeps its configured complement
+ * while idle so players arriving there find a populated room.
  *
  * A host removing bots by hand (/kick bot N, or /bots lower than it is) switches the top-up off:
- * re-adding what somebody just deliberately took away is the server arguing with its host. It
- * comes back on only after the room has emptied and stayed empty for those same two rounds. */
+ * re-adding what somebody just deliberately took away is the server arguing with its host. In ZA
+ * it comes back on after the room has emptied and stayed empty for those same two rounds. */
 export const AUTO_BOTS_MIN = 5;
 export const AUTO_BOTS_EMPTY_ROUNDS = 2;
 

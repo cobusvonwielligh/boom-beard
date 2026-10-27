@@ -42,6 +42,7 @@ Before joining, choose South Africa (ZA) or the United States (US). The picker s
 live availability, ping, player count and current map. Continue rechecks your choice, then shows
 the connection progressing through the server check and game welcome before opening the island.
 ZA starts its map rotation at Arena; US starts at Twins.
+The US room keeps four bots ready even when nobody is playing.
 
 `boombeard.co.za` serves the website and Command Deck (`/admin`); the US instance is game-only.
 Accounts, career stats, wallet and shop progress are shared, while rooms and map rotations remain

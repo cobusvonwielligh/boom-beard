@@ -57,7 +57,7 @@ export const config = {
   tlsKey: pick('TLS_KEY', 'server', 'tls_key', ''),
   dataDir: path.resolve(ROOT, pick('DATA_DIR', 'server', 'data_dir', './data')),
   maxPlayers: num('MAX_PLAYERS', 'server', 'max_players', 16),
-  // Bots kept topped up while anybody is playing. 0 switches the policy off. See AUTO_BOTS_MIN.
+  // Target bot count. The US room also retains its complement while idle. 0 disables bots.
   minBots: num('MIN_BOTS', 'server', 'min_bots', defaultMinBots),
 
   // Shared secret for POST /deploy. Empty disables the endpoint entirely.

@@ -156,7 +156,7 @@ Precedence is **environment variable > `config.ini` > built-in default**, so a o
 | | `tls_cert` / `tls_key` | `TLS_CERT` / `TLS_KEY` | blank | Blank → plain HTTP, which is local dev. |
 | | `data_dir` | `DATA_DIR` | `./data` | Leaderboard and certificate copies. |
 | | `max_players` | `MAX_PLAYERS` | `16` | |
-| | `min_bots` | `MIN_BOTS` | `5 (ZA), 4 (US)` | Bots kept topped up while anyone plays; 0 turns it off. Explicit config/env values override these defaults. `config.example.ini` sets 6 as an example override. |
+| | `min_bots` | `MIN_BOTS` | `5 (ZA), 4 (US)` | Bot target. ZA retires bots after two empty rounds; US keeps its target while idle. 0 turns bots off. Explicit config/env values override defaults; `config.example.ini` sets 6 as an example override. |
 | `deploy` | `token` | `DEPLOY_TOKEN` | blank | Secret for `POST /deploy`. **Blank disables the endpoint entirely** - correct on a laptop. |
 | | `ssh_host` / `ssh_user` / `ssh_key` | same | - | Used by `infra/deploy.sh`. |
 | `admin` | `key` | `ADMIN_KEY` | blank | Optional game-host flag. Open `https://<host>/?admin=<key>` once; the browser keeps it and the address bar drops it. It is not required for the Command Deck. `bootstrap.sh` generates one. |
@@ -332,6 +332,7 @@ regional hostname:
 4. Deploy the same verified `main` commit to both instances. For manual US deployment,
    set `SSH_HOST=52.21.210.27`, `SSH_USER=ec2-user`, and
    `KEY=~/Downloads/bombs-away-na.pem`.
+   Keep `min_bots=4` in the US `[server]` config; the US room retains those bots while idle.
 5. Verify `/version` on ZA, and `/healthz` plus `/region-status` on both instances. The US
    `/version` route redirects to the ZA website with other non-game routes; use the build
    reported by US `/healthz` to verify its deployed commit. US root and `/admin` requests must

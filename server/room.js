@@ -1000,13 +1000,22 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
   }
 
   /**
-   * End of a round with nobody in it: count it, and after AUTO_BOTS_EMPTY_ROUNDS in a row send
-   * the bots home and hand the top-up back to the room. That reset is the only thing that turns
-   * a host's "no bots, thanks" back off - everyone has gone, so nobody is being overruled.
+   * ZA retires bots after AUTO_BOTS_EMPTY_ROUNDS empty rounds. US keeps its configured complement
+   * ready while idle, restoring the target at round end if a bot was removed.
    */
   function retireIdleBots() {
-    emptyRounds = humanThisRound ? 0 : emptyRounds + 1;
+    const hadHuman = humanThisRound;
     humanThisRound = false;
+    if (regionId === 'us') {
+      emptyRounds = 0;
+      if (minBots > 0) {
+        autoBots = true;
+        if (botCount() < minBots) setBots(minBots);
+      }
+      return;
+    }
+
+    emptyRounds = hadHuman ? 0 : emptyRounds + 1;
     if (!minBots || emptyRounds < AUTO_BOTS_EMPTY_ROUNDS) return;
     if (botCount()) {
       setBots(0);
@@ -1197,6 +1206,8 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     if (!s || s.isBot) return false;
     return !!s.admin || (!!adminName && (s.name ?? '').toLowerCase() === adminName);
   }
+
+  if (regionId === 'us' && minBots > 0) setBots(minBots);
 
   return {
     start, stop, join, disconnect, input, requestRespawn, welcomeFor, roundInfo, stats,
