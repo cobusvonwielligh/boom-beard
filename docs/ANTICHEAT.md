@@ -121,7 +121,7 @@ real socket against a real server).
 ## 4. Local storage (done, with an honest caveat)
 
 `public/client/store.js`. Every value the client keeps - identity, name, device id, trust tokens,
-volumes, the auto-respawn preference - goes through a seal: XOR-obfuscated, base64'd, and carrying
+volumes - goes through a seal: XOR-obfuscated, base64'd, and carrying
 a checksum over (key, value, per-browser salt).
 
 **This is tamper evidence and obfuscation, not encryption.** A page cannot keep a secret from its

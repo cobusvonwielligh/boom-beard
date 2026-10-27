@@ -245,8 +245,7 @@ familiar.
 
 **Gold and maroon throughout.** Every panel and dialog (`.edge`) has the landing page's colours:
 a border sweeping bright gold → old gold → amber → lit maroon → deep maroon → rose on a 28 s turn
-(the same six stops as the menu VU), and a faint maroon wash rising from the top of the fill. The
-auto-respawn setting is a sliding gold switch, not a native checkbox.
+(the same six stops as the menu VU), and a faint maroon wash rising from the top of the fill.
 
 - Panel: `#1a2029`, 2 px border `#ffd21f` at 40 %, 4 px corner radius.
 - Headings: UI gold, uppercase, letter-spaced.

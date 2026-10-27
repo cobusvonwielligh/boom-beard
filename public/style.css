@@ -669,11 +669,11 @@ canvas#game {
   backdrop-filter: blur(10px) saturate(1.3);
   -webkit-backdrop-filter: blur(10px) saturate(1.3);
   box-shadow: 0 6px 28px #0009;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  /* 12, not 16: at 1366 wide the bar ran four pixels past its own edge and clipped LEAVE. */
-  gap: 12px;
-  padding: 7px 12px;
+  column-gap: 8px;
+  padding: 7px 8px;
   font-size: 13px;
 }
 
@@ -681,6 +681,24 @@ canvas#game {
   width: 1px;
   height: 18px;
   background: #ffffff1f;
+}
+#topbarMeta {
+  display: flex;
+  min-width: 0;
+  grid-column: 1;
+  align-items: center;
+  gap: 8px;
+}
+#topbarRight {
+  display: flex;
+  min-width: 0;
+  grid-column: 3;
+  align-items: center;
+  justify-self: end;
+  gap: 8px;
+}
+#topbarRight .right {
+  margin-left: 0;
 }
 
 /* `#who` and `#rank` used to live up here, when the name was in the top bar. It moved to the
@@ -736,9 +754,6 @@ canvas#game {
 }
 #vPing {
   min-width: 5.2ch;
-}
-#vOnline {
-  min-width: 2.2ch;
 }
 #vMap {
   /* Seven: the longest map name is "crossroads", and the ellipsis covers anything longer -
@@ -875,9 +890,59 @@ body.observing #who {
    one, and the width it gave back is what lets the bar fit at 1366 without clipping LEAVE. */
 #gear {
   display: flex;
-  gap: 10px;
+  gap: 16px;
   align-items: center;
   position: relative;
+  grid-column: 2;
+  justify-self: center;
+}
+
+@media (max-width: 990px), (min-width: 1081px) and (max-width: 1340px) {
+  :root {
+    --bar: 82px;
+  }
+  #topbar {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+  }
+  #topbarMeta {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  #topbarRight {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  #gear {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
+@media (max-width: 600px) {
+  :root {
+    --bar: 108px;
+  }
+  #topbar {
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(3, 1fr);
+  }
+  #topbarMeta,
+  #topbarRight,
+  #gear {
+    grid-column: 1;
+    justify-self: center;
+  }
+  #topbarMeta {
+    grid-row: 1;
+  }
+  #topbarRight {
+    grid-row: 2;
+  }
+  #gear {
+    grid-row: 3;
+    gap: 8px;
+  }
 }
 /* Same again for the loadout. 16px numbers next to a 13px cap was the same mismatch, and these
    sit in the same row as the stats - three type sizes across one bar is two too many. */
@@ -889,36 +954,29 @@ body.observing #who {
   font-variant-numeric: tabular-nums;
   font-size: 13px;
   font-weight: 600;
-  color: var(--gold);
+  color: var(--shop-rim, var(--gold));
 }
 /* 1.5x. These are the only pictures in the bar and they were losing to the text beside them. */
 .pip svg {
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   display: block;
 }
 .pip .n {
   display: inline-block;
   min-width: 1.2ch;
   text-align: right;
+  font-size: 16px;
+  color: var(--shop-rim, var(--gold));
 }
 .pip .cap {
   color: #9fabbd;
   font-size: 13px;
 } /* matches .pip itself - see above */
-.pip.max .n {
-  color: var(--gold);
-}
 /* Carrying at least one. The glow is the part that reads without being looked at; the number is
    there for when you do look. */
-.pip.on {
-  color: var(--gold);
-}
 .pip.on svg {
-  filter: drop-shadow(0 0 6px #edc24e88);
-}
-.pip:not(.on):not(.heart) {
-  opacity: 0.5;
+  filter: drop-shadow(0 0 6px var(--shop-glow));
 }
 
 /* ─── the heart: health in three states ───────────────────────────────────────
@@ -926,9 +984,9 @@ body.observing #who {
  * the same near-black edge round it and the same hard drop under it - no bloom, because at this
  * size a glow is a smudge, and the cast type it sits beside does not glow either.
  *
- *   whole   both halves of metal, with the slow light sweep the cast type has travelling across
- *   half    the left half of metal, the right half an empty dark socket, and no sweep: dull
- *   down    an empty socket with a worn gold edge
+ *   whole   both halves gold, with the slow light sweep the cast type has travelling across
+ *   half    one nearly-grey half and one dark socket, with no sweep
+ *   down    a fully grey heart inside a clear outline
  *
  * Three pictures and no number, because there are only three states. See MAX_HP. */
 .pip.heart {
@@ -936,8 +994,8 @@ body.observing #who {
   margin-right: 1px;
 }
 .pip.heart svg {
-  width: 19px;
-  height: 19px;
+  width: 24px;
+  height: 24px;
   overflow: visible;
   filter: drop-shadow(0 1.5px 0 #000) drop-shadow(0 3px 5px #000a);
 }
@@ -951,14 +1009,19 @@ body.observing #who {
   stroke-width: 1.15;
   stroke-linejoin: round;
 }
-/* The empty half is a socket, not a gap: dark metal, so the heart keeps its whole outline. */
+/* The empty half is a socket, not a gap, so the heart keeps its whole outline. */
 .pip.heart.half .hR,
 .pip.heart.empty .hL,
 .pip.heart.empty .hR {
   fill: #2a1d08;
 }
-.pip.heart.half .hL {
-  filter: saturate(0.75) brightness(0.88);
+/* Desaturate the complete drawing, including the socket and outline, in each damaged state. */
+.pip.heart.half svg {
+  filter: grayscale(0.88) drop-shadow(0 1.5px 0 #000)
+    drop-shadow(0 3px 5px #000a);
+}
+.pip.heart.empty svg {
+  filter: grayscale(1) drop-shadow(0 1.5px 0 #000) drop-shadow(0 3px 5px #000a);
 }
 .pip.heart.empty .hO {
   stroke: #8a6a2c;
@@ -968,8 +1031,8 @@ body.observing #who {
   position: absolute;
   left: 0;
   top: 50%;
-  width: 19px;
-  height: 19px;
+  width: 24px;
+  height: 24px;
   transform: translateY(-50%);
   pointer-events: none;
   display: none;
@@ -3064,6 +3127,9 @@ body.hurt:not(.dead) #avatar {
   text-align: center;
   padding: 20px 20px 18px;
 }
+.card.small:has(#shop:not([hidden])) {
+  width: min(360px, calc(100vw - 24px));
+}
 /* Sitting lower in the card now that the instruction line under it is gone: the countdown button
    is the only other thing here, and the two were crowding the top edge together. */
 /* Only the round-over card has a heading now. The death card leads with the respawn button,
@@ -3116,123 +3182,6 @@ body.hurt:not(.dead) #avatar {
 .card.round .ghost {
   display: none;
 }
-.card.round #autoRow {
-  display: none;
-}
-
-/* Auto respawn.
- *
- * Under the button rather than beside it, and quiet: it is a setting, not a fourth choice, and
- * the respawn button has to stay the one thing the eye lands on. The whole row is the hit
- * target - a 13px checkbox on its own is a dexterity test. */
-/* A sliding switch rather than a checkbox: the label on the left in the same face as the ghost
- * buttons under it, and a gold-and-maroon pill on the right whose knob slides across and lights.
- * The native box was a 14px browser-blue square in a card where everything else is cast in
- * gold - the one control on the card that looked like it came from another page. */
-#autoRow {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 12px;
-  padding: 8px 10px 8px 12px;
-  border-radius: 10px;
-  border: 1px solid #edc24e1f;
-  background: linear-gradient(180deg, #2a101833, #2a101866);
-  font-family: var(--nums);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #c9b48a;
-  cursor: pointer;
-  user-select: none;
-  transition:
-    color 0.15s,
-    border-color 0.15s,
-    background 0.15s;
-}
-#autoRow:hover {
-  color: var(--gold-hi);
-  border-color: #edc24e47;
-}
-/* The real input, invisible but still focusable and still the thing that is clicked. */
-#autoRow input {
-  position: absolute;
-  opacity: 0;
-  width: 1px;
-  height: 1px;
-  margin: 0;
-  pointer-events: none;
-}
-#autoRow .switch {
-  position: relative;
-  flex: 0 0 auto;
-  width: 40px;
-  height: 22px;
-  border-radius: 11px;
-  background: linear-gradient(180deg, #1a0a0f, #3a1520);
-  box-shadow:
-    inset 0 2px 4px #000b,
-    inset 0 0 0 1px #edc24e33;
-  transition:
-    background 0.2s,
-    box-shadow 0.2s;
-}
-#autoRow .knob {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: linear-gradient(180deg, #8a7a66, #5a4c3c);
-  box-shadow:
-    0 2px 3px #000a,
-    inset 0 1px 0 #ffffff33;
-  transition:
-    transform 0.22s cubic-bezier(0.3, 1.4, 0.5, 1),
-    background 0.2s,
-    box-shadow 0.2s;
-}
-/* On: the track fills with maroon-lit gold and the knob slides across, cast and glowing. */
-#autoRow input:checked + .switch {
-  background: linear-gradient(180deg, #6d4709, #a06a12 60%, #c08d22);
-  box-shadow:
-    inset 0 2px 4px #0008,
-    inset 0 0 0 1px #f6e7a966,
-    0 0 12px #edc24e55;
-}
-#autoRow input:checked + .switch .knob {
-  transform: translateX(18px);
-  background: linear-gradient(
-    180deg,
-    var(--gold-lit),
-    var(--gold) 55%,
-    var(--gold-deep)
-  );
-  box-shadow:
-    0 2px 4px #000a,
-    0 0 8px #f6e7a9aa,
-    inset 0 1px 0 #ffffffaa;
-}
-#autoRow input:focus-visible + .switch {
-  outline: 2px solid var(--gold-hi);
-  outline-offset: 2px;
-}
-/* On, it says so in the label too, so it reads at a glance without finding the switch -
-   which matters because you are about to stop looking at this card entirely. */
-#autoRow:has(input:checked) {
-  color: var(--gold);
-  border-color: #edc24e40;
-}
-@media (prefers-reduced-motion: reduce) {
-  #autoRow .knob {
-    transition: none;
-  }
-}
-
 /* Leaving is the one choice on this card you cannot undo, so it is the one that is coloured.
    Still a ghost button - it is an alternative, not the thing you came here to press - but a red
    one, which is the convention for "this ends it". */
@@ -3468,6 +3417,287 @@ body.hurt:not(.dead) #avatar {
   color: #9fd85a;
 }
 
+#shop[hidden] {
+  display: none;
+}
+#shop {
+  width: 100%;
+  margin: 12px auto 0;
+  text-align: center;
+}
+.card.small:not(.round) #shop {
+  margin-top: -2px;
+  margin-bottom: 18px;
+}
+.shopTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+#shopTitle {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 20px;
+  letter-spacing: 0.12em;
+}
+.shopWallet {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font: 700 14px var(--nums);
+  font-variant-numeric: tabular-nums;
+}
+.shopWallet svg,
+.shopPrice svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+.shopWallet #shopCoin {
+  color: #fff0ae;
+  transition:
+    color 0.15s,
+    filter 0.15s;
+}
+.shopWallet #shopCoin.empty {
+  color: #9aa0a8;
+  filter: grayscale(1);
+}
+.shopShelf {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+}
+.shopItem {
+  --shop-glow: #7e93d6;
+  --shop-dark: #2b3550;
+  --shop-mid: #3f4e74;
+  --shop-rim: #7e93d6;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  min-width: 0;
+  min-height: 100px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 6px 2px;
+  border: 1px solid #000;
+  border-radius: 9px;
+  background:
+    linear-gradient(180deg, #ffffff12, transparent 38%),
+    linear-gradient(160deg, var(--shop-mid), var(--shop-dark));
+  color: var(--shop-rim);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--shop-rim) 62%, transparent),
+    inset 0 1px 0 #ffffff20,
+    0 5px 14px #0008,
+    0 1px 3px #0008;
+  cursor: pointer;
+  transition:
+    filter 0.12s,
+    opacity 0.12s,
+    transform 0.12s,
+    box-shadow 0.12s;
+}
+.shopItem > * {
+  position: relative;
+  z-index: 1;
+}
+.shopItem::after {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    #ffffff00 40%,
+    #fffffff2 50%,
+    #ffffff00 60%
+  );
+  background-size: 260% 100%;
+  content: "";
+  mix-blend-mode: screen;
+  opacity: 0;
+  pointer-events: none;
+  animation: shopButtonShine 24s linear var(--shop-shine-delay) infinite;
+}
+.shopItem:nth-child(1) {
+  --shop-shine-delay: 0s;
+}
+.shopItem:nth-child(2) {
+  --shop-shine-delay: 3.2s;
+}
+.shopItem:nth-child(3) {
+  --shop-shine-delay: 6.4s;
+}
+.shopItem:nth-child(4) {
+  --shop-shine-delay: 9.6s;
+}
+.shopItem:nth-child(5) {
+  --shop-shine-delay: 12.8s;
+}
+@keyframes shopButtonShine {
+  0% {
+    background-position: 130% 0;
+    opacity: 0;
+  }
+  1% {
+    opacity: 0.3;
+  }
+  13.333% {
+    background-position: -130% 0;
+    opacity: 0.3;
+  }
+  13.334%,
+  100% {
+    background-position: -130% 0;
+    opacity: 0;
+  }
+}
+.shopItem.bombs,
+#pBombs {
+  --shop-glow: #7e93d6;
+  --shop-dark: #2b3550;
+  --shop-mid: #3f4e74;
+  --shop-rim: #7e93d6;
+}
+.shopItem.fire,
+#pFire {
+  --shop-glow: #ff9b4a;
+  --shop-dark: #5a2416;
+  --shop-mid: #8c3a1f;
+  --shop-rim: #ff9b4a;
+}
+.shopItem.speed,
+#pSpeed {
+  --shop-glow: #5fd8f0;
+  --shop-dark: #123f4e;
+  --shop-mid: #1b6076;
+  --shop-rim: #5fd8f0;
+}
+.shopItem.shield,
+#pShield {
+  --shop-glow: #5ad1a0;
+  --shop-dark: #15402f;
+  --shop-mid: #1d6347;
+  --shop-rim: #5ad1a0;
+}
+.shopItem.stim,
+#pStim {
+  --shop-glow: #ffe04a;
+  --shop-dark: #4a4212;
+  --shop-mid: #75671d;
+  --shop-rim: #ffe04a;
+}
+.shopItem:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--shop-rim) 62%, transparent),
+    inset 0 1px 0 #ffffff30,
+    0 7px 16px #0009,
+    0 2px 4px #0008;
+}
+.shopItem:focus-visible {
+  outline: 2px solid #fff3b0;
+  outline-offset: 2px;
+}
+.shopItem:disabled {
+  opacity: 0.42;
+  filter: saturate(0.55);
+  cursor: not-allowed;
+}
+.shopIcon {
+  position: relative;
+  top: -4px;
+  display: grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  filter: drop-shadow(0 0 4px var(--shop-glow));
+  animation: shopIconGlow 2.4s ease-in-out infinite alternate;
+}
+.shopIcon > svg {
+  position: relative;
+  z-index: 1;
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+  filter: drop-shadow(0 2px 2px #0009);
+}
+.shopIcon > svg use,
+.pip:not(.heart) svg use {
+  stroke: #000;
+  stroke-width: 0.7;
+  stroke-linejoin: round;
+}
+@keyframes shopIconGlow {
+  from {
+    filter: drop-shadow(0 0 3px var(--shop-glow))
+      drop-shadow(0 0 7px var(--shop-glow));
+  }
+  to {
+    filter: drop-shadow(0 0 6px var(--shop-glow))
+      drop-shadow(0 0 13px var(--shop-glow));
+  }
+}
+.shopName {
+  color: #fff3d4;
+  font: 700 9px var(--nums);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.shopBundle {
+  font: 700 11px var(--nums);
+}
+.shopPrice {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: #fff0ae;
+  font: 700 9px var(--nums);
+}
+.shopPrice svg {
+  width: 11px;
+  height: 11px;
+}
+.shopItem.purchased {
+  animation: shopPurchaseFlash 0.5s ease-out;
+}
+@keyframes shopPurchaseFlash {
+  0% {
+    box-shadow:
+      0 0 0 2px var(--shop-rim),
+      0 0 20px var(--shop-rim);
+    filter: brightness(1.7);
+  }
+  100% {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--shop-rim) 62%, transparent),
+      inset 0 1px 0 #ffffff20,
+      0 5px 14px #0008,
+      0 1px 3px #0008;
+    filter: brightness(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shopIcon {
+    animation: none;
+    filter: drop-shadow(0 0 5px var(--shop-glow));
+  }
+  .shopItem::after {
+    animation: none;
+    opacity: 0;
+  }
+}
+#shopHint {
+  min-height: 1em;
+  margin: 6px 0 0;
+  color: var(--dim);
+  font-size: 9px;
+}
 /* Between rounds the board is gone, not dimmed. Everything on it - the sprites mid-stride, the
  * sea, the banners - is hidden, and the frame loop stops drawing it (see `loop` in main.js), so
  * the standings are the only thing on screen and nothing behind them is still moving. */
@@ -3810,9 +4040,18 @@ body.intermission #dead {
   border: 2px solid #7a5527;
   border-radius: 9px;
   background:
-    linear-gradient(112deg, #fff3 0 8%, transparent 9% 72%, #fff1 73% 78%, transparent 79%),
+    linear-gradient(
+      112deg,
+      #fff3 0 8%,
+      transparent 9% 72%,
+      #fff1 73% 78%,
+      transparent 79%
+    ),
     linear-gradient(#9f793d, #3d2b15 24%, #18130c 76%, #77562b);
-  box-shadow: inset 0 0 0 2px #d7ac5a33, inset 0 -8px 16px #0007, 0 8px 24px #0009;
+  box-shadow:
+    inset 0 0 0 2px #d7ac5a33,
+    inset 0 -8px 16px #0007,
+    0 8px 24px #0009;
   color: #d8c7a0;
   pointer-events: none;
   user-select: none;
@@ -3838,8 +4077,15 @@ body.intermission #dead {
   overflow: hidden;
   border: 1px solid #a9874e55;
   border-radius: 3px;
-  background: linear-gradient(#222 0 44%, #050505 48% 53%, #1a1a1a 57%, #020202 100%);
-  box-shadow: inset 0 0 7px #000, 0 1px 0 #e8c98233;
+  background: linear-gradient(
+    #222 0 44%,
+    #050505 48% 53%,
+    #1a1a1a 57%,
+    #020202 100%
+  );
+  box-shadow:
+    inset 0 0 7px #000,
+    0 1px 0 #e8c98233;
   color: #f3e7c8;
   font: 700 18px/1 var(--nums);
   text-shadow: 0 0 5px #fff3;
@@ -3863,8 +4109,14 @@ body.intermission #dead {
   background: radial-gradient(circle at 35% 35%, #e0c184, #4a3218 70%);
   box-shadow: 0 1px 2px #000;
 }
-.signupScrewA { top: 5px; right: 5px; }
-.signupScrewB { bottom: 5px; right: 5px; }
+.signupScrewA {
+  top: 5px;
+  right: 5px;
+}
+.signupScrewB {
+  bottom: 5px;
+  right: 5px;
+}
 
 /* The visualiser, behind everything on the menu and out of the centring grid.
  *
@@ -4272,7 +4524,7 @@ h1 {
   top: 0;
   bottom: auto;
 
-  width: calc(150% + 100px);
+  width: calc(127% + 83px);
   max-width: none;
   margin: 0;
 

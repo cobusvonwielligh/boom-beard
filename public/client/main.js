@@ -9,7 +9,7 @@ import {
   MAX_SKATES, MAX_SHIELDS, MAX_STAMINA_LEVELS, IDLE_DISCONNECT_MS, RESPAWN_DELAY_TICKS, TILE_PX,
   MAX_BOMBS_CARRIED, MAX_RADIUS, START_BOMBS, START_RADIUS,
   POWDER_RADIUS, PERK, STATUS, VOLUME_MUSIC_DEFAULT,
-  CHAT_MIN_INTERVAL_MS, STREAK_WINDOW_TICKS, ARRIVE_DELAY_TICKS,
+  CHAT_MIN_INTERVAL_MS, STREAK_WINDOW_TICKS, ARRIVE_DELAY_TICKS, ROUND_INTERMISSION_MS,
 } from '/shared/constants.js';
 // The one number the password box needs to quote at somebody. The rules themselves live on the
 // server - see badPassword in server/accounts.js - and this is only the hint text.
@@ -28,6 +28,7 @@ import { store } from './store.js';
 import { placeable } from '/shared/sim/bombs.js';
 import { streakActive } from '/shared/sim/state.js';
 import { MAPS } from '/shared/maps.js';
+import { SHOP_ITEMS, normaliseShopQueue } from '/shared/shop.js';
 
 const $ = id => document.getElementById(id);
 
@@ -133,16 +134,6 @@ $('play').addEventListener('pointerenter', showMenuQuip);
 $('play').addEventListener('focus', showMenuQuip);
 $('play').addEventListener('pointerleave', hideMenuQuip);
 $('play').addEventListener('blur', hideMenuQuip);
-
-/* Auto respawn, remembered across sessions.
- *
- * A preference rather than a per-round choice, so it lives in localStorage beside the volume
- * sliders. Default OFF: respawning the instant you die skips the ten seconds in which you can
- * read who killed you and where, and turning that on should be somebody's decision rather than
- * something they have to discover and switch back.
- */
-const AUTO_KEY = 'bv.autoRespawn';
-let autoRespawn = store.get(AUTO_KEY) === '1';
 
 /* The three in-game beds, in rotation order. The theme is not one of them: it belongs to the
  * landing page and is excluded for the whole of a round. */
@@ -394,13 +385,80 @@ syncAudio();
 
 // ─── net ──────────────────────────────────────────────────────────────────────
 
-const toast = msg => {
+const PASSWORD_TOAST_MS = Math.round(1600 * 1.33);
+
+const toast = (msg, duration = 1600) => {
   const el = $('toast');
   el.textContent = msg;
   el.style.opacity = '1';
   clearTimeout(toast.t);
-  toast.t = setTimeout(() => { el.style.opacity = '0'; }, 1600);
+  toast.t = setTimeout(() => { el.style.opacity = '0'; }, duration);
 };
+
+let shopVisible = false;
+let shopSnapshot = null;
+let shopNotice = '';
+
+function requestShop() {
+  net.send({ t: 'shop' });
+}
+
+function renderShop() {
+  const wallet = shopSnapshot?.wallet;
+  const gold = $('shopGold');
+  const goldText = Number.isFinite(wallet) ? String(wallet) : '\u2014';
+  gold.textContent = goldText;
+  gold.dataset.text = goldText;
+  $('shopCoin').classList.toggle('empty', wallet === 0);
+
+  $('shopHint').textContent = !shopSnapshot
+    ? 'checking your wallet\u2026'
+    : !shopSnapshot.available ? 'shop unavailable'
+      : shopNotice || 'powerups are activated on next spawn';
+
+  for (const [key, item] of Object.entries(SHOP_ITEMS)) {
+    const button = document.querySelector(`[data-shop-item="${key}"]`);
+    const queued = shopSnapshot?.pending[key] ?? 0;
+    button.disabled = !shopVisible || !shopSnapshot?.available || wallet < item.cost
+      || queued + item.bundle > item.cap;
+  }
+}
+
+function setShopVisible(visible) {
+  shopVisible = !!visible;
+  $('shop').hidden = !shopVisible;
+  renderShop();
+  renderGearStats(world.me());
+}
+
+function handleShopMessage(message) {
+  shopSnapshot = {
+    wallet: Number.isFinite(message.wallet) ? Math.max(0, Math.floor(message.wallet)) : 0,
+    pending: normaliseShopQueue(message.pending),
+    available: message.why !== 'shop unavailable',
+  };
+  shopNotice = message.ok ? '' : message.why || '';
+  renderShop();
+  renderGearStats(world.me());
+  setValue($('vCoins'), shopSnapshot.wallet);
+
+  if (message.ok && Object.hasOwn(SHOP_ITEMS, message.bought)) {
+    const player = world.me();
+    const item = SHOP_ITEMS[message.bought];
+    if (player) {
+      sfx.playAtUnits('pickup', player.rx ?? player.x, player.ry ?? player.y,
+        { perk: item.perk });
+    }
+    const button = document.querySelector(`[data-shop-item="${message.bought}"]`);
+    button.classList.remove('purchased');
+    void button.offsetWidth;
+    button.classList.add('purchased');
+    setTimeout(() => button.classList.remove('purchased'), 520);
+  } else if (message.why) {
+    sfx.play('warn');
+    toast(message.why);
+  }
+}
 
 const net = createNet({
   onWelcome: m => {
@@ -408,6 +466,29 @@ const net = createNet({
     // A full welcome outside an intermission IS the next round - on time, or early because the
     // host typed /restart or /map - so the standings go the moment it lands, not on a timer.
     if (roundOverUntil && !m.mapOnly && !m.between) endIntermission();
+    if (!m.mapOnly && m.between) {
+      const ms = Number.isFinite(m.intermissionMs)
+        ? Math.max(0, Math.min(ROUND_INTERMISSION_MS, m.intermissionMs))
+        : ROUND_INTERMISSION_MS;
+      renderRoundTable({
+        standings: m.standings || [],
+        nextMap: m.nextMap,
+      });
+      $('deadTitle').textContent = 'round over';
+      $('dead').querySelector('.card').classList.add('round');
+      $('dead').style.display = 'grid';
+      $('respawn').style.display = 'none';
+      roundOverUntil = performance.now() + ms;
+      startIntermission(ms);
+      clearTimeout(roundOverTimer);
+      roundOverTimer = setTimeout(endIntermission, ms);
+      setShopVisible(true);
+      requestShop();
+    } else if (!m.mapOnly) {
+      setShopVisible(false);
+      const player = world.me();
+      if (player && !player.alive && !player.arriving) requestShop();
+    }
     renderer?.invalidateAll();
     renderer?.mapChanged();          // a different map size means a different scale
     if (!m.mapOnly) {
@@ -663,9 +744,12 @@ const net = createNet({
     $('respawn').style.display = 'none';
     roundOverUntil = performance.now() + m.startsInMs;
     startIntermission(m.startsInMs);
+    setShopVisible(true);
+    requestShop();
     clearTimeout(roundOverTimer);
     roundOverTimer = setTimeout(endIntermission, m.startsInMs);
   },
+  onShop: handleShopMessage,
   // Lifetime rank, once a second. See the comment on emitScores in server/room.js for why this
   // is not in the snapshot.
   onScores: m => {
@@ -1427,6 +1511,24 @@ const gearPip = (id, value, cap, base = 0) => {
   el.classList.toggle('on', value > base);
 };
 
+function renderGearStats(me) {
+  if (!me) return;
+  const pending = shopVisible ? shopSnapshot?.pending : null;
+  if (pending) {
+    gearPip('pBombs', START_BOMBS + pending.bombs, MAX_BOMBS_CARRIED, START_BOMBS);
+    gearPip('pFire', START_RADIUS + pending.fire, MAX_RADIUS, START_RADIUS);
+    gearPip('pSpeed', pending.speed, MAX_SKATES);
+    gearPip('pShield', pending.shield, MAX_SHIELDS);
+    gearPip('pStim', pending.stim, MAX_STAMINA_LEVELS);
+    return;
+  }
+  gearPip('pBombs', me.bombs, MAX_BOMBS_CARRIED, START_BOMBS);
+  gearPip('pFire', me.radius, MAX_RADIUS, START_RADIUS);
+  gearPip('pSpeed', me.speed, MAX_SKATES);
+  gearPip('pShield', me.shields, MAX_SHIELDS);
+  gearPip('pStim', me.staminaLevel ?? 0, MAX_STAMINA_LEVELS);
+}
+
 let diedAtTick = -1;
 let lastLevel = -1;
 
@@ -1492,13 +1594,6 @@ function drawRespawn(me) {
   const justUnlocked = btn.disabled && left === 0;
   if (justUnlocked) sfx.play('ready');
   btn.disabled = left > 0;
-  /* Auto respawn fires on that same edge, and only on it.
-   *
-   * On the EDGE rather than on `left === 0`, because this function runs five times a second for
-   * as long as you are dead: without the edge it would send a respawn request every 200 ms
-   * until the server got round to honouring one. The request is debounced downstream as well,
-   * but a guard that relies on the debounce is a guard that breaks when somebody retunes it. */
-  if (justUnlocked && autoRespawn) askRespawn();
   // Calm: this ticks once a second right in front of you, and the full bump is a strobe.
   setValue(btn, left > 0 ? `respawn in ${secs}\u2026` : 'respawn', { calm: true });
 }
@@ -1546,7 +1641,6 @@ function drawHud() {
   castText($('vClock'), `${mm}:${ss}`);
   $('clock').classList.toggle('low', secs <= 60);
   $('vPing').textContent = `${net.rtt}ms`;
-  $('vOnline').textContent = world.players.filter(Boolean).length;
   $('vMap').textContent = world.map?.id ?? '';
 
   if (!me) {
@@ -1558,6 +1652,7 @@ function drawHud() {
       castText($('who'), 'spectating');
       setValue($('rank'), '');
       $('dead').style.display = 'none';
+      if (shopVisible) setShopVisible(false);
       renderLive();
     }
     return;
@@ -1582,7 +1677,7 @@ function drawHud() {
    * figure comes back in the scores broadcast (see emitScores in server/room.js) and is banked to
    * disk against the NAME, so it survives a round, a reconnect and a restart. Falls back to the
    * round count for the second or two before the first broadcast lands. */
-  setValue($('vCoins'), mine?.lifeCoins ?? me.coins ?? 0);
+  setValue($('vCoins'), mine?.wallet ?? shopSnapshot?.wallet ?? me.coins ?? 0);
   renderLive();
 
   // Every live perk as a pip, lit when you are carrying more than you started with. Shields used
@@ -1590,11 +1685,7 @@ function drawHud() {
   // rest and belong in the same row, counted the same way.
   // Arriving is not dead: a full heart while you wait to be placed. See holdArrival.
   heartState(!me.alive && !me.arriving ? 'empty' : me.hp === 1 ? 'half' : 'full');
-  gearPip('pBombs', me.bombs, MAX_BOMBS_CARRIED, START_BOMBS);
-  gearPip('pFire', me.radius, MAX_RADIUS, START_RADIUS);
-  gearPip('pSpeed', me.speed, MAX_SKATES);
-  gearPip('pShield', me.shields, MAX_SHIELDS);
-  gearPip('pStim', me.staminaLevel ?? 0, MAX_STAMINA_LEVELS);
+  renderGearStats(me);
 
   // drawRespawn first: it is what stamps diedAtTick, and showDead reads it to hold the dialog
   // back. The other order shows the dialog a frame early on the tick you die.
@@ -1703,6 +1794,7 @@ function startIntermission(ms) {
 function endIntermission() {
   clearTimeout(roundOverTimer);
   roundOverUntil = 0;
+  setShopVisible(false);
   // Back to the board. Nothing analyses audio nobody is looking at - the same rule the menu one
   // follows when a round starts.
   roundViz.stop();
@@ -1824,7 +1916,13 @@ const DEAD_DIALOG_DELAY_TICKS = Math.round(4.4 * TICK_HZ);
 
 function showDead(dead) {
   const held = dead && diedAtTick >= 0 && world.tick - diedAtTick < DEAD_DIALOG_DELAY_TICKS;
-  $('dead').style.display = dead && !held ? 'grid' : 'none';
+  const visible = dead && !held;
+  $('dead').style.display = visible ? 'grid' : 'none';
+  if (!roundOverUntil) {
+    const changed = shopVisible !== visible;
+    setShopVisible(visible);
+    if (changed && visible) requestShop();
+  }
   // Alive again: the corner goes back to gold and the mascot gets his colour back.
   if (!dead) document.body.classList.remove('dead');
 }
@@ -2253,6 +2351,7 @@ function leave() {
   $('menu').style.display = 'grid';
   $('hud').classList.remove('on');
   $('dead').style.display = 'none';
+  setShopVisible(false);
   $('scores').classList.remove('on');
   scoresOpen = false;
   endIntermission();
@@ -2514,6 +2613,28 @@ function askPassword(mode, why) {
     : (why || 'that name needs its password'));
 }
 
+function passwordErrorMessage(why) {
+  if (why === 'wrong password') return "That password didn't match. Please try again.";
+  if (why === 'too many attempts') {
+    return 'Too many tries just now. Please wait a moment, then try again.';
+  }
+  if (why === 'a password is needed') return 'Please enter a password to continue.';
+  if (why === 'your name is not a password') {
+    return 'Please choose a password that is different from your name.';
+  }
+  if (why === 'one character held down is not a password') {
+    return 'Please choose a less repetitive password.';
+  }
+  const short = /^at least \d+ characters - (\d+) to go$/.exec(why || '');
+  if (short) {
+    const remaining = Number(short[1]);
+    return `Please add ${remaining} more character${remaining === 1 ? '' : 's'} to your password.`;
+  }
+  const long = /^a password is at most (\d+) characters$/.exec(why || '');
+  if (long) return `Please keep your password to ${long[1]} characters or fewer.`;
+  return "That password wasn't accepted. Please try again.";
+}
+
 function passwordError(why) {
   pwOpen = true;
   const input = $('pw');
@@ -2526,7 +2647,7 @@ function passwordError(why) {
   input.classList.add('invalid');
   input.setAttribute('aria-invalid', 'true');
   input.focus();
-  toast(why || 'password not accepted');
+  toast(passwordErrorMessage(why), PASSWORD_TOAST_MS);
 }
 
 function closePassword() {
@@ -2651,21 +2772,11 @@ addEventListener('keydown', e => {
 
 $('leave').onclick = createTap()(leave);
 $('respawn').onclick = askRespawn;
-
-/* The checkbox, and the stored value, kept in step in one place.
- *
- * `checked` is set from storage at boot rather than from the markup, so the box always shows
- * what will actually happen - a checkbox whose state is a guess is worse than no checkbox.
- */
-$('autoRespawn').checked = autoRespawn;
-$('autoRespawn').onchange = e => {
-  autoRespawn = e.target.checked;
-  store.set(AUTO_KEY, autoRespawn ? '1' : '0');
-  sfx.play('click');
-  // Turned on while already waiting out a countdown that has finished: honour it now rather
-  // than on the next death, which would be a setting that appears not to work.
-  if (autoRespawn && !$('respawn').disabled && $('dead').style.display !== 'none') askRespawn();
-};
+for (const button of document.querySelectorAll('[data-shop-item]')) {
+  button.addEventListener('click', () => {
+    net.send({ t: 'shopbuy', item: button.dataset.shopItem });
+  });
+}
 
 // Ducking hangs off focus, not off the keys that usually cause it - clicking into the chat box
 // with the mouse is the same thing to the person doing it.

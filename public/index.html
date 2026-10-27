@@ -29,13 +29,33 @@
       content="Sixteen pirates. One island. Light the fuse and run. Play Boom Beard, a fast browser arena game for up to 16 players."
     />
     <link rel="canonical" href="https://boombeard.co.za/" />
+    <!-- Google & modern browsers prefer a high-res PNG -->
     <link
       rel="icon"
+      type="image/png"
+      sizes="48x48"
+      href="/assets/img/favicon-48.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="96x96"
+      href="/assets/img/favicon-96.png"
+    />
+
+    <!-- Fallback for older browsers -->
+    <link
+      rel="shortcut icon"
       type="image/x-icon"
       href="/assets/img/favicon.ico"
-      sizes="48x48 96x96"
     />
-    <link rel="apple-touch-icon" href="/assets/img/icon-180.png" />
+
+    <!-- Apple devices -->
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/assets/img/icon-180.png"
+    />
     <link
       rel="preload"
       href="/assets/fonts/clegan.7308d830.ttf"
@@ -80,7 +100,7 @@
         <symbol id="i-heart" viewBox="0 0 16 16">
           <path
             fill="none"
-            stroke="currentColor"
+            stroke="#000"
             stroke-width="1.3"
             d="M8 14S2 10.2 2 6a3 3 0 0 1 6-1 3 3 0 0 1 6 1c0 4.2-6 8-6 8z"
           />
@@ -302,32 +322,26 @@
 
     <div id="hud">
       <div id="topbar" class="edge">
-        <span id="clock"
-          ><span class="v cast" id="vClock">-</span
-          ><span class="k">left</span></span
-        >
-        <!-- The dot lives with the ping, because they answer the same question: is the link
-         healthy. Next to the volume controls it was just another icon in a row of icons. -->
-        <span class="stat"
-          ><span class="k">ping</span><span class="v" id="vPing">-</span
-          ><span id="conn" data-state="connecting" title="connecting"></span
-        ></span>
-        <span class="stat"
-          ><span class="k">alive</span
-          ><span class="v" id="vOnline">-</span></span
-        >
-        <span class="stat"
-          ><span class="k">map</span><span class="v" id="vMap">-</span></span
-        >
-        <span class="sep"></span>
+        <div id="topbarMeta">
+          <span id="clock"
+            ><span class="v cast" id="vClock">-</span
+            ><span class="k">left</span></span
+          >
+          <span class="sep"></span>
+          <!-- The dot lives with the ping, because they answer the same question: is the link
+           healthy. Next to the volume controls it was just another icon in a row of icons. -->
+          <span class="stat"
+            ><span class="k">ping</span><span class="v" id="vPing">-</span
+            ><span id="conn" data-state="connecting" title="connecting"></span
+          ></span>
+        </div>
 
-        <!-- One pip per live perk, in the order you are likely to find them. A pip lights up when
-         you have any of that perk at all, so the bar answers "what am I carrying" without
-         anybody having to read the numbers. -->
+        <!-- Centered over the gameplay canvas. Each perk keeps its shop color; upgraded pips glow
+         so the bar answers "what am I carrying" without anybody having to read the numbers. -->
         <span id="gear">
-          <!-- Health, as a gold heart with three states and no number: whole and shining, half and
-           dull, or an empty outline while you are down. Inline rather than a <use>, because the
-           two halves are filled separately. See MAX_HP and heartState in main.js. -->
+          <!-- Health, as a heart with three states and no number: whole and shining gold, nearly
+           grayscale at half, and grayscale while down. Inline rather than a <use>, because the two
+           halves are filled separately. See MAX_HP and heartState in main.js. -->
           <span class="pip heart full" id="pHeart" title="health: two hits">
             <svg viewBox="0 0 16 16" aria-hidden="true">
               <defs>
@@ -383,29 +397,35 @@
           <div id="ups"></div>
         </span>
 
-        <span class="right">
-          <a
-            class="iconBtn"
-            href="https://github.com/cobusvonwielligh/boom-beard"
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Boom Beard on GitHub"
-            aria-label="Boom Beard on GitHub"
+        <div id="topbarRight">
+          <span class="sep"></span>
+          <span class="stat" id="mapStat"
+            ><span class="k">map</span><span class="v" id="vMap">-</span></span
           >
-            <svg><use href="#i-gh" /></svg>
-          </a>
-          <a
-            class="iconBtn bug"
-            href="https://github.com/cobusvonwielligh/boom-beard/issues/new"
-            target="_blank"
-            rel="noopener noreferrer"
-            title="report a bug"
-            aria-label="report a bug"
-          >
-            <svg><use href="#i-bug" /></svg>
-          </a>
-          <button id="leave" title="esc">leave</button>
-        </span>
+          <span class="right">
+            <a
+              class="iconBtn"
+              href="https://github.com/cobusvonwielligh/boom-beard"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Boom Beard on GitHub"
+              aria-label="Boom Beard on GitHub"
+            >
+              <svg><use href="#i-gh" /></svg>
+            </a>
+            <a
+              class="iconBtn bug"
+              href="https://github.com/cobusvonwielligh/boom-beard/issues/new"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="report a bug"
+              aria-label="report a bug"
+            >
+              <svg><use href="#i-bug" /></svg>
+            </a>
+            <button id="leave" title="esc">leave</button>
+          </span>
+        </div>
       </div>
 
       <img id="avatar" src="/assets/img/avatar.cf938d0b.png" alt="" />
@@ -520,20 +540,47 @@
             <div class="nextWhen" id="roundCountdown"></div>
           </div>
         </div>
+        <section id="shop" aria-labelledby="shopTitle" hidden>
+          <div class="shopTop">
+            <h2 id="shopTitle" class="castSm" data-text="SHOP">SHOP</h2>
+            <div class="shopWallet" aria-label="gold available">
+              <svg id="shopCoin" aria-hidden="true"><use href="#i-coin" /></svg>
+              <span id="shopGold" class="castSm" data-text="0">0</span>
+            </div>
+          </div>
+          <div class="shopShelf">
+            <button class="shopItem bombs" type="button" data-shop-item="bombs">
+              <span class="shopIcon"><svg aria-hidden="true"><use href="#i-bomb" /></svg></span>
+              <span class="shopName">bombs</span><span class="shopBundle">+2</span>
+              <span class="shopPrice"><svg aria-hidden="true"><use href="#i-coin" /></svg>1</span>
+            </button>
+            <button class="shopItem fire" type="button" data-shop-item="fire">
+              <span class="shopIcon"><svg aria-hidden="true"><use href="#i-fire" /></svg></span>
+              <span class="shopName">fire</span><span class="shopBundle">+1</span>
+              <span class="shopPrice"><svg aria-hidden="true"><use href="#i-coin" /></svg>1</span>
+            </button>
+            <button class="shopItem speed" type="button" data-shop-item="speed">
+              <span class="shopIcon"><svg aria-hidden="true"><use href="#i-boot" /></svg></span>
+              <span class="shopName">speed</span><span class="shopBundle">+2</span>
+              <span class="shopPrice"><svg aria-hidden="true"><use href="#i-coin" /></svg>1</span>
+            </button>
+            <button class="shopItem shield" type="button" data-shop-item="shield">
+              <span class="shopIcon"><svg aria-hidden="true"><use href="#i-shield" /></svg></span>
+              <span class="shopName">shield</span><span class="shopBundle">+1</span>
+              <span class="shopPrice"><svg aria-hidden="true"><use href="#i-coin" /></svg>2</span>
+            </button>
+            <button class="shopItem stim" type="button" data-shop-item="stim">
+              <span class="shopIcon"><svg aria-hidden="true"><use href="#i-bolt" /></svg></span>
+              <span class="shopName">stim</span><span class="shopBundle">+2</span>
+              <span class="shopPrice"><svg aria-hidden="true"><use href="#i-coin" /></svg>1</span>
+            </button>
+          </div>
+          <p id="shopHint">powerups are activated on next spawn</p>
+        </section>
         <!-- Three choices, in the order you are likely to want them. No heading: the respawn
          countdown IS the message, and "you died" over the top of a banner that just said so is
          the same sentence twice. -->
         <button id="respawn">respawn</button>
-        <!-- Auto-respawn. Remembered across sessions like the volume sliders, because it is a
-         preference rather than a per-round choice. A real checkbox underneath - keyboard,
-         screen readers and main.js all see an ordinary input - dressed as a sliding switch. -->
-        <label id="autoRow"
-          ><span class="lbl">auto respawn</span
-          ><input type="checkbox" id="autoRespawn" role="switch" /><span
-            class="switch"
-            aria-hidden="true"
-            ><span class="knob"></span></span
-        ></label>
         <button id="spectate" class="ghost">spectate mode</button>
         <button id="deadLeave" class="ghost">leave</button>
       </div>
@@ -845,7 +892,7 @@
             <h1 id="title" class="titleArt">
               <img
                 src="/assets/img/title-boom-beard-bandanas-bomb.1f959c46.webp"
-                alt="Boom Beard"
+                alt="Boom Beard 💣"
                 width="1600"
                 height="662"
                 fetchpriority="high"
