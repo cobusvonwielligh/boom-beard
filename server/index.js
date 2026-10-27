@@ -221,11 +221,21 @@ function serve(req, res) {
     return res.end(JSON.stringify({ version: pkgVersion(), build: version() }));
   }
 
+  if (url === '/signup-count') {
+    const count = accounts.stats().total;
+    res.writeHead(200, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'public, max-age=60',
+    });
+    return res.end(JSON.stringify({ count }));
+  }
+
   if (url === '/healthz') {
     const body = JSON.stringify(hub.health({
       uptimeS: Math.round((Date.now() - started) / 1000),
       ...processMetrics(),
       version: version(),
+      signups: accounts.stats(),
       transports: { ...hub.transportCounts, webtransport: wt ? hub.transportCounts.webtransport : null },
       top: leaderboard.top(5),
     }));

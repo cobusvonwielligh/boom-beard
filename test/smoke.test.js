@@ -5,6 +5,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocket } from 'ws';
@@ -17,11 +19,12 @@ let server;
 
 const DEPLOY_TOKEN = 'test-token-not-a-real-secret';
 
-const startServer = () => new Promise((resolve, reject) => {
+const startServer = dataDir => new Promise((resolve, reject) => {
   server = spawn(process.execPath, ['server/index.js'], {
     cwd: ROOT,
     env: {
       ...process.env,
+      DATA_DIR: dataDir,
       PORT: String(PORT),
       LAG: '0',
       DEPLOY_TOKEN,
@@ -49,8 +52,13 @@ const startServer = () => new Promise((resolve, reject) => {
 });
 
 test('deployment spine', async t => {
-  await startServer();
-  t.after(async () => { server.kill('SIGTERM'); await once(server, 'exit'); });
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bv-smoke-'));
+  await startServer(dataDir);
+  t.after(async () => {
+    server.kill('SIGTERM');
+    await once(server, 'exit');
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  });
 
   await t.test('serves the page', async () => {
     const res = await fetch(base + '/');
@@ -88,6 +96,15 @@ test('deployment spine', async t => {
     assert.equal(h.ok, true);
     assert.equal(h.players, 0);
     assert.equal(h.maxPlayers, 16);
+    assert.deepEqual(h.signups, { total: 0, last24h: 0, last7d: 0, last30d: 0 });
+  });
+
+  await t.test('signup count is public but exposes no account details', async () => {
+    const res = await fetch(base + '/signup-count');
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get('content-type'), /application\/json/);
+    assert.equal(res.headers.get('cache-control'), 'public, max-age=60');
+    assert.deepEqual(await res.json(), { count: 0 });
   });
 
   await t.test('websocket seats a player and frees the seat on close', async () => {
