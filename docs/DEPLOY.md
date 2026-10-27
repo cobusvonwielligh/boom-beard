@@ -265,8 +265,9 @@ The South Africa host remains `boombeard.co.za`. For North America:
 3. Secure the provided key with `chmod 600 ~/Downloads/bombs-away-na.pem`, copy
    `infra/bootstrap.sh` to the NA host, and run it with
    `HOST=us.boombeard.co.za REGION_ID=us` and the existing Let's Encrypt contact.
-   The environment may supply the same owner `ADMIN_KEY` and dashboard password as ZA.
-   Do not copy the ZA `/var/lib/boom-beard` directory.
+   Bootstrap generates a unique admin key and prints a one-time enrollment link.
+   Supply the dashboard password through the environment and do not copy the ZA key
+   or `/var/lib/boom-beard` directory.
 4. Merge and push the verified code to `main`, then deploy that exact commit to ZA and
    NA. For the NA manual deploy, override `SSH_HOST=52.21.210.27`,
    `SSH_USER=ec2-user`, and `KEY=~/Downloads/bombs-away-na.pem`.
