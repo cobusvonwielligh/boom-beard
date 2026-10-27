@@ -77,6 +77,7 @@ export function createWorld() {
     p.hp = wire.hp ?? MAX_HP;
     p.arriving = !!wire.ar;
     p.arriveAt = wire.art ?? 0;
+    p.respawnTicks = wire.rr ?? null;
     if (wire.sta !== undefined) { p.stamina = wire.sta; p.staminaLevel = wire.stl; p.tired = !!wire.tr; }
     p.slide = wire.sl ?? 0;
     // The deliberate slide: absent means not sliding, which is almost every tick. See playerWire.
@@ -217,6 +218,7 @@ export function createWorld() {
     // went to half on your own screen - the heart, the ghosting and the scorch all read this.
     me.hp = wire.hp ?? MAX_HP;
     me.arriving = !!wire.ar;              // joining: off the board for a moment, not dead
+    me.respawnTicks = wire.rr ?? null;
     // Stamina is simulated locally too, so it is replayed with the inputs below rather than
     // simply trusted - the server's value is the one the replay starts from.
     if (wire.sta !== undefined) { me.stamina = wire.sta; me.staminaLevel = wire.stl; me.tired = !!wire.tr; }

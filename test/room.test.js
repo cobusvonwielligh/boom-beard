@@ -90,7 +90,7 @@ test('room end to end', async t => {
     assert.equal(own.ar, undefined, 'a new player was treated as an arrival');
     a.respawn();
     b.respawn();
-    await wait(200);
+    await wait(4600);
     const names = a.snaps.at(-1).players.map(p => p.i).sort();
     assert.ok(names.length >= 2, 'both players present in snapshots');
     assert.equal(a.me().st, 1, 'the first respawn action did not spawn immediately');

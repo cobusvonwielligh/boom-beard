@@ -50,4 +50,10 @@ test('player id and password fields share aligned label and input columns', asyn
     'the PLAY button has more space below the password field');
   has(css, /#menuWrap #watch\s*{\s*margin-top:\s*16px;/,
     'SPECTATE ONLY has more space below PLAY');
+  has(css, /input\[type="text"\],\s*#pw\s*\{[^}]*background:\s*#080c12;[^}]*border:\s*1px solid #ffffff1f;[^}]*border-radius:\s*9px;/s,
+    'both inputs share the same background, border and corner treatment');
+  has(css, /input\[type="text"\],\s*#pw\s*\{[^}]*font-size:\s*17px;/s,
+    'both inputs share the same type scale');
+  has(css, /#pw\s*\{[^}]*padding:\s*8px 42px 8px 16px;/s,
+    'the password field keeps its own height while matching the rest of the design');
 });

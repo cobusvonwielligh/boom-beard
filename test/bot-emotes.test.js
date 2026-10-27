@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createBotEmoter } from '../server/botEmotes.js';
 import { createRoom } from '../server/room.js';
+import { RESPAWN_COUNTDOWN_TICKS } from '../shared/constants.js';
 import { TICK_HZ } from '../shared/constants.js';
 import { toTile } from '../shared/sim/state.js';
 
@@ -65,6 +66,7 @@ test('the room broadcasts a bot reaction when the bot earns a kill', () => {
     room.setBots(1);
     const { seat: victimSeat } = room.join('human-id', 'Human');
     room.requestRespawn(victimSeat);
+    for (let i = 0; i <= RESPAWN_COUNTDOWN_TICKS; i++) room.tick();
     const victim = room.state.players[victimSeat];
     victim.status = 0;
     victim.statusUntil = {};

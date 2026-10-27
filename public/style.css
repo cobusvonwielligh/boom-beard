@@ -985,7 +985,7 @@ body.observing #who {
  * size a glow is a smudge, and the cast type it sits beside does not glow either.
  *
  *   whole   both halves gold, with the slow light sweep the cast type has travelling across
- *   half    one nearly-grey half and one dark socket, with no sweep
+ *   half    one slightly desaturated half and one dark socket, with no sweep
  *   down    a fully grey heart inside a clear outline
  *
  * Three pictures and no number, because there are only three states. See MAX_HP. */
@@ -1017,8 +1017,9 @@ body.observing #who {
 }
 /* Desaturate the complete drawing, including the socket and outline, in each damaged state. */
 .pip.heart.half svg {
-  filter: grayscale(0.88) drop-shadow(0 1.5px 0 #000)
+  filter: grayscale(0.68) drop-shadow(0 1.5px 0 #000)
     drop-shadow(0 3px 5px #000a);
+  animation: heartHurt 3.6s ease-in-out infinite;
 }
 .pip.heart.empty svg {
   filter: grayscale(1) drop-shadow(0 1.5px 0 #000) drop-shadow(0 3px 5px #000a);
@@ -1069,9 +1070,27 @@ body.observing #who {
     transform: scale(1);
   }
 }
+@keyframes heartHurt {
+  0%, 88%, 100% {
+    transform: translateX(0);
+  }
+  90% {
+    transform: translateX(-1px);
+  }
+  92% {
+    transform: translateX(1px);
+  }
+  94% {
+    transform: translateX(-1px);
+  }
+  96% {
+    transform: translateX(0);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .pip.heart.full .glint,
-  .pip.heart.hit svg {
+  .pip.heart.hit svg,
+  .pip.heart.half svg {
     animation: none;
   }
 }
@@ -4611,7 +4630,8 @@ label {
   text-transform: uppercase;
   margin-bottom: 9px;
 }
-input[type="text"] {
+input[type="text"],
+#pw {
   width: 100%;
   font: inherit;
   font-size: 17px;
@@ -4625,10 +4645,12 @@ input[type="text"] {
     border-color 0.15s,
     box-shadow 0.15s;
 }
-input[type="text"]::placeholder {
+input[type="text"]::placeholder,
+#pw::placeholder {
   color: #5c6a7d;
 }
-input[type="text"]:focus {
+input[type="text"]:focus,
+#pw:focus {
   outline: none;
   border-color: var(--gold);
   box-shadow: 0 0 0 3px #edc24e1f;
@@ -5166,9 +5188,8 @@ kbd.wide {
   display: flex;
   align-items: center;
 }
-.pwField input {
-  /* Room for the eye, so a long password never runs under it. */
-  padding-right: 42px;
+#pw {
+  padding: 8px 42px 8px 16px;
 }
 
 /* Reveal. A real button: tabbable, pressable, and it says which state it is in.

@@ -3,7 +3,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRoom } from '../server/room.js';
-import { ARRIVE_DELAY_TICKS, COUNT_IN_TICKS, TICK_HZ } from '../shared/constants.js';
+import {
+  ARRIVE_DELAY_TICKS, COUNT_IN_TICKS, TICK_HZ,
+} from '../shared/constants.js';
+
+const RESPAWN_COUNTDOWN_TICKS = Math.round(4.5 * TICK_HZ);
 
 function room() {
   const snaps = [];
@@ -54,14 +58,15 @@ test('a player joining before the count-in sees the shop before choosing to spaw
     assert.equal(p.deaths, 0);
     assert.equal(p.arriving, undefined);
 
-    r.requestRespawn(seat);
     assert.equal(p.alive, false, 'spawned before the shared count-in ended');
+    r.requestRespawn(seat);
+    assert.equal(p.respawnRequested, true);
     for (let i = 0; i < COUNT_IN_TICKS + 2; i++) r.tick();
     assert.equal(p.alive, true, 'the requested spawn did not happen after count-in');
   } finally { r.stop(); }
 });
 
-test('a player joining after count-in can spawn immediately when requested', () => {
+test('a player joining after count-in spawns after the request countdown', () => {
   const snapshots = [];
   const r = createRoom({
     countIn: 2,
@@ -85,7 +90,9 @@ test('a player joining after count-in can spawn immediately when requested', () 
     assert.equal(wire.dd, 0, 'first spawn was counted as a death');
     assert.equal(wire.ar, undefined, 'the player was treated as an arrival instead of dead');
     r.requestRespawn(seat);
-    assert.equal(p.alive, true, 'the first spawn incorrectly had an arrival or death delay');
+    assert.equal(p.alive, false, 'the post-click countdown was skipped');
+    for (let i = 0; i <= RESPAWN_COUNTDOWN_TICKS; i++) r.tick();
+    assert.equal(p.alive, true, 'the first spawn did not happen after its countdown');
   } finally { r.stop(); }
 });
 
@@ -104,7 +111,9 @@ test('a new player waits in the shop and can respawn without a death cooldown', 
     assert.equal(wire.dd, 0);
     assert.equal(wire.ar, undefined);
     r.requestRespawn(seat);
-    assert.equal(p.alive, true, 'the first spawn waited for a death cooldown');
+    assert.equal(p.alive, false, 'the countdown was skipped after the click');
+    for (let i = 0; i <= RESPAWN_COUNTDOWN_TICKS; i++) r.tick();
+    assert.equal(p.alive, true, 'the first spawn did not happen after its countdown');
     r.tick(); r.tick();
     assert.ok(snaps.some(s => s.ev.some(e => e.e === 'spawn' && e.i === seat)), 'no spawn event to show the arrival');
   } finally { r.stop(); }
@@ -115,6 +124,7 @@ test('rejoining while alive lifts you off and places you again after the delay',
   try {
     const { seat } = r.join('a', 'alice');
     r.requestRespawn(seat);
+    for (let i = 0; i <= RESPAWN_COUNTDOWN_TICKS; i++) r.tick();
     const p = r.state.players[seat];
     assert.equal(p.alive, true);
     r.disconnect(seat);
@@ -132,6 +142,7 @@ test('rejoining while dead stays dead - no free respawn', () => {
   try {
     const { seat } = r.join('a', 'alice');
     r.requestRespawn(seat);
+    for (let i = 0; i <= RESPAWN_COUNTDOWN_TICKS; i++) r.tick();
     const p = r.state.players[seat];
     p.alive = false; p.respawnAt = r.state.tick + 9999;
     r.disconnect(seat);

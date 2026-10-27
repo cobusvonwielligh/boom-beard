@@ -62,8 +62,16 @@ test('heart states are larger and become desaturated as health falls', async () 
     'the heart is enlarged');
   has(css, /\.pip\.heart \.glint\s*\{[^}]*width:\s*24px;[^}]*height:\s*24px/s,
     'the full-heart shine matches the enlarged heart');
-  has(css, /\.pip\.heart\.half svg\s*\{[^}]*grayscale\(0\.88\)/s,
-    'the half heart is almost grayscale');
+  has(css, /\.pip\.heart\.half svg\s*\{[^}]*grayscale\(0\.68\)/s,
+    'the half heart keeps more of its gold color');
+  has(css, /\.pip\.heart\.half svg\s*\{[^}]*animation:\s*heartHurt\s+3\.6s/s,
+    'the half heart shakes occasionally to show damage');
+  has(css, /@keyframes heartHurt[\s\S]*translateX\(-1px\)/,
+    'the hurt animation moves the heart left and right');
+  has(css, /@keyframes heartHurt[\s\S]*translateX\(1px\)/,
+    'the hurt animation moves the heart right');
+  has(css, /@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.pip\.heart\.half svg/,
+    'the periodic heart shake respects reduced-motion preferences');
   has(css, /\.pip\.heart\.empty svg\s*\{[^}]*grayscale\(1\)/s,
     'the empty heart is grayscale');
 });

@@ -5,10 +5,12 @@ import os from 'node:os';
 import path from 'node:path';
 import {
   MAX_BOMBS_CARRIED, MAX_RADIUS, MAX_SHIELDS, MAX_SKATES, MAX_STAMINA_LEVELS,
-  ROUND_INTERMISSION_MS, START_RADIUS, staminaMaxFor,
+  ROUND_INTERMISSION_MS, START_RADIUS, TICK_HZ, staminaMaxFor,
 } from '../shared/constants.js';
 import { createLeaderboard, careerKey } from '../server/leaderboard.js';
 import { createRoom } from '../server/room.js';
+
+const RESPAWN_COUNTDOWN_TICKS = Math.round(4.5 * TICK_HZ);
 
 async function setup(t, onBroadcast = () => {}) {
   const dataDir = await fs.mkdtemp(path.join(os.tmpdir(), 'bv-shop-room-'));
@@ -29,6 +31,7 @@ test('room-authoritative gold shop', async t => {
     const p = room.state.players[human];
     p.coins = 2;
     room.requestRespawn(human);
+    for (let i = 0; i <= RESPAWN_COUNTDOWN_TICKS; i++) room.tick();
 
     assert.equal(room.buyShop(human, 'speed').why, 'shop is closed');
     assert.equal(leaderboard.economy(careerKey('human-id', 'ann')), null,
@@ -48,7 +51,7 @@ test('room-authoritative gold shop', async t => {
     assert.equal(room.shopState(-1).ok, false);
   });
 
-  await t.test('a new player can buy from the first-spawn shop and respawn immediately', async t => {
+  await t.test('a new player can buy from the first-spawn shop and respawn after the countdown', async t => {
     const { room } = await setup(t);
     const seat = room.join('human-id', 'ann').seat;
     const p = room.state.players[seat];
@@ -60,7 +63,9 @@ test('room-authoritative gold shop', async t => {
     assert.equal(p.alive, false, 'buying from the shop spawned the player');
 
     room.requestRespawn(seat);
-    assert.equal(p.alive, true, 'the first spawn waited for a death cooldown');
+    assert.equal(p.alive, false, 'the first spawn skipped the requested countdown');
+    for (let i = 0; i <= RESPAWN_COUNTDOWN_TICKS; i++) room.tick();
+    assert.equal(p.alive, true, 'the first spawn did not complete its countdown');
     assert.equal(p.speed, 2, 'the queued upgrade did not apply on first spawn');
   });
 
@@ -74,7 +79,9 @@ test('room-authoritative gold shop', async t => {
     assert.equal(p.deaths, 0);
 
     room.requestRespawn(seat);
-    assert.equal(p.alive, true, 'the player could not choose their first spawn after reset');
+    assert.equal(p.alive, false, 'the first spawn skipped the requested countdown');
+    for (let i = 0; i <= RESPAWN_COUNTDOWN_TICKS; i++) room.tick();
+    assert.equal(p.alive, true, 'the player did not spawn after the request countdown');
   });
 
   await t.test('purchased upgrades apply on the next respawn', async t => {
@@ -89,6 +96,7 @@ test('room-authoritative gold shop', async t => {
     }
 
     room.requestRespawn(seat);
+    for (let i = 0; i <= RESPAWN_COUNTDOWN_TICKS; i++) room.tick();
     assert.equal(p.alive, true);
     assert.equal(p.bombs, MAX_BOMBS_CARRIED - 2);
     assert.equal(p.radius, START_RADIUS + 1);
@@ -132,6 +140,7 @@ test('room-authoritative gold shop', async t => {
     const seat = room.join('human-id', 'ann').seat;
     const p = room.state.players[seat];
     room.requestRespawn(seat);
+    for (let i = 0; i <= RESPAWN_COUNTDOWN_TICKS; i++) room.tick();
     p.alive = false;
     p.coins = 7;
     for (const item of ['bombs', 'bombs', 'fire', 'speed', 'shield', 'stim']) {
@@ -161,6 +170,7 @@ test('room-authoritative gold shop', async t => {
     const { leaderboard, room } = await setup(t);
     const held = room.join('held-id', 'held').seat;
     room.requestRespawn(held);
+    for (let i = 0; i <= RESPAWN_COUNTDOWN_TICKS; i++) room.tick();
     room.state.players[held].alive = false;
     room.state.players[held].coins = 1;
     assert.equal(room.buyShop(held, 'speed').ok, true);
@@ -174,6 +184,7 @@ test('room-authoritative gold shop', async t => {
     room.restartRound();
     const late = room.join('late-id', 'late').seat;
     room.requestRespawn(late);
+    for (let i = 0; i <= RESPAWN_COUNTDOWN_TICKS; i++) room.tick();
     assert.equal(room.state.players[late].radius, START_RADIUS + 1);
     assert.equal(leaderboard.economy(lateKey).pending.fire, 0);
     room.restartRound();

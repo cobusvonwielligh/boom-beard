@@ -6,7 +6,8 @@
 
 import {
   TICK_MS, TICK_HZ, NAME_MAX_CHARS, UNITS_PER_TILE, IN_BOMB, IN_SLIDE, playerColor,
-  MAX_SKATES, MAX_SHIELDS, MAX_STAMINA_LEVELS, IDLE_DISCONNECT_MS, RESPAWN_DELAY_TICKS, TILE_PX,
+  MAX_SKATES, MAX_SHIELDS, MAX_STAMINA_LEVELS, IDLE_DISCONNECT_MS, RESPAWN_DELAY_TICKS,
+  RESPAWN_COUNTDOWN_TICKS, TILE_PX,
   MAX_BOMBS_CARRIED, MAX_RADIUS, START_BOMBS, START_RADIUS,
   POWDER_RADIUS, PERK, STATUS, VOLUME_MUSIC_DEFAULT,
   CHAT_MIN_INTERVAL_MS, STREAK_WINDOW_TICKS, ARRIVE_DELAY_TICKS, ROUND_INTERMISSION_MS,
@@ -1588,15 +1589,20 @@ function drawRespawn(me) {
   if (me.alive || me.arriving) { diedAtTick = -1; return; }
   if (diedAtTick < 0) diedAtTick = world.tick;
   const firstSpawn = me.deaths === 0;
-  const left = firstSpawn ? 0 : Math.max(0, RESPAWN_DELAY_TICKS - (world.tick - diedAtTick));
+  const requested = me.respawnTicks !== null;
+  const left = requested ? me.respawnTicks
+    : firstSpawn ? 0 : Math.max(0, RESPAWN_DELAY_TICKS - (world.tick - diedAtTick));
   const secs = Math.ceil(left / TICK_HZ);
-  // The moment it becomes pressable, once. You have been watching a number for ten seconds;
-  // this is what lets you stop watching it.
-  const justUnlocked = btn.disabled && left === 0;
+  const waitingForRound = requested && left === 0;
+  const ready = left === 0 && !waitingForRound;
+  // The moment it becomes pressable, once. This is what lets you stop watching the timer.
+  const justUnlocked = btn.disabled && ready;
   if (justUnlocked) sfx.play('ready');
-  btn.disabled = left > 0;
-  // Calm: this ticks once a second right in front of you, and the full bump is a strobe.
-  setValue(btn, left > 0 ? `respawn in ${secs}\u2026` : 'respawn', { calm: true });
+  btn.disabled = !ready;
+  const label = waitingForRound ? 'waiting for round'
+    : requested ? `respawn in ${Math.ceil(me.respawnTicks / (RESPAWN_COUNTDOWN_TICKS / 3))}`
+      : left > 0 ? `respawn in ${secs}\u2026` : 'respawn';
+  setValue(btn, label, { calm: true });
 }
 
 function drawHud() {

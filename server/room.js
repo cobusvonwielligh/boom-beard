@@ -9,7 +9,7 @@ import {
   TILE_PX, UNITS_PER_TILE, HITBOX_UNITS, FUSE_TICKS, FIRE_TICKS, FIRE_LETHAL_TICKS,
   paletteColor, COLOUR_PREFERENCE, DISTINCT_PLAYERS, isDistinctColour, encodeSeatColours,
   SCORE, ROUND_INTERMISSION_MS, MAX_HP, START_BOMBS, START_RADIUS, staminaMaxFor,
-  progressFor,
+  progressFor, RESPAWN_COUNTDOWN_TICKS,
   STREAK_NAMES, STREAK_ACE, GAMESPEED_MIN, GAMESPEED_MAX,
   IDLE_KICK_TICKS, AUTO_BOTS_EMPTY_ROUNDS, IN_MASK, COUNT_IN_TICKS,
 } from '../shared/constants.js';
@@ -205,7 +205,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     seats[seat] = {
       playerId: id, name, admin, mask: 0, inputs: new Map(), lastAckTick: 0,
       connected: true, goneSince: 0, lastInputAt: state.tick, colour: pickColour(seat),
-      firstSpawnPending: true, firstSpawnRequested: false,
+      firstSpawnPending: true,
     };
     streaks[seat] = newStreak();
     const p = createPlayer(seat, name);
@@ -230,15 +230,20 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
   function placeArrivals() {
     for (let i = 0; i < state.players.length; i++) {
       const p = state.players[i];
-      const seat = seats[i];
-      if (p && seat?.firstSpawnPending && seat.firstSpawnRequested && state.tick >= countIn) {
-        respawn(p);
-        continue;
-      }
       if (!p?.arriving || state.tick < p.arriveAt) continue;
       p.arriving = false;
       p.arriveAt = 0;
       if (!p.alive) respawn(p);
+    }
+  }
+
+  function placeRequestedRespawns() {
+    for (const p of state.players) {
+      if (!p?.respawnRequested || state.tick < p.respawnAt) continue;
+      if (!respawn(p)) {
+        p.respawnAt = state.tick + 1;
+        p.respawnCountdownAt = state.tick;
+      }
     }
   }
 
@@ -380,9 +385,10 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     p.x = tileCentre(pick.tx);
     p.y = tileCentre(pick.ty);
     p.alive = true;
+    p.respawnRequested = false;
+    p.respawnCountdownAt = 0;
     if (seats[p.i]?.firstSpawnPending) {
       seats[p.i].firstSpawnPending = false;
-      seats[p.i].firstSpawnRequested = false;
     }
     p.hp = MAX_HP;                               // everybody starts whole; see MAX_HP
     applyStatus(state, p, STATUS.INVULN, STATUS_TICKS[STATUS.INVULN]);
@@ -539,8 +545,9 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     // Where the new events start, so the streak scan reads only this tick's deaths. Events linger
     // for two ticks because snapshots do, so the length before the step is the only safe cursor.
     const evFrom = state.events.length;
+    placeRequestedRespawns();
     placeArrivals();
-    simTick(state, inputs, { onRespawn: respawn });
+    simTick(state, inputs, { onRespawn: startRespawnCountdown });
     trackStreaks(evFrom);
     for (let i = evFrom; i < state.events.length; i++) {
       botEmoter.react(state.events[i], seats, state.tick);
@@ -667,7 +674,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     // as well or the next bank would compute a negative delta and the board would ignore it.
     const carried = seats.map(s =>
       (s ? { ...s, inputs: new Map(), mask: 0, goneSince: 0, lastAckTick: 0, lastInputAt: 0,
-             firstSpawnRequested: false, banked: null } : null));
+             banked: null } : null));
     state = createState(MAPS[mapIndex]);
     // The only thing the simulation is told about the clock, and only the gull raid reads it:
     // see GULL_RAID_AT_MIN. Everything else that cares about the end of the round is up here.
@@ -704,6 +711,9 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     ...(p.alive && p.hp < MAX_HP ? { hp: p.hp } : null),
     // Arriving, not dead: lifted off the board briefly after a living reconnect. See holdArrival.
     ...(p.arriving ? { ar: 1, art: p.arriveAt } : null),
+    ...(p.respawnRequested
+      ? { rr: Math.max(0, p.respawnCountdownAt - state.tick) }
+      : null),
     s: p.score, k: p.kills, dd: p.deaths, stat: p.status,
     sk: p.streakCount || 0, skt: p.streakLastKillTick ?? -1,
     // Coins. One small integer that only ever goes up, and the only stat on the wire that is
@@ -1155,16 +1165,20 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     return true;
   }
 
-  /** Pressing SPACE while dead. Kept separate from the input mask so the intent is explicit. */
+  function startRespawnCountdown(p) {
+    if (!p || p.alive || p.arriving || between ||
+        p.respawnRequested || state.tick < p.respawnAt) return;
+    const countdownAt = state.tick + RESPAWN_COUNTDOWN_TICKS;
+    p.respawnRequested = true;
+    p.respawnCountdownAt = countdownAt;
+    p.respawnAt = seats[p.i]?.firstSpawnPending
+      ? Math.max(countdownAt, countIn)
+      : countdownAt;
+  }
+
+  /** Pressing SPACE while dead starts the same server-owned countdown as the bomb-key path. */
   function requestRespawn(seat) {
-    const p = state.players[seat];
-    if (!p || p.alive || between || state.tick < p.respawnAt) return;
-    const playerSeat = seats[seat];
-    if (playerSeat?.firstSpawnPending && state.tick < countIn) {
-      playerSeat.firstSpawnRequested = true;
-      return;
-    }
-    respawn(p);
+    startRespawnCountdown(state.players[seat]);
   }
 
   const roundInfo = () => ({ tick: state.tick, endsAt: roundTicks, between, map: state.map.id });

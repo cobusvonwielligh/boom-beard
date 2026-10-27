@@ -5,11 +5,14 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { IN_RIGHT, IN_BOMB, COUNT_IN_TICKS, TICK_HZ, ROUND_TICKS } from '../shared/constants.js';
+import {
+  IN_RIGHT, IN_BOMB, COUNT_IN_TICKS, TICK_HZ, ROUND_TICKS,
+} from '../shared/constants.js';
 import { createRoom } from '../server/room.js';
 import { AUTO_BOTS_MIN } from '../shared/constants.js';
 
 const room = opts => createRoom({ onBroadcast: () => {}, ...opts });
+const RESPAWN_COUNTDOWN_TICKS = Math.round(4.5 * TICK_HZ);
 
 test('a person cannot move or bomb until the count-in is over', () => {
   const r = room({});
@@ -23,10 +26,10 @@ test('a person cannot move or bomb until the count-in is over', () => {
       r.input(seat, r.state.tick, IN_RIGHT | IN_BOMB);
       r.tick();
     }
-    assert.equal(me.alive, false, 'spawned during the count-in');
+    assert.equal(me.alive, false, 'spawned before the shared start tick');
     assert.equal(r.state.bombs.length, 0, 'placed a bomb during the count-in');
 
-    // At the shared start tick the requested spawn is placed, then movement resumes.
+    // At the shared start tick movement resumes.
     r.input(seat, r.state.tick, 0);
     r.tick();
     assert.equal(me.alive, true, 'the requested spawn did not happen at the shared start');
@@ -77,13 +80,15 @@ test('the round is a full round of PLAY, not of play minus the count-in', () => 
   } finally { r.stop(); }
 });
 
-test('countIn: 0 is the old behaviour, exactly', () => {
-  // Every other room test depends on this, so it is worth asserting rather than assuming.
+test('countIn: 0 lets a first-spawn countdown start immediately', () => {
   const r = room({ countIn: 0 });
   try {
     const { seat } = r.join('p1', 'cobus');
     r.requestRespawn(seat);
     const me = r.state.players[seat];
+    assert.equal(me.alive, false);
+    for (let i = 0; i <= RESPAWN_COUNTDOWN_TICKS; i++) r.tick();
+    assert.equal(me.alive, true);
     const x0 = me.x;
     for (let i = 0; i < 6; i++) {
       r.input(seat, r.state.tick, IN_RIGHT);

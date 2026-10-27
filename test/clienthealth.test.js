@@ -9,7 +9,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { register } from 'node:module';
 import { pathToFileURL } from 'node:url';
-import { MAX_HP } from '../shared/constants.js';
+import { MAX_HP, RESPAWN_COUNTDOWN_TICKS } from '../shared/constants.js';
 import { MAPS, buildMap, encodeCells } from '../shared/maps.js';
 import { createRoom } from '../server/room.js';
 
@@ -56,6 +56,7 @@ test('the server sends health only when it is not whole, and only for the living
   try {
     const { seat } = r.join('a', 'alice');
     r.requestRespawn(seat);
+    for (let i = 0; i <= RESPAWN_COUNTDOWN_TICKS; i++) r.tick();
     r.tick(); r.tick();
     const whole = sent.at(-1).players.find(p => p.i === seat);
     assert.equal(whole.hp, undefined, 'whole health was put on the wire');

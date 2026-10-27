@@ -699,18 +699,10 @@ export const DRUNK_SWAY_RATE_A = 0.09, DRUNK_SWAY_RATE_B = 0.041;
 export const DRUNK_STAGGER_EVERY = 79;     // ticks between stumbles, prime so it never syncs
 export const DRUNK_STAGGER_TICKS = 4;      // how long one lasts
 
-/* How long you sit on the death screen before SPACE will do anything.
- *
- * It started at zero, which meant anyone holding the bomb key - everyone, always - respawned on
- * the same tick they died and never saw it happen. Then ten, at which a careless rush was nearly
- * free. Then fifteen: long enough that dying costs you something you feel, and short enough to
- * watch the fight you just left, which is the other thing the wait is for.
- *
- * Thirteen and a half now - a second and a half off, on request. Measured against the rest of the
- * round it is a small change; measured against the thing it governs, which is how long you sit
- * still after a mistake, a second and a half is most of the difference between reading the
- * scoreboard and waiting. */
-export const RESPAWN_DELAY_TICKS = Math.round(13.5 * TICK_HZ); // 405
+/* The death-screen cooldown happens before SPACE is accepted. Once requested, a separate
+ * countdown gives the player a clear 3, 2, 1 before the server places them. */
+export const RESPAWN_DELAY_TICKS = 12 * TICK_HZ;
+export const RESPAWN_COUNTDOWN_TICKS = Math.round(4.5 * TICK_HZ);
 
 export const CONTAGIOUS = STATUS.PACIFISM | STATUS.SLOWDOWN | STATUS.INVISIBLE |
                           STATUS.CHANGELING | STATUS.REDUCTION | STATUS.FAST_DET;

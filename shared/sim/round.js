@@ -58,7 +58,8 @@ export function tick(state, inputs, { onRespawn } = {}) {
   // respawn requests, and fire that has burned out
   for (let i = 0; i < state.players.length; i++) {
     const p = state.players[i];
-    if (p && !p.alive && (inputs[i] & IN_BOMB) && state.tick >= p.respawnAt) onRespawn?.(p);
+    if (p && !p.alive && !p.respawnRequested &&
+        (inputs[i] & IN_BOMB) && state.tick >= p.respawnAt) onRespawn?.(p);
   }
   expireFires(state);
   expirePuddles(state);
