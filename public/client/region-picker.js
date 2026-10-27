@@ -127,6 +127,8 @@ export function createRegionPicker({
   let results = [];
   let pollTimer = null;
   let running = false;
+  let generation = 0;
+  let refreshSequence = 0;
 
   const heading = doc.createElement('h2');
   heading.className = 'regionHeading';
@@ -179,8 +181,11 @@ export function createRegionPicker({
     updateStatus();
   }
 
-  async function refresh() {
-    results = await probeRegions(regions, { fetchImpl });
+  async function refresh(expectedGeneration = generation) {
+    const sequence = ++refreshSequence;
+    const refreshed = await probeRegions(regions, { fetchImpl });
+    if (!running || expectedGeneration !== generation || sequence !== refreshSequence) return results;
+    results = refreshed;
     if (manualId) {
       selectedId = manualId;
     } else {
@@ -193,13 +198,26 @@ export function createRegionPicker({
   async function start() {
     if (running) return results;
     running = true;
-    const initialProbe = refresh();
-    pollTimer = setInterval(() => { refresh(); }, POLL_INTERVAL_MS);
-    return initialProbe;
+    const currentGeneration = ++generation;
+    const initialProbe = refresh(currentGeneration);
+    const showRefreshError = error => {
+      if (running && currentGeneration === generation) {
+        statusLine.textContent = `Server check failed: ${error.message}`;
+      }
+    };
+    pollTimer = setInterval(() => {
+      refresh(currentGeneration).catch(showRefreshError);
+    }, POLL_INTERVAL_MS);
+    return initialProbe.catch(error => {
+      showRefreshError(error);
+      return results;
+    });
   }
 
   async function prepareJoin() {
-    const latest = await refresh();
+    const currentGeneration = generation;
+    const latest = await refresh(currentGeneration);
+    if (!running || currentGeneration !== generation) return null;
     const id = selectedRegionId(latest, manualId);
     if (!id) {
       const selected = latest.find(result => result.id === selectedId)
@@ -213,9 +231,11 @@ export function createRegionPicker({
   }
 
   function stop() {
+    running = false;
+    generation++;
+    refreshSequence++;
     if (pollTimer !== null) clearInterval(pollTimer);
     pollTimer = null;
-    running = false;
   }
 
   render();

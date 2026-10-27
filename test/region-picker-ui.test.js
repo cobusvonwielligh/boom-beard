@@ -132,6 +132,33 @@ test('a saved offline choice stays selected and blocks joining with its reason v
   assert.equal(buttons[1].attributes['aria-pressed'], 'true');
 });
 
+test('a late probe cannot repaint a stopped picker', async t => {
+  const root = makeRoot();
+  const pending = [];
+  const picker = createRegionPicker({
+    root,
+    regions,
+    store: { getItem: () => null, setItem() {} },
+    fetchImpl: url => new Promise(resolve => pending.push({
+      region: url.includes('za.example') ? 'za' : 'us',
+      resolve,
+    })),
+  });
+  t.after(() => picker.stop());
+
+  const initial = picker.start();
+  assert.equal(pending.length, 2);
+  const checkingText = root.children.at(-1).textContent;
+  picker.stop();
+  for (const request of pending) {
+    request.resolve({ ok: true, json: async () => status(request.region) });
+  }
+  await initial;
+
+  assert.match(checkingText, /Checking/);
+  assert.equal(root.children.at(-1).textContent, checkingText);
+});
+
 test('picker styles show keyboard focus and stack choices on narrow screens', async () => {
   const css = await read('public/style.css');
   assert.match(css, /#regionPicker[^{}]*:focus-visible|\.regionOption:focus-visible/);
