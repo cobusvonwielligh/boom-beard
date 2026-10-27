@@ -195,10 +195,15 @@ test('DEVICE_TTL_MS is a month, not a session', () => {
 
 test('signup statistics count unique accounts in inclusive rolling windows', async () => {
   const d = dir();
+  const file = path.join(d, 'accounts.json');
+  const excluded = ['cobus', 'cobusvw', 'cobusvonw', 'test', 'awe'];
+  fs.writeFileSync(file, JSON.stringify({
+    version: 1,
+    accounts: Object.fromEntries(excluded.map(name => [name, { created: 0 }])),
+  }));
   const a = createAccounts({ dataDir: d });
   for (const name of [
     'fresh', 'day-edge', 'week-edge', 'month-edge', 'old', 'legacy',
-    'cobus', 'cobusvw', 'cobusvonw', 'test', 'awe',
   ]) {
     assert.equal((await a.register(name, PW)).ok, true);
   }
@@ -206,7 +211,6 @@ test('signup statistics count unique accounts in inclusive rolling windows', asy
 
   const DAY = 24 * 3600_000;
   const now = Date.UTC(2026, 9, 27, 12);
-  const file = path.join(d, 'accounts.json');
   const data = JSON.parse(fs.readFileSync(file, 'utf8'));
   data.accounts.fresh.created = now - 1;
   data.accounts['day-edge'].created = now - DAY;
@@ -223,4 +227,29 @@ test('signup statistics count unique accounts in inclusive rolling windows', asy
     last7d: 3,
     last30d: 4,
   });
+});
+
+test('signup exclusions do not apply to future accounts using the same name', async () => {
+  const d = dir();
+  const file = path.join(d, 'accounts.json');
+  fs.writeFileSync(file, JSON.stringify({
+    version: 1,
+    accounts: { cobus: { created: 0 } },
+  }));
+
+  const migrated = createAccounts({ dataDir: d });
+  assert.equal(migrated.stats().total, 0, 'the existing test account was counted');
+  migrated.flushSync();
+
+  const data = JSON.parse(fs.readFileSync(file, 'utf8'));
+  delete data.accounts.cobus;
+  fs.writeFileSync(file, JSON.stringify(data));
+
+  const fresh = createAccounts({ dataDir: d });
+  assert.equal((await fresh.register('cobus', PW)).ok, true);
+  assert.equal(fresh.stats().total, 1, 'a new account was excluded by its username');
+  await fresh.flush();
+
+  const restarted = createAccounts({ dataDir: d });
+  assert.equal(restarted.stats().total, 1, 'the new account was excluded after restart');
 });

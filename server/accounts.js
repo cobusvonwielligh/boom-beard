@@ -44,6 +44,9 @@ import crypto from 'node:crypto';
 import { PASSWORD_MIN, PASSWORD_MAX } from '../shared/constants.js';
 
 const VERSION = 1;
+// Existing records with these names are excluded once; future signups count normally.
+const SIGNUP_COUNT_EXCLUSIONS = new Set(['cobus', 'cobusvw', 'cobusvonw', 'test', 'awe']);
+const SIGNUP_COUNT_EXCLUSIONS_VERSION = 1;
 
 /* scrypt, at the parameters Node's own documentation suggests for interactive logins.
  *
@@ -74,7 +77,6 @@ const TOKEN_BYTES = 32;
 // which is also the only cleanup this ever needs.
 export const DEVICE_TTL_MS = 30 * 24 * 3600_000;
 export const MAX_DEVICES = 5;
-const SIGNUP_COUNT_EXCLUSIONS = new Set(['cobus', 'cobusvw', 'cobusvonw', 'test', 'awe']);
 
 /* Guessing limits, in memory only.
  *
@@ -131,6 +133,7 @@ export function createAccounts({ dataDir }) {
   const file = path.join(dataDir, 'accounts.json');
   const bakFile = `${file}.bak`;
   let accounts = new Map();        // key -> record
+  let signupCountExclusionsVersion = SIGNUP_COUNT_EXCLUSIONS_VERSION;
   let dirty = false;
   let saving = null;
   let tmpSeq = 0;
@@ -154,6 +157,19 @@ export function createAccounts({ dataDir }) {
         const parsed = JSON.parse(raw);
         if (parsed?.version !== VERSION || typeof parsed.accounts !== 'object') throw new Error('shape');
         accounts = new Map(Object.entries(parsed.accounts));
+        const storedExclusionVersion = Number(parsed.signupCountExclusionsVersion);
+        signupCountExclusionsVersion = Number.isSafeInteger(storedExclusionVersion)
+          ? Math.max(0, storedExclusionVersion)
+          : 0;
+        if (signupCountExclusionsVersion < SIGNUP_COUNT_EXCLUSIONS_VERSION) {
+          for (const [key, rec] of accounts) {
+            if (SIGNUP_COUNT_EXCLUSIONS.has(key) && rec && typeof rec === 'object') {
+              rec.signupCountExcluded = true;
+            }
+          }
+          signupCountExclusionsVersion = SIGNUP_COUNT_EXCLUSIONS_VERSION;
+          dirty = true;
+        }
         if (candidate === bakFile) console.warn('accounts: loaded the backup copy');
         return;
       } catch {
@@ -170,6 +186,7 @@ export function createAccounts({ dataDir }) {
 
   const snapshot = () => JSON.stringify({
     version: VERSION,
+    signupCountExclusionsVersion,
     accounts: Object.fromEntries(accounts),
   });
 
@@ -222,6 +239,7 @@ export function createAccounts({ dataDir }) {
   }
 
   load();
+  if (dirty) flushSync();
 
   const has = name => accounts.has(accountKey(name));
   const DAY_MS = 24 * 3600_000;
@@ -231,8 +249,8 @@ export function createAccounts({ dataDir }) {
     const at = Number(now);
     const safeNow = Number.isFinite(at) ? at : Date.now();
     const out = { total: 0, last24h: 0, last7d: 0, last30d: 0 };
-    for (const [key, rec] of accounts) {
-      if (SIGNUP_COUNT_EXCLUSIONS.has(key)) continue;
+    for (const rec of accounts.values()) {
+      if (rec?.signupCountExcluded) continue;
       out.total++;
       const created = Number(rec?.created);
       if (!Number.isFinite(created) || created > safeNow) continue;
