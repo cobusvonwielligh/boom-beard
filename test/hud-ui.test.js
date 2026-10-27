@@ -66,6 +66,25 @@ test('the game toolbar drops external links and expands the board beside a narro
     'the leave control turns red on hover');
 });
 
+test('short-height controls stay on one line and share row-divider baselines', async () => {
+  const [html, css] = await Promise.all([
+    read('public/index.html'), read('public/style.css'),
+  ]);
+  const controlsStart = html.indexOf('<div class="keys">');
+  const controls = html.slice(controlsStart, html.indexOf('</dl>', controlsStart));
+
+  assert.equal([...controls.matchAll(/<dt\b/g)].length, 9,
+    'each keyboard binding remains its own control row');
+  assert.equal([...controls.matchAll(/<dd\b/g)].length, 9,
+    'each control row has exactly one action');
+  has(css, /\.keys dl\s*\{[^}]*align-items:\s*stretch;/s,
+    'control cells stretch to the same grid-row height so their rules align');
+  has(css, /\.keys dd\s*\{[^}]*display:\s*flex;[^}]*align-items:\s*center;[^}]*justify-content:\s*flex-end;/s,
+    'action text stays vertically centered while its cell stretches');
+  has(css, /@media \(min-width: 768px\) and \(min-height: 720px\) and \(max-height: 850px\)[\s\S]*?#menuWrap \.keys dt,\s*#menuWrap \.keys dd\s*\{[^}]*white-space:\s*nowrap;/s,
+    'the compact short-height controls do not wrap key or action text');
+});
+
 test('heart states are larger and become desaturated as health falls', async () => {
   const [html, css] = await Promise.all([
     read('public/index.html'), read('public/style.css'),

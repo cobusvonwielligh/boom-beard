@@ -1071,7 +1071,9 @@ body.observing #who {
   }
 }
 @keyframes heartHurt {
-  0%, 88%, 100% {
+  0%,
+  88%,
+  100% {
     transform: translateX(0);
   }
   90% {
@@ -4796,7 +4798,7 @@ label {
      read as the table being broken. The separation between the keys and the action is padding
      INSIDE the cells instead, so the rules are continuous from edge to edge. */
   gap: 0;
-  align-items: center;
+  align-items: stretch;
 }
 .keys dt,
 .keys dd {
@@ -4826,6 +4828,9 @@ label {
   gap: 4px;
 }
 .keys dd {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
   margin: 0;
   color: var(--dim);
   font-size: 14px;
@@ -5169,30 +5174,36 @@ kbd.wide {
    THE PASSWORD BOX
    Hidden until the server asks. See server/accounts.js.
    ======================================== */
+/* ======================================== */
+/* ======================================== */
 .playerid-group {
   display: grid;
-  grid-template-columns: minmax(0, 215px) minmax(0, 1fr);
-  column-gap: 15px;
+  /* Changed first column from minmax(0, 215px) to auto so it hugs the label */
+  grid-template-columns: auto 1fr;
+  column-gap: 15px; /* Adjust this gap to control how close the input gets to the label */
   align-items: center;
   width: 100%;
+  max-width: 100%;
 }
+
 .playerid-group label {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   grid-column: 1;
   min-width: 0;
-  width: auto;
+  width: auto; /* Hugs the text width */
   white-space: nowrap;
   margin: 0;
   padding: 0;
   line-height: 1;
   font-size: calc(1em + 1px);
-  text-align: right;
+  text-align: left;
   text-shadow:
     0 2px 4px rgba(0, 0, 0, 0.8),
     0 1px 2px rgba(0, 0, 0, 0.6);
 }
+
 .playerid-group input {
   grid-column: 2;
   width: 100%;
@@ -5200,6 +5211,7 @@ kbd.wide {
   box-sizing: border-box;
   margin: 0;
 }
+
 .playerid-group > .pwField {
   grid-column: 2;
   width: 100%;
@@ -5430,6 +5442,7 @@ kbd.wide {
   #menuWrap .keys dd {
     padding-top: 2px;
     padding-bottom: 2px;
+    white-space: nowrap;
   }
   #menuWrap .keys dt {
     padding-right: 0;
