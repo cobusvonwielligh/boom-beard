@@ -1,9 +1,15 @@
 # Boom Beard - Design
 
-Date: 2026-10-23; implementation addendum updated 2026-10-25
+Date: 2026-10-23; implementation addendum updated 2026-10-28
 Author: Cobus (with Claude)
 Status: original intent plus current implementation. [RULES.md](RULES.md) and
 [STATUS.md](STATUS.md) are authoritative where the original plan changed.
+
+> This document preserves the original v1 design decisions. Regional selection, two game
+> instances, shared player data and the Command Deck were added later; the single-region and
+> multi-region non-goal statements below describe that original scope, not the current release.
+> Current architecture, release status and deployment details are in
+> [ARCHITECTURE.md](ARCHITECTURE.md), [STATUS.md](STATUS.md) and [DEPLOY.md](DEPLOY.md).
 
 ---
 
@@ -47,7 +53,8 @@ Explicitly out. Not "later" - out of this build.
   collectible and lifetime stat.
 - A persistent streaming world. We have three fixed arenas.
 - Mobile or touch controls.
-- Matchmaking, multiple rooms, multiple server regions.
+- Matchmaking and multiple rooms. Multiple regions were an original v1 non-goal and were later
+  added; see the current architecture and deployment notes above.
 - Competitive anti-cheat, moderation staff and appeals. The server is authoritative and validates
   identity, movement inputs and game rules; this is still a small office game, not an esport.
 - Puzzles, iron chests, keys, locked gates, forts, warehouses, caches, soccer/goal mode, bosses,

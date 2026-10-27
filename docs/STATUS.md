@@ -1,8 +1,8 @@
 # Boom Beard - Where We Stand
 
-Last updated: **2026-10-25**, at **v1.0.4**. Live on `boombeard.co.za`. The full Node test suite
-runs on Windows and in CI. The security check that went into 1.0 is
-[DEPLOY.md](DEPLOY.md) §12.
+Last updated: **2026-10-28**, release **v1.1.0**. Live on `boombeard.co.za` and the US game
+instance. The full Node test suite runs with `npm test`. The security review dated 2026-10-25 is
+recorded in [DEPLOY.md](DEPLOY.md) §12.
 
 This document replaces the "⬜ The game: not started" line in the README. The game is built, the
 whole plan in [PLAN.md](PLAN.md) has been walked through, and several decisions in it have since
@@ -12,14 +12,18 @@ been overtaken by what actually happened. Read this before PLAN.md, not after.
 
 ## 1. The short version
 
-Sixteen players, five maps, ten-minute rounds, running on one EC2 box behind one hostname on one
-port. Deploys take about six seconds. Everything in `docs/` that describes *rules* is still
-accurate; the parts that describe *what is not built yet* are not.
+Sixteen players, five maps, ten-minute rounds. ZA serves the public website and Command Deck;
+separate ZA and US game instances accept direct regional connections. Both run the same release,
+and ZA is the authority for global account, career, wallet and shop data. See
+[DEPLOY.md](DEPLOY.md) for the deployment topology and operational details.
 
 | | |
 |---|---|
 | Playable end to end | ✅ |
-| Deployed, TLS, auto-restart, rollback | ✅ |
+| Deployed in ZA and US, TLS, auto-restart, rollback | ✅ |
+| Region selection | ✅ live ping, capacity, map, final server recheck and staged connection feedback |
+| Shared player data | ✅ ZA authority for accounts, career, wallet and shop; US forwards writes |
+| Command Deck | ✅ ZA `/admin`, trusted `cobusvw` browser and dashboard password |
 | Bots | ✅ up to 15, pathfinding and fleeing; at least 6 appear the moment anyone joins, and they leave after two empty rounds. `npm run botbench` measures them |
 | Maps | ✅ 5 |
 | Art and audio | ✅ art in code; music is four produced files (see §2e) |
@@ -29,6 +33,14 @@ accurate; the parts that describe *what is not built yet* are not.
 | Identity | ✅ password-owned, device-token trusted, normalized unique names, reconnect reservations |
 | Moderation | ✅ severe English/Afrikaans terms rejected in names and starred in chat; ordinary swearing allowed |
 | Mobile | ⬜ out of scope, unchanged |
+
+### v1.1.0 release
+
+The regional release adds live region selection and direct game connections: ZA begins on Arena,
+US on Twins, and each server advances its own five-map cycle. The region dialog rechecks the chosen
+server and displays connection progress through transport open and the server's welcome. Player
+accounts and career/shop data remain global; occupancy and game rounds remain regional. The
+landing-page signup meter and Command Deck are served by ZA.
 
 ---
 
@@ -266,7 +278,7 @@ is the index.
 | Stuck in one tile after `/gamespeed` | The client clock and fixed-step loop always ran at 30 Hz. At 200% every input was stamped for a tick the server had already simulated and was dropped; at 50% the server's input buffer evicted the ones it needed next. The client now scales both by the server's rate (`gamespeed` message, `welcome.config.gamespeed`) |
 | Searching `server/net.js` returned nothing | The file held raw control bytes inside a character class, so grep and `git diff` treated it as binary and said nothing at all. `test/sources.test.js` now fails on any raw control byte |
 | The server restarting for everybody | Three ways for one person to end the process: `GET /%` (`decodeURIComponent` throws), typing `/logout` (it called helpers that only existed inside `attachHub`), and a hello or input whose fields were objects with a non-function `toString`. Any throw inside a request or message handler reached the uncaught-exception handler, which exits. Handlers now catch, and wire values are coerced by type |
-| Anybody could be host | The admin was whoever typed the admin's name, and the name is in a public repository. It is now `[admin] key` in config.ini |
+| Host identity and dashboard access were conflated | In-game owner commands use the configured key or admin-name fallback. The Command Deck instead requires the trusted `cobusvw` browser login and dashboard password; it does not require `ADMIN_KEY`. |
 
 ---
 
@@ -305,7 +317,8 @@ world. See [DESIGN.md](DESIGN.md) → Non-goals.
 
 ## 7. Operating it
 
-- **Deploy:** `npm run deploy` (~6 s), `npm run rollback`, `npm run logs`.
+- **Deploy:** `npm run deploy` runs the full tests and deploys to the configured instance. Repeat
+  with the US SSH host and key for the second region; see [DEPLOY.md](DEPLOY.md) §7.
 - **Health:** `/healthz` - tick timings, player count, map, version, and both transports.
   `"webtransport": 0` means the listener is up with no sessions; `null` means it failed to start
   and everyone is on WebSocket.
@@ -314,8 +327,7 @@ world. See [DESIGN.md](DESIGN.md) → Non-goals.
   WebTransport dies silently at the next lockfile change. See [DEPLOY.md](DEPLOY.md) §9.
 - **Bots:** `min_bots` in config.ini (env `MIN_BOTS`), default 6, 0 switches the automatic top-up
   off. `/healthz` reports `autoBots`.
-- **Host commands:** `/restart`, `/godmode`, `/kick`, `/map`, `/gamespeed`, `/roundtime`. The host
-  is the admin when present and the longest-standing human otherwise, so a room is never left
-  without someone who can run it. The admin is the browser holding `[admin] key` from the
-  server's config.ini - open `https://boombeard.co.za/?admin=<key>` once, on each browser you
-  host from.
+- **In-game owner commands:** `/restart`, `/godmode`, `/kick`, `/map`, `/gamespeed`, `/roundtime`.
+  The configured admin seat has owner privileges; otherwise the longest-standing human can run
+  host commands. The separate Command Deck at `/admin` requires a trusted `cobusvw` browser login
+  and `ADMIN_DASHBOARD_PASSWORD`, not an admin key.

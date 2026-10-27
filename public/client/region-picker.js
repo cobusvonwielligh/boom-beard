@@ -271,6 +271,8 @@ export function createRegionPicker({
   cancelButton,
   refreshButton,
   statusMessage,
+  progressTrack,
+  progressFill,
   store,
   regions = REGIONS,
   fetchImpl = fetch,
@@ -280,8 +282,8 @@ export function createRegionPicker({
   pingGapMs = PING_BURST_GAP_MS,
 }) {
   if (!root || !dialog || !confirmButton || !cancelButton || !refreshButton
-    || !statusMessage || !store) {
-    throw new TypeError('The region picker requires its dialog, controls, root, and store.');
+    || !statusMessage || !progressTrack || !progressFill || !store) {
+    throw new TypeError('The region picker requires its dialog, controls, progress bar, root, and store.');
   }
 
   const doc = root.ownerDocument ?? document;
@@ -302,6 +304,35 @@ export function createRegionPicker({
   let lastRegionClick = null;
   let resolveChoice = null;
   let rejectChoice = null;
+
+  function showConnectionProgress(value, message) {
+    progressTrack.hidden = false;
+    progressTrack.setAttribute('aria-valuenow', String(value));
+    progressTrack.setAttribute('aria-valuetext', message);
+    progressFill.style.width = `${value}%`;
+    statusMessage.textContent = message;
+  }
+
+  function clearConnectionProgress(message = '') {
+    progressTrack.hidden = true;
+    progressTrack.setAttribute('aria-valuenow', '0');
+    progressTrack.setAttribute('aria-valuetext', 'Not started');
+    progressFill.style.width = '0%';
+    statusMessage.textContent = message;
+  }
+
+  function setConnectionState(state) {
+    if (!holdingForConnect) return;
+    if (state === 'connecting') {
+      showConnectionProgress(68, 'Opening the game connection…');
+    } else if (state === 'open') {
+      showConnectionProgress(86, 'Connection established. Loading the island…');
+    } else if (state === 'welcome') {
+      showConnectionProgress(100, 'Island ready. Entering now…');
+    } else {
+      clearConnectionProgress(`Connection interrupted: ${state}.`);
+    }
+  }
 
   function render() {
     const buttons = regions.map(region => {
@@ -391,10 +422,15 @@ export function createRegionPicker({
     activeController = null;
     refreshing = false;
     holdingForConnect = !closeDialog && !error && value !== null;
+    if (holdingForConnect) {
+      const selectedRegion = regions.find(region => region.id === value);
+      showConnectionProgress(55, `Connecting to ${selectedRegion?.name ?? 'your selected region'}…`);
+    } else {
+      clearConnectionProgress();
+    }
     refreshButton.disabled = holdingForConnect;
     refreshButton.setAttribute('aria-busy', 'false');
     if (closeDialog) dialog.close();
-    else statusMessage.textContent = 'Connecting to the selected region…';
     render();
     if (error) reject(error);
     else resolve(value);
@@ -475,21 +511,30 @@ export function createRegionPicker({
     refreshButton.disabled = true;
     refreshButton.setAttribute('aria-busy', 'true');
     const selectedRegion = probeTargets.find(region => region.id === selectedId);
+    let pingSamples = 0;
+    showConnectionProgress(16, `Checking ${selectedRegion.name}…`);
+    render();
 
     try {
       const latest = await probeRegion(selectedRegion, {
         ...probeOptions(controller, expectedRefresh),
-        onProbeStatus: result => updateResult(selectedRegion, result, expectedRefresh),
-        onPingSample: (sample, result) => updateResult(
-          selectedRegion, { ...result, rttMs: sample }, expectedRefresh,
-        ),
+        onProbeStatus: result => {
+          updateResult(selectedRegion, result, expectedRefresh);
+          showConnectionProgress(30, `Checking the connection to ${selectedRegion.name}…`);
+        },
+        onPingSample: (sample, result) => {
+          updateResult(selectedRegion, { ...result, rttMs: sample }, expectedRefresh);
+          pingSamples++;
+          const progress = 30 + Math.round(18 * Math.min(1, pingSamples / RTT_SAMPLES));
+          showConnectionProgress(progress, `Checking the connection to ${selectedRegion.name}…`);
+        },
       });
       if (!resolveChoice || expectedChoice !== generation
         || expectedRefresh !== refreshGeneration) return;
       results = [...results.filter(result => result.id !== selectedId), latest];
       render();
       if (!latest.online) {
-        statusMessage.textContent = latest.reason;
+        clearConnectionProgress(`${selectedRegion.name}: ${latest.reason}`);
         return;
       }
       store.set(REGION_STORE_KEY, selectedId);
@@ -524,7 +569,7 @@ export function createRegionPicker({
     lastRegionClick = null;
     selectedId = regions.some(region => region.id === savedId) ? savedId : null;
     results = [];
-    statusMessage.textContent = '';
+    clearConnectionProgress();
     render();
     dialog.showModal();
 
@@ -543,7 +588,7 @@ export function createRegionPicker({
       return;
     }
     holdingForConnect = false;
-    statusMessage.textContent = '';
+    clearConnectionProgress();
     dialog.close();
     render();
   }
@@ -558,6 +603,7 @@ export function createRegionPicker({
     refreshRegions,
     selectedRegion: () => selectedId,
     isHoldingForConnect: () => holdingForConnect,
+    setConnectionState,
     close,
     stop,
   };

@@ -1006,6 +1006,19 @@
               role="status"
               aria-live="polite"
             ></p>
+            <div
+              id="regionProgress"
+              class="regionProgressTrack"
+              role="progressbar"
+              aria-label="Region connection progress"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow="0"
+              aria-valuetext="Not started"
+              hidden
+            >
+              <div id="regionProgressFill" class="regionProgressFill"></div>
+            </div>
             <div class="regionDialogActions">
               <button id="regionConfirm" class="goldAction" type="button">
                 continue

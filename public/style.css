@@ -4944,6 +4944,22 @@ input[type="text"]:focus,
   color: var(--dim);
   font: 10px/1.4 var(--text);
 }
+.regionProgressTrack {
+  height: 6px;
+  margin-top: 8px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #00000066;
+  box-shadow: inset 0 1px 2px #0008;
+}
+.regionProgressFill {
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2f8f5b, #5ad18a 55%, #9bf0b8);
+  box-shadow: 0 0 10px #5ad18a66;
+  transition: width 0.5s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
 .regionDialogActions {
   display: flex;
   justify-content: space-between;
@@ -5625,6 +5641,7 @@ kbd.wide {
   .regionPing {
     animation: none;
   }
+  .regionProgressFill { transition: none; }
 }
 
 @media (max-width: 600px) {

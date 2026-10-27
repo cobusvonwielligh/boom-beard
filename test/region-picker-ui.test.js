@@ -16,8 +16,10 @@ class Element {
     this.attributes = {};
     this.listeners = {};
     this.disabled = false;
+    this.hidden = false;
     this._text = '';
     this.className = '';
+    this.style = {};
     this.open = false;
     this.showCount = 0;
     this.ownerDocument = documentStub;
@@ -75,6 +77,8 @@ function elements() {
     cancelButton: new Element('button'),
     refreshButton: new Element('button'),
     statusMessage: new Element('p'),
+    progressTrack: Object.assign(new Element('div'), { hidden: true }),
+    progressFill: new Element('div'),
   };
 }
 
@@ -111,6 +115,8 @@ test('landing page places a labeled region dialog after the play controls', asyn
   assert.match(html, /id="regionDialogHeading"[^>]*>\s*Choose your region\s*</);
   assert.match(html, /id="regionConfirm"/);
   assert.match(html, /id="regionCancel"/);
+  assert.match(html, /id="regionProgress"[^>]*role="progressbar"/);
+  assert.match(html, /id="regionProgressFill"/);
   assert.match(html, /id="regionRefresh"[^>]*aria-label="Refresh region status and ping"/);
   assert.ok(html.indexOf('id="regionConfirm"') < html.indexOf('id="regionCancel"'));
   assert.match(html, /id="regionStatus"[^>]*aria-live="polite"/);
@@ -119,11 +125,14 @@ test('landing page places a labeled region dialog after the play controls', asyn
 });
 
 test('every connection attempt opens the dialog and saves only a confirmed choice', async () => {
-  const { root, dialog, confirmButton, cancelButton, refreshButton, statusMessage } = elements();
+  const {
+    root, dialog, confirmButton, cancelButton, refreshButton, statusMessage,
+    progressTrack, progressFill,
+  } = elements();
   let saved = null;
   const picker = createRegionPicker({
     root, dialog, confirmButton, cancelButton, regions,
-    refreshButton, statusMessage,
+    refreshButton, statusMessage, progressTrack, progressFill,
     store: { get: () => saved, set: (_key, value) => { saved = value; } },
     fetchImpl: successfulFetch,
     WebSocketImpl: FastPongSocket,
@@ -134,19 +143,44 @@ test('every connection attempt opens the dialog and saves only a confirmed choic
   const firstChoice = picker.chooseRegion();
   await waitForProbes(refreshButton);
   assert.equal(dialog.open, true);
+  assert.equal(progressTrack.hidden, true);
   assert.ok(['za', 'us'].includes(picker.selectedRegion()));
   assert.match(root.children.find(child => child.attributes['data-region'] === 'us').textContent,
     /MAP · Twins/);
   const buttons = root.children.filter(child => child.tagName === 'BUTTON');
   buttons[1].click();
-  await confirmButton.click();
+  const confirming = confirmButton.click();
+  assert.equal(progressTrack.hidden, false);
+  assert.equal(progressTrack.attributes['aria-valuenow'], '16');
+  assert.equal(progressTrack.attributes['aria-valuetext'], 'Checking United States…');
+  assert.equal(statusMessage.textContent, 'Checking United States…');
+  await confirming;
   assert.equal(await firstChoice, 'us');
   assert.equal(saved, 'us');
   assert.equal(dialog.open, true);
   assert.equal(picker.isHoldingForConnect(), true);
+  assert.equal(progressTrack.hidden, false);
+  assert.equal(progressTrack.attributes['aria-valuenow'], '55');
+  assert.equal(statusMessage.textContent, 'Connecting to United States…');
+  picker.setConnectionState('connecting');
+  assert.equal(progressTrack.attributes['aria-valuenow'], '68');
+  assert.equal(statusMessage.textContent, 'Opening the game connection…');
+  picker.setConnectionState('open');
+  assert.equal(progressTrack.attributes['aria-valuenow'], '86');
+  assert.equal(statusMessage.textContent, 'Connection established. Loading the island…');
+  picker.setConnectionState('welcome');
+  assert.equal(progressTrack.attributes['aria-valuenow'], '100');
+  assert.equal(statusMessage.textContent, 'Island ready. Entering now…');
+  picker.setConnectionState('reconnecting in 0.5s');
+  assert.equal(progressTrack.hidden, true);
+  assert.equal(progressFill.style.width, '0%');
+  assert.equal(statusMessage.textContent, 'Connection interrupted: reconnecting in 0.5s.');
   assert.equal(refreshButton.disabled, true);
   await picker.close();
   assert.equal(dialog.open, false);
+  assert.equal(progressTrack.hidden, true);
+  assert.equal(progressFill.style.width, '0%');
+  assert.equal(statusMessage.textContent, '');
 
   const canceledChoice = picker.chooseRegion();
   await waitForProbes(refreshButton);
@@ -159,10 +193,49 @@ test('every connection attempt opens the dialog and saves only a confirmed choic
   picker.stop();
 });
 
-test('double-clicking an online region confirms the selection', async () => {
-  const { root, dialog, confirmButton, cancelButton, refreshButton, statusMessage } = elements();
+test('a failed final region check clears progress and keeps its reason visible', async () => {
+  const {
+    root, dialog, confirmButton, cancelButton, refreshButton, statusMessage,
+    progressTrack, progressFill,
+  } = elements();
+  const requests = new Map();
   const picker = createRegionPicker({
-    root, dialog, confirmButton, cancelButton, refreshButton, statusMessage, regions,
+    root, dialog, confirmButton, cancelButton, refreshButton, statusMessage,
+    progressTrack, progressFill, regions,
+    store: { get: () => 'za', set() {} },
+    fetchImpl: async url => {
+      const regionId = url.includes('boombeard.co.za') ? 'za' : 'us';
+      const requestCount = (requests.get(regionId) ?? 0) + 1;
+      requests.set(regionId, requestCount);
+      if (regionId === 'za' && requestCount > 1) return { ok: false, status: 503 };
+      return { ok: true, json: async () => status(regionId) };
+    },
+    WebSocketImpl: FastPongSocket,
+    pingGapMs: 0,
+    now: () => 0,
+  });
+
+  const choice = picker.chooseRegion();
+  await waitForProbes(refreshButton);
+  const confirming = confirmButton.click();
+  assert.equal(progressTrack.hidden, false);
+  await confirming;
+  assert.equal(progressTrack.hidden, true);
+  assert.equal(progressFill.style.width, '0%');
+  assert.equal(statusMessage.textContent, 'South Africa: Region status unavailable (HTTP 503).');
+  await cancelButton.click();
+  assert.equal(await choice, null);
+  picker.stop();
+});
+
+test('double-clicking an online region confirms the selection', async () => {
+  const {
+    root, dialog, confirmButton, cancelButton, refreshButton, statusMessage,
+    progressTrack, progressFill,
+  } = elements();
+  const picker = createRegionPicker({
+    root, dialog, confirmButton, cancelButton, refreshButton, statusMessage,
+    progressTrack, progressFill, regions,
     store: { get: () => null, set() {} },
     fetchImpl: successfulFetch,
     WebSocketImpl: FastPongSocket,
@@ -191,9 +264,13 @@ test('double-clicking an online region confirms the selection', async () => {
 });
 
 test('cards show local flags, latency, online capacity, and offline state without a footer', async () => {
-  const { root, dialog, confirmButton, cancelButton, refreshButton, statusMessage } = elements();
+  const {
+    root, dialog, confirmButton, cancelButton, refreshButton, statusMessage,
+    progressTrack, progressFill,
+  } = elements();
   const picker = createRegionPicker({
     root, dialog, confirmButton, cancelButton, refreshButton, statusMessage, regions,
+    progressTrack, progressFill,
     store: { get: () => null, set() {} },
     fetchImpl: async url => url.includes('boombeard.co.za')
       ? { ok: true, json: async () => status('za') }
@@ -267,6 +344,12 @@ test('picker styles preserve focus and use the requested ping colors responsivel
   assert.match(index, /\.sub-split span:nth-child\(2\)\s*\{[^}]*translateX\(-140px\)/);
   assert.match(index, /\.sub-split span:last-child\s*\{[^}]*translateX\(60px\)/);
   assert.match(css, /#regionPicker\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);
+  assert.match(css, /\.regionProgressTrack\s*\{[^}]*height:\s*6px/);
+  assert.match(css, /\.regionProgressFill\s*\{[^}]*transition:\s*width/);
+  assert.match(css, /linear-gradient\(90deg,\s*#2f8f5b,\s*#5ad18a/);
+  const reducedMotion = css.match(/@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{([\s\S]*?)\n\}/g)
+    ?.find(block => block.includes('.regionProgressFill'));
+  assert.match(reducedMotion ?? '', /\.regionProgressFill\s*\{\s*transition:\s*none;\s*\}/);
   assert.match(css, /@media\s*\(max-width:\s*600px\)[\s\S]*?\.regionDialog[\s\S]*?width:/);
 });
 
@@ -285,10 +368,14 @@ test('menu footer keeps only the smaller report-a-bug link', async () => {
 });
 
 test('refresh re-probes both regions without changing the saved selection', async () => {
-  const { root, dialog, confirmButton, cancelButton, refreshButton, statusMessage } = elements();
+  const {
+    root, dialog, confirmButton, cancelButton, refreshButton, statusMessage,
+    progressTrack, progressFill,
+  } = elements();
   let requests = 0;
   const picker = createRegionPicker({
     root, dialog, confirmButton, cancelButton, refreshButton, statusMessage, regions,
+    progressTrack, progressFill,
     store: { get: () => 'us', set() {} },
     fetchImpl: async url => {
       requests++;

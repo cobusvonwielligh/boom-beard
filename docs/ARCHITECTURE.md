@@ -1,30 +1,38 @@
 # Boom Beard - Architecture
 
 The organising principle: **two developers working as vertical slices must almost never edit the
-same file.** Everything below is shaped by that, not by architectural taste.
+same file.** Everything below is shaped by that, not by architectural taste. In production, ZA
+serves the website and admin dashboard; ZA and US are independent game regions backed by shared
+player data held by ZA. See [DEPLOY.md](DEPLOY.md) for the network and data flows.
 
 ---
 
 ## 1. Shape of the thing
 
 ```
-browser                                     node (one process, one port)
-┌────────────────────────────┐              ┌─────────────────────────────┐
-│ menu / HUD   (jQuery DOM)  │              │ static file serving          │
-│ game loop    (rAF)         │  wss://  ⟷   │ websocket hub                │
-│  ├ input                   │   JSON       │ room: authoritative 30 Hz    │
-│  ├ prediction ─┐           │              │   loop ─┐                    │
-│  ├ renderer    │           │              │         │                    │
-│  └ audio       │           │              │ leaderboard.json             │
-└────────────────┼───────────┘              └─────────┼───────────────────┘
-                 │                                    │
-                 └──────────  shared/sim/*  ──────────┘
-                      the same files, imported by both
+                      ┌──────────────────────────────┐
+                      │ Browser                      │
+                      │ region picker · game client  │
+                      └──────┬─────────────────┬─────┘
+           HTTPS website/admin│                 │WSS / WebTransport
+                              ▼                 ▼
+             ┌────────────────────────┐   ┌────────────────────┐
+             │ ZA · website + game    │◄─►│ US · game only     │
+             │ shared-data authority  │   │ local game room    │
+             └────────────────────────┘   └────────────────────┘
+                  ▲                         ▲
+                  └── shared/sim/* ─────────┘
+                     imported by both clients
 ```
 
 `shared/` is the trick. Movement, fire spread, collision and the rules are **one implementation**
 loaded as ES modules by both Node and the browser. There is no build step, no transpile, no
 duplicated logic to drift.
+
+The browser probes both public `/region-status` endpoints, then connects directly to the chosen
+region using WebTransport or WebSocket. US forwards account and career writes to ZA over an
+authenticated internal API; the Command Deck reads regional machine metrics through authenticated
+server-to-server requests.
 
 ---
 
@@ -56,8 +64,8 @@ shared/
     interp.js                  pickPair() - the snapshot pair that BRACKETS a render time
 
 server/
-  index.js                     http(s) + static + /healthz + the deploy webhook
-  net.js                       socket lifecycle, chat commands, bans, seating
+  index.js                     http(s), static, health, region status, admin/shared APIs, deploy webhook
+  net.js                       WebSocket/WebTransport lifecycle, chat commands, bans, seating
   webtransport.js              the HTTP/3 listener, every session wrapped to look like a ws
   room.js                      one round: the loop, seats, snapshots, hosts, respawn
   ai.js                        bot brains: danger map, pathing, fleeing
@@ -66,6 +74,9 @@ server/
   names.js                     canonical name keys + narrow language policy
   guard.js                     request/message rate and size limits
   leaderboard.js               load/save JSON, XP and levels
+  region-status.js              public regional status probe
+  admin-*.js                    protected Command Deck APIs and regional metrics
+  shared-data-*.js              authenticated cross-region account/career data
   config.js                    config.ini + env overrides
   canonical.js                 hostname redirects
 
@@ -74,6 +85,8 @@ public/
   style.css
   client/
     main.js                    boot, the loop, HUD, event handling
+    region-picker.js            status probes, latency tests and selected-region flow
+    signup-meter.js             validated public signup count
     transport.js               dials WebTransport and WebSocket, races them
     net.js                     clock sync, reconnect, identity
     world.js                   prediction, reconciliation, interpolation
@@ -94,7 +107,7 @@ public/
 infra/
   bootstrap.sh deploy.sh rollback.sh logs.sh boom-beard.service
 
-test/                          39 test files, node --test
+test/                          Node's built-in test runner (`npm test`)
 ```
 
 ### As designed
@@ -294,8 +307,8 @@ Fire being derived is the load-bearing row. See [NETCODE.md](NETCODE.md) §1a.
 - The sim never reads `Date.now()`. It only knows `state.tick`.
 - No `class` in shared or sim code. Plain objects and functions - they clone and hash cheaply.
   (Client UI code may use whatever reads best.)
-- jQuery is for menu and HUD DOM only. It must never appear inside `requestAnimationFrame`.
-- `test/` uses `node --test`. No framework, no fixtures, no mocks.
+- Browser UI uses vanilla DOM APIs; keep DOM work out of `requestAnimationFrame`.
+- `test/` uses Node's built-in `node:test` runner, without a third-party test framework.
 - Every non-trivial system leaves one runnable check behind. Determinism and fire spread are not
   optional to test; a menu button is.
 

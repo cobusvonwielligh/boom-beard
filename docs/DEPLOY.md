@@ -127,12 +127,13 @@ bootstrap; the script consumes it without displaying the secret.
 ### From your laptop, every deploy after that
 
 ```bash
-HOST=15.240.88.189.sslip.io npm run deploy
+npm run deploy
 ```
 
-Runs the tests, rsyncs, `npm ci --omit=dev`, restarts the service, and polls `/healthz` until it
-answers. On failure it prints the last 40 journal lines. Takes a few seconds; do it between
-rounds.
+The configured `[deploy] ssh_host`, user and key select the ZA instance. The command runs the
+full test suite, rsyncs, installs production dependencies when needed, restarts the service, and
+polls `/healthz`. For US, repeat with `SSH_HOST=52.21.210.27`, `SSH_USER=ec2-user`, and
+`KEY=~/Downloads/bombs-away-na.pem`. On failure the script prints the last 40 journal lines.
 
 ---
 
@@ -331,9 +332,42 @@ regional hostname:
 4. Deploy the same verified `main` commit to both instances. For manual US deployment,
    set `SSH_HOST=52.21.210.27`, `SSH_USER=ec2-user`, and
    `KEY=~/Downloads/bombs-away-na.pem`.
-5. Verify `/version`, `/healthz`, and `/region-status` on each instance. US root and
-   `/admin` requests must redirect to `https://boombeard.co.za`; US WebSocket and
-   WebTransport connections remain direct to the EIP.
+5. Verify `/version` on ZA, and `/healthz` plus `/region-status` on both instances. The US
+   `/version` route redirects to the ZA website with other non-game routes; use the build
+   reported by US `/healthz` to verify its deployed commit. US root and `/admin` requests must
+   redirect to `https://boombeard.co.za`; US WebSocket and WebTransport connections remain
+   direct to the EIP.
+
+### Tagged release deployment
+
+After updating the active documentation, bump the package metadata without creating a tag, then
+test and commit the reviewed release tree:
+
+```bash
+npm version --no-git-tag-version 1.1.0
+npm test
+```
+
+Commit the reviewed release changes as `release: v1.1.0`; after the commit is verified and the
+worktree is clean, create and push the tag:
+
+```bash
+git tag -a v1.1.0 -m "release: v1.1.0"
+git push origin main --follow-tags
+git status --short --branch
+```
+
+Create the tag only after the release commit is verified, and confirm the worktree is clean before
+deployment so the server build stamp comes from the tag.
+Deploy the same tagged commit to both regions with the full-test path:
+
+```bash
+npm run deploy
+SSH_HOST=52.21.210.27 SSH_USER=ec2-user KEY="$HOME/Downloads/bombs-away-na.pem" npm run deploy
+```
+
+Verify `/version` on ZA and compare both `/healthz.version` values to the tag. Both
+`/healthz` and `/region-status` must report healthy instances and the expected regional map.
 
 ---
 
@@ -403,7 +437,7 @@ always-on instances; check the AWS billing dashboard before launch.
 | **CI deploy returns 404** | Wrong `DEPLOY_TOKEN`, or `config.ini` on the server has no `[deploy] token`. The endpoint answers 404 to anything it does not like, on purpose. |
 | **CI deploy returns 429** | Two deploys within 10 s. The workflow `concurrency` group should prevent it; check for a manual `curl`. |
 | **Deploy accepted but version never changes** | `sudo journalctl -u boom-beard` plus `/var/lib/boom-beard/self-update.log`. Usually the deploy key cannot fetch - re-run `bootstrap.sh`. |
-| **Nobody has host commands, including you** | Your browser has no admin key yet, or an old one. Open `https://<host>/?admin=<key>` once; the key is `[admin] key` in the server's `config.ini`. |
+| **Nobody has in-game owner commands, including you** | Your browser has no current game-host key. Open `https://<host>/?admin=<key>` once; the optional key is `[admin] key` in the server's `config.ini`. This key is separate from `/admin` dashboard login, which requires the trusted `cobusvw` browser token and dashboard password. |
 | **Server came up on 8080 without TLS** | `config.ini` is missing or has blank `tls_cert`. The service reads only that file now; `/etc/boom-beard.env` is no longer used. |
 | **No music in the browser** | Autoplay is blocked until a gesture. The page arms a one-shot click/keypress listener; if it still fails, check the console for an AudioContext error. |
 | **All ports time out** (22, 80, 443) | Security group does not have the rule, *or* the Elastic IP is not associated with a running instance. A timeout means the packet was dropped; a *refused* would mean it arrived and nothing was listening. |

@@ -85,6 +85,14 @@ test('region dialog stays visible until the current toast has faded', async () =
   assert.match(main, /regionPicker\.isHoldingForConnect\(\)\s*&&\s*s !== 'connecting'\s*&&\s*s !== 'open'[\s\S]*?waitForToastDismissal\(\)/);
 });
 
+test('connection state updates staged region progress and uses clear status wording', async () => {
+  const main = await readFile(new URL('../public/client/main.js', import.meta.url), 'utf8');
+  assert.match(main, /regionPicker\.setConnectionState\(s\)/);
+  assert.match(main, /regionPicker\.setConnectionState\('welcome'\)/);
+  assert.match(main, /Connecting to your selected region/);
+  assert.match(main, /Connected\. Loading the island/);
+});
+
 test('ZA security policy allows direct US probes without a regional hostname', async () => {
   const source = await readFile(new URL('../server/index.js', import.meta.url), 'utf8');
   const connect = source.match(/"connect-src ([^"]+)"/)?.[1];

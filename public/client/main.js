@@ -41,6 +41,8 @@ const regionPicker = createRegionPicker({
   cancelButton: $('regionCancel'),
   refreshButton: $('regionRefresh'),
   statusMessage: $('regionStatus'),
+  progressTrack: $('regionProgress'),
+  progressFill: $('regionProgressFill'),
   store,
 });
 
@@ -499,6 +501,9 @@ function handleShopMessage(message) {
 const net = createNet({
   onWelcome: m => {
     world.applyWelcome(m);
+    if (!m.mapOnly && regionPicker.isHoldingForConnect()) {
+      regionPicker.setConnectionState('welcome');
+    }
     // A full welcome outside an intermission IS the next round - on time, or early because the
     // host typed /restart or /map - so the standings go the moment it lands, not on a timer.
     if (roundOverUntil && !m.mapOnly && !m.between) endIntermission();
@@ -1010,7 +1015,13 @@ const net = createNet({
     // visible, because a silent fallback to WebSocket is invisible by design.
     $('conn').title = s === 'open' && net.transport ? `${s} \u00b7 ${net.transport}` : s;
     if (running) return;
-    toast(s);
+    const holdingForConnect = regionPicker.isHoldingForConnect();
+    if (holdingForConnect) regionPicker.setConnectionState(s);
+    toast(holdingForConnect && s === 'connecting'
+      ? 'Connecting to your selected region…'
+      : holdingForConnect && s === 'open'
+        ? 'Connected. Loading the island…'
+        : s);
     if (regionPicker.isHoldingForConnect() && s !== 'connecting' && s !== 'open') {
       waitForToastDismissal().then(() => {
         if (regionPicker.isHoldingForConnect()) regionPicker.close();

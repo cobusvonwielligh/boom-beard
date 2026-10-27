@@ -36,6 +36,18 @@ touches, and chains are where rounds are decided. Fire is lethal for the first t
 drawn ticks; the ember tail is safe, and damage uses a smaller hitbox than movement so a shoulder
 behind cover is forgiven. A death costs an 11-second cooldown, then a 3-second respawn countdown.
 
+## Choose a region
+
+Before joining, choose South Africa (ZA) or the United States (US). The picker shows each server's
+live availability, ping, player count and current map. Continue rechecks your choice, then shows
+the connection progressing through the server check and game welcome before opening the island.
+ZA starts its map rotation at Arena; US starts at Twins.
+
+`boombeard.co.za` serves the website and Command Deck (`/admin`); the US instance is game-only.
+Accounts, career stats, wallet and shop progress are shared, while rooms and map rotations remain
+regional. The Command Deck requires the trusted `cobusvw` browser login and its password; the
+optional `ADMIN_KEY` is only for in-game owner commands.
+
 ## <img src="docs/readme/icons/fire.svg" width="20" align="middle"> On the island
 
 | | | |
@@ -101,7 +113,7 @@ swearing is left alone. Hover a player name for 2.5 seconds to open their round-
 
 ## <img src="docs/readme/icons/bolt.svg" width="20" align="middle"> Run your own island
 
-One Node.js server, no database.
+One Node.js server per region, no database. For a local one-region game:
 
 ```bash
 npm install
@@ -140,10 +152,12 @@ itself when they leave.
 
 ## <img src="docs/readme/icons/gh.svg" width="20" align="middle"> Under the hood
 
-- Vanilla JavaScript in the browser, Node.js on the server. No framework, no build step, two
-  runtime dependencies.
+- Vanilla JavaScript in the browser, Node.js on the server. No framework or build step; the
+  deterministic simulation is shared between client and server.
 - WebTransport over QUIC where the network allows it, WebSocket where it does not. You are not
   meant to be able to tell which one you got.
+- Two independently rotating game regions share account, career and shop data; the ZA website
+  also hosts the protected Command Deck and regional operations dashboard.
 - One deterministic simulation, shared by both sides. Your movement and every explosion are
   predicted locally and almost never corrected.
 - Art and sound effects written in code. Four produced music tracks.
