@@ -56,15 +56,15 @@ Each row is a thing that commonly gets a game blocked, and the choice that avoid
 | Plain `ws://` on 80 | **`wss://` on 443.** TLS-wrapped, so proxies pass it as ordinary HTTPS. |
 | Multiple domains / CDNs | **Two regional hosts under one domain.** `boombeard.co.za` and `us.boombeard.co.za` are the game origins; the status endpoint allows only these origins. |
 | Web fonts, analytics | None. Zero external requests. |
-| WebRTC / UDP | Not used. |
+| UDP | WebRTC is not used. WebTransport optionally uses UDP/443; if blocked, the game falls back to WebSocket over TCP/443. |
 | Category filters ("games") | Prefer a neutral hostname on an eezi domain over something obviously a game. |
 
 **Ticket text for IT, paste as-is:**
 
 > Please allow outbound HTTPS (TCP 443) to `boombeard.co.za` and `us.boombeard.co.za` for
 > the dev team. It is an internally hosted tool on infrastructure we control. The game uses
-> standard HTTPS and secure WebSockets over port 443 on those two hosts. No other game hosts,
-> ports, or protocols are required.
+> standard HTTPS and secure WebSockets over TCP/443 on those two hosts. UDP/443 is optional
+> for WebTransport performance; blocking UDP still leaves the WebSocket game available.
 
 ---
 
@@ -90,7 +90,7 @@ new `HOST`. Nothing in the code knows the name.
 1. **Instance** - `t3.micro`, Amazon Linux 2023, 16–20 GB gp3, in `af-south-1`.
 2. **Elastic IP** - allocate, associate to the instance. (Since Feb 2024 every public IPv4 costs
    $0.005/h; Free Tier covers 750 h/month for 12 months, so one is free for a year.)
-3. **Security group** - exactly three inbound rules, nothing else:
+3. **Security group** - three required inbound rules, plus optional UDP for WebTransport:
 
    | Port | Source | Purpose |
    |---|---|---|
@@ -98,7 +98,8 @@ new `HOST`. Nothing in the code knows the name.
    | 80 | `0.0.0.0/0` | HTTPS redirect + ACME renewal |
    | 22 | your IP | SSH |
 
-   Specifically **not** 8080 - that is local dev only.
+   Optionally allow UDP/443 from `0.0.0.0/0` for WebTransport. TCP/443 WebSocket
+   fallback remains available without it. Specifically **not** 8080 - that is local dev only.
 
 ### On the box (once, ~3 minutes)
 
@@ -261,7 +262,8 @@ The South Africa host remains `boombeard.co.za`. For North America:
 1. Add the Route 53 A record `us.boombeard.co.za` → `52.21.210.27`. Wait until
    `dig +short us.boombeard.co.za` returns that EIP before requesting a certificate.
 2. Confirm the NA security group allows inbound TCP 443, TCP 80, and SSH (TCP 22)
-   from the administrator's IP.
+   from the administrator's IP. Optionally allow UDP/443 to enable WebTransport; the
+   game falls back to WebSocket if UDP is blocked.
 3. Secure the provided key with `chmod 600 ~/Downloads/bombs-away-na.pem`, copy
    `infra/bootstrap.sh` to the NA host, and run it with
    `HOST=us.boombeard.co.za REGION_ID=us` and the existing Let's Encrypt contact.
