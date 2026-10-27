@@ -47,8 +47,17 @@ const VERSION = 1;
 // Retained existing records with these names are excluded once; future signups count normally.
 const SIGNUP_COUNT_EXCLUSIONS = new Set(['cobus', 'cobusvw', 'cobusvonw', 'test', 'awe']);
 const SIGNUP_COUNT_EXCLUSIONS_VERSION = 1;
-const ACCOUNT_CLEANUP_KEYS = new Set(['cobus', 'cobusvonw', 'test', 'awe', 'mock']);
-const ACCOUNT_CLEANUP_VERSION = 1;
+const ACCOUNT_CLEANUP_MIGRATIONS = [
+  new Set(['cobus', 'cobusvonw', 'test', 'awe', 'mock']),
+  new Set([
+    'cobus-test', 'cobus-test2222222233', 'cobus123', 'cobusv', 'cobusv222',
+    'cobusv2223', 'cobusv222455', 'cobusvw2', 'cobusvw2222', 'cobusvw22224',
+    'cobusvw2333333', 'cobusvw2333333ww', 'cobusvw2ee', 'cobusvw2wwww',
+    'cobusvws', 'cowsssss', 'samtest', 'samtest222', 'tes', 'test-cobus',
+    'test123', 'test123421', 'tottiekop', 'yoyo-awe2', 'uiououiouiou',
+  ]),
+];
+const ACCOUNT_CLEANUP_VERSION = ACCOUNT_CLEANUP_MIGRATIONS.length;
 
 /* scrypt, at the parameters Node's own documentation suggests for interactive logins.
  *
@@ -178,9 +187,11 @@ export function createAccounts({ dataDir }) {
         accountCleanupVersion = Number.isSafeInteger(storedCleanupVersion)
           ? Math.max(0, storedCleanupVersion)
           : 0;
-        if (accountCleanupVersion < ACCOUNT_CLEANUP_VERSION) {
-          for (const key of ACCOUNT_CLEANUP_KEYS) accounts.delete(key);
-          accountCleanupVersion = ACCOUNT_CLEANUP_VERSION;
+        while (accountCleanupVersion < ACCOUNT_CLEANUP_VERSION) {
+          for (const key of ACCOUNT_CLEANUP_MIGRATIONS[accountCleanupVersion]) {
+            accounts.delete(key);
+          }
+          accountCleanupVersion++;
           scrubBackupOnNextSyncFlush = true;
           dirty = true;
         }
