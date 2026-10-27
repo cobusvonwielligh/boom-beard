@@ -147,6 +147,27 @@ test('a name cannot be claimed twice', async () => {
   assert.equal((await a.verify('cobus', PW)).ok, true);
 });
 
+test('imports a regional account without invalidating either region password', async () => {
+  const zaDir = dir();
+  const usDir = dir();
+  const za = createAccounts({ dataDir: zaDir });
+  const us = createAccounts({ dataDir: usDir });
+  const zaAccount = await za.register('shared-pirate', 'za password');
+  const usAccount = await us.register('shared-pirate', 'us password');
+  za.flushSync();
+  us.flushSync();
+
+  const source = JSON.parse(fs.readFileSync(path.join(usDir, 'accounts.json'), 'utf8'));
+  const imported = za.importSharedRecords(source.accounts, 'us-bootstrap-1');
+  assert.deepEqual(imported, { applied: true, accounts: 1 });
+  assert.equal((await za.verify('shared-pirate', 'za password')).ok, true);
+  assert.equal((await za.verify('shared-pirate', 'us password')).ok, true);
+  assert.equal(za.checkDevice('shared-pirate', usAccount.token), true);
+  assert.equal(za.checkDevice('shared-pirate', zaAccount.token), true);
+  assert.deepEqual(za.importSharedRecords(source.accounts, 'us-bootstrap-1'),
+    { applied: false, accounts: 1 });
+});
+
 test('two browsers claiming the same new name at once: one wins', async () => {
   const a = createAccounts({ dataDir: dir() });
   const [x, y] = await Promise.all([

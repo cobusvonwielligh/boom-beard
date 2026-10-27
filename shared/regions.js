@@ -2,13 +2,13 @@ export const REGIONS = Object.freeze([
   Object.freeze({
     id: 'za',
     name: 'South Africa',
-    flag: '/assets/img/flags/za.svg',
+    flag: '/assets/img/flag-south-africa-round-xs.png',
     origin: 'https://boombeard.co.za',
   }),
   Object.freeze({
     id: 'us',
     name: 'United States',
-    flag: '/assets/img/flags/us.svg',
+    flag: '/assets/img/flag-united-states-icons-round-64px.png',
     origin: 'https://52.21.210.27',
   }),
 ]);

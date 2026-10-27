@@ -14,6 +14,10 @@
 #   HOST       required. Primary hostname or IP address; it must point/reach this box.
 #   ALT_HOSTS  optional. Space-separated extra DNS names for the same certificate (e.g. www).
 #   REGION_ID  `za` or `us`; defaults to an existing config value or `za`.
+#   SHARED_DATA_TOKEN  server-to-server secret. ZA creates one if absent; US requires the same
+#   value supplied securely from ZA.
+#   SHARED_DATA_HOST   fixed ZA Elastic IP used by the US internal HTTPS client.
+#   SHARED_DATA_SERVERNAME TLS name used to verify the ZA certificate.
 #   EMAIL      optional contact for certificate expiry notices. If absent, Certbot registers
 #              without email alerts; the daily renewal timer must be monitored.
 #   SKIP_TLS=1 provision everything except the certificate; serve plain HTTP on 8080. Use this
@@ -145,6 +149,10 @@ sudo visudo -c -f /etc/sudoers.d/boom-beard >/dev/null
 # makes the whole pipeline fail and takes the script with it.
 TOKEN=""
 ADMIN_KEY=""
+SHARED_DATA_TOKEN="${SHARED_DATA_TOKEN:-}"
+SHARED_DATA_HOST="${SHARED_DATA_HOST:-}"
+SHARED_DATA_SERVERNAME="${SHARED_DATA_SERVERNAME:-}"
+SHARED_DATA_TOKEN_FILE=/tmp/boom-beard-shared-token
 DASHBOARD_PASSWORD=${ADMIN_DASHBOARD_PASSWORD:-}
 if [ -f "$APP_DIR/config.ini" ]; then
   TOKEN=$(sed -n 's/^ *token *= *//p' "$APP_DIR/config.ini" | head -1 || true)
@@ -153,6 +161,16 @@ if [ -f "$APP_DIR/config.ini" ]; then
     || REGION_ID=$(sed -n 's/^ *region_id *= *//p' "$APP_DIR/config.ini" | head -1 || true)
   [ -n "$DASHBOARD_PASSWORD" ] \
     || DASHBOARD_PASSWORD=$(sed -n 's/^ *dashboard_password *= *//p' "$APP_DIR/config.ini" | head -1 || true)
+  [ -n "$SHARED_DATA_TOKEN" ] \
+    || SHARED_DATA_TOKEN=$(sed -n '/^\[shared\]/,/^\[/s/^ *token *= *//p' "$APP_DIR/config.ini" | head -1 || true)
+  [ -n "$SHARED_DATA_HOST" ] \
+    || SHARED_DATA_HOST=$(sed -n '/^\[shared\]/,/^\[/s/^ *host *= *//p' "$APP_DIR/config.ini" | head -1 || true)
+  [ -n "$SHARED_DATA_SERVERNAME" ] \
+    || SHARED_DATA_SERVERNAME=$(sed -n '/^\[shared\]/,/^\[/s/^ *servername *= *//p' "$APP_DIR/config.ini" | head -1 || true)
+fi
+if [ -z "$SHARED_DATA_TOKEN" ] && [ -f "$SHARED_DATA_TOKEN_FILE" ]; then
+  chmod 600 "$SHARED_DATA_TOKEN_FILE"
+  SHARED_DATA_TOKEN=$(cat "$SHARED_DATA_TOKEN_FILE")
 fi
 [ -n "$REGION_ID" ] || REGION_ID=za
 case "$REGION_ID" in
@@ -173,6 +191,15 @@ if [ "$REGION_ID" = za ] && [ "$SKIP_TLS" != 1 ] && [ -z "$DASHBOARD_PASSWORD" ]
 fi
 [ -n "$TOKEN" ] || TOKEN=$(openssl rand -hex 32)
 [ -n "$ADMIN_KEY" ] || ADMIN_KEY=$(openssl rand -hex 16)
+[ -n "$SHARED_DATA_HOST" ] || SHARED_DATA_HOST=15.240.88.189
+[ -n "$SHARED_DATA_SERVERNAME" ] || SHARED_DATA_SERVERNAME=boombeard.co.za
+if [ "$REGION_ID" = za ] && [ -z "$SHARED_DATA_TOKEN" ]; then
+  SHARED_DATA_TOKEN=$(openssl rand -hex 32)
+fi
+if [ "$REGION_ID" = us ] && [ -z "$SHARED_DATA_TOKEN" ]; then
+  echo "REGION_ID=us requires SHARED_DATA_TOKEN copied securely from the ZA host" >&2
+  exit 1
+fi
 
 write_config() {
   cat > "$APP_DIR/config.ini" <<CFG
@@ -190,6 +217,11 @@ max_players   = 16
 [deploy]
 token = $TOKEN
 
+[shared]
+token = $SHARED_DATA_TOKEN
+host = $SHARED_DATA_HOST
+servername = $SHARED_DATA_SERVERNAME
+
 [admin]
 key = $ADMIN_KEY
 dashboard_password = $DASHBOARD_PASSWORD
@@ -199,6 +231,9 @@ lag    = 0
 jitter = 0
 CFG
   chmod 600 "$APP_DIR/config.ini"
+  printf '%s' "$SHARED_DATA_TOKEN" > "$DATA_DIR/shared-data-token"
+  chmod 600 "$DATA_DIR/shared-data-token"
+  rm -f "$SHARED_DATA_TOKEN_FILE"
 }
 
 install_unit() {

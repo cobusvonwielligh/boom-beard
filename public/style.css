@@ -4510,6 +4510,12 @@ h1 {
   font-size: 14.5px;
   letter-spacing: 0.04em;
 }
+.sub-split {
+  color: #c4213a;
+  font-size: calc(14.5px - 1pt);
+  font-weight: 600;
+  text-shadow: 0 1px 0 #000, 0 2px 4px #000c;
+}
 #menuWrap > .card > .sub {
   margin: 6px 0 16px;
 }
@@ -4723,17 +4729,59 @@ input[type="text"]:focus,
   border-radius: 12px;
   box-shadow: 0 24px 80px #000b, inset 0 1px 0 #ffffff12;
 }
+.regionDialogHeader {
+  position: relative;
+}
 .regionDialog::backdrop {
   background: #070a0dd9;
   backdrop-filter: blur(4px);
 }
 .regionHeading {
-  margin: 0 0 14px;
+  margin: 0 30px 14px;
   color: var(--gold-hi);
   font: 15px var(--nums);
   letter-spacing: 0.14em;
   text-align: center;
   text-transform: uppercase;
+}
+.regionRefresh {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  min-width: 0;
+  min-height: 0;
+  place-items: center;
+  padding: 5px;
+  color: var(--gold-hi);
+  background: #ffffff08;
+  border: 1px solid #ffffff20;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.regionRefresh svg {
+  width: 16px;
+  height: 16px;
+}
+.regionRefresh:hover:not(:disabled) {
+  color: var(--gold);
+  border-color: var(--gold);
+}
+.regionRefresh:focus-visible {
+  outline: 2px solid var(--gold-hi);
+  outline-offset: 2px;
+}
+.regionRefresh:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+#regionRefresh[aria-busy="true"] svg {
+  animation: regionRefreshSpin 0.7s linear infinite;
+}
+@keyframes regionRefreshSpin {
+  to { transform: rotate(360deg); }
 }
 #regionPicker {
   width: 100%;
@@ -4745,7 +4793,7 @@ input[type="text"]:focus,
   display: grid;
   min-width: 0;
   min-height: 84px;
-  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-columns: 26px minmax(0, 1fr);
   grid-template-areas:
     "flag name"
     "details details";
@@ -4782,12 +4830,11 @@ input[type="text"]:focus,
   opacity: 0.76;
 }
 .regionFlag {
-  width: 30px;
-  height: 20px;
+  width: 26px;
+  height: 26px;
   grid-area: flag;
-  object-fit: cover;
-  border: 1px solid #ffffff3d;
-  border-radius: 3px;
+  object-fit: contain;
+  border-radius: 50%;
   box-shadow: 0 2px 6px #0008;
 }
 .regionName {
@@ -4813,6 +4860,11 @@ input[type="text"]:focus,
 }
 .regionPing {
   white-space: nowrap;
+  animation: regionPingUpdate 0.18s ease-out;
+}
+@keyframes regionPingUpdate {
+  from { opacity: 0.55; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 .regionPing.pingGood {
   color: #70dc91;
@@ -4823,18 +4875,28 @@ input[type="text"]:focus,
 .regionPing.pingPoor {
   color: #ff6d6d;
 }
+.regionStatus {
+  min-height: 1em;
+  margin: 10px 0 0;
+  color: var(--dim);
+  font: 10px/1.4 var(--text);
+}
 .regionDialogActions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 8px;
   margin-top: 16px;
 }
 #regionConfirm {
+  margin-right: auto;
   padding-inline: 16px;
   color: #17130a;
-  background: linear-gradient(180deg, var(--gold-lit), var(--gold) 70%, var(--gold-deep));
+  background: var(--cast);
+  background-size: 260% 100%, 100% 100%;
+  background-repeat: no-repeat;
   border-color: var(--gold);
   font-weight: 700;
+  animation: castShine 7s linear infinite;
 }
 #regionConfirm:hover:not(:disabled) {
   filter: brightness(1.08);
@@ -4843,6 +4905,16 @@ input[type="text"]:focus,
   color: var(--dim);
   background: #303741;
   border-color: #536173;
+  animation: none;
+}
+#regionCancel {
+  width: auto;
+  flex: 0 0 auto;
+  margin-top: 0;
+  min-width: 0;
+  padding: 5px 9px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
 }
 #play:hover {
   filter: brightness(1.08);
@@ -5491,7 +5563,10 @@ kbd.wide {
 }
 @media (prefers-reduced-motion: reduce) {
   #pwGroup,
-  #pw.invalid {
+  #pw.invalid,
+  #regionRefresh[aria-busy="true"] svg,
+  #regionConfirm,
+  .regionPing {
     animation: none;
   }
 }

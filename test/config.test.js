@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseIni, sameSecret } from '../server/config.js';
@@ -101,6 +103,51 @@ test('region id is read from the environment and normalized to lowercase', () =>
 
   assert.equal(result.status, 0, result.stderr);
   assert.equal(result.stdout, 'us');
+});
+
+test('shared-data client settings are read from server-only environment variables', () => {
+  const result = spawnSync(process.execPath, [
+    '--input-type=module',
+    '-e',
+    "import { config } from './server/config.js'; process.stdout.write(JSON.stringify([config.sharedDataToken, config.sharedDataHost, config.sharedDataServername]))",
+  ], {
+    cwd: ROOT,
+    env: {
+      ...process.env,
+      CONFIG: path.join(ROOT, '.missing-shared-config.ini'),
+      SHARED_DATA_TOKEN: 'internal-test-secret',
+      SHARED_DATA_HOST: '15.240.88.189',
+      SHARED_DATA_SERVERNAME: 'boombeard.co.za',
+    },
+    encoding: 'utf8',
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout),
+    ['internal-test-secret', '15.240.88.189', 'boombeard.co.za']);
+});
+
+test('US server refuses to start without shared-data credentials', () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bv-us-shared-config-'));
+  const env = {
+    ...process.env,
+    CONFIG: path.join(ROOT, '.missing-us-shared-config.ini'),
+    REGION_ID: 'us',
+    DATA_DIR: dataDir,
+  };
+  delete env.SHARED_DATA_TOKEN;
+  delete env.SHARED_DATA_HOST;
+  delete env.SHARED_DATA_SERVERNAME;
+  const result = spawnSync(process.execPath, ['server/index.js'], {
+    cwd: ROOT,
+    env,
+    encoding: 'utf8',
+    timeout: 5000,
+  });
+  fs.rmSync(dataDir, { recursive: true, force: true });
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /US region requires shared_data_token/);
 });
 
 test('invalid region id rejects configuration with a RangeError', () => {

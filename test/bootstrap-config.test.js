@@ -17,6 +17,20 @@ test('bootstrap preserves and writes the configured regional identity', async ()
   assert.match(script, /SKIP_TLS.*DASHBOARD_PASSWORD/);
 });
 
+test('bootstrap keeps one shared-data secret out of output and writes its private connection settings', async () => {
+  const script = await readFile(path.join(ROOT, 'infra/bootstrap.sh'), 'utf8');
+
+  assert.match(script, /SHARED_DATA_TOKEN="\$\{SHARED_DATA_TOKEN:-\}"/);
+  assert.match(script, /REGION_ID=us requires SHARED_DATA_TOKEN/);
+  assert.match(script, /\[shared\][\s\S]*?token\s+=\s+\$SHARED_DATA_TOKEN/);
+  assert.match(script, /host\s+=\s+\$SHARED_DATA_HOST/);
+  assert.match(script, /servername\s+=\s+\$SHARED_DATA_SERVERNAME/);
+  assert.match(script, /SHARED_DATA_TOKEN_FILE=\/tmp\/boom-beard-shared-token/);
+  assert.match(script, /shared-data-token/);
+  assert.match(script, /rm -f "\$SHARED_DATA_TOKEN_FILE"/);
+  assert.doesNotMatch(script, /echo ["']shared-data token:/i);
+});
+
 test('bootstrap requests short-lived IP certificates and renews them daily', async () => {
   const script = await readFile(path.join(ROOT, 'infra/bootstrap.sh'), 'utf8');
 

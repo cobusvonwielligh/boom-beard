@@ -946,15 +946,36 @@
             class="regionDialog"
             aria-labelledby="regionDialogHeading"
           >
-            <h2 class="regionHeading" id="regionDialogHeading">Choose your region</h2>
+            <div class="regionDialogHeader">
+              <h2 class="regionHeading" id="regionDialogHeading">Choose your region</h2>
+              <button
+                id="regionRefresh"
+                class="regionRefresh"
+                type="button"
+                aria-label="Refresh region status and ping"
+                title="Refresh region status and ping"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M20 7v5h-5M4 17v-5h5m10.2-1A7.5 7.5 0 0 0 6.4 6.3L4 8m16 8-2.4 1.7A7.5 7.5 0 0 1 4.8 13"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.8"
+                  />
+                </svg>
+              </button>
+            </div>
             <div
               id="regionPicker"
               role="group"
               aria-label="Game region"
             ></div>
+            <p id="regionStatus" class="regionStatus" role="status" aria-live="polite"></p>
             <div class="regionDialogActions">
-              <button id="regionCancel" class="ghost" type="button">cancel</button>
               <button id="regionConfirm" type="button">continue</button>
+              <button id="regionCancel" class="ghost" type="button">cancel</button>
             </div>
           </dialog>
           <div class="keys">

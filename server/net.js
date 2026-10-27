@@ -551,7 +551,21 @@ export function attachHub(server, config) {
           break;
 
         case 'shopbuy':
-          if (seat >= 0) sendTo(ws, room.buyShop(seat, msg.item));
+          if (seat >= 0) {
+            const purchase = room.buyShop(seat, msg.item);
+            if (purchase && typeof purchase.then === 'function') {
+              purchase.then(result => sendTo(ws, result)).catch(error => {
+                console.error(`shop purchase failed for seat ${seat} (${error.message})`);
+                sendTo(ws, {
+                  ...room.shopState(seat),
+                  ok: false,
+                  why: 'shared shop is temporarily unavailable',
+                });
+              });
+            } else {
+              sendTo(ws, purchase);
+            }
+          }
           break;
 
         case 'ping':
@@ -639,9 +653,9 @@ export function attachHub(server, config) {
       const pw = typeof msg.pw === 'string' ? msg.pw : null;
       const token = typeof msg.trust === 'string' ? msg.trust : null;
 
-      if (token && accounts.checkDevice(name, token)) return { ok: true, trust: null };
+      if (token && await accounts.checkDevice(name, token)) return { ok: true, trust: null };
 
-      if (!accounts.has(name)) {
+      if (!await accounts.has(name)) {
         if (!pw) {
           return { ok: false, reject: { why: `pick a password for "${name}"`, auth: 'signup' } };
         }
@@ -654,7 +668,7 @@ export function attachHub(server, config) {
 
       if (!pw) return { ok: false, reject: { why: `"${name}" needs its password`, auth: 'need' } };
 
-      const waitMs = accounts.lockedFor(name);
+      const waitMs = await accounts.lockedFor(name);
       if (waitMs) {
         return { ok: false,
           reject: { why: `too many tries - wait ${humanDuration(waitMs)}`, auth: 'wait' } };

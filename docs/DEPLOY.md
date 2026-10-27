@@ -7,9 +7,11 @@ page, game assets, and `/admin` from the South Africa instance (`af-south-1`,
 on the ZA page, then connect directly to the selected game server. The US instance
 has no hostname and does not serve its own landing page or admin dashboard.
 
-Both instances run the same `main` commit and keep independent accounts, scores,
-and game state. The ZA `/admin` dashboard is ZA-local; there is no cross-region
-progression sync.
+Both instances run the same `main` commit. ZA is the authority for player accounts,
+lifetime career stats, wallet, and shop progress; US forwards account operations and
+career mutations to ZA over an authenticated internal HTTPS API. Live rooms, bots,
+occupancy, geography, and machine metrics remain regional. `/admin` is served only
+by ZA and combines the global player career with ZA-local operational metrics.
 
 ---
 
@@ -19,6 +21,7 @@ progression sync.
                       ┌───────────────────────────────┐
  browser ──HTTPS──►   │ boombeard.co.za · ZA         │
                       │ landing page + /admin        │
+                      │ shared player-data authority │
                       └───────┬───────────────┬───────┘
                               │ status probes │ game
                               │               └──────► WSS/WT to selected region
@@ -26,7 +29,8 @@ progression sync.
                     ┌─────────▼────────┐       ┌───────────────────┐
                     │ EC2 · af-south-1 │       │ EC2 · us-east-1   │
                     │ site + game      │       │ game only         │
-                    │ local ZA data    │       │ 52.21.210.27      │
+                    │ shared authority │       │ game + outbox     │
+                    │                  │       │ 52.21.210.27      │
                     └──────────────────┘       └───────────────────┘
 ```
 
@@ -112,6 +116,9 @@ ssh -i ~/Downloads/bombs-away.pem ec2-user@15.240.88.189 \
 that copies the cert somewhere the unprivileged service can read it, and arms a daily renewal
 timer. Set `REGION_ID=za` on the South Africa instance. On the US game instance, use
 `HOST=52.21.210.27 REGION_ID=us`; bootstrap requests the six-day IP certificate.
+ZA bootstrap creates `/var/lib/boom-beard/shared-data-token` with owner-only permissions.
+Transfer that file securely to `/tmp/boom-beard-shared-token` on US before running US
+bootstrap; the script consumes it without displaying the secret.
 
 ### From your laptop, every deploy after that
 
@@ -151,8 +158,12 @@ Precedence is **environment variable > `config.ini` > built-in default**, so a o
 | | `name` | `ADMIN_NAME` | `cobusvw` | Only used when `key` is blank, which is right on a laptop and wrong anywhere else: names are not secret. |
 | | `dashboard_password` | `ADMIN_DASHBOARD_PASSWORD` | blank | Second factor for `/admin`; blank disables the dashboard. Set the secret only in the server environment or ignored `config.ini`, never in the repository. |
 | `dev` | `lag` / `jitter` | `LAG` / `JITTER` | `0` | Outbound delay in ms. The process **refuses to start** if either is non-zero while TLS is configured. |
+| `shared` | `token` | `SHARED_DATA_TOKEN` | blank | One server-only secret shared by ZA and US. Required on US; ZA serves the internal API only when set. Never put it in browser config or source control. |
+| | `host` | `SHARED_DATA_HOST` | blank | US-only ZA Elastic IP, `15.240.88.189`; connects by IP to avoid depending on apex DNS. |
+| | `servername` | `SHARED_DATA_SERVERNAME` | `boombeard.co.za` | TLS name for certificate verification and the internal HTTP Host header. |
 
-`https://boombeard.co.za/admin` is served by ZA and reports ZA-local data. Requests to
+`https://boombeard.co.za/admin` is served by ZA. Its live occupancy and machine metrics
+are ZA-local; the leaderboard and player account totals are global. Requests to
 `/admin` on the US IP redirect to this ZA dashboard; the US instance is game-only.
 The dashboard requires `ADMIN_KEY`, `ADMIN_DASHBOARD_PASSWORD`, and
 `REQUIRE_PASSWORD=1`. Open the ZA bootstrap-provided `/?admin=<key>` link once in the
@@ -173,10 +184,18 @@ The dashboard currently requires TLS to terminate directly in the app. It is not
    `infra/bootstrap.sh` with `HOST=52.21.210.27 REGION_ID=us`. `EMAIL` is optional;
    without it, Certbot sends no expiry notices, so monitor the daily renewal timer.
    The IP certificate uses the `shortlived` profile and renews daily.
-4. Keep `/var/lib/boom-beard` on the US instance; do not copy ZA accounts or game data.
-   Deploy the same `main` commit to both instances, using `SSH_HOST=52.21.210.27`,
+4. Keep `/var/lib/boom-beard` on each instance. US keeps a local durable career outbox
+   and cached global read model; it does not become an account authority. Deploy the same
+   `main` commit to both instances, using `SSH_HOST=52.21.210.27`,
    `SSH_USER=ec2-user`, and the US key for the US manual deployment.
-5. Verify `/healthz` and `/region-status` on each instance. The US `/` and `/admin`
+5. Set the exact same `SHARED_DATA_TOKEN` on both instances. US must use
+   `SHARED_DATA_HOST=15.240.88.189` and `SHARED_DATA_SERVERNAME=boombeard.co.za`.
+   Transfer the secret from ZA to US through a secure channel; never print it into a
+   terminal transcript or commit it.
+6. After deploying the shared-data code, run `node infra/merge-region-data.js` once on
+   US. It creates mode-0600 backups of both existing US data files before importing
+   accounts and human careers into ZA. Re-running the same migration ID is safe.
+7. Verify `/healthz` and `/region-status` on each instance. The US `/` and `/admin`
    routes redirect to the ZA website; game clients load all page assets from ZA.
 
 The browser probes each public `/region-status` endpoint. It returns only that
@@ -190,11 +209,40 @@ approximate and must not be used to identify an individual. GeoLite2 data is lic
 the dashboard displays the required attribution. Refresh the pinned `geoip-country` package
 at least monthly to keep its bundled country database current. Past traffic cannot be backfilled.
 
+## Shared account and career data
+
+ZA stores the authoritative `accounts.json` and `leaderboard.json`. US authentication
+requests use `POST /internal/shared-data` over HTTPS to the ZA Elastic IP, with TLS
+certificate verification pinned to `boombeard.co.za`. This route is not a browser/CORS
+endpoint and never returns password hashes or trusted-device hashes. The HTTP guard
+rate-limits it like other server requests.
+
+US career writes are first persisted in `shared-outbox.json` with owner-only permissions.
+The US server retries them until ZA acknowledges the operation ID; replay cannot apply
+the same score, medal, purchase, or shop consumption twice. `shared-leaderboard.json`
+is a cached global read model. If ZA is unavailable, queued score changes remain durable;
+account operations and purchases that need ZA authority fail explicitly.
+
+The one-time import runs only after the same code is deployed to both regions:
+
+```bash
+# On US, after config.ini contains the shared secret and ZA HTTPS settings:
+cd /opt/boom-beard
+node infra/merge-region-data.js
+```
+
+The script backs up US account/career files as `.pre-shared-<timestamp>` before import.
+It preserves both regions' hashed password credentials and trusted-device records,
+adds human career values, and keeps bot careers local. Do not copy the full ZA data
+directory over the US data directory. Keep the apex A record pointed only at ZA
+(`15.240.88.189`); the US EIP remains game-only and has no DNS hostname.
+
 Local development needs no file at all: `npm start` → `http://localhost:8080`.
 
-Nothing AWS-specific appears in the application code. Each region uses the same server
-configuration shape and its own `/var/lib/boom-beard` files; the VPC move remains a
-configuration change, not a database migration.
+The application does not call AWS APIs. Each region keeps its own `/var/lib/boom-beard`
+files, while ZA remains the shared-data authority. A VPC move must preserve the authenticated
+ZA API, the US outbox, and the US cache; it is a planned shared-data migration, not merely
+a storage-path change.
 
 ---
 
@@ -261,10 +309,14 @@ regional hostname:
 1. Keep EIP `52.21.210.27` associated with the US instance. Do not create a DNS record.
 2. Confirm its security group allows inbound TCP 443 and TCP 80 from `0.0.0.0/0`, and
    SSH/TCP 22 only from the administrator's IP. Optionally allow UDP/443 for WebTransport.
-3. Secure `~/Downloads/bombs-away-na.pem` with `chmod 600`. Run bootstrap using
-   `HOST=52.21.210.27 REGION_ID=us`. `EMAIL` is optional; without it, Certbot sends
-   no expiry notices, so monitor the daily renewal timer. This requests an IP-address
-   certificate with the six-day `shortlived` profile and daily renewal.
+3. After ZA bootstrap, securely transfer `/var/lib/boom-beard/shared-data-token`
+   to `/tmp/boom-beard-shared-token` on US without printing it. Secure
+   `~/Downloads/bombs-away-na.pem` with `chmod 600`. Run bootstrap using
+   `HOST=52.21.210.27 REGION_ID=us`; bootstrap reads the transferred token, writes it
+   to the ignored config and owner-only data file, then removes the temporary copy.
+   `EMAIL` is optional; without it, Certbot sends no expiry notices, so monitor the daily
+   renewal timer. This requests an IP-address certificate with the six-day `shortlived`
+   profile and daily renewal.
 4. Deploy the same verified `main` commit to both instances. For manual US deployment,
    set `SSH_HOST=52.21.210.27`, `SSH_USER=ec2-user`, and
    `KEY=~/Downloads/bombs-away-na.pem`.
@@ -282,18 +334,18 @@ regional hostname:
 | TLS | Let's Encrypt on each app | ACM on an ALB for game traffic; `/admin` needs trusted-proxy support before using TLS termination there |
 | Public endpoint | `boombeard.co.za` + US EIP `52.21.210.27` | One website hostname and a game-only IP endpoint |
 | Access | Public internet | VPC + VPN or an internal ALB - **then IT does not need to unblock anything at all** |
-| Data | Separate `/var/lib/boom-beard/` per region | Separate region-specific mounts or prefixes |
+| Data | Separate `/var/lib/boom-beard/` per region; ZA owns shared accounts/careers | Separate region mounts or prefixes; preserve the ZA API and US outbox |
 | Config | `/etc/boom-beard.env` | Task definition env or SSM Parameter Store |
 
-Three properties make this a config change rather than a project:
+Three properties make the networking and storage paths explicit:
 
-1. Each region uses its own `DATA_DIR`; no shared-state service is required.
+1. Each region uses its own `DATA_DIR`; the ZA instance remains the shared-data authority.
 2. The app's ZA/US IDs are application config; it **never calls an AWS API**.
-3. TLS is optional for game traffic, but `/admin` intentionally remains unavailable
-   behind an untrusted TLS-terminating proxy.
+3. The US internal client targets the ZA fixed IP while verifying the ZA TLS hostname.
+   Preserve this private server-to-server path and its token when moving VPCs.
 
-Do not pre-build for this. No SDK, no filesystem abstraction, no Terraform. It is a day's work
-when it happens and nothing today gets easier by guessing now.
+The networking move still needs a planned migration for shared account/career data;
+do not replace the authority or delete either outbox/cache as part of a VPC cutover.
 
 ---
 
@@ -308,8 +360,9 @@ eye before a session; that is the whole monitoring story.
 **Restart / reboot.** `Restart=always` plus `systemctl enable`, so a crash recovers in two
 seconds and a reboot comes back unattended. On SIGTERM the server closes sockets cleanly.
 
-**Backup.** `leaderboard.json` is the only state. A daily `cp` to a dated file, keep seven. If it
-is ever lost, everyone's lifetime score resets and we live.
+**Backup.** Back up `accounts.json`, `leaderboard.json`, `shared-outbox.json`, and
+`shared-leaderboard.json` from both regions. ZA is authoritative for accounts and global
+career state. Keep US outbox files until every queued operation is acknowledged.
 
 **Certificates.** Renewed daily by `certbot-renew.timer`. The US IP certificate is valid for
 six days; the deploy hook copies the renewed pair into `/var/lib/boom-beard/certs` and

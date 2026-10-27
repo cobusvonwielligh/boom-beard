@@ -1103,6 +1103,9 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     if (!between && p.alive) return shopEnvelope(seat, { ok: false, why: 'shop is closed' });
     bankSeat(seat);
     const result = leaderboard.buy(careerKey(s.playerId, s.name, false), itemKey);
+    if (result && typeof result.then === 'function') {
+      return result.then(purchase => ({ t: 'shop', ...purchase }));
+    }
     return { t: 'shop', ...result };
   }
 

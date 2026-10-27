@@ -12,6 +12,7 @@ import {
 } from '../shared/shop.js';
 // Names arrive from the same place the hub gets them, so they are capped and stripped identically.
 import { sanitizeName } from './net.js';
+import { mergeCareerRecords } from './shared-data-merge.js';
 
 const VERSION = 1;
 // Ten seconds, down from thirty: the most a crash that skips the shutdown path can cost anybody.
@@ -59,6 +60,8 @@ export function createLeaderboard({ dataDir }) {
   const bakFile = `${file}.bak`;
   let dirty = false;
   let tmpSeq = 0;
+  const sharedOperations = new Map();
+  const sharedMigrations = new Set();
   const tmpName = () => `${file}.${process.pid}.${++tmpSeq}.tmp`;
 
   /** Parse one board file into a Map, or throw. */
@@ -104,6 +107,16 @@ export function createLeaderboard({ dataDir }) {
      * deaths, coins and every medal. Nothing is dropped and nothing is overwritten - the merge
      * can only ever add. The old per-browser keys are what split one person into eleven, see
      * careerKey. */
+    if (Array.isArray(data.sharedOperations)) {
+      for (const [id, result] of data.sharedOperations) {
+        if (typeof id === 'string') sharedOperations.set(id, result);
+      }
+    }
+    if (Array.isArray(data.sharedMigrations)) {
+      for (const id of data.sharedMigrations) {
+        if (typeof id === 'string') sharedMigrations.add(id);
+      }
+    }
     const out = new Map();
     for (const [id, e] of Object.entries(data.players ?? {})) {
       if (!id || !e || typeof e !== 'object') continue;
@@ -207,7 +220,7 @@ export function createLeaderboard({ dataDir }) {
     };
   };
 
-  function buy(playerId, itemKey) {
+  function buy(playerId, itemKey, { flushNow = true } = {}) {
     const e = players.get(playerId);
     if (!e) return { ok: false, why: 'shop unavailable', wallet: 0, pending: emptyShopQueue() };
     const current = economy(playerId);
@@ -221,20 +234,111 @@ export function createLeaderboard({ dataDir }) {
     e.spentCoins = (e.spentCoins || 0) + item.cost;
     e.pendingShop = pending;
     dirty = true;
-    void flush();
+    if (flushNow) void flush();
     return { ok: true, bought: itemKey, wallet: current.wallet - item.cost, pending };
   }
 
-  function consumePending(playerId) {
+  function consumePending(playerId, { flushNow = true, requested } = {}) {
     const e = players.get(playerId);
     if (!e) return emptyShopQueue();
-    const pending = normaliseShopQueue(e.pendingShop);
+    const available = normaliseShopQueue(e.pendingShop);
+    const requestedQueue = requested == null ? available : normaliseShopQueue(requested);
+    const pending = emptyShopQueue();
+    for (const key of Object.keys(pending)) {
+      pending[key] = Math.min(available[key], requestedQueue[key]);
+    }
     if (hasQueuedShopItems(pending)) {
-      e.pendingShop = emptyShopQueue();
+      e.pendingShop = Object.fromEntries(Object.keys(pending)
+        .map(key => [key, available[key] - pending[key]]));
       dirty = true;
-      void flush();
+      if (flushNow) void flush();
     }
     return pending;
+  }
+
+  const sharedSnapshot = () => ({
+    players: Object.fromEntries([...players]
+      .filter(([id]) => id.startsWith('n:'))
+      .map(([id, player]) => [id, {
+        ...player,
+        pendingShop: normaliseShopQueue(player.pendingShop),
+      }])),
+  });
+
+  function mergeSharedSnapshot(importedPlayers, migrationId) {
+    if (typeof migrationId !== 'string' || !migrationId) {
+      throw new TypeError('a migration ID is required');
+    }
+    const humanPlayers = Object.fromEntries(Object.entries(importedPlayers ?? {})
+      .filter(([id, player]) => id.startsWith('n:') && player && typeof player === 'object'));
+    if (sharedMigrations.has(migrationId)) {
+      if (dirty && !flushSync()) throw new Error('could not persist imported careers');
+      return {
+        applied: false,
+        players: [...players.keys()].filter(id => id.startsWith('n:')).length,
+      };
+    }
+    const currentHumans = Object.fromEntries([...players].filter(([id]) => id.startsWith('n:')));
+    const merged = mergeCareerRecords(currentHumans, humanPlayers);
+    for (const [id, player] of Object.entries(merged)) players.set(id, player);
+    sharedMigrations.add(migrationId);
+    if (sharedMigrations.size > 1000) {
+      sharedMigrations.delete(sharedMigrations.values().next().value);
+    }
+    dirty = true;
+    if (!flushSync()) throw new Error('could not persist imported careers');
+    return { applied: true, players: Object.keys(humanPlayers).length };
+  }
+
+  function applySharedOperation(operationId, operation) {
+    if (typeof operationId !== 'string' || !operationId || operationId.length > 128) {
+      throw new TypeError('a valid shared operation ID is required');
+    }
+    if (!operation || typeof operation !== 'object') {
+      throw new TypeError('a shared operation is required');
+    }
+    if (sharedOperations.has(operationId)) {
+      if (dirty && !flushSync()) throw new Error('could not persist shared career operation');
+      return {
+        operationId,
+        result: structuredClone(sharedOperations.get(operationId)),
+        snapshot: sharedSnapshot(),
+      };
+    }
+
+    const playerKey = operation.playerKey;
+    let result;
+    if (operation.op === 'career.apply') {
+      if (typeof playerKey !== 'string' || !playerKey.startsWith('n:')) {
+        throw new TypeError('shared career operations require a human player key');
+      }
+      if (operation.kind === 'record') {
+        record(playerKey, { name: operation.name, ...(operation.delta ?? {}) });
+        result = { ok: true };
+      } else if (operation.kind === 'award') {
+        award(playerKey, operation.place, operation.name);
+        result = { ok: true };
+      } else {
+        throw new TypeError('unsupported shared career mutation');
+      }
+    } else if (operation.op === 'shop.buy') {
+      if (typeof playerKey !== 'string' || !playerKey.startsWith('n:')) {
+        throw new TypeError('shared shop operations require a human player key');
+      }
+      result = buy(playerKey, operation.item, { flushNow: false });
+    } else if (operation.op === 'shop.consume') {
+      if (typeof playerKey !== 'string' || !playerKey.startsWith('n:')) {
+        throw new TypeError('shared shop operations require a human player key');
+      }
+      result = consumePending(playerKey, { flushNow: false, requested: operation.consumed });
+    } else {
+      throw new TypeError('unsupported shared operation');
+    }
+
+    sharedOperations.set(operationId, structuredClone(result));
+    dirty = true;
+    if (!flushSync()) throw new Error('could not persist shared career operation');
+    return { operationId, result, snapshot: sharedSnapshot() };
   }
 
   const byName = (a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
@@ -245,7 +349,12 @@ export function createLeaderboard({ dataDir }) {
   const top = (n = 10) => all().slice(0, n);
 
   const snapshot = () =>
-    JSON.stringify({ version: VERSION, players: Object.fromEntries(players) }, null, 2);
+    JSON.stringify({
+      version: VERSION,
+      players: Object.fromEntries(players),
+      sharedOperations: [...sharedOperations],
+      sharedMigrations: [...sharedMigrations],
+    }, null, 2);
 
   /** fsync a directory so a rename inside it is durable. Not supported everywhere; best effort. */
   async function syncDir() {
@@ -339,5 +448,6 @@ export function createLeaderboard({ dataDir }) {
 
   return Object.freeze({
     record, award, get, top, all, economy, buy, consumePending, flush, flushSync, stop, file,
+    sharedSnapshot, applySharedOperation, mergeSharedSnapshot,
   });
 }

@@ -13,6 +13,10 @@ import { config, usingTls, ROOT, sameSecret } from './config.js';
 import { canonicalTarget, gameOnlyRedirect } from './canonical.js';
 import { createLeaderboard } from './leaderboard.js';
 import { createAccounts } from './accounts.js';
+import { createSharedDataHttpHandler } from './shared-data-http.js';
+import { createSharedAccounts, createSharedDataClient } from './shared-data-client.js';
+import { createSharedDataOutbox } from './shared-data-outbox.js';
+import { createSharedLeaderboard } from './shared-leaderboard.js';
 import { createAdminAuth } from './admin-auth.js';
 import { createAdminData, createMetricHistory } from './admin-data.js';
 import { createAdminHttpHandler } from './admin-http.js';
@@ -143,6 +147,8 @@ const started = Date.now();
 const guard = createGuard();
 let adminHttp;
 let regionStatusHttp;
+let sharedDataHttp = null;
+let localAccounts = null;
 let geography = null;
 let lastProcessSample = { at: process.hrtime.bigint(), usage: process.cpuUsage() };
 
@@ -207,6 +213,9 @@ async function serve(req, res) {
 
   const url = req.url.split('?')[0];
 
+  if (url === '/internal/shared-data' && sharedDataHttp
+    && await sharedDataHttp(req, res)) return;
+
   const gameOnly = gameOnlyRedirect({ regionId: config.regionId, url: req.url });
   if (gameOnly) {
     res.writeHead(302, { Location: gameOnly, 'Cache-Control': 'no-store' });
@@ -246,7 +255,11 @@ async function serve(req, res) {
   }
 
   if (url === '/signup-count') {
-    const count = accounts.stats().total;
+    if (!localAccounts) {
+      res.writeHead(404, { 'Content-Type': 'text/plain' });
+      return res.end('not found');
+    }
+    const count = localAccounts.stats().total;
     res.writeHead(200, {
       'Content-Type': 'application/json; charset=utf-8',
       'Cache-Control': 'public, max-age=60',
@@ -259,7 +272,7 @@ async function serve(req, res) {
       uptimeS: Math.round((Date.now() - started) / 1000),
       ...processMetrics(),
       version: version(),
-      signups: accounts.stats(),
+      signups: localAccounts?.stats() ?? null,
       transports: { ...hub.transportCounts, webtransport: wt ? hub.transportCounts.webtransport : null },
       top: leaderboard.top(5),
     }));
@@ -432,10 +445,44 @@ function hardenTimeouts(s) {
   return s;
 }
 
-const leaderboard = createLeaderboard({ dataDir: config.dataDir });
+const localLeaderboard = createLeaderboard({ dataDir: config.dataDir });
+let sharedClient = null;
+let sharedOutbox = null;
+let leaderboard = localLeaderboard;
+if (config.regionId === 'us') {
+  if (!config.sharedDataToken || !config.sharedDataHost || !config.sharedDataServername) {
+    throw new Error('US region requires shared_data_token, shared_data_host, and shared_data_servername');
+  }
+  sharedClient = createSharedDataClient({
+    host: config.sharedDataHost,
+    servername: config.sharedDataServername,
+    token: config.sharedDataToken,
+  });
+  sharedOutbox = createSharedDataOutbox({ dataDir: config.dataDir });
+  leaderboard = createSharedLeaderboard({
+    localLeaderboard,
+    client: sharedClient,
+    outbox: sharedOutbox,
+    dataDir: config.dataDir,
+    regionId: config.regionId,
+  });
+  leaderboard.refresh().catch(error =>
+    console.warn(`shared-data: initial snapshot unavailable (${error.message})`));
+}
 // Passwords and trusted browsers. Beside the leaderboard because it protects the leaderboard:
 // the career is keyed by name, so the name is what needs an owner. See server/accounts.js.
-const accounts = createAccounts({ dataDir: config.dataDir });
+if (config.regionId === 'za') localAccounts = createAccounts({ dataDir: config.dataDir });
+const accounts = config.regionId === 'za'
+  ? localAccounts
+  : config.requirePassword
+    ? createSharedAccounts({
+      client: sharedClient,
+      onAuthenticated: async () => {
+        await leaderboard.flush();
+        await leaderboard.refresh();
+      },
+    })
+    : null;
 geography = createGeography({
   dataDir: config.dataDir,
   lookupCountry: ip => geoip.lookup(ip)?.country ?? null,
@@ -456,6 +503,14 @@ adminHttp = createAdminHttpHandler({
   pageFile: path.join(ROOT, 'public/admin.html'),
   usingTls,
 });
+if (config.regionId === 'za' && config.sharedDataToken) {
+  sharedDataHttp = createSharedDataHttpHandler({
+    regionId: config.regionId,
+    token: config.sharedDataToken,
+    accounts: localAccounts,
+    leaderboard: localLeaderboard,
+  });
+}
 // `requirePassword: false` hands the hub no store at all rather than a store it is asked to
 // ignore - one branch instead of two, and no way for a future edit to half-enable it.
 const hub = attachHub(server, {
@@ -518,7 +573,7 @@ process.on('uncaughtException', err => {
   geography?.flushSync();
   // A password set seconds before a crash must not be lost: the person would be locked out of
   // their own name, with no way back except editing the file by hand.
-  accounts.flushSync();
+  localAccounts?.flushSync();
   process.exit(1);
 });
 process.on('unhandledRejection', err => {
@@ -549,7 +604,7 @@ for (const sig of ['SIGTERM', 'SIGINT']) {
       await leaderboard.stop();
       if (leaderboard.flushSync()) console.log('leaderboard saved');
       geography?.stop();
-      accounts.flushSync();
+      localAccounts?.flushSync();
     } catch (err) {
       console.warn(`leaderboard: save on shutdown failed (${err.message})`);
     }

@@ -1,5 +1,10 @@
 # Multi-Region Game and North America Deployment
 
+> **Status:** This describes the initial regional deployment, when account and score
+> synchronization was intentionally out of scope. The later shared-account/career
+> design supersedes that limitation; see
+> [shared-player-data-design](./2026-10-27-shared-player-data-design.md).
+
 ## Goal
 
 Run the current game in South Africa and North America, let players choose the closest

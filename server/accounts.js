@@ -42,6 +42,7 @@ import crypto from 'node:crypto';
 // Shared with the client, which quotes the minimum in the sign-up hint. One source, so the hint
 // and the rule can never disagree.
 import { PASSWORD_MIN, PASSWORD_MAX } from '../shared/constants.js';
+import { mergeAccountRecords } from './shared-data-merge.js';
 
 const VERSION = 1;
 // Retained existing records with these names are excluded once; future signups count normally.
@@ -146,6 +147,7 @@ export function createAccounts({ dataDir }) {
   let accounts = new Map();        // key -> record
   let signupCountExclusionsVersion = SIGNUP_COUNT_EXCLUSIONS_VERSION;
   let accountCleanupVersion = ACCOUNT_CLEANUP_VERSION;
+  const sharedMigrations = new Set();
   let scrubBackupOnNextSyncFlush = false;
   let dirty = false;
   let saving = null;
@@ -170,6 +172,11 @@ export function createAccounts({ dataDir }) {
         const parsed = JSON.parse(raw);
         if (parsed?.version !== VERSION || typeof parsed.accounts !== 'object') throw new Error('shape');
         accounts = new Map(Object.entries(parsed.accounts));
+        if (Array.isArray(parsed.sharedMigrations)) {
+          for (const id of parsed.sharedMigrations) {
+            if (typeof id === 'string') sharedMigrations.add(id);
+          }
+        }
         const storedExclusionVersion = Number(parsed.signupCountExclusionsVersion);
         signupCountExclusionsVersion = Number.isSafeInteger(storedExclusionVersion)
           ? Math.max(0, storedExclusionVersion)
@@ -213,6 +220,7 @@ export function createAccounts({ dataDir }) {
     version: VERSION,
     signupCountExclusionsVersion,
     accountCleanupVersion,
+    sharedMigrations: [...sharedMigrations],
     accounts: Object.fromEntries(accounts),
   });
 
@@ -271,11 +279,13 @@ export function createAccounts({ dataDir }) {
         fs.chmodSync(bakFile, MODE);
         scrubBackupOnNextSyncFlush = false;
       }
+      return true;
     } catch (err) {
       dirty = true;
       console.error('accounts: sync save failed', err.message);
       if (scrubBackup) throw err;
       try { fs.unlinkSync(tmp); } catch { /* nothing to clean up */ }
+      return false;
     }
   }
 
@@ -413,8 +423,16 @@ export function createAccounts({ dataDir }) {
         noteFail(key);
         return { ok: false, why: 'wrong password' };
       }
-      const hash = await scrypt(password, rec.salt, { ...SCRYPT, ...rec.kdf });
-      if (!sameDigest(hash, rec.hash)) {
+      const credentials = Array.isArray(rec.credentials) && rec.credentials.length
+        ? rec.credentials : [rec];
+      let verified = false;
+      for (const credential of credentials) {
+        if (typeof credential?.salt !== 'string' || typeof credential.hash !== 'string') continue;
+        const hash = await scrypt(password, credential.salt,
+          { ...SCRYPT, ...(credential.kdf ?? {}) });
+        if (sameDigest(hash, credential.hash)) verified = true;
+      }
+      if (!verified) {
         noteFail(key);
         return { ok: false, why: 'wrong password' };
       }
@@ -424,6 +442,31 @@ export function createAccounts({ dataDir }) {
       dirty = true;
       flush();
       return { ok: true, token };
+    },
+
+    importSharedRecords(records, migrationId) {
+      if (typeof migrationId !== 'string' || !migrationId) {
+        throw new TypeError('a migration ID is required');
+      }
+      const imported = mergeAccountRecords({}, records);
+      const importedCount = Object.keys(imported).length;
+      if (sharedMigrations.has(migrationId)) {
+        if (dirty) {
+          flushSync();
+          if (dirty) throw new Error('could not persist imported accounts');
+        }
+        return { applied: false, accounts: importedCount };
+      }
+      const merged = mergeAccountRecords(Object.fromEntries(accounts), imported);
+      accounts = new Map(Object.entries(merged));
+      sharedMigrations.add(migrationId);
+      if (sharedMigrations.size > 1000) {
+        sharedMigrations.delete(sharedMigrations.values().next().value);
+      }
+      dirty = true;
+      flushSync();
+      if (dirty) throw new Error('could not persist imported accounts');
+      return { applied: true, accounts: importedCount };
     },
 
     /**

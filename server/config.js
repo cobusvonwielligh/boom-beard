@@ -86,6 +86,9 @@ export const config = {
    * are about ROOMS rather than about sign-in keep being about rooms.
    */
   requirePassword: String(pick('REQUIRE_PASSWORD', 'server', 'require_password', '1')) !== '0',
+  sharedDataToken: pick('SHARED_DATA_TOKEN', 'shared', 'token', ''),
+  sharedDataHost: pick('SHARED_DATA_HOST', 'shared', 'host', ''),
+  sharedDataServername: pick('SHARED_DATA_SERVERNAME', 'shared', 'servername', 'boombeard.co.za'),
 
   /* Seconds of frozen count-in at the top of every round. 0 starts the round live.
    *

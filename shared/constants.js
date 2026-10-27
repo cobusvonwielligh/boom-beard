@@ -794,6 +794,7 @@ export const INTERP_DELAY_TICKS = 4;     // ≈133 ms behind, for remote players
 export const CLOCK_SAFETY_MS = 50;       // added to rtt/2 when computing the client's lead
 export const PING_EVERY_MS = 2000;
 export const RTT_SAMPLES = 5;            // rolling minimum, see docs/NETCODE.md §2
+export const PING_BURST_GAP_MS = 100;
 export const MAX_MESSAGE_BYTES = 4096;
 export const CHAT_MAX_CHARS = 140;
 export const CHAT_MIN_INTERVAL_MS = 1000;

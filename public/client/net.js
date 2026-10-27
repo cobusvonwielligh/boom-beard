@@ -6,8 +6,9 @@
 
 import { PING_EVERY_MS, RTT_SAMPLES, CLOCK_SAFETY_MS, TICK_MS } from '/shared/constants.js';
 import { REGIONS, regionOrigin, transportUrls } from '/shared/regions.js';
-import { playerIdKey, trustKey } from '/shared/region-keys.js';
+import { playerIdKey, readTrustToken, trustKey } from '/shared/region-keys.js';
 import { createTransport } from './transport.js';
+import { startPingBurst } from './ping-burst.js';
 // Every value this module keeps goes through the seal: the identity, the device id, the trusted
 // browser tokens and the admin key. See client/store.js for what sealing does and does not buy.
 import { store } from './store.js';
@@ -39,7 +40,7 @@ function deviceId() {
  * of them for a name at once. See docs/DESIGN.md on the anti-cheat position.
  */
 function trustFor(name, regionId) {
-  return store.get(trustKey(regionId, name)) || null;
+  return readTrustToken(store, regionId, name);
 }
 
 function rememberTrust(name, token, regionId) {
@@ -87,6 +88,8 @@ export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onS
   let clientTick = 0;
   const rtts = [];
   const pending = new Map();
+  let pingSequence = 0;
+  let cancelInitialPingBurst = null;
   let backoff = 0;
   let closedByUs = false;
   let reconnectTimer = 0;
@@ -163,7 +166,8 @@ export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onS
         console.debug(`transport: ${won}`);
         onStatus?.('open');
         ws.send(hello);
-        ping();
+        cancelInitialPingBurst?.();
+        cancelInitialPingBurst = startPingBurst(ping);
       },
       onNote: note => console.debug(`transport: ${note}`),
       onClose: ev => onDisconnect(ev, generation),
@@ -276,7 +280,7 @@ export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onS
 
   function ping() {
     if (!ws?.open) return;
-    const c = Date.now();
+    const c = ++pingSequence;
     pending.set(c, performance.now());
     ws.send({ t: 'ping', c });
     if (pending.size > 8) pending.delete(pending.keys().next().value);
@@ -301,10 +305,15 @@ export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onS
       clearTimeout(reconnectTimer);
       reconnectTimer = 0;
       ++connectionGeneration;
+      cancelInitialPingBurst?.();
+      cancelInitialPingBurst = null;
       ws?.close();
       ws = null;
       kind = null;
       pending.clear();
+      rtts.length = 0;
+      tickOffset = null;
+      sinceCorrection = 0;
       hello = {
         t: 'hello', name, observe,
         playerId: store.get(playerIdKey(connectionRegionId)) || null,

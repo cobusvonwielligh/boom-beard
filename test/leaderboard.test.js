@@ -189,6 +189,97 @@ test('leaderboard', async t => {
     await lb.stop();
     assert.equal((await read(dir)).players.a.name, 'ann', 'the dir was created on demand');
   });
+
+  await t.test('shared career operations persist their idempotency key with the score', async t => {
+    const dir = await tempDir(t);
+    const lb = createLeaderboard({ dataDir: dir });
+    const operation = {
+      op: 'career.apply',
+      kind: 'record',
+      playerKey: 'n:alice',
+      name: 'Alice',
+      delta: { score: 10, kills: 1 },
+    };
+
+    lb.applySharedOperation('us-record-1', operation);
+    lb.applySharedOperation('us-record-1', operation);
+    assert.equal(lb.get('n:alice').score, 10);
+    assert.deepEqual(Object.keys(lb.sharedSnapshot().players), ['n:alice']);
+
+    lb.flushSync();
+    const reopened = createLeaderboard({ dataDir: dir });
+    reopened.applySharedOperation('us-record-1', operation);
+    assert.equal(reopened.get('n:alice').score, 10);
+    reopened.applySharedOperation('us-record-2', {
+      ...operation, delta: { score: 5, kills: 2 },
+    });
+    assert.equal(reopened.get('n:alice').score, 15);
+    await reopened.stop();
+  });
+
+  await t.test('migration imports human careers once and leaves regional bot careers alone', async t => {
+    const dir = await tempDir(t);
+    const lb = createLeaderboard({ dataDir: dir });
+    lb.record('n:alice', { name: 'Alice', score: 100, coins: 5 });
+    lb.record('bot_0', { name: 'ZA bot', score: 20 });
+
+    assert.deepEqual(lb.mergeSharedSnapshot({
+      'n:alice': { name: 'Alice', score: 40, coins: 3 },
+      bot_0: { name: 'US bot', score: 50 },
+    }, 'us-migration-1'), { applied: true, players: 1 });
+    assert.equal(lb.get('n:alice').score, 140);
+    assert.equal(lb.get('n:alice').coins, 8);
+    assert.equal(lb.get('bot_0').score, 20);
+    assert.equal(lb.get('us:bot_0'), null);
+    assert.deepEqual(lb.mergeSharedSnapshot({
+      'n:alice': { name: 'Alice', score: 40, coins: 3 },
+    }, 'us-migration-1'), { applied: false, players: 1 });
+    assert.equal(lb.get('n:alice').score, 140);
+    await lb.stop();
+  });
+
+  await t.test('shared shop operations cannot double-spend or consume twice', async t => {
+    const dir = await tempDir(t);
+    const lb = createLeaderboard({ dataDir: dir });
+    lb.record('n:alice', { name: 'Alice', coins: 3 });
+    const purchase = {
+      op: 'shop.buy',
+      regionId: 'us',
+      playerKey: 'n:alice',
+      item: 'shield',
+    };
+
+    const first = lb.applySharedOperation('shop-buy-1', purchase);
+    const replay = lb.applySharedOperation('shop-buy-1', purchase);
+    assert.equal(first.result.ok, true);
+    assert.deepEqual(replay.result, first.result);
+    const second = lb.applySharedOperation('shop-buy-2', {
+      ...purchase, item: 'shield',
+    });
+    assert.equal(second.result.ok, false, 'a stale region spent the same wallet twice');
+    assert.equal(lb.economy('n:alice').wallet, 1);
+    assert.equal(lb.economy('n:alice').pending.shield, 1);
+    assert.equal(lb.applySharedOperation('shop-buy-3', {
+      ...purchase, item: 'bombs',
+    }).result.ok, true);
+
+    const consumed = lb.applySharedOperation('shop-consume-1', {
+      op: 'shop.consume',
+      regionId: 'us',
+      playerKey: 'n:alice',
+      consumed: { shield: 1 },
+    });
+    assert.equal(consumed.result.shield, 1);
+    assert.deepEqual(lb.economy('n:alice').pending,
+      { bombs: 2, fire: 0, speed: 0, shield: 0, stim: 0 });
+    assert.equal(lb.applySharedOperation('shop-consume-1', {
+      op: 'shop.consume',
+      regionId: 'us',
+      playerKey: 'n:alice',
+      consumed: { shield: 1 },
+    }).result.shield, 1);
+    await lb.stop();
+  });
 });
 
 test('persistent gold shop economy', async t => {

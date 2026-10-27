@@ -38,6 +38,8 @@ const regionPicker = createRegionPicker({
   dialog: $('regionDialog'),
   confirmButton: $('regionConfirm'),
   cancelButton: $('regionCancel'),
+  refreshButton: $('regionRefresh'),
+  statusMessage: $('regionStatus'),
   store,
 });
 

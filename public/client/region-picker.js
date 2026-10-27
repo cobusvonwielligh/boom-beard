@@ -1,7 +1,18 @@
-import { REGIONS } from '../../shared/regions.js';
+import { REGIONS, transportUrls } from '../../shared/regions.js';
+import { PING_BURST_GAP_MS, RTT_SAMPLES } from '../../shared/constants.js';
 import { selectedRegionId } from '../../shared/region-selection.js';
+import { startPingBurst } from './ping-burst.js';
 
 const REGION_STORE_KEY = 'bv.region';
+let nextPingId = 0;
+
+class PingProbeError extends Error {}
+
+function abortError() {
+  const error = new Error('Region probe was cancelled.');
+  error.name = 'AbortError';
+  return error;
+}
 
 function offlineResult(region, reason) {
   return {
@@ -9,6 +20,7 @@ function offlineResult(region, reason) {
     name: region.name,
     flag: region.flag,
     online: false,
+    statusReady: false,
     rttMs: null,
     humanPlayers: null,
     bots: null,
@@ -36,18 +48,125 @@ export function pingClass(rttMs) {
   return rttMs <= 99 ? 'pingFair' : 'pingPoor';
 }
 
-export async function probeRegion(
-  region,
-  { fetchImpl = fetch, now = () => performance.now(), timeoutMs = 2000 } = {},
-) {
+export function measureGamePing(region, {
+  WebSocketImpl = globalThis.WebSocket,
+  now = () => performance.now(),
+  timeoutMs = 6000,
+  gapMs = PING_BURST_GAP_MS,
+  onSample = () => {},
+  signal,
+} = {}) {
+  if (typeof WebSocketImpl !== 'function') {
+    return Promise.reject(new PingProbeError('WebSocket is not available for game ping.'));
+  }
+  if (signal?.aborted) return Promise.reject(abortError());
+
+  return new Promise((resolve, reject) => {
+    let socket;
+    let timeoutId;
+    let cancelBurst = null;
+    let settled = false;
+    const sentAt = new Map();
+    const samples = [];
+
+    const cleanup = () => {
+      clearTimeout(timeoutId);
+      cancelBurst?.();
+      signal?.removeEventListener('abort', handleAbort);
+      if (socket && socket.readyState < 2) socket.close();
+    };
+    const fail = error => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(error);
+    };
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      const minimum = Math.min(...samples);
+      cleanup();
+      resolve(minimum);
+    };
+    const handleAbort = () => fail(abortError());
+    const handleMessage = event => {
+      let message;
+      try {
+        message = JSON.parse(event.data);
+      } catch (error) {
+        if (error instanceof SyntaxError) return;
+        throw error;
+      }
+      if (message?.t !== 'pong' || !sentAt.has(message.c)) return;
+      const started = sentAt.get(message.c);
+      sentAt.delete(message.c);
+      try {
+        const sample = Math.max(0, Math.round(now() - started));
+        samples.push(sample);
+        onSample(sample);
+        if (samples.length === RTT_SAMPLES) finish();
+      } catch (error) {
+        fail(error);
+      }
+    };
+
+    signal?.addEventListener('abort', handleAbort, { once: true });
+    timeoutId = setTimeout(() => {
+      fail(new PingProbeError(`Game ping timed out after ${timeoutMs} ms.`));
+    }, timeoutMs);
+
+    try {
+      const { ws } = transportUrls(region.origin);
+      socket = new WebSocketImpl(ws);
+    } catch (error) {
+      fail(new PingProbeError(`Could not open game ping socket: ${error.message}`));
+      return;
+    }
+
+    socket.addEventListener('open', () => {
+      if (settled) return;
+      cancelBurst = startPingBurst(() => {
+        if (settled) return;
+        const correlation = `region-ping-${++nextPingId}`;
+        sentAt.set(correlation, now());
+        try {
+          socket.send(JSON.stringify({ t: 'ping', c: correlation }));
+        } catch (error) {
+          fail(new PingProbeError(`Could not send game ping: ${error.message}`));
+        }
+      }, { count: RTT_SAMPLES, gapMs });
+    });
+    socket.addEventListener('message', handleMessage);
+    socket.addEventListener('error', () => {
+      fail(new PingProbeError('Game ping socket failed.'));
+    });
+    socket.addEventListener('close', () => {
+      if (!settled) fail(new PingProbeError('Game ping socket closed before all samples arrived.'));
+    });
+  });
+}
+
+export async function probeRegion(region, {
+  fetchImpl = fetch,
+  WebSocketImpl = globalThis.WebSocket,
+  now = () => performance.now(),
+  timeoutMs = 2000,
+  pingTimeoutMs = 6000,
+  gapMs = PING_BURST_GAP_MS,
+  signal,
+  onProbeStatus = () => {},
+  onPingSample = () => {},
+} = {}) {
+  if (signal?.aborted) throw abortError();
   const controller = new AbortController();
-  const startedAt = now();
+  const abortRequest = () => controller.abort();
+  signal?.addEventListener('abort', abortRequest, { once: true });
   let timeoutId;
-  const timeoutError = new Error(`Region probe timed out after ${timeoutMs} ms`);
+  const timeoutError = new Error(`Region status probe timed out after ${timeoutMs} ms.`);
   const timeout = new Promise((resolve, reject) => {
     timeoutId = setTimeout(() => {
-      reject(timeoutError);
       controller.abort();
+      reject(timeoutError);
     }, timeoutMs);
   });
 
@@ -77,8 +196,9 @@ export async function probeRegion(
     })();
     ({ response, status, invalidStatus } = await Promise.race([request, timeout]));
   } catch (error) {
+    if (signal?.aborted) throw abortError();
     if (error === timeoutError || error?.name === 'AbortError') {
-      return offlineResult(region, 'Region probe timed out.');
+      return offlineResult(region, 'Region status probe timed out.');
     }
     if (error instanceof TypeError) {
       return offlineResult(region, 'Network error while checking this region.');
@@ -86,6 +206,7 @@ export async function probeRegion(
     throw error;
   } finally {
     clearTimeout(timeoutId);
+    signal?.removeEventListener('abort', abortRequest);
   }
 
   if (!response || response.ok !== true) {
@@ -96,7 +217,7 @@ export async function probeRegion(
     return offlineResult(region, 'Invalid region status response.');
   }
 
-  return {
+  const statusResult = {
     id: region.id,
     name: region.name,
     flag: region.flag,
@@ -104,14 +225,38 @@ export async function probeRegion(
     humanPlayers: status.humanPlayers,
     bots: status.bots,
     maxPlayers: status.maxPlayers,
-    online: true,
-    rttMs: Math.round(now() - startedAt),
+    statusReady: true,
+    online: false,
+    rttMs: null,
     reason: null,
   };
+  onProbeStatus(statusResult);
+
+  try {
+    const rttMs = await measureGamePing(region, {
+      WebSocketImpl,
+      now,
+      timeoutMs: pingTimeoutMs,
+      gapMs,
+      signal,
+      onSample: sample => onPingSample(sample, statusResult),
+    });
+    return { ...statusResult, online: true, rttMs, reason: null };
+  } catch (error) {
+    if (signal?.aborted || error?.name === 'AbortError') throw abortError();
+    if (error instanceof PingProbeError) {
+      return { ...statusResult, online: false, rttMs: null, reason: error.message };
+    }
+    throw error;
+  }
 }
 
-export function probeRegions(regions, options) {
-  return Promise.all(regions.map(region => probeRegion(region, options)));
+export function probeRegions(regions, options = {}) {
+  return Promise.all(regions.map(region => probeRegion(region, {
+    ...options,
+    onProbeStatus: result => options.onProbeStatus?.(region, result),
+    onPingSample: (sample, result) => options.onPingSample?.(region, sample, result),
+  })));
 }
 
 export function createRegionPicker({
@@ -119,11 +264,18 @@ export function createRegionPicker({
   dialog,
   confirmButton,
   cancelButton,
+  refreshButton,
+  statusMessage,
   store,
   regions = REGIONS,
   fetchImpl = fetch,
+  WebSocketImpl = globalThis.WebSocket,
+  now = () => performance.now(),
+  pingTimeoutMs = 2500,
+  pingGapMs = PING_BURST_GAP_MS,
 }) {
-  if (!root || !dialog || !confirmButton || !cancelButton || !store) {
+  if (!root || !dialog || !confirmButton || !cancelButton || !refreshButton
+    || !statusMessage || !store) {
     throw new TypeError('The region picker requires its dialog, controls, root, and store.');
   }
 
@@ -138,6 +290,9 @@ export function createRegionPicker({
   let selectedId = null;
   let results = [];
   let generation = 0;
+  let refreshGeneration = 0;
+  let activeController = null;
+  let refreshing = false;
   let resolveChoice = null;
   let rejectChoice = null;
 
@@ -149,7 +304,7 @@ export function createRegionPicker({
       button.className = 'regionOption';
       button.setAttribute('data-region', region.id);
       button.setAttribute('aria-pressed', String(selectedId === region.id));
-      button.disabled = !!result && !result.online;
+      button.disabled = refreshing || !result?.online;
 
       const flag = doc.createElement('img');
       flag.className = 'regionFlag';
@@ -164,13 +319,16 @@ export function createRegionPicker({
       details.className = 'regionDetails';
       if (!result) {
         details.textContent = 'CHECKING…';
-      } else if (result.online) {
+      } else if (result.statusReady) {
         const ping = doc.createElement('span');
         ping.className = `regionPing ${pingClass(result.rttMs)}`;
-        ping.textContent = `${result.rttMs} ms`;
+        ping.textContent = Number.isFinite(result.rttMs)
+          ? `${result.rttMs} ms`
+          : result.reason ? 'OFFLINE' : 'CHECKING PING…';
+        const players = result.humanPlayers + result.bots;
         const online = doc.createElement('span');
         online.className = 'regionOnline';
-        online.textContent = `${result.humanPlayers}/${result.maxPlayers} players`;
+        online.textContent = `${players}/${result.maxPlayers} players`;
         details.append(ping, online);
       } else {
         details.textContent = 'OFFLINE';
@@ -179,14 +337,16 @@ export function createRegionPicker({
       button.title = result?.online ? '' : result?.reason || '';
       button.setAttribute('aria-label', !result
         ? `${region.name}, checking server status`
-        : result.online
-          ? `${region.name}, ${result.rttMs} milliseconds, ${result.humanPlayers} of ` +
-            `${result.maxPlayers} players online`
+        : result.statusReady
+          ? `${region.name}, ${Number.isFinite(result.rttMs)
+            ? `${result.rttMs} milliseconds` : 'ping checking'}, ` +
+            `${result.humanPlayers + result.bots} of ${result.maxPlayers} players online`
           : `${region.name}, offline`);
       button.append(flag, title, details);
       button.addEventListener('click', () => {
         if (!result?.online) return;
         selectedId = region.id;
+        statusMessage.textContent = '';
         render();
       });
       return button;
@@ -194,7 +354,7 @@ export function createRegionPicker({
 
     root.replaceChildren(...buttons);
     const selected = results.find(result => result.id === selectedId);
-    confirmButton.disabled = !selected?.online;
+    confirmButton.disabled = refreshing || !selected?.online;
   }
 
   function finishChoice(value, error = null) {
@@ -204,39 +364,128 @@ export function createRegionPicker({
     resolveChoice = null;
     rejectChoice = null;
     generation++;
+    refreshGeneration++;
+    activeController?.abort();
+    activeController = null;
+    refreshing = false;
+    refreshButton.disabled = false;
+    refreshButton.setAttribute('aria-busy', 'false');
     dialog.close();
     if (error) reject(error);
     else resolve(value);
   }
 
-  async function refresh(expectedGeneration) {
-    const refreshed = await probeRegions(probeTargets, { fetchImpl });
-    if (!resolveChoice || expectedGeneration !== generation) return;
-    results = refreshed;
-    if (!selectedId) selectedId = selectedRegionId(results);
+  function updateResult(region, result, expectedRefresh) {
+    if (!resolveChoice || expectedRefresh !== refreshGeneration) return;
+    results = [...results.filter(item => item.id !== region.id), result];
     render();
+  }
+
+  function probeOptions(controller, expectedRefresh) {
+    return {
+      fetchImpl,
+      WebSocketImpl,
+      now,
+      pingTimeoutMs,
+      gapMs: pingGapMs,
+      signal: controller.signal,
+      onProbeStatus: (region, result) => updateResult(region, result, expectedRefresh),
+      onPingSample: (region, sample, result) => updateResult(
+        region, { ...result, rttMs: sample }, expectedRefresh,
+      ),
+    };
+  }
+
+  async function refreshRegions() {
+    if (!resolveChoice) return [];
+    const expectedRefresh = ++refreshGeneration;
+    activeController?.abort();
+    const controller = new AbortController();
+    activeController = controller;
+    refreshing = true;
+    refreshButton.disabled = true;
+    refreshButton.setAttribute('aria-busy', 'true');
+    statusMessage.textContent = 'Refreshing both regions…';
+    render();
+
+    try {
+      const refreshed = await probeRegions(probeTargets, probeOptions(controller, expectedRefresh));
+      if (!resolveChoice || expectedRefresh !== refreshGeneration) return refreshed;
+      results = refreshed;
+      if (!selectedId) selectedId = selectedRegionId(results);
+      render();
+      const unavailable = refreshed.filter(result => !result.online);
+      statusMessage.textContent = unavailable.length
+        ? unavailable.map(result => `${result.name}: ${result.reason}`).join(' ')
+        : '';
+      return refreshed;
+    } catch (error) {
+      if (error?.name === 'AbortError' && expectedRefresh !== refreshGeneration) return [];
+      throw error;
+    } finally {
+      if (expectedRefresh === refreshGeneration) {
+        activeController = null;
+        refreshing = false;
+        refreshButton.disabled = false;
+        refreshButton.setAttribute('aria-busy', 'false');
+        render();
+      }
+    }
+  }
+
+  function reportRefreshFailure(error) {
+    statusMessage.textContent = `Unable to refresh regions: ${error.message}`;
+    console.error('region picker refresh failed', error);
   }
 
   async function confirmSelection() {
     if (!resolveChoice || !selectedId || confirmButton.disabled) return;
-    const expectedGeneration = generation;
-    const selectedRegion = probeTargets.find(region => region.id === selectedId);
+    const expectedChoice = generation;
+    const expectedRefresh = ++refreshGeneration;
+    activeController?.abort();
+    const controller = new AbortController();
+    activeController = controller;
+    refreshing = true;
     confirmButton.disabled = true;
+    refreshButton.disabled = true;
+    refreshButton.setAttribute('aria-busy', 'true');
+    const selectedRegion = probeTargets.find(region => region.id === selectedId);
+
     try {
-      const latest = await probeRegion(selectedRegion, { fetchImpl });
-      if (!resolveChoice || expectedGeneration !== generation) return;
-      results = results.map(result => result.id === selectedId ? latest : result);
+      const latest = await probeRegion(selectedRegion, {
+        ...probeOptions(controller, expectedRefresh),
+        onProbeStatus: result => updateResult(selectedRegion, result, expectedRefresh),
+        onPingSample: (sample, result) => updateResult(
+          selectedRegion, { ...result, rttMs: sample }, expectedRefresh,
+        ),
+      });
+      if (!resolveChoice || expectedChoice !== generation
+        || expectedRefresh !== refreshGeneration) return;
+      results = [...results.filter(result => result.id !== selectedId), latest];
       render();
-      if (!latest.online) return;
+      if (!latest.online) {
+        statusMessage.textContent = latest.reason;
+        return;
+      }
       store.set(REGION_STORE_KEY, selectedId);
       finishChoice(selectedId);
     } catch (error) {
+      if (error?.name === 'AbortError' && expectedRefresh !== refreshGeneration) return;
       finishChoice(null, error);
+    } finally {
+      if (expectedRefresh === refreshGeneration) {
+        activeController = null;
+        refreshing = false;
+        refreshButton.disabled = false;
+        refreshButton.setAttribute('aria-busy', 'false');
+        render();
+      }
     }
   }
 
   confirmButton.addEventListener('click', confirmSelection);
   cancelButton.addEventListener('click', () => finishChoice(null));
+  refreshButton.addEventListener('click', () => refreshRegions().catch(reportRefreshFailure));
   dialog.addEventListener('cancel', event => {
     event.preventDefault();
     finishChoice(null);
@@ -247,15 +496,16 @@ export function createRegionPicker({
     const savedId = store.get(REGION_STORE_KEY);
     selectedId = regions.some(region => region.id === savedId) ? savedId : null;
     results = [];
+    statusMessage.textContent = '';
     render();
     dialog.showModal();
 
-    const expectedGeneration = ++generation;
+    generation++;
     const choice = new Promise((resolve, reject) => {
       resolveChoice = resolve;
       rejectChoice = reject;
     });
-    refresh(expectedGeneration).catch(error => finishChoice(null, error));
+    refreshRegions().catch(reportRefreshFailure);
     return choice;
   }
 
@@ -266,6 +516,7 @@ export function createRegionPicker({
   render();
   return {
     chooseRegion,
+    refreshRegions,
     selectedRegion: () => selectedId,
     stop,
   };

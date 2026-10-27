@@ -51,6 +51,25 @@ test('room-authoritative gold shop', async t => {
     assert.equal(room.shopState(-1).ok, false);
   });
 
+  await t.test('awaits an authoritative asynchronous purchase result', async t => {
+    const { leaderboard: local, room: existingRoom } = await setup(t);
+    existingRoom.stop();
+    const result = {
+      ok: true, bought: 'speed', wallet: 3,
+      pending: { bombs: 0, fire: 0, speed: 2, shield: 0, stim: 0 },
+    };
+    const shared = {
+      ...local,
+      buy: async () => result,
+    };
+    const room = createRoom({ countIn: 0, arriveIn: 0, leaderboard: shared });
+    t.after(() => room.stop());
+    const seat = room.join('human-id', 'ann').seat;
+    room.state.players[seat].coins = 4;
+    const response = await room.buyShop(seat, 'speed');
+    assert.deepEqual(response, { t: 'shop', ...result });
+  });
+
   await t.test('a new player can buy from the first-spawn shop and respawn after the countdown', async t => {
     const { room } = await setup(t);
     const seat = room.join('human-id', 'ann').seat;
