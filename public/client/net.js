@@ -160,14 +160,13 @@ export function createNet({ onWelcome, onSnap, onChat, onStatus, onRoundEnd, onS
       onOpen: won => {
         if (generation !== connectionGeneration) { transport.close(); return; }
         kind = won;
-        // Say which pipe won, once, in the console. The only way to tell QUIC from TCP from the
-        // outside is latency under loss, which is not something you can eyeball.
-        console.info(`transport: ${won}`);
+        // Keep transport diagnostics available without cluttering the default console.
+        console.debug(`transport: ${won}`);
         onStatus?.('open');
         ws.send(hello);
         ping();
       },
-      onNote: note => console.info(`transport: ${note}`),
+      onNote: note => console.debug(`transport: ${note}`),
       onClose: ev => onDisconnect(ev, generation),
       onMessage: m => { if (generation === connectionGeneration) handle(m); },
     });

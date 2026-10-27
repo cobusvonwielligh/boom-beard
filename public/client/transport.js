@@ -68,8 +68,8 @@ export function createTransport({ onMessage, onOpen, onClose, onNote }) {
   };
 
   const lose = (kind, why) => {
-    onNote?.(`${kind} unavailable: ${why}`);
     if (settled) return;
+    onNote?.(`${kind} unavailable: ${why}`);
     // WebTransport is out: stop making the WebSocket wait for it.
     if (kind === 'webtransport' && !wtPending()) {
       clearPrefer();
@@ -87,18 +87,34 @@ export function createTransport({ onMessage, onOpen, onClose, onNote }) {
     const ws = new WebSocket(url);
     c.ws = ws;
     c.send = data => { if (ws.readyState === 1) ws.send(data); };
-    c.close = () => { c.dead = true; try { ws.close(); } catch { /* already closing */ } };
-
-    ws.onopen = () => win(c);
-    ws.onmessage = e => { if (active === c) onMessage(JSON.parse(e.data)); };
-    ws.onerror = () => { c.dead = true; lose('websocket', 'error'); };
-    ws.onclose = ev => {
+    c.close = () => {
       c.dead = true;
+      if (ws.readyState === WebSocket.CONNECTING) return;
+      try { ws.close(); } catch { /* already closing */ }
+    };
+
+    ws.onopen = () => {
+      if (c.dead || settled) { c.close(); return; }
+      win(c);
+    };
+    ws.onmessage = e => { if (active === c) onMessage(JSON.parse(e.data)); };
+    ws.onerror = () => {
+      if (c.dead) return;
+      c.dead = true;
+      lose('websocket', 'error');
+    };
+    ws.onclose = ev => {
       // The close code has to travel: 4000 means the server gave our seat to a newer sign-in,
       // and a client that cannot tell that from a dropped connection will reconnect and take it
       // straight back.
-      if (active === c) { active = null; onClose?.({ code: ev?.code, reason: ev?.reason }); }
-      else lose('websocket', 'closed');
+      if (active === c) {
+        c.dead = true;
+        active = null;
+        onClose?.({ code: ev?.code, reason: ev?.reason });
+      } else if (!c.dead) {
+        c.dead = true;
+        lose('websocket', 'closed');
+      }
     };
     candidates.push(c);
   }

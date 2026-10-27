@@ -33,6 +33,17 @@ test('a new name is claimed with a password, and the password is not on disk', a
   assert.ok(rec.hash.length >= 64, 'the hash is too short to be a scrypt output');
 });
 
+test('admin account listing exposes creation metadata, never credentials', async () => {
+  const a = createAccounts({ dataDir: dir() });
+  await a.register('CobusVW', PW);
+
+  const [record] = a.listForAdmin();
+  assert.equal(record.name, 'CobusVW');
+  assert.ok(Number.isFinite(record.created));
+  assert.equal(record.lastSeen, null);
+  assert.deepEqual(Object.keys(record).sort(), ['created', 'lastSeen', 'name']);
+});
+
 test('the right password gets in, the wrong one never does', async () => {
   const a = createAccounts({ dataDir: dir() });
   await a.register('cobus', PW);

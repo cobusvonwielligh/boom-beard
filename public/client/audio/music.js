@@ -495,6 +495,7 @@ async function createFileTrack({ bus, name, loop = false }) {
 
 export function createMusic() {
   let ctx = null, timer = null, tracks = null, musicGain = null, sidechain = null, analyser = null;
+  let buildPromise = null;
   let seaAnalyser = null;
   let step = 0, loops = 0, current = 0, nextTime = 0;
   /* Which track you can actually HEAR, as opposed to which one is being scheduled.
@@ -630,6 +631,12 @@ export function createMusic() {
         // The theme belongs to the dashboard and plays there the whole time you are on it.
         loop: fallback.name === 'theme',
       }) ?? fallback));
+  }
+
+  async function ensureBuilt() {
+    if (tracks) return;
+    if (!buildPromise) buildPromise = build();
+    await buildPromise;
   }
 
   /**
@@ -773,7 +780,7 @@ export function createMusic() {
      */
     async start(from = 'theme') {
       setWanted(true);
-      if (!ctx) await build();
+      await ensureBuilt();
       if (!await unlock()) return false;
       const at = Math.max(0, tracks.findIndex(t => t.name === from));
       if (playing) { if (at !== current) jumpTo(at); return true; }

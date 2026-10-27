@@ -67,6 +67,8 @@ export const config = {
   // laptop and nowhere else: names are not secret, and this one is in a public repository.
   adminKey: pick('ADMIN_KEY', 'admin', 'key', ''),
   adminName: String(pick('ADMIN_NAME', 'admin', 'name', 'cobusvw')).toLowerCase(),
+  // Second factor for the private /admin dashboard. Blank keeps the dashboard disabled.
+  adminDashboardPassword: pick('ADMIN_DASHBOARD_PASSWORD', 'admin', 'dashboard_password', ''),
 
   /* Do names need a password? On by default, and the default is the one that matters: the
    * leaderboard is keyed by name (see careerKey), so without this anybody can type your name and

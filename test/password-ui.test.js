@@ -36,13 +36,13 @@ test('password prompts and validation toasts stay visible for five seconds', asy
     'the signup prompt is friendly and pirate-themed');
 });
 
-test('player id and password fields share aligned label and input columns', async () => {
+test('player id and password fields preserve their responsive form layout', async () => {
   const css = await read('public/style.css');
 
-  has(css, /\.playerid-group\s*{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*minmax\(0,\s*215px\)\s+minmax\(0,\s*1fr\)/s,
-    'the form rows use a shared grid for their label and input columns');
-  has(css, /\.playerid-group label\s*{[^}]*justify-content:\s*flex-end;[^}]*text-align:\s*right;/s,
-    'labels align against the same right edge');
+  has(css, /\.playerid-group\s*{[^}]*display:\s*grid;[^}]*grid-template-columns:\s*auto\s+1fr/s,
+    'the input column expands while the label keeps its natural width');
+  has(css, /\.playerid-group label\s*{[^}]*justify-content:\s*flex-start;[^}]*text-align:\s*left;/s,
+    'the password label keeps its compact left-aligned layout');
   has(css, /\.playerid-group input\s*{[^}]*grid-column:\s*2;[^}]*width:\s*100%;[^}]*box-sizing:\s*border-box;/s,
     'inputs fill the same grid column and share a right edge');
   has(css, /#pwLabel\s*{\s*font-size:\s*0\.78em;/,

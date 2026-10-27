@@ -24,6 +24,13 @@
   "dependencies": {
     "@fails-components/webtransport": "^1.6.11",
     "@fails-components/webtransport-transport-http3-quiche": "^1.6.11",
+    "geoip-country": "5.0.202610240156",
+    "i18n-iso-countries": "^7.14.0",
+    "topojson-client": "^3.1.0",
+    "world-atlas": "2.0.2",
     "ws": "^8.18.0"
+  },
+  "overrides": {
+    "ip-address": "10.7.5"
   }
 }

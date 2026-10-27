@@ -60,6 +60,19 @@ const ARPS = Object.fromEntries(['DRIFT_ARP', 'SUSPEND_ARP', 'UNDERTOW_ARP']
   .map(n => [n, literal(ambientSrc, n)]));
 const BEDS = literal(ambientSrc, 'BEDS', ARPS);
 
+test('concurrent start requests share audio graph initialization', () => {
+  const start = musicSrc.slice(musicSrc.indexOf('async start(from'));
+  const buildWait = start.indexOf('await ensureBuilt()');
+  const trackLookup = start.indexOf('tracks.findIndex');
+
+  assert.match(musicSrc, /let buildPromise = null/,
+    'music initialization has no shared in-flight promise');
+  assert.match(musicSrc, /if \(!buildPromise\) buildPromise = build\(\)/,
+    'concurrent starts can still construct the audio graph more than once');
+  assert.ok(buildWait >= 0 && buildWait < trackLookup,
+    'start reads tracks before the shared build finishes');
+});
+
 // ─── the main theme ──────────────────────────────────────────────────────────
 
 test('the theme has one chord per bar and four bars per half', () => {

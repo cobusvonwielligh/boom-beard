@@ -647,6 +647,7 @@ export function attachHub(server, config) {
         }
         const made = await accounts.register(name, pw);
         if (!made.ok) return { ok: false, reject: { why: made.why, auth: 'signup' } };
+        config.geography?.recordRegistration(socket.bvIp);
         console.log(`signup "${name}"`);           // the name only. Never the password, ever.
         return { ok: true, trust: made.token };
       }

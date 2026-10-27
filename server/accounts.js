@@ -303,6 +303,21 @@ export function createAccounts({ dataDir }) {
     return out;
   }
 
+  function listForAdmin() {
+    const timestamp = value => {
+      if (value == null) return null;
+      const at = Number(value);
+      return Number.isFinite(at) ? at : null;
+    };
+    return [...accounts.values()]
+      .map(rec => ({
+        name: rec.name,
+        created: timestamp(rec.created),
+        lastSeen: timestamp(rec.lastSeen),
+      }))
+      .sort((a, b) => (a.created ?? 0) - (b.created ?? 0) || a.name.localeCompare(b.name));
+  }
+
   /** Milliseconds until this name will answer again, or 0. */
   function lockedFor(name) {
     const g = guesses.get(accountKey(name));
@@ -341,6 +356,7 @@ export function createAccounts({ dataDir }) {
   return Object.freeze({
     has,
     stats,
+    listForAdmin,
     lockedFor,
     get size() { return accounts.size; },
 

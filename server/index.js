@@ -13,6 +13,11 @@ import { config, usingTls, ROOT, sameSecret } from './config.js';
 import { canonicalTarget } from './canonical.js';
 import { createLeaderboard } from './leaderboard.js';
 import { createAccounts } from './accounts.js';
+import { createAdminAuth } from './admin-auth.js';
+import { createAdminData, createMetricHistory } from './admin-data.js';
+import { createAdminHttpHandler } from './admin-http.js';
+import { createGeography } from './geography.js';
+import geoip from 'geoip-country';
 import { startWebTransport } from './webtransport.js';
 import { createGuard } from './guard.js';
 
@@ -135,6 +140,8 @@ function handleDeploy(req, res) {
 
 const started = Date.now();
 const guard = createGuard();
+let adminHttp;
+let geography = null;
 let lastProcessSample = { at: process.hrtime.bigint(), usage: process.cpuUsage() };
 
 /**
@@ -173,9 +180,9 @@ function processMetrics() {
 
 /* A throw while answering one request must never become an uncaught exception: that handler
  * exits the process, so a single malformed URL was enough to restart the game for everybody. */
-function handle(req, res) {
+async function handle(req, res) {
   try {
-    serve(req, res);
+    await serve(req, res);
   } catch (err) {
     console.warn(`request ${req.method} ${String(req.url).slice(0, 200)} failed (${err.message})`);
     if (!res.headersSent) res.writeHead(400, { 'Content-Type': 'text/plain' });
@@ -183,7 +190,7 @@ function handle(req, res) {
   }
 }
 
-function serve(req, res) {
+async function serve(req, res) {
   // Flood protection first, before any work is spent on the request. See server/guard.js.
   if (!guard.allowRequest(req.socket.remoteAddress)) {
     res.writeHead(429, { 'Retry-After': '2', 'Content-Type': 'text/plain' });
@@ -206,6 +213,14 @@ function serve(req, res) {
   }
 
   if (url === '/deploy' && handleDeploy(req, res)) return;
+
+  if (url === '/admin' || url.startsWith('/admin/')) {
+    if (await adminHttp(req, res)) return;
+  }
+  if (url === '/admin.html') {
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    return res.end('not found');
+  }
 
   /* What build is this?
    *
@@ -242,6 +257,10 @@ function serve(req, res) {
     }));
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
     return res.end(body);
+  }
+
+  if (req.method === 'GET' && url === '/') {
+    geography?.recordHit(req.socket.remoteAddress);
   }
 
   const file = resolveFile(req.url);
@@ -407,10 +426,31 @@ const leaderboard = createLeaderboard({ dataDir: config.dataDir });
 // Passwords and trusted browsers. Beside the leaderboard because it protects the leaderboard:
 // the career is keyed by name, so the name is what needs an owner. See server/accounts.js.
 const accounts = createAccounts({ dataDir: config.dataDir });
+geography = createGeography({
+  dataDir: config.dataDir,
+  lookupCountry: ip => geoip.lookup(ip)?.country ?? null,
+});
+const adminAuth = createAdminAuth({
+  accounts: config.requirePassword ? accounts : null,
+  adminName: 'cobusvw',
+  adminKey: config.adminKey,
+  password: config.adminDashboardPassword,
+});
+const adminMetrics = createMetricHistory(processMetrics);
+const adminData = createAdminData({
+  accounts, leaderboard, metrics: adminMetrics, geography,
+});
+adminHttp = createAdminHttpHandler({
+  auth: adminAuth,
+  data: adminData,
+  pageFile: path.join(ROOT, 'public/admin.html'),
+  usingTls,
+});
 // `requirePassword: false` hands the hub no store at all rather than a store it is asked to
 // ignore - one branch instead of two, and no way for a future edit to half-enable it.
 const hub = attachHub(server, {
   ...config, leaderboard, guard,
+  geography,
   accounts: config.requirePassword ? accounts : null,
 });
 
@@ -461,6 +501,7 @@ process.on('uncaughtException', err => {
   console.error('uncaught exception - saving the leaderboard before exiting', err);
   try { hub.bankScores(); } catch (e) { console.error(`bank on crash failed (${e.message})`); }
   leaderboard.flushSync();
+  geography?.flushSync();
   // A password set seconds before a crash must not be lost: the person would be locked out of
   // their own name, with no way back except editing the file by hand.
   accounts.flushSync();
@@ -493,10 +534,12 @@ for (const sig of ['SIGTERM', 'SIGINT']) {
       // Synchronously, so the backstop timer above can never cut a save off halfway.
       await leaderboard.stop();
       if (leaderboard.flushSync()) console.log('leaderboard saved');
+      geography?.stop();
       accounts.flushSync();
     } catch (err) {
       console.warn(`leaderboard: save on shutdown failed (${err.message})`);
     }
+    adminMetrics.stop();
     hub.shutdown();
     wt?.stop();
     server.close(() => process.exit(0));

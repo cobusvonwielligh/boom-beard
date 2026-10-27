@@ -58,8 +58,9 @@ test('the game toolbar drops external links and expands the board beside a narro
     'GitHub and report-bug controls are removed from the in-game toolbar');
   assert.doesNotMatch(topbar, /href="https:\/\/github\.com/,
     'the in-game toolbar has no external GitHub links');
-  has(css, /:root\s*{[^}]*--side:\s*289px;/s,
-    'the side panel is 15 percent narrower than its 340px width');
+  const sideWidth = Number(css.match(/:root\s*{[^}]*--side:\s*(\d+)px;/s)?.[1]);
+  assert.equal(sideWidth, Math.round(289 * 1.1),
+    'the side panel is exactly ten percent wider than its previous 289px width');
   has(css, /canvas#game\s*{[^}]*width:\s*calc\(100vw - var\(--side\)/s,
     'the game canvas fills the width released by the side panel');
   has(css, /#leave:hover\s*{[^}]*background:\s*var\(--bad\);/s,
@@ -137,4 +138,10 @@ test('lifetime player popup is 25 percent smaller without a name hover effect on
     'TAB scoreboard names do not gain underline or glow on mouse hover');
   has(main, /markPlayerHover\(nameCell,\s*\{ seat: p\.i \}\)/,
     'TAB scoreboard names remain eligible to open their lifetime popup');
+});
+
+test('the winner round-over dialog is slightly wider while remaining mobile-safe', async () => {
+  const css = await read('public/style.css');
+  has(css, /\.card\.round\.won\s*\{[^}]*width:\s*min\(500px,\s*calc\(100vw - 24px\)\);/s,
+    'the winner card gets a modest desktop width increase without overflowing mobile');
 });

@@ -2685,11 +2685,11 @@ function closePassword() {
 /** True while this tab is watching rather than playing. Read by the HUD and the input loop. */
 let observing = false;
 
-$('play').onclick = () => play(false);
+$('playerForm').addEventListener('submit', event => {
+  event.preventDefault();
+  play(false);
+});
 $('watch').onclick = () => play(true);
-nameInput.onkeydown = e => { if (e.key === 'Enter') play(false); };
-// Enter in the password box plays, so a sign-in is name, tab, password, enter and nothing else.
-$('pw').onkeydown = e => { if (e.key === 'Enter') play(false); };
 $('pw').oninput = () => {
   $('pw').classList.remove('invalid');
   $('pw').removeAttribute('aria-invalid');

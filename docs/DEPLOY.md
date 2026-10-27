@@ -141,7 +141,25 @@ Precedence is **environment variable > `config.ini` > built-in default**, so a o
 | | `ssh_host` / `ssh_user` / `ssh_key` | same | - | Used by `infra/deploy.sh`. |
 | `admin` | `key` | `ADMIN_KEY` | blank | Whoever's browser presents it is always host. Open `https://<host>/?admin=<key>` once; the browser keeps it and the address bar drops it. `bootstrap.sh` generates one. |
 | | `name` | `ADMIN_NAME` | `cobusvw` | Only used when `key` is blank, which is right on a laptop and wrong anywhere else: names are not secret. |
+| | `dashboard_password` | `ADMIN_DASHBOARD_PASSWORD` | blank | Second factor for `/admin`; blank disables the dashboard. Set the secret only in the server environment or ignored `config.ini`, never in the repository. |
 | `dev` | `lag` / `jitter` | `LAG` / `JITTER` | `0` | Outbound delay in ms. The process **refuses to start** if either is non-zero while TLS is configured. |
+
+The unlinked `/admin` page is available only when `ADMIN_KEY` and
+`ADMIN_DASHBOARD_PASSWORD` are configured and `REQUIRE_PASSWORD` remains enabled. Open
+`/?admin=<key>` once in the `cobusvw` game account's trusted browser, then use `/admin` and the
+dashboard passphrase. The second factor is never shipped to the browser or stored in git; on
+production it is accepted only over TLS.
+`bootstrap.sh` preserves an existing dashboard password and accepts a new one through the
+`ADMIN_DASHBOARD_PASSWORD` environment variable.
+The dashboard currently requires TLS to terminate directly in the app. It is not supported with
+`SKIP_TLS=1` behind a TLS-terminating load balancer.
+
+The admin geography panel counts home-page views and new registrations by country. It performs
+GeoLite2 country lookups locally, persists only daily ISO country totals in
+`<data_dir>/geography.json` for up to 365 days, and never saves the source IP. The map is
+approximate and must not be used to identify an individual. GeoLite2 data is licensed by MaxMind;
+the dashboard displays the required attribution. Refresh the pinned `geoip-country` package
+at least monthly to keep its bundled country database current. Past traffic cannot be backfilled.
 
 Local development needs no file at all: `npm start` → `http://localhost:8080`.
 

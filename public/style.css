@@ -299,7 +299,7 @@ body {
 
 :root {
   --bar: 52px;
-  --side: 289px;
+  --side: 318px;
   --gap: 10px;
   /* The landing title. See #title: the base is the size that fits the card, the scale is how far
      past it the title goes, and the card's padding and the title's lift are both derived from
@@ -2585,7 +2585,7 @@ body.hurt:not(.dead) #avatar {
    Every step is a real jump - 66, 82, 100, 118 - because two sizes eight pixels apart are the
    same size to anybody who is not comparing them side by side. */
 /* clamp() rather than fixed pixels, because the banner is centred on the BOARD - the window
-   minus the 340px side panel - not on the window. At a fixed 118px, "RAMPAGE!!" is about 830px
+   minus the side panel - not on the window. At a fixed 118px, "RAMPAGE!!" is about 830px
    of type inside a 910px board on a 1280 screen: one narrow window away from wrapping, and a
    kill streak that wraps onto two lines is a paragraph. The middle term does the work; the
    outer two stop it from vanishing or exploding. */
@@ -3121,7 +3121,7 @@ body.hurt:not(.dead) #avatar {
  * the twenty seconds of round-over standings.
  */
 
-/* Over the BOARD, not the window. The side panel is 340px of chrome and the banner another 52,
+/* Over the BOARD, not the window. The side panel is `var(--side)` of chrome and the banner another 52,
    so a viewport-centred dialog sits visibly off to one side of the thing you are looking at -
    and it dimmed the chat and the standings, which are exactly what you read while dead. The
    insets match canvas#game exactly. */
@@ -3294,6 +3294,9 @@ body.hurt:not(.dead) #avatar {
 
 /* You won it. The only place in the interface that gets the cast treatment on demand - and the
    only time this card ever says something worth looking at twice. */
+.card.round.won {
+  width: min(500px, calc(100vw - 24px));
+}
 .card.round.won #deadTitle {
   font-family: var(--display);
   font-size: clamp(26px, 3.2vw, 38px);
@@ -3743,7 +3746,7 @@ body.intermission #dead {
 
 /* Centred on the BOARD, not the window - the same correction the kill-streak banner got.
  *
- * The side panel is 340px of chrome and the top bar is another 52. A panel centred on the
+ * The side panel is `var(--side)` of chrome and the top bar is another 52. A panel centred on the
  * viewport therefore sits visibly off to one side and low of the thing you are looking at, and
  * TAB is pressed mid-round by somebody who wants to glance and get back. Anchored to the board
  * it lands where their eyes already are.
@@ -4906,13 +4909,20 @@ kbd.wide {
   width: 16px;
   height: 16px;
 }
+.geoPrivacyDisclosure {
+  margin: 8px 0 0;
+  color: var(--dim);
+  font-size: 9px;
+  line-height: 1.35;
+  text-align: center;
+}
 
 /* ========================================
    THE COUNT-IN
    Five seconds at the top of every round.
    ======================================== */
 
-/* Dead centre of the BOARD, not of the window: the side panel takes 340px off the right, and a
+/* Dead centre of the BOARD, not of the window: the side panel takes `var(--side)` off the right, and a
    count-in centred on the viewport sits visibly off to one side of the thing it is counting in.
    The same arithmetic #centre and #dead use, for the same reason.
 

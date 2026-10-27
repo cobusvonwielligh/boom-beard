@@ -469,7 +469,7 @@
       </div>
     </div>
 
-    <!-- Centred on the BOARD, not the window: the side panel is 340px of chrome, and an
+    <!-- Centred on the BOARD, not the window: the side panel is `var(--side)` of chrome, and an
      announcement centred on the viewport sits visibly off to one side of the thing you are
      looking at. -->
     <!-- The count-in: five seconds at the top of every round, in the same cast gold as the clock it
@@ -889,56 +889,58 @@
             <span>Cause chaos...</span>
             <span>try to survive!</span>
           </p>
-          <div class="playerid-group">
-            <label for="name">PLAYER ID:</label>
-            <input
-              id="name"
-              type="text"
-              placeholder="pick a player id"
-              autocomplete="off"
-              autofocus
-            />
-          </div>
-          <!-- The password, hidden until the server asks for it - which is the first time a name is
-           claimed, and the first time it arrives from a browser the server has not seen. After
-           that this browser holds a token and the box never appears again. See server/accounts.js
-           and the `auth` branch of onRejected in client/main.js.
-
-           `autocomplete` is on and correct per mode (new-password / current-password) so a real
-           password manager can do its job: the alternative is sixteen people typing the same four
-           letters, which is worse security than any amount of hardening here can buy back. -->
-          <div class="playerid-group" id="pwGroup" hidden>
-            <label for="pw" id="pwLabel">PASSWORD:</label>
-            <!-- The field, the reveal button and the strength bar as one unit. No note underneath:
-             every reason - too short, too easy, wrong, locked out, name already playing - goes
-             to the toast, which is where every other message in this game already appears. One
-             place to look for "what went wrong" beats two. -->
-            <div class="pwField">
+          <form id="playerForm" autocomplete="on">
+            <div class="playerid-group">
+              <label for="name">PLAYER ID:</label>
               <input
-                id="pw"
-                type="password"
-                placeholder="your password"
-                autocomplete="current-password"
+                id="name"
+                type="text"
+                placeholder="pick a player id"
+                autocomplete="off"
+                autofocus
               />
-              <button
-                id="pwEye"
-                class="pwEye"
-                type="button"
-                aria-label="show password"
-                aria-pressed="false"
-              >
-                <svg aria-hidden="true"><use href="#i-eye" /></svg>
-              </button>
-              <!-- Strength, as a bar and never as a sentence. It is only shown while setting a new
-               password, because telling somebody their EXISTING password is weak while they are
-               trying to sign in is noise they cannot act on. -->
-              <div class="pwMeter" id="pwMeter" aria-hidden="true"><i></i></div>
             </div>
-          </div>
-          <button id="play">play</button>
+            <!-- The password, hidden until the server asks for it - which is the first time a name is
+             claimed, and the first time it arrives from a browser the server has not seen. After
+             that this browser holds a token and the box never appears again. See server/accounts.js
+             and the `auth` branch of onRejected in client/main.js.
+
+             `autocomplete` is on and correct per mode (new-password / current-password) so a real
+             password manager can do its job: the alternative is sixteen people typing the same four
+             letters, which is worse security than any amount of hardening here can buy back. -->
+            <div class="playerid-group" id="pwGroup" hidden>
+              <label for="pw" id="pwLabel">PASSWORD:</label>
+              <!-- The field, the reveal button and the strength bar as one unit. No note underneath:
+               every reason - too short, too easy, wrong, locked out, name already playing - goes
+               to the toast, which is where every other message in this game already appears. One
+               place to look for "what went wrong" beats two. -->
+              <div class="pwField">
+                <input
+                  id="pw"
+                  type="password"
+                  placeholder="your password"
+                  autocomplete="current-password"
+                />
+                <button
+                  id="pwEye"
+                  class="pwEye"
+                  type="button"
+                  aria-label="show password"
+                  aria-pressed="false"
+                >
+                  <svg aria-hidden="true"><use href="#i-eye" /></svg>
+                </button>
+                <!-- Strength, as a bar and never as a sentence. It is only shown while setting a new
+                 password, because telling somebody their EXISTING password is weak while they are
+                 trying to sign in is noise they cannot act on. -->
+                <div class="pwMeter" id="pwMeter" aria-hidden="true"><i></i></div>
+              </div>
+            </div>
+          </form>
+          <button id="play" type="submit" form="playerForm">play</button>
           <!-- Always available, including when every seat is taken: a spectator costs nobody a
            place, so "full" is not a reason to turn one away. -->
-          <button id="watch" class="ghost">spectate only</button>
+          <button id="watch" type="button" class="ghost">spectate only</button>
           <div class="keys">
             <h2>Controls</h2>
             <dl>
@@ -996,6 +998,9 @@
             >
               <svg><use href="#i-bug" /></svg>report a bug
             </a>
+          </p>
+          <p class="geoPrivacyDisclosure">
+            Country-level visit and sign-up counts only; IP addresses are not included in analytics.
           </p>
         </div>
         <!-- A stack of powder kegs sitting on the top edge of the card, over it rather than behind

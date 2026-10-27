@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#090d13" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Boom Beard // Admin</title>
+    <link rel="stylesheet" href="/admin.css" />
+    <script type="module" src="/admin.js"></script>
+  </head>
+  <body>
+    <div class="backdropGrid" aria-hidden="true"></div>
+
+    <section id="loginView" class="authView">
+      <main class="authCard">
+        <div class="brandLockup">
+          <span class="brandMark" aria-hidden="true">BB</span>
+          <span>BOOM BEARD <b>//</b> OPS</span>
+        </div>
+        <p class="eyebrow"><span class="liveDot"></span> PRIVATE ADMIN CHANNEL</p>
+        <h1>COMMAND<br /><span>DECK</span></h1>
+        <p class="authIntro">
+          Verify this trusted <strong>cobusvw</strong> browser, then enter the dashboard passphrase.
+        </p>
+        <form id="adminLogin">
+          <label for="adminPassword">SECOND FACTOR</label>
+          <div class="passwordField">
+            <input
+              id="adminPassword"
+              type="password"
+              autocomplete="current-password"
+              placeholder="Dashboard passphrase"
+              required
+            />
+            <span aria-hidden="true">•••</span>
+          </div>
+          <button class="primaryButton" type="submit">
+            <span>UNLOCK CONTROL ROOM</span><span aria-hidden="true">↗</span>
+          </button>
+        </form>
+        <p id="authMessage" class="message" role="status" aria-live="polite"></p>
+        <div class="authFoot">
+          <span>OWNER ACCESS ONLY</span>
+          <a href="/">RETURN TO GAME</a>
+        </div>
+      </main>
+      <div class="authOrbit orbitOne" aria-hidden="true"></div>
+      <div class="authOrbit orbitTwo" aria-hidden="true"></div>
+    </section>
+
+    <div id="dashboard" class="dashboard" hidden>
+      <aside class="sideRail">
+        <a class="railBrand" href="#overview" aria-label="Boom Beard operations home">
+          <span class="brandMark">BB</span>
+        </a>
+        <nav class="railNav" aria-label="Dashboard sections">
+          <a class="railLink selected" href="#overview" aria-label="Overview" title="Overview">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>
+          </a>
+          <a class="railLink" href="#registrations" aria-label="Registrations" title="Registrations">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5m0 14h16M7 15l4-4 3 2 5-6" /><path d="M16 7h3v3" /></svg>
+          </a>
+          <a class="railLink" href="#players" aria-label="Players" title="Players">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3" /><path d="M3 20c0-3.1 2.7-5 6-5s6 1.9 6 5M16 5.5a3 3 0 010 5.8M18 15c2 .7 3 2.3 3 5" /></svg>
+          </a>
+        </nav>
+        <div class="railBottom">
+          <span class="serverLight" title="Authenticated session"></span>
+          <button id="logoutButton" class="iconButton" type="button" aria-label="Lock dashboard" title="Lock dashboard">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5M15 12H3M14 3h5a2 2 0 012 2v14a2 2 0 01-2 2h-5" /></svg>
+          </button>
+        </div>
+      </aside>
+
+      <main class="mainContent">
+        <header class="topBar">
+          <div>
+            <div class="breadcrumb"><span>BOOM BEARD</span><i>/</i><b>OPERATIONS</b></div>
+            <p class="topSub">Server intelligence and player activity</p>
+          </div>
+          <div class="topStatus">
+            <span class="statusPill"><span class="liveDot"></span> PRIVATE SESSION</span>
+            <span class="ownerBadge"><span class="ownerGlyph">C</span> COBUSVW</span>
+          </div>
+        </header>
+
+        <section id="overview" class="pageIntro">
+          <div>
+            <p class="eyebrow">SYSTEM OVERVIEW <span class="eyebrowRule"></span> LIVE TELEMETRY</p>
+            <h2>Command <span>Deck</span></h2>
+            <p class="sectionLead">A clear signal from the server, the island, and everyone playing.</p>
+          </div>
+          <div class="clockBlock">
+            <span class="clockLabel">LOCAL TIME</span>
+            <time id="localClock">--:--:--</time>
+          </div>
+        </section>
+
+        <section id="resourceMetrics" class="metricGrid" aria-label="Server resource utilization">
+          <article class="metricCard" data-tone="gold">
+            <div class="metricTop">
+              <span class="metricIcon cpuIcon" aria-hidden="true">CPU</span>
+              <span class="metricTag">PROCESS / ONE CORE</span>
+            </div>
+            <div class="metricValue"><span id="cpuValue">--</span><small>%</small></div>
+            <p class="metricCaption">CPU UTILIZATION <span id="cpuTime">WAITING FOR SAMPLE</span></p>
+            <canvas id="cpuChart" class="sparkline" aria-label="CPU utilization history"></canvas>
+          </article>
+          <article class="metricCard" data-tone="blue">
+            <div class="metricTop">
+              <span class="metricIcon memoryIcon" aria-hidden="true">RAM</span>
+              <span class="metricTag">PROCESS / HOST MEMORY</span>
+            </div>
+            <div class="metricValue"><span id="memoryValue">--</span><small>%</small></div>
+            <p class="metricCaption">MEMORY SHARE <span id="memoryTime">WAITING FOR SAMPLE</span></p>
+            <canvas id="memoryChart" class="sparkline" aria-label="Memory utilization history"></canvas>
+          </article>
+          <article class="metricCard" data-tone="green">
+            <div class="metricTop">
+              <span class="metricIcon storageIcon" aria-hidden="true">SSD</span>
+              <span class="metricTag">FILESYSTEM CAPACITY</span>
+            </div>
+            <div class="metricValue"><span id="storageValue">--</span><small>%</small></div>
+            <p class="metricCaption">STORAGE USED <span id="storageTime">WAITING FOR SAMPLE</span></p>
+            <canvas id="storageChart" class="sparkline" aria-label="Filesystem utilization history"></canvas>
+          </article>
+        </section>
+
+        <section id="registrations" class="panel registrationPanel">
+          <div class="panelHeader">
+            <div>
+              <p class="eyebrow">GROWTH SIGNAL</p>
+              <h3>Registrations <span class="headingSlash">//</span> over time</h3>
+            </div>
+            <label class="selectWrap">
+              <span>WINDOW</span>
+              <select id="registrationPeriod" aria-label="Registration chart time window">
+                <option value="7">7 DAYS</option>
+                <option value="30" selected>30 DAYS</option>
+                <option value="90">90 DAYS</option>
+                <option value="365">12 MONTHS</option>
+                <option value="all">ALL TIME</option>
+              </select>
+            </label>
+          </div>
+          <div class="registrationSummary">
+            <div>
+              <span class="summaryLabel">NEW ACCOUNTS</span>
+              <strong id="registrationCurrent">--</strong>
+              <span id="registrationDates" class="summaryDates">Loading range</span>
+            </div>
+            <div id="registrationChange" class="changeBadge">
+              <span id="changeArrow" aria-hidden="true">—</span>
+              <span id="changeValue">--</span>
+              <small>VS PREVIOUS PERIOD</small>
+            </div>
+          </div>
+          <div class="chartFrame">
+            <canvas id="registrationChart" aria-label="New account registrations over time"></canvas>
+            <div id="registrationEmpty" class="chartEmpty" hidden>No registrations in this period.</div>
+          </div>
+          <div class="chartAxis"><span id="registrationStart">—</span><span id="registrationEnd">—</span></div>
+        </section>
+
+        <section id="geography" class="panel geographyPanel">
+          <div class="panelHeader">
+            <div>
+              <p class="eyebrow">COMMUNITY ORIGIN</p>
+              <h3>Global footprint <span class="headingSlash">//</span> country heatmap</h3>
+            </div>
+            <label class="selectWrap">
+              <span>WINDOW</span>
+              <select id="geographyPeriod" aria-label="Geographic activity time window">
+                <option value="7">7 DAYS</option>
+                <option value="30" selected>30 DAYS</option>
+                <option value="90">90 DAYS</option>
+                <option value="365">12 MONTHS</option>
+              </select>
+            </label>
+          </div>
+          <div class="geographyToolbar">
+            <div class="geoMetricSwitch" role="group" aria-label="Heatmap data">
+              <button type="button" data-geo-metric="hits" aria-pressed="true">SITE VISITS</button>
+              <button type="button" data-geo-metric="registrations" aria-pressed="false">SIGN-UPS</button>
+              <button type="button" data-geo-metric="both" aria-pressed="false">BOTH</button>
+            </div>
+            <div class="geoTotals">
+              <span><b id="geoHits">--</b><small>VISITS</small></span>
+              <i></i>
+              <span><b id="geoRegistrations">--</b><small>SIGN-UPS</small></span>
+              <i></i>
+              <span><b id="geoCountryCount">--</b><small>COUNTRIES</small></span>
+            </div>
+          </div>
+          <div class="worldMapFrame">
+            <svg id="worldMap" viewBox="0 0 960 480" role="img" aria-label="Country heatmap of website visits and registrations">
+              <title>Country-level activity heatmap</title>
+              <g id="worldCountries"></g>
+            </svg>
+            <p id="geographyStatus" class="mapStatus" role="status" aria-live="polite">
+              Loading country-level activity…
+            </p>
+          </div>
+          <div class="mapLegend">
+            <span>LOW ACTIVITY</span><i aria-hidden="true"></i><span>HIGH ACTIVITY</span>
+            <span id="geographyRange" class="mapRange">LAST 30 DAYS</span>
+          </div>
+          <div id="topCountries" class="topCountries" aria-label="Most active countries"></div>
+          <p class="geoPrivacyNote">
+            Approximate country-level estimates from
+            <a href="https://www.maxmind.com/" target="_blank" rel="noopener noreferrer">GeoLite2 by MaxMind</a>.
+            Only daily country totals are retained; raw IPs are not included in analytics. Past locations
+            are not available. Map data: Natural Earth via world-atlas.
+          </p>
+        </section>
+
+        <section id="players" class="panel playersPanel">
+          <div class="panelHeader playersHeading">
+            <div>
+              <p class="eyebrow">PLAYER INTELLIGENCE</p>
+              <h3>Account registry <span class="headingSlash">//</span> <span id="playerCount">--</span></h3>
+            </div>
+            <span class="readonlyPill"><span></span> READ ONLY</span>
+          </div>
+          <div class="tableControls">
+            <label class="searchField">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8" /><path d="m16 16 5 5" /></svg>
+              <input
+                id="playerSearch"
+                type="search"
+                placeholder="Search player name..."
+                autocomplete="off"
+                maxlength="100"
+              />
+            </label>
+            <label class="dateField">
+              <span>REGISTERED FROM (UTC)</span>
+              <input id="fromDate" type="date" />
+            </label>
+            <label class="dateField">
+              <span>REGISTERED TO (UTC)</span>
+              <input id="toDate" type="date" />
+            </label>
+            <button id="clearDates" class="quietButton" type="button">CLEAR DATES</button>
+          </div>
+          <div id="adminNotice" class="tableNotice" role="status" aria-live="polite"></div>
+          <div class="tableScroller">
+            <table>
+              <thead>
+                <tr>
+                  <th><button data-sort="registered" type="button">REGISTERED <span class="sortMark"></span></button></th>
+                  <th><button data-sort="name" type="button">PLAYER <span class="sortMark"></span></button></th>
+                  <th><button data-sort="level" type="button">LEVEL <span class="sortMark"></span></button></th>
+                  <th><button data-sort="xp" type="button">XP / SCORE <span class="sortMark"></span></button></th>
+                  <th><button data-sort="kills" type="button">KILLS <span class="sortMark"></span></button></th>
+                  <th><button data-sort="deaths" type="button">DEATHS <span class="sortMark"></span></button></th>
+                  <th><button data-sort="coins" type="button">COINS <span class="sortMark"></span></button></th>
+                  <th>MEDALS</th>
+                </tr>
+              </thead>
+              <tbody id="playerRows">
+                <tr><td class="tableEmpty" colspan="8">Loading player records...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <footer class="tableFooter">
+            <label class="pageSize">
+              <span>ROWS</span>
+              <select id="pageSize" aria-label="Rows per page">
+                <option value="10">10</option>
+                <option value="25" selected>25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+              </select>
+            </label>
+            <span id="pageInfo">—</span>
+            <div class="pageButtons">
+              <button id="previousPage" type="button" aria-label="Previous page">←</button>
+              <button id="nextPage" type="button" aria-label="Next page">→</button>
+            </div>
+          </footer>
+        </section>
+
+        <footer class="pageFoot">
+          <span>BOOM BEARD <i>//</i> INTERNAL USE ONLY</span>
+          <span>ACCOUNT XP IS LIFETIME SCORE <b>·</b> RESOURCE HISTORY RETAINS ONE HOUR</span>
+        </footer>
+      </main>
+    </div>
+  </body>
+</html>

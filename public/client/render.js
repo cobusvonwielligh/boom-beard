@@ -25,6 +25,7 @@ import { gullAt } from '/shared/sim/gulls.js';
 import { mossValue } from '/shared/moss.js';
 import { streakActive } from '/shared/sim/state.js';
 import { rockCornerRadii } from './rock-corners.js';
+import { squaredDistanceToLand } from './shore-distance.js';
 import {
   radarBombColor, radarBombFuseFraction, radarBombPulseAlpha, radarBombPulseHz,
   radarBombDiamondAngle, radarBombSizePx, radarBombWidthPx, selectRadarBombs,
@@ -431,10 +432,10 @@ export function createRenderer(canvas, world) {
    * everything else, so the blur is paid once per chunk and never per frame - which is the only
    * reason a canvas filter is affordable here at all.
    */
-  const SHADOW_ALPHA = 0.11;
-  const BLOCK_SHADOW_ALPHA = 0.18;
+  const SHADOW_ALPHA = 0.1375;
+  const BLOCK_SHADOW_ALPHA = 0.225;
   const BLOCK_SHADOW_WIDTH = 1.08;
-  const SHADOW_BLUR_PX = 6.5;
+  const SHADOW_BLUR_PX = 4.875;
   let sunFor = null, sun = { dx: 0, dy: 0 };
 
   /* Everything a shadow is allowed to fall on: the floor, and never the blocks standing on it.
@@ -2629,16 +2630,15 @@ export function createRenderer(canvas, world) {
      * that it was painted outward from each sea-facing edge, which left a dark square notched out
      * of every outside corner and gave inside corners two coats. */
     const Q = 4, mask = coastMask(), MW = map.w * Q, MH = map.h * Q;
-    const land = (x, y) => x >= 0 && y >= 0 && x < MW && y < MH && mask[y * MW + x] === 1;
     const R = SHELF_CELLS;
-    const offsets = [];
-    for (let dy = -R; dy <= R; dy++) {
-      for (let dx = -R; dx <= R; dx++) {
-        const d2 = dx * dx + dy * dy;
-        if (d2 <= R * R) offsets.push([dx, dy, d2]);
-      }
+    const PAD_CELLS = P * Q;
+    const GRID_W = MW + PAD_CELLS * 2 + 1;
+    const GRID_H = MH + PAD_CELLS * 2;
+    const paddedMask = new Uint8Array(GRID_W * GRID_H);
+    for (let y = 0; y < MH; y++) {
+      paddedMask.set(mask.subarray(y * MW, (y + 1) * MW), (y + PAD_CELLS) * GRID_W + PAD_CELLS);
     }
-    offsets.sort((a, b) => a[2] - b[2]);                 // nearest first: stop at the first land
+    const nearestLand = squaredDistanceToLand(GRID_W, GRID_H, paddedMask);
     const q = COAST_Q;
     const lightEdge = COAST_RING_CELLS + LIGHT_WATER_CELLS;
     const innerSandEdge = lightEdge + SAND_WATER_CELLS / 2;
@@ -2657,27 +2657,24 @@ export function createRenderer(canvas, world) {
          * reads as depth; one wide band of sand reads as a beach towel.
          */
         let band = 0;
-        if (x < MW + P * Q && !land(x, y)) {
-          for (const [dx, dy, d2] of offsets) {
-            if (!land(x + dx, y + dy)) continue;
-            // Every shelf cell gets a continuous seabed underneath it. The water bands are
-            // translucent, so this remains visible as the light brown sand beneath the blue.
-            sandBase.push(x, y);
-            // The old quarter-block lip comes first. The gold ring, light water and sandy water
-            // retain their original widths, measured from the outside edge of that lip.
-            const shelfD = Math.max(0, Math.sqrt(d2) - COAST_ROCK_CELLS);
-            /* The straight edge needs two quarter cells; at a bend the diagonal neighbour can be
-             * almost three quarter-cell steps away even though it is still part of that same
-             * two-cell-thick lip. Include those diagonal cells or the corners show blue holes. */
-            if (Math.max(Math.abs(dx), Math.abs(dy)) <= COAST_ROCK_CELLS) {
-              quarterRock.push(x, y);
-              quarterRockSet.add(`${x},${y}`);
-            }
-            else band = shelfD <= COAST_RING_CELLS ? 1
-              : shelfD <= LIGHT_WATER_CELLS + COAST_RING_CELLS ? 2
-                : shelfD <= innerSandEdge ? 3 : 4;
-            break;
+        const gx = x + PAD_CELLS, gy = y + PAD_CELLS;
+        const d2 = nearestLand[gy * GRID_W + gx];
+        if (x < MW + PAD_CELLS && d2 > 0 && d2 <= R * R) {
+          // Every shelf cell gets a continuous seabed underneath it. The water bands are
+          // translucent, so this remains visible as the light brown sand beneath the blue.
+          sandBase.push(x, y);
+          // The old quarter-block lip comes first. The gold ring, light water and sandy water
+          // retain their original widths, measured from the outside edge of that lip.
+          const shelfD = Math.max(0, Math.sqrt(d2) - COAST_ROCK_CELLS);
+          /* A squared distance of at most 8 is exactly the two-cell square around the coast:
+           * the next possible integer offset outside it has squared distance 9. */
+          if (d2 <= COAST_ROCK_CELLS * COAST_ROCK_CELLS * 2) {
+            quarterRock.push(x, y);
+            quarterRockSet.add(`${x},${y}`);
           }
+          else band = shelfD <= COAST_RING_CELLS ? 1
+            : shelfD <= LIGHT_WATER_CELLS + COAST_RING_CELLS ? 2
+              : shelfD <= innerSandEdge ? 3 : 4;
         }
         if (run && run.band === band) { run.n++; continue; }
         if (run && run.band) BANDS[run.band - 1].push(run.x, y, run.n);

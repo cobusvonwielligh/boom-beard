@@ -15,7 +15,8 @@
 #   ALT_HOSTS  optional. Space-separated extra names for the same certificate (e.g. www).
 #   EMAIL      required unless SKIP_TLS=1. For certificate expiry notices.
 #   SKIP_TLS=1 provision everything except the certificate; serve plain HTTP on 8080. Use this
-#              before DNS has propagated, or behind a load balancer that terminates TLS.
+#   before DNS has propagated, or behind a load balancer that terminates TLS. The /admin dashboard
+#   requires app-level TLS and is unavailable in this mode.
 #   REPO       git remote to clone if /opt/boom-beard is not already a clone.
 #
 # Note: no apostrophes inside ${VAR:?msg} - bash parses them as a quote and dies at EOF.
@@ -134,15 +135,19 @@ SUDO
 sudo chmod 440 /etc/sudoers.d/boom-beard
 sudo visudo -c -f /etc/sudoers.d/boom-beard >/dev/null
 
-# config.ini is never in git and never rsynced, so a deploy cannot clobber it. Preserve an
-# existing deploy token across re-runs - regenerating it would silently break CI.
+# config.ini is never in git and never rsynced, so a deploy cannot clobber it. Preserve existing
+# secrets across re-runs - regenerating the deploy token breaks CI, and rotating the dashboard
+# password without notice would lock the owner out.
 # Guard the file test rather than relying on 2>/dev/null: with `set -o pipefail` a missing file
 # makes the whole pipeline fail and takes the script with it.
 TOKEN=""
 ADMIN_KEY=""
+DASHBOARD_PASSWORD=${ADMIN_DASHBOARD_PASSWORD:-}
 if [ -f "$APP_DIR/config.ini" ]; then
   TOKEN=$(sed -n 's/^ *token *= *//p' "$APP_DIR/config.ini" | head -1 || true)
   ADMIN_KEY=$(sed -n 's/^ *key *= *//p' "$APP_DIR/config.ini" | head -1 || true)
+  [ -n "$DASHBOARD_PASSWORD" ] \
+    || DASHBOARD_PASSWORD=$(sed -n 's/^ *dashboard_password *= *//p' "$APP_DIR/config.ini" | head -1 || true)
 fi
 [ -n "$TOKEN" ] || TOKEN=$(openssl rand -hex 32)
 [ -n "$ADMIN_KEY" ] || ADMIN_KEY=$(openssl rand -hex 16)
@@ -164,6 +169,7 @@ token = $TOKEN
 
 [admin]
 key = $ADMIN_KEY
+dashboard_password = $DASHBOARD_PASSWORD
 
 [dev]
 lag    = 0

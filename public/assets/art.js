@@ -167,7 +167,7 @@ const hash = (x, y) => {
 // was the single biggest source of contrast on the map. Halving the shadow and easing the
 // highlight keeps the form without the map looking etched.
 const light = 'rgba(255,255,255,0.09)';
-const dark = 'rgba(0,0,0,0.16)';
+const dark = 'rgba(0,0,0,0.2)';
 
 /** Top-left highlight, bottom-right shadow. Apply to every solid block. */
 const bevel = (c, x, y, w, h, t = 2) => {
@@ -723,11 +723,11 @@ function castShadow(c, type) {
   }
   const g = c.createLinearGradient(0, S - 5, 0, S);
   g.addColorStop(0, 'rgba(0,0,0,0)');
-  g.addColorStop(1, 'rgba(0,0,0,0.3)');
+  g.addColorStop(1, 'rgba(0,0,0,0.375)');
   px(c, 0, S - 5, S, 5, g);
   const h = c.createLinearGradient(S - 5, 0, S, 0);
   h.addColorStop(0, 'rgba(0,0,0,0)');
-  h.addColorStop(1, 'rgba(0,0,0,0.22)');
+  h.addColorStop(1, 'rgba(0,0,0,0.275)');
   px(c, S - 5, 0, 5, S, h);
   c.restore();
 }
@@ -856,7 +856,7 @@ export function drawPlayer(c, { dir = 3, frame = 0, colorIndex = 0, slot = null,
   // with no horizon, so contact is the only depth cue there is.
   if (!dead && shadow) {
     c.save();
-    c.globalAlpha = 0.3;
+    c.globalAlpha = 0.375;
     c.beginPath();
     c.ellipse(TILE_PX / 2, TILE_PX / 2 + 8, 7, 2.6, 0, 0, 7);
     c.fillStyle = '#000';
@@ -1780,7 +1780,7 @@ export function drawShip(c) {
    * crew. Each throws a small shadow away from the light, like everything else on the board.
    */
   const cask = (bx, by, r) => {
-    c.beginPath(); c.arc(bx + 1.2, by + 1.5, r, 0, 7); c.fillStyle = 'rgba(0,0,0,0.25)'; c.fill();
+    c.beginPath(); c.arc(bx + 1.2, by + 1.5, r, 0, 7); c.fillStyle = 'rgba(0,0,0,0.3125)'; c.fill();
     c.beginPath(); c.arc(bx, by, r, 0, 7); c.fillStyle = '#7a5532'; c.fill();
     c.strokeStyle = '#2a2d31'; c.lineWidth = 1.1; c.stroke();
     c.strokeStyle = 'rgba(40,24,12,0.45)'; c.lineWidth = 0.5;
@@ -1796,7 +1796,7 @@ export function drawShip(c) {
   };
   cask(-32, W / 2 - 12, 3.6);
   cask(-30, W / 2 - 19.5, 3.2);
-  px(c, -32.5, -13.5, 8, 8, 'rgba(0,0,0,0.25)');                        // the crate's shadow
+  px(c, -32.5, -13.5, 8, 8, 'rgba(0,0,0,0.3125)');                      // the crate's shadow
   rr(c, -34, -15, 8, 8, 0.8, '#8b6a42');
   for (let i = 1; i < 4; i++) px(c, -34, -15 + i * 2, 8, 0.5, 'rgba(50,32,16,0.45)');
   px(c, -30.5, -15, 1, 8, '#c9a874');                                   // its lashing

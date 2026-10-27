@@ -1,7 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parseIni, sameSecret } from '../server/config.js';
 import { playerName } from '../server/net.js';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 test('ini parsing', async t => {
   await t.test('sections, comments, and values with = in them', () => {
@@ -40,6 +45,21 @@ test('secrets compare only when they match exactly, and blank never matches', ()
   assert.equal(sameSecret(undefined, 'abc'), false);
   assert.equal(sameSecret('', ''), false, 'an unset key would let everybody in');
   assert.equal(sameSecret(undefined, ''), false);
+});
+
+test('the admin dashboard password is read from server configuration', () => {
+  const result = spawnSync(process.execPath, [
+    '--input-type=module',
+    '-e',
+    "import { config } from './server/config.js'; process.stdout.write(config.adminDashboardPassword)",
+  ], {
+    cwd: ROOT,
+    env: { ...process.env, ADMIN_DASHBOARD_PASSWORD: 'admin-secret-for-test' },
+    encoding: 'utf8',
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, 'admin-secret-for-test');
 });
 
 test('a name cannot pass for the server in chat', () => {

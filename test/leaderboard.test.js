@@ -103,6 +103,18 @@ test('leaderboard', async t => {
     await lb.stop();
   });
 
+  await t.test('all() returns every career in leaderboard order', async t => {
+    const dir = await tempDir(t);
+    const lb = createLeaderboard({ dataDir: dir });
+
+    lb.record('a', { name: 'ann', score: 100, kills: 1 });
+    lb.record('b', { name: 'bob', score: 300, kills: 2 });
+    lb.record('c', { name: 'cid', score: 100, kills: 5 });
+
+    assert.deepEqual(lb.all().map(player => player.playerId), ['b', 'c', 'a']);
+    await lb.stop();
+  });
+
   await t.test('flush and reload round-trip exactly', async t => {
     const dir = await tempDir(t);
     const first = createLeaderboard({ dataDir: dir });

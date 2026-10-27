@@ -239,10 +239,10 @@ export function createLeaderboard({ dataDir }) {
 
   const byName = (a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
 
-  const top = (n = 10) => [...players]
+  const all = () => [...players]
     .map(([id, e]) => view(id, e))
-    .sort((a, b) => b.score - a.score || b.kills - a.kills || byName(a, b))
-    .slice(0, n);
+    .sort((a, b) => b.score - a.score || b.kills - a.kills || byName(a, b));
+  const top = (n = 10) => all().slice(0, n);
 
   const snapshot = () =>
     JSON.stringify({ version: VERSION, players: Object.fromEntries(players) }, null, 2);
@@ -338,6 +338,6 @@ export function createLeaderboard({ dataDir }) {
   };
 
   return Object.freeze({
-    record, award, get, top, economy, buy, consumePending, flush, flushSync, stop, file,
+    record, award, get, top, all, economy, buy, consumePending, flush, flushSync, stop, file,
   });
 }
