@@ -165,14 +165,21 @@ test('double-clicking an online region confirms the selection', async () => {
   });
 
   const choice = picker.chooseRegion();
-  await flushProbes();
-  root.children.find(button => button.attributes['data-region'] === 'us').click();
+  const probeDeadline = Date.now() + 1000;
+  while (refreshButton.disabled && Date.now() < probeDeadline) {
+    await new Promise(resolve => setImmediate(resolve));
+  }
+  const unitedStates = root.children.find(button => button.attributes['data-region'] === 'us');
+  assert.equal(unitedStates.disabled, false, 'region probes finish before the card is clicked');
+  unitedStates.click();
   root.children.find(button => button.attributes['data-region'] === 'us').click();
 
+  let timeout;
   const selected = await Promise.race([
     choice,
-    new Promise(resolve => setTimeout(() => resolve('not selected'), 50)),
+    new Promise(resolve => { timeout = setTimeout(() => resolve('not selected'), 1000); }),
   ]);
+  clearTimeout(timeout);
   assert.equal(selected, 'us');
   assert.equal(dialog.open, true);
   assert.equal(picker.isHoldingForConnect(), true);
@@ -252,8 +259,10 @@ test('picker styles preserve focus and use the requested ping colors responsivel
   assert.match(index, /class="sub sub-split"/);
   assert.match(index, /id="play"[^>]*>\s*LET'?S GO!\s*</i);
   assert.match(index, /transform:\s*translateY\(-43px\)/);
+  assert.match(index, /width:\s*80%/);
   assert.match(index, /transform:\s*translateX\(30px\)/);
   assert.match(index, /transform:\s*translateX\(-80px\)/);
+  assert.match(index, /transform:\s*translateX\(80px\)/);
   assert.match(css, /#regionPicker\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);
   assert.match(css, /@media\s*\(max-width:\s*600px\)[\s\S]*?\.regionDialog[\s\S]*?width:/);
 });
