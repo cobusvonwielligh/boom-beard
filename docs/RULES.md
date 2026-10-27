@@ -222,9 +222,12 @@ perk within **4 tiles** and turn them into soft walls. Never regenerate inside a
 
 ## 5. Perks
 
-Perks drop from destroyed blocks. A destroyed **soft wall** drops a perk with probability **35 %**
-**(TUNE)**; reinforced and monolith blocks always drop one. A perk on the ground expires after
-**45 s**. Walking over one picks it up.
+Perks are selected from destroyed blocks. A destroyed **soft wall** selects a perk with
+probability **35 %** **(TUNE)**; reinforced and monolith blocks always select one. A perk on the
+ground expires after **45 s**. Walking over one picks it up.
+
+After a non-gold perk is selected, it has an independent **80 %** chance to appear; the other
+20 % becomes no drop. Gold bypasses this thinning and keeps its existing drop chance and cap.
 
 Drop weights, applied after the drop roll:
 
@@ -334,8 +337,8 @@ Fire hurts you unless you are Invulnerable. **Two hits kill.**
   **a little dust** coming off them; the hit itself is a hard flicker. It is on the sprite, so
   it reads on everybody. For you there is also the **gold heart** in the bar - whole and shining,
   half and dull, or an empty socket while you are down - and the mascot in the corner smoulders.
-- **Death** drops your stats to the starting values (1 bomb, radius 1, 0 boots) and clears all
-  statuses.
+- **Death** drops your stats to the starting values (1 bomb, radius 1, no boots, shields, or
+  stamina upgrades) and clears all statuses.
 - **Kill streaks** continue when you get another kill within **11 seconds**; dying or letting that
   window expire ends the run. Streak text cycles through RGB colours while active.
 - On death you drop **up to 3 perks** on nearby free tiles, so a good kill is rewarded.
@@ -409,6 +412,25 @@ Invulnerability protects against it like it protects against the diseases.
 | Alive at round end | +50 |
 
 Round score resets each round. **Lifetime score persists** per `playerId` and is your XP.
+
+### Persistent gold shop
+
+Gold coins are banked for life. Your HUD shows the **spendable wallet**: lifetime coins collected
+minus coins spent; the all-time statistics continue to show coins collected. While dead or during
+the **16-second** between-round intermission, spend the listed cost to queue a bundle for your next spawn:
+
+| Bundle | Cost | Grant | Maximum queued |
+|---|---:|---|---:|
+| Bombs | 1 gold | +2 max bombs | 4 (5 total including your starting bomb) |
+| Fire | 1 gold | +1 blast radius | 4 |
+| Speed | 1 gold | +2 speed levels | 4 |
+| Shield | 2 gold | +1 shield | 2 |
+| Stim | 1 gold | +2 stamina levels | 4 |
+
+After a purchase, the top stat bar immediately previews your next-spawn stats. The upgrades apply
+when you next spawn: on manual respawn if you bought while dead, or at the start of the next round
+if you bought during intermission. They do not change a living player mid-life. Purchases cannot
+exceed the listed maximum, and they are not refundable.
 
 **Medals.** At the end of every round the top three by score (then kills - the order the
 round-over table shows) get a gold, silver or bronze, counted for life alongside kills and

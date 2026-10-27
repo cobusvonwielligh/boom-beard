@@ -53,7 +53,7 @@ export const SEA_MAX_MARGIN_TILES = 4;
 // on a normal window - it exists for the laptop somebody opens at 1280x720 with the panel up.
 export const MIN_ZOOM = 0.68;
 export const MAX_ZOOM = 2;
-export const ROUND_INTERMISSION_MS = 20_000;
+export const ROUND_INTERMISSION_MS = 16_000;
 
 /* The count-in: five seconds at the top of every round, and NOBODY MOVES.
  *
@@ -541,6 +541,9 @@ export const PERK_WEIGHTS = {
 };
 
 export const PERK_DROP_CHANCE_SOFT = 0.35; // TUNE - the baseline, before supply and demand
+// Ordinary rolled powerups are thinned after selection. Gold bypasses this entirely, so its
+// absolute chance and round cap stay exactly as tuned above rather than inheriting the spare 20%.
+export const NON_GOLD_DROP_KEEP_CHANCE = 0.8;
 
 /* How the drop rate responds to the board.
  *

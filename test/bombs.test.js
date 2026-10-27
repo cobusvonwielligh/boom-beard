@@ -10,7 +10,7 @@ import { tick } from '../shared/sim/round.js';
 import { drop, maybeDrop } from '../shared/sim/perks.js';
 import {
   BLOCK, BLOCK_HP, IN_BOMB, IN_RIGHT, FUSE_TICKS, FUSE_TICKS_FAST, STATUS, PERK, MAX_RADIUS, SCORE,
-  PERK_WEIGHTS, FIRE_LETHAL_TICKS, FIRE_TICKS, DIR_R, DIR_U, DIR_L, DIR_D,
+  PERK_WEIGHTS, NON_GOLD_DROP_KEEP_CHANCE, FIRE_LETHAL_TICKS, FIRE_TICKS, DIR_R, DIR_U, DIR_L, DIR_D,
 } from '../shared/constants.js';
 
 function room(w = 15, h = 15) {
@@ -329,7 +329,8 @@ test('bombs in the round loop', async t => {
       if (k) counts[k.type] = (counts[k.type] || 0) + 1;
     }
     const total = Object.values(counts).reduce((a, b) => a + b, 0);
-    assert.ok(total > 3900, 'reinforced blocks always drop');
+    assert.ok(total > 4000 * NON_GOLD_DROP_KEEP_CHANCE * 0.95,
+      'reinforced blocks drop, except for the intended non-gold thinning');
     // Read the expected share straight from the weight table rather than hard-coding it, so
     // turning a perk on or off is a one-line change here too. Wide band: this is a sanity check
     // that the weighting works at all, not a chi-squared test.

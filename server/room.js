@@ -8,7 +8,7 @@ import {
   ROUNDTIME_MIN_MIN, ROUNDTIME_MAX_MIN,
   TILE_PX, UNITS_PER_TILE, HITBOX_UNITS, FUSE_TICKS, FIRE_TICKS, FIRE_LETHAL_TICKS,
   paletteColor, COLOUR_PREFERENCE, DISTINCT_PLAYERS, isDistinctColour, encodeSeatColours,
-  SCORE, ROUND_INTERMISSION_MS, MAX_HP,
+  SCORE, ROUND_INTERMISSION_MS, MAX_HP, START_BOMBS, START_RADIUS, staminaMaxFor,
   progressFor,
   STREAK_NAMES, STREAK_ACE, GAMESPEED_MIN, GAMESPEED_MAX,
   IDLE_KICK_TICKS, AUTO_BOTS_EMPTY_ROUNDS, IN_MASK, COUNT_IN_TICKS,
@@ -20,6 +20,7 @@ import { burns } from '../shared/sim/fire.js';
 import { tick as simTick } from '../shared/sim/round.js';
 import { gullWire } from '../shared/sim/gulls.js';
 import { careerKey } from './leaderboard.js';
+import { emptyShopQueue } from '../shared/shop.js';
 import { createBrain, delayBotInput, think, dangerMap } from './ai.js';
 import { createBotEmoter } from './botEmotes.js';
 import { nameKey } from './names.js';
@@ -75,6 +76,8 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
   let timer = null;
   let nextDeadline = 0;
   let between = false;      // intermission: scoreboard up, simulation paused
+  let intermissionDeadline = 0;
+  let intermissionStandings = [];
   const tickTimes = [];
 
   // The handle for the intermission's "start the next round" timer. Kept so /restart and /map can
@@ -359,7 +362,6 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
       total += w;
       return w;
     });
-
     let roll = Math.random() * total;
     let idx = pool.length - 1;
     for (let i = 0; i < pool.length; i++) {
@@ -368,6 +370,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     }
     const pick = { tx: pool[idx][0], ty: pool[idx][1] };
 
+    applyPendingShopLoadout(p);
     p.x = tileCentre(pick.tx);
     p.y = tileCentre(pick.ty);
     p.alive = true;
@@ -379,6 +382,19 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     if (seats[p.i]?.god) grantGod(p);
     state.events.push({ e: 'spawn', tick: state.tick, i: p.i, x: p.x, y: p.y });
     return true;
+  }
+
+  function applyPendingShopLoadout(p) {
+    const s = seats[p.i];
+    if (!leaderboard || !s?.connected || s.isBot) return;
+    const pending = leaderboard.consumePending(careerKey(s.playerId, s.name, false));
+    p.bombs = START_BOMBS + pending.bombs;
+    p.radius = START_RADIUS + pending.fire;
+    p.speed = pending.speed;
+    p.shields = pending.shield;
+    p.staminaLevel = pending.stim;
+    p.stamina = staminaMaxFor(p);
+    p.tired = false;
   }
 
   // ─── kill streaks ───────────────────────────────────────────────────────────
@@ -565,6 +581,8 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
       .map(p => ({ i: p.i, name: p.name, s: p.score, k: p.kills, d: p.deaths,
         ...(p.gulled ? { gl: 1 } : null) }))
       .sort((a, b) => b.s - a.s || b.k - a.k);
+    intermissionStandings = standings;
+    intermissionDeadline = performance.now() + ROUND_INTERMISSION_MS;
 
     // Survivors are paid BEFORE the banking, not after. The bonus used to be added on the line
     // below the write, so it was computed, displayed for twenty seconds, and then thrown away
@@ -612,9 +630,10 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
   }
 
   function cancelIntermission() {
-    if (!roundTimer) return;
-    clearTimeout(roundTimer);
+    if (roundTimer) clearTimeout(roundTimer);
     roundTimer = null;
+    intermissionDeadline = 0;
+    intermissionStandings = [];
   }
 
   /**
@@ -763,6 +782,8 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
         lifeKills: (banked?.kills ?? 0) + Math.max(0, unbankedKills),
         lifeDeaths: (banked?.deaths ?? 0) + Math.max(0, unbankedDeaths),
         lifeCoins: (banked?.coins ?? 0) + Math.max(0, unbankedCoins),
+        wallet: s.isBot ? 0 : (leaderboard.economy(
+          careerKey(s.playerId, s.name, false))?.wallet ?? 0) + Math.max(0, unbankedCoins),
         ...progressFor(lifetime),
       });
     }
@@ -804,6 +825,11 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
       startsAtTick: countIn,
       // A reconnect during the intermission must not be mistaken for the next round starting.
       between,
+      ...(between ? {
+        intermissionMs: Math.max(0, Math.ceil(intermissionDeadline - performance.now())),
+        standings: intermissionStandings.map(p => ({ ...p })),
+        nextMap: MAPS[(mapIndex + 1) % MAPS.length].id,
+      } : null),
       color: paletteColor(seats[seat]?.colour ?? seat),
       pal: coloursWire(),
       map: welcomePayloadBase().map,
@@ -1010,26 +1036,53 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
    * last round boundary every single time. The file was never the problem - nothing was asking
    * it to save.
    */
+  function bankSeat(i) {
+    if (!leaderboard) return;
+    const s = seats[i], p = state.players[i];
+    if (!s || !p) return;
+    const was = s.banked ?? { score: 0, kills: 0, deaths: 0, coins: 0 };
+    const now = {
+      score: Math.max(0, p.score), kills: p.kills, deaths: p.deaths, coins: p.coins || 0,
+    };
+    if (now.score === was.score && now.kills === was.kills
+        && now.deaths === was.deaths && now.coins === was.coins) return;
+    leaderboard.record(careerKey(s.playerId, s.name, s.isBot), {
+      name: p.name,
+      score: now.score - was.score,
+      kills: now.kills - was.kills,
+      deaths: now.deaths - was.deaths,
+      coins: now.coins - (was.coins || 0),
+    });
+    s.banked = now;
+  }
+
   function bankScores() {
     if (!leaderboard) return;
-    for (let i = 0; i < maxPlayers; i++) {
-      const s = seats[i], p = state.players[i];
-      if (!s || !p) continue;
-      const was = s.banked ?? { score: 0, kills: 0, deaths: 0, coins: 0 };
-      const now = {
-        score: Math.max(0, p.score), kills: p.kills, deaths: p.deaths, coins: p.coins || 0,
-      };
-      if (now.score === was.score && now.kills === was.kills
-          && now.deaths === was.deaths && now.coins === was.coins) continue;
-      leaderboard.record(careerKey(s.playerId, s.name, s.isBot), {
-        name: p.name,
-        score: now.score - was.score,
-        kills: now.kills - was.kills,
-        deaths: now.deaths - was.deaths,
-        coins: now.coins - (was.coins || 0),
-      });
-      s.banked = now;
+    for (let i = 0; i < maxPlayers; i++) bankSeat(i);
+  }
+
+  const shopEnvelope = (seat, extra = {}) => {
+    const s = seats[seat];
+    if (!leaderboard || !s || s.isBot) {
+      return { t: 'shop', ok: false, why: 'shop unavailable', wallet: 0,
+        pending: emptyShopQueue(), ...extra };
     }
+    const economy = leaderboard.economy(careerKey(s.playerId, s.name, false));
+    return { t: 'shop', ok: true, wallet: economy?.wallet ?? 0,
+      pending: economy?.pending ?? emptyShopQueue(), ...extra };
+  };
+
+  function shopState(seat) {
+    return shopEnvelope(seat);
+  }
+
+  function buyShop(seat, itemKey) {
+    const s = seats[seat], p = state.players[seat];
+    if (!leaderboard || !s || !p || !s.connected || s.isBot) return shopEnvelope(seat);
+    if (!between && p.alive) return shopEnvelope(seat, { ok: false, why: 'shop is closed' });
+    bankSeat(seat);
+    const result = leaderboard.buy(careerKey(s.playerId, s.name, false), itemKey);
+    return { t: 'shop', ...result };
   }
 
   /**
@@ -1114,6 +1167,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
 
   return {
     start, stop, join, disconnect, input, requestRespawn, welcomeFor, roundInfo, stats,
+    shopState, buyShop,
     setBots, botCount, restartRound, toggleGod, logout, hostSeat,
     kickSeat, seatOfName, setMap, setGameSpeed, setRoundTime,
     // Called on the way down, so a deploy does not throw away the round in progress.

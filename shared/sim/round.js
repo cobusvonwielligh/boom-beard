@@ -7,7 +7,7 @@
 import {
   IN_BOMB, SCORE, STATUS, HITBOX_UNITS,
   HITBOX_REDUCED_UNITS, START_BOMBS, START_RADIUS, RESPAWN_DELAY_TICKS,
-  FIRE_TICKS, FIRE_LETHAL_TICKS, SHIELD_GRACE_TICKS, MAX_HP,
+  FIRE_TICKS, FIRE_LETHAL_TICKS, SHIELD_GRACE_TICKS, MAX_HP, STAMINA_MAX,
   HITBOX_FIRE_NUM, HITBOX_FIRE_DEN,
 } from '../constants.js';
 import { expireStatuses, has, toTile, recordStreakKill, resetStreak } from './state.js';
@@ -174,6 +174,9 @@ function killInFire(state) {
     p.radius = START_RADIUS;
     p.speed = 0;
     p.shields = 0;
+    p.stamina = STAMINA_MAX;
+    p.staminaLevel = 0;
+    p.tired = false;
     p.hp = 0;
     p.status = 0;
     p.statusUntil = {};

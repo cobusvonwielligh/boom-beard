@@ -7,6 +7,7 @@ import {
   STATUS_TICKS,
   PERK_TARGET_PER_PLAYER, PERK_TARGET_MIN, PERK_SCARCE_BOOST, PERK_GLUT_FLOOR,
   PERK_TAKE_DECAY, PERK_DEMAND_BOOST, GOLD_MAX_PER_ROUND,
+  NON_GOLD_DROP_KEEP_CHANCE,
 } from '../constants.js';
 import { staminaMaxFor } from '../constants.js';
 import { tileAt, toTile, applyStatus } from './state.js';
@@ -71,7 +72,9 @@ export function dropChance(state) {
 export function maybeDrop(state, tx, ty, blockType) {
   const always = PERK_DROP_ALWAYS.includes(blockType);
   if (!always && state.next() > dropChance(state)) return;
-  drop(state, tx, ty, rollDroppable(state));
+  const type = rollDroppable(state);
+  if (type !== PERK.GOLD && state.next() > NON_GOLD_DROP_KEEP_CHANCE) return;
+  drop(state, tx, ty, type);
 }
 
 /**

@@ -13,7 +13,7 @@ import * as perks from '../shared/sim/perks.js';
 import {
   PERK, PERK_DROP_CHANCE_SOFT, PERK_GLUT_FLOOR, PERK_SCARCE_BOOST, PERK_TARGET_MIN,
   HITBOX_UNITS, TICK_HZ, PERK_EXPIRE_TICKS, PERK_FADE_TICKS,
-  GOLD_MAX_PER_ROUND, SCORE,
+  GOLD_MAX_PER_ROUND, NON_GOLD_DROP_KEEP_CHANCE, SCORE,
 } from '../shared/constants.js';
 import { MAPS, buildMap, cellType } from '../shared/maps.js';
 import { PERK_WEIGHTS, BLOCK } from '../shared/constants.js';
@@ -206,6 +206,47 @@ test('gold is capped per round, and the cap counts drops rather than pickups', (
     r.perks.length = 0;                      // keep the supply-and-demand rate out of it
   }
   assert.equal(coins, 0, `${coins} coins dropped after the cap was reached`);
+});
+
+test('ordinary drops thin selected non-gold perks without changing gold or direct drops', () => {
+  const forced = BLOCK.REINFORCED;
+  const withRolls = (values, fn) => {
+    let calls = 0;
+    const s = fresh();
+    s.next = () => {
+      assert.ok(calls < values.length, 'unexpected extra RNG draw');
+      return values[calls++];
+    };
+    fn(s);
+    return { s, calls };
+  };
+
+  const gold = withRolls([0.99], s => maybeDrop(s, 4, 4, forced));
+  assert.equal(gold.calls, 1, 'gold selection should not consume a thinning roll');
+  assert.equal(gold.s.perks[0].type, PERK.GOLD);
+  assert.equal(gold.s.goldDropped, 1);
+
+  const kept = withRolls([0.1, NON_GOLD_DROP_KEEP_CHANCE],
+    s => maybeDrop(s, 4, 4, forced));
+  assert.equal(kept.calls, 2);
+  assert.equal(kept.s.perks[0].type, PERK.BOMB);
+
+  const discarded = withRolls([0.1, NON_GOLD_DROP_KEEP_CHANCE + 0.001],
+    s => maybeDrop(s, 4, 4, forced));
+  assert.equal(discarded.calls, 2, 'a discarded drop must not reroll into another perk');
+  assert.deepEqual(discarded.s.perks, []);
+
+  const cappedGold = withRolls([0.99, 0.1, NON_GOLD_DROP_KEEP_CHANCE], s => {
+    s.goldDropped = GOLD_MAX_PER_ROUND;
+    maybeDrop(s, 4, 4, forced);
+  });
+  assert.equal(cappedGold.s.goldDropped, GOLD_MAX_PER_ROUND);
+  assert.equal(cappedGold.s.perks[0].type, PERK.BOMB);
+
+  const direct = fresh();
+  direct.next = () => { throw new Error('direct drops must not consume RNG'); };
+  drop(direct, 5, 5, PERK.GOLD);
+  assert.equal(direct.goldDropped, 1);
 });
 
 test('gold is rare, and rarer than rum', () => {

@@ -179,6 +179,115 @@ test('leaderboard', async t => {
   });
 });
 
+test('persistent gold shop economy', async t => {
+  await t.test('legacy careers derive wallet from lifetime coins with empty private queues', async t => {
+    const dir = await tempDir(t);
+    await fs.writeFile(path.join(dir, 'leaderboard.json'), JSON.stringify({
+      version: 1,
+      players: { 'n:ann': { name: 'ann', score: 0, kills: 0, deaths: 0, coins: 7 } },
+    }));
+    const lb = createLeaderboard({ dataDir: dir });
+
+    assert.deepEqual(lb.economy('n:ann'), {
+      wallet: 7, pending: { bombs: 0, fire: 0, speed: 0, shield: 0, stim: 0 },
+    });
+    assert.equal('pendingShop' in lb.get('n:ann'), false);
+    assert.equal('pendingShop' in lb.top()[0], false);
+    await lb.stop();
+  });
+
+  await t.test('purchases spend catalog prices and queue complete bundles up to each cap', async t => {
+    const dir = await tempDir(t);
+    const lb = createLeaderboard({ dataDir: dir });
+    lb.record('n:ann', { name: 'ann', coins: 10 });
+    await lb.flush();
+    assert.equal((await read(dir)).players['n:ann'].spentCoins, 0);
+    assert.deepEqual((await read(dir)).players['n:ann'].pendingShop,
+      { bombs: 0, fire: 0, speed: 0, shield: 0, stim: 0 });
+
+    assert.equal(lb.buy('n:ann', 'bombs').wallet, 9);
+    assert.equal(lb.buy('n:ann', 'bombs').wallet, 8);
+    assert.equal(lb.buy('n:ann', 'speed').wallet, 7);
+    assert.equal(lb.buy('n:ann', 'shield').wallet, 5);
+    assert.equal(lb.buy('n:ann', 'stim').wallet, 4);
+    assert.equal(lb.buy('n:ann', 'stim').wallet, 3);
+    assert.equal(lb.buy('n:ann', 'fire').wallet, 2);
+    assert.deepEqual(lb.economy('n:ann'), {
+      wallet: 2, pending: { bombs: 4, fire: 1, speed: 2, shield: 1, stim: 4 },
+    });
+
+    const before = lb.economy('n:ann');
+    assert.equal(lb.buy('n:ann', 'toString').why, 'unknown item');
+    assert.equal(lb.buy('n:ann', '__proto__').why, 'unknown item');
+    assert.equal(lb.buy('n:ann', 'stim').why, 'already at maximum');
+    assert.deepEqual(lb.economy('n:ann'), before);
+
+    await lb.flush();
+    const saved = (await read(dir)).players['n:ann'];
+    assert.equal(saved.spentCoins, 8);
+    assert.deepEqual(saved.pendingShop, before.pending);
+    assert.equal((await read(dir)).version, 1);
+    await lb.stop();
+  });
+
+  await t.test('shield purchase requires two coins without partial debit', async t => {
+    const dir = await tempDir(t);
+    const lb = createLeaderboard({ dataDir: dir });
+    lb.record('n:ann', { name: 'ann', coins: 1 });
+    const before = lb.economy('n:ann');
+
+    assert.deepEqual(lb.buy('n:ann', 'shield'), {
+      ok: false, why: 'not enough gold', ...before,
+    });
+    assert.deepEqual(lb.economy('n:ann'), before);
+    await lb.stop();
+  });
+
+  await t.test('identity migration sums spending and clamps merged queues', async t => {
+    const dir = await tempDir(t);
+    await fs.writeFile(path.join(dir, 'leaderboard.json'), JSON.stringify({
+      version: 1,
+      players: {
+        p_old: {
+          name: 'ann', score: 10, kills: 1, deaths: 0, coins: 8, spentCoins: 2,
+          pendingShop: { speed: 3, stim: 2 },
+        },
+        p_new: {
+          name: 'Ann', score: 20, kills: 2, deaths: 0, coins: 5, spentCoins: 1,
+          pendingShop: { speed: 3, stim: 4, unknown: 9 },
+        },
+      },
+    }));
+    const lb = createLeaderboard({ dataDir: dir });
+    assert.deepEqual(lb.economy('n:ann'), {
+      wallet: 10, pending: { bombs: 0, fire: 0, speed: 4, shield: 0, stim: 4 },
+    });
+    await lb.flush();
+    assert.equal((await read(dir)).version, 1);
+    await lb.stop();
+  });
+
+  await t.test('consuming a queue clears it durably and only returns it once', async t => {
+    const dir = await tempDir(t);
+    const first = createLeaderboard({ dataDir: dir });
+    first.record('n:ann', { name: 'ann', coins: 2 });
+    first.buy('n:ann', 'fire');
+    await first.flush();
+
+    assert.deepEqual(first.consumePending('n:ann'),
+      { bombs: 0, fire: 1, speed: 0, shield: 0, stim: 0 });
+    await first.flush();
+    await first.stop();
+
+    const reloaded = createLeaderboard({ dataDir: dir });
+    assert.deepEqual(reloaded.consumePending('n:ann'),
+      { bombs: 0, fire: 0, speed: 0, shield: 0, stim: 0 });
+    assert.deepEqual(reloaded.economy('n:ann').pending,
+      { bombs: 0, fire: 0, speed: 0, shield: 0, stim: 0 });
+    await reloaded.stop();
+  });
+});
+
 test('the round in progress survives a restart', async () => {
   // The whole point. Scores used to reach the file only at a round boundary or on disconnect,
   // so a deploy mid-round threw away everything since the last round end - and on a build day

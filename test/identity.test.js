@@ -48,7 +48,11 @@ test('signing out banks the score rather than discarding it', () => {
   const banked = [];
   const r = createRoom({ countIn: 0,
     onBroadcast: () => {},
-    leaderboard: { record: (id, e) => banked.push({ id, ...e }), flush: () => {}, top: () => [], get: () => null },
+    leaderboard: {
+      record: (id, e) => banked.push({ id, ...e }),
+      consumePending: () => ({ bombs: 0, fire: 0, speed: 0, shield: 0, stim: 0 }),
+      flush: () => {}, top: () => [], get: () => null,
+    },
   });
   const { seat } = r.join('p1', 'cobus');
   r.state.players[seat].score = 777;

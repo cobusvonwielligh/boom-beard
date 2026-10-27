@@ -546,6 +546,14 @@ export function attachHub(server, config) {
           if (seat >= 0) room.requestRespawn(seat);
           break;
 
+        case 'shop':
+          if (seat >= 0) sendTo(ws, room.shopState(seat));
+          break;
+
+        case 'shopbuy':
+          if (seat >= 0) sendTo(ws, room.buyShop(seat, msg.item));
+          break;
+
         case 'ping':
           sendTo(ws, { t: 'pong', c: msg.c, tick: room.state.tick, s: Date.now() });
           break;

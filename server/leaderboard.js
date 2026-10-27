@@ -7,6 +7,9 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { progressFor } from '../shared/constants.js';
+import {
+  SHOP_ITEMS, addShopBundle, emptyShopQueue, hasQueuedShopItems, normaliseShopQueue,
+} from '../shared/shop.js';
 // Names arrive from the same place the hub gets them, so they are capped and stripped identically.
 import { sanitizeName } from './net.js';
 
@@ -119,11 +122,19 @@ export function createLeaderboard({ dataDir }) {
         // Gold COINS, which are a different thing entirely from a gold medal - see the note
         // on `coins` in shared/sim/state.js for how nearly those two became one field.
         coins: positive(e.coins),
+        spentCoins: positive(e.spentCoins),
       };
-      if (!into) { out.set(key, { name, ...fields }); continue; }
+      const pendingShop = normaliseShopQueue(e.pendingShop);
+      if (!into) { out.set(key, { name, ...fields, pendingShop }); continue; }
       // The display name is the one from the identity that had played most.
       if (fields.score > into.score) into.name = name;
       for (const k of Object.keys(fields)) into[k] = (into[k] || 0) + fields[k];
+      const merged = emptyShopQueue();
+      for (const [shopKey, item] of Object.entries(SHOP_ITEMS)) {
+        merged[shopKey] = Math.min(item.cap,
+          (into.pendingShop?.[shopKey] || 0) + pendingShop[shopKey]);
+      }
+      into.pendingShop = merged;
       dirty = true;      // write the merged board back on the next save
     }
     return out;
@@ -155,7 +166,10 @@ export function createLeaderboard({ dataDir }) {
     if (typeof playerId !== 'string' || !playerId) return;
     // `coins` defaults in for every record written before coins existed, so an old file loads
     // without a migration and a player who has never seen one starts at zero rather than NaN.
-    const e = players.get(playerId) ?? { name: 'anon', score: 0, kills: 0, deaths: 0, coins: 0 };
+    const e = players.get(playerId) ?? {
+      name: 'anon', score: 0, kills: 0, deaths: 0, coins: 0,
+      spentCoins: 0, pendingShop: emptyShopQueue(),
+    };
     if (name != null) e.name = sanitizeName(name);
     e.score += positive(score);
     e.kills += positive(kills);
@@ -169,7 +183,10 @@ export function createLeaderboard({ dataDir }) {
   function award(playerId, place, name) {
     const medal = MEDALS[place];
     if (!medal || typeof playerId !== 'string' || !playerId) return;
-    const e = players.get(playerId) ?? { name: 'anon', score: 0, kills: 0, deaths: 0 };
+    const e = players.get(playerId) ?? {
+      name: 'anon', score: 0, kills: 0, deaths: 0, coins: 0,
+      spentCoins: 0, pendingShop: emptyShopQueue(),
+    };
     if (name != null) e.name = sanitizeName(name);
     e[medal] = (e[medal] ?? 0) + 1;
     players.set(playerId, e);
@@ -180,6 +197,45 @@ export function createLeaderboard({ dataDir }) {
     const e = players.get(playerId);
     return e ? view(playerId, e) : null;
   };
+
+  const economy = playerId => {
+    const e = players.get(playerId);
+    if (!e) return null;
+    return {
+      wallet: Math.max(0, (e.coins || 0) - (e.spentCoins || 0)),
+      pending: normaliseShopQueue(e.pendingShop),
+    };
+  };
+
+  function buy(playerId, itemKey) {
+    const e = players.get(playerId);
+    if (!e) return { ok: false, why: 'shop unavailable', wallet: 0, pending: emptyShopQueue() };
+    const current = economy(playerId);
+    if (!Object.hasOwn(SHOP_ITEMS, itemKey)) {
+      return { ok: false, why: 'unknown item', ...current };
+    }
+    const item = SHOP_ITEMS[itemKey];
+    const pending = addShopBundle(current.pending, itemKey);
+    if (!pending) return { ok: false, why: 'already at maximum', ...current };
+    if (current.wallet < item.cost) return { ok: false, why: 'not enough gold', ...current };
+    e.spentCoins = (e.spentCoins || 0) + item.cost;
+    e.pendingShop = pending;
+    dirty = true;
+    void flush();
+    return { ok: true, bought: itemKey, wallet: current.wallet - item.cost, pending };
+  }
+
+  function consumePending(playerId) {
+    const e = players.get(playerId);
+    if (!e) return emptyShopQueue();
+    const pending = normaliseShopQueue(e.pendingShop);
+    if (hasQueuedShopItems(pending)) {
+      e.pendingShop = emptyShopQueue();
+      dirty = true;
+      void flush();
+    }
+    return pending;
+  }
 
   const byName = (a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
 
@@ -281,5 +337,7 @@ export function createLeaderboard({ dataDir }) {
     return dirty ? flush() : chain;
   };
 
-  return Object.freeze({ record, award, get, top, flush, flushSync, stop, file });
+  return Object.freeze({
+    record, award, get, top, economy, buy, consumePending, flush, flushSync, stop, file,
+  });
 }

@@ -9,7 +9,10 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { FIRE_TICKS, SHIELD_GRACE_TICKS, BLOCK, MAX_HP } from '../shared/constants.js';
+import {
+  FIRE_TICKS, SHIELD_GRACE_TICKS, BLOCK, MAX_HP, MAX_RADIUS, MAX_SKATES,
+  START_RADIUS, STAMINA_MAX, staminaMaxFor,
+} from '../shared/constants.js';
 import { MAPS } from '../shared/maps.js';
 import { createState, createPlayer, tileCentre, tileAt } from '../shared/sim/state.js';
 import { tick } from '../shared/sim/round.js';
@@ -152,4 +155,19 @@ test('shield, then half, then dead - one bomb at a time', () => {
   wait();
   blast(103, 6); step();
   assert.equal(p.alive, false, 'the grace outlived the hit that bought it');
+});
+
+test('death loses every collected starting-life upgrade, including stim levels', () => {
+  const { p, blast, step } = arena({ shields: 0, hp: 1 });
+  p.speed = MAX_SKATES;
+  p.radius = MAX_RADIUS;
+  p.staminaLevel = 2;
+  p.stamina = staminaMaxFor(p);
+  blast(104, 5);
+  step();
+
+  assert.equal(p.alive, false);
+  assert.deepEqual([p.radius, p.speed, p.shields, p.staminaLevel],
+    [START_RADIUS, 0, 0, 0]);
+  assert.equal(p.stamina, STAMINA_MAX);
 });
