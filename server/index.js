@@ -50,16 +50,17 @@ const MIME = {
 const COMPRESSIBLE = new Set(['.html', '.js', '.mjs', '.css', '.json', '.xml', '.txt']);
 const MIN_GZIP_BYTES = 1024;
 
-// No external hosts, ever. This is most of why corporate proxies leave us alone, and it means a
-// bug can never leak game state to a third party. Inline script/style are allowed because there
-// is no build step; we never inject user strings as HTML (textContent only).
+// The game itself stays self-hosted. The only third-party exception is the Google Ads tag, with
+// the host list from Google's CSP guide. Inline script/style remain allowed because there is no
+// build step; user strings are assigned with textContent, never injected as HTML.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.googleadservices.com https://www.google.com",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data:",
+  "img-src 'self' data: https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://pagead2.googlesyndication.com https://www.google.com",
   "media-src 'self'",
-  "connect-src 'self' ws: wss:",
+  "connect-src 'self' ws: wss: https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://pagead2.googlesyndication.com https://www.google.com https://ad.doubleclick.net",
+  "frame-src https://www.googletagmanager.com",
   "object-src 'none'",
   "base-uri 'none'",
   // Nobody may frame the game: no clickjacking the host into typing /kick.
