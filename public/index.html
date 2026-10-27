@@ -3,543 +3,555 @@
   <head>
     <script>
       window.dataLayer = window.dataLayer || [];
-      function gtag() { dataLayer.push(arguments); }
-      gtag('consent', 'default', {
-        'ad_storage': 'denied',
-        'ad_user_data': 'denied',
-        'ad_personalization': 'denied',
-        'analytics_storage': 'denied'
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("consent", "default", {
+        ad_storage: "denied",
+        ad_user_data: "denied",
+        ad_personalization: "denied",
+        analytics_storage: "denied"
       });
     </script>
-    <script async src="https://www.googletagmanager.com/gtag/js?id=AW-18535357585"></script>
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=AW-18535357585"
+    ></script>
     <script>
-      gtag('js', new Date());
-      gtag('config', 'AW-18535357585');
+      gtag("js", new Date());
+      gtag("config", "AW-18535357585");
     </script>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Boom Beard 💣</title>
-  <meta
-    name="description"
-    content="Sixteen pirates. One island. Light the fuse and run. Play Boom Beard, a fast browser arena game for up to 16 players."
-  />
-  <link rel="canonical" href="https://boombeard.co.za/" />
-  <link
-    rel="icon"
-    type="image/x-icon"
-    href="/assets/img/favicon.ico"
-    sizes="48x48 96x96"
-  />
-  <link rel="apple-touch-icon" href="/assets/img/icon-180.png" />
-  <link
-    rel="preload"
-    href="/assets/fonts/clegan.7308d830.ttf"
-    as="font"
-    type="font/ttf"
-    crossorigin
-  />
-  <link rel="stylesheet" href="/style.css" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Boom Beard 💣</title>
+    <meta
+      name="description"
+      content="Sixteen pirates. One island. Light the fuse and run. Play Boom Beard, a fast browser arena game for up to 16 players."
+    />
+    <link rel="canonical" href="https://boombeard.co.za/" />
+    <link
+      rel="icon"
+      type="image/x-icon"
+      href="/assets/img/favicon.ico"
+      sizes="48x48 96x96"
+    />
+    <link rel="apple-touch-icon" href="/assets/img/icon-180.png" />
+    <link
+      rel="preload"
+      href="/assets/fonts/clegan.7308d830.ttf"
+      as="font"
+      type="font/ttf"
+      crossorigin
+    />
+    <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
-
-  <!-- One SVG sprite sheet, defined once and referenced by <use>. Repeating the paths per pip would
+    <!-- One SVG sprite sheet, defined once and referenced by <use>. Repeating the paths per pip would
      be four copies of the same geometry in the markup. -->
-  <svg width="0" height="0" style="position: absolute" aria-hidden="true">
-    <defs>
-      <symbol id="i-bomb" viewBox="0 0 16 16">
-        <circle cx="7" cy="10" r="5" fill="currentColor" />
-        <path
-          d="M9 5l2-2 1 1"
-          stroke="currentColor"
-          stroke-width="1.6"
-          fill="none"
-        />
-        <circle cx="13" cy="3" r="1.6" fill="#ff7a3d" />
-      </symbol>
-      <symbol id="i-fire" viewBox="0 0 16 16">
-        <path
-          d="M8 1c1 3-3 4-3 7a3 3 0 006 0c0-1-1-2-1-3 1 1 3 2 3 4a5 5 0 01-10 0c0-4 5-5 5-8z"
-          fill="currentColor"
-        />
-      </symbol>
-      <symbol id="i-boot" viewBox="0 0 16 16">
-        <path d="M4 2h4v6l4 2v4H4z" fill="currentColor" />
-        <path d="M2 14h12" stroke="currentColor" stroke-width="1.4" />
-      </symbol>
-      <symbol id="i-shield" viewBox="0 0 16 16">
-        <path
-          fill="currentColor"
-          d="M8 1l6 2.5v4.2c0 3.4-2.4 6.2-6 7.3-3.6-1.1-6-3.9-6-7.3V3.5z"
-        />
-      </symbol>
-      <!-- Health: a heart outline with its left half filled - the two states, in one drawing. -->
-      <symbol id="i-heart" viewBox="0 0 16 16">
-        <path
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.3"
-          d="M8 14S2 10.2 2 6a3 3 0 0 1 6-1 3 3 0 0 1 6 1c0 4.2-6 8-6 8z"
-        />
-        <path fill="currentColor" d="M8 14S2 10.2 2 6a3 3 0 0 1 6-1z" />
-      </symbol>
-      <symbol id="i-bolt" viewBox="0 0 16 16">
-        <path fill="currentColor" d="M9.5 1L3 9h3.5L5.5 15 12 7H8.5z" />
-      </symbol>
-      <symbol id="i-spk" viewBox="0 0 16 16">
-        <path fill="currentColor" d="M7 2L3.6 5H1.4v6h2.2L7 14z" />
-        <path
-          d="M9.6 5.4a3.6 3.6 0 010 5.2M11.8 3.4a6.6 6.6 0 010 9.2"
-          stroke="currentColor"
-          stroke-width="1.4"
-          fill="none"
-          stroke-linecap="round"
-        />
-      </symbol>
-      <!-- A coin, three-quarter on. The offset back disc is the whole icon: flat-on it is a
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true">
+      <defs>
+        <symbol id="i-bomb" viewBox="0 0 16 16">
+          <circle cx="7" cy="10" r="5" fill="currentColor" />
+          <path
+            d="M9 5l2-2 1 1"
+            stroke="currentColor"
+            stroke-width="1.6"
+            fill="none"
+          />
+          <circle cx="13" cy="3" r="1.6" fill="#ff7a3d" />
+        </symbol>
+        <symbol id="i-fire" viewBox="0 0 16 16">
+          <path
+            d="M8 1c1 3-3 4-3 7a3 3 0 006 0c0-1-1-2-1-3 1 1 3 2 3 4a5 5 0 01-10 0c0-4 5-5 5-8z"
+            fill="currentColor"
+          />
+        </symbol>
+        <symbol id="i-boot" viewBox="0 0 16 16">
+          <path d="M4 2h4v6l4 2v4H4z" fill="currentColor" />
+          <path d="M2 14h12" stroke="currentColor" stroke-width="1.4" />
+        </symbol>
+        <symbol id="i-shield" viewBox="0 0 16 16">
+          <path
+            fill="currentColor"
+            d="M8 1l6 2.5v4.2c0 3.4-2.4 6.2-6 7.3-3.6-1.1-6-3.9-6-7.3V3.5z"
+          />
+        </symbol>
+        <!-- Health: a heart outline with its left half filled - the two states, in one drawing. -->
+        <symbol id="i-heart" viewBox="0 0 16 16">
+          <path
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.3"
+            d="M8 14S2 10.2 2 6a3 3 0 0 1 6-1 3 3 0 0 1 6 1c0 4.2-6 8-6 8z"
+          />
+          <path fill="currentColor" d="M8 14S2 10.2 2 6a3 3 0 0 1 6-1z" />
+        </symbol>
+        <symbol id="i-bolt" viewBox="0 0 16 16">
+          <path fill="currentColor" d="M9.5 1L3 9h3.5L5.5 15 12 7H8.5z" />
+        </symbol>
+        <symbol id="i-spk" viewBox="0 0 16 16">
+          <path fill="currentColor" d="M7 2L3.6 5H1.4v6h2.2L7 14z" />
+          <path
+            d="M9.6 5.4a3.6 3.6 0 010 5.2M11.8 3.4a6.6 6.6 0 010 9.2"
+            stroke="currentColor"
+            stroke-width="1.4"
+            fill="none"
+            stroke-linecap="round"
+          />
+        </symbol>
+        <!-- A coin, three-quarter on. The offset back disc is the whole icon: flat-on it is a
          circle, and a circle at 13px is a dot. -->
-      <symbol id="i-coin" viewBox="0 0 16 16">
-        <ellipse
-          cx="8.8"
-          cy="8.9"
-          rx="6.1"
-          ry="6.4"
-          fill="currentColor"
-          opacity=".45"
-        />
-        <ellipse cx="7.4" cy="7.6" rx="6.1" ry="6.4" fill="currentColor" />
-        <ellipse
-          cx="7.4"
-          cy="7.6"
-          rx="3.5"
-          ry="3.8"
-          fill="none"
-          stroke="#000"
-          stroke-opacity=".32"
-          stroke-width="1.2"
-        />
-      </symbol>
-      <symbol id="i-note" viewBox="0 0 16 16">
-        <path
-          fill="currentColor"
-          d="M13 2v8.2a2.6 2.6 0 10-1.6 2.4V5.6L7 6.8v5.6a2.6 2.6 0 11-1.6-2.4V4.4z"
-        />
-      </symbol>
-      <symbol id="i-play" viewBox="0 0 16 16">
-        <path fill="currentColor" d="M4 2.5l9 5.5-9 5.5z" />
-      </symbol>
-      <symbol id="i-pause" viewBox="0 0 16 16">
-        <rect x="4" y="2.5" width="3" height="11" rx="1" fill="currentColor" />
-        <rect x="9" y="2.5" width="3" height="11" rx="1" fill="currentColor" />
-      </symbol>
-      <symbol id="i-prev" viewBox="0 0 16 16">
-        <path fill="currentColor" d="M13 3v10l-7-5z" />
-        <rect x="3" y="3" width="2" height="10" rx="1" fill="currentColor" />
-      </symbol>
-      <symbol id="i-next" viewBox="0 0 16 16">
-        <path fill="currentColor" d="M3 3v10l7-5z" />
-        <rect x="11" y="3" width="2" height="10" rx="1" fill="currentColor" />
-      </symbol>
-      <symbol id="i-mute" viewBox="0 0 16 16">
-        <path fill="currentColor" d="M7 2L3.6 5H1.4v6h2.2L7 14z" />
-        <path
-          d="M10 6l4 4M14 6l-4 4"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-linecap="round"
-        />
-      </symbol>
-      <symbol id="i-gh" viewBox="0 0 16 16">
-        <path
-          fill="currentColor"
-          d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38
+        <symbol id="i-coin" viewBox="0 0 16 16">
+          <ellipse
+            cx="8.8"
+            cy="8.9"
+            rx="6.1"
+            ry="6.4"
+            fill="currentColor"
+            opacity=".45"
+          />
+          <ellipse cx="7.4" cy="7.6" rx="6.1" ry="6.4" fill="currentColor" />
+          <ellipse
+            cx="7.4"
+            cy="7.6"
+            rx="3.5"
+            ry="3.8"
+            fill="none"
+            stroke="#000"
+            stroke-opacity=".32"
+            stroke-width="1.2"
+          />
+        </symbol>
+        <symbol id="i-note" viewBox="0 0 16 16">
+          <path
+            fill="currentColor"
+            d="M13 2v8.2a2.6 2.6 0 10-1.6 2.4V5.6L7 6.8v5.6a2.6 2.6 0 11-1.6-2.4V4.4z"
+          />
+        </symbol>
+        <symbol id="i-play" viewBox="0 0 16 16">
+          <path fill="currentColor" d="M4 2.5l9 5.5-9 5.5z" />
+        </symbol>
+        <symbol id="i-pause" viewBox="0 0 16 16">
+          <rect
+            x="4"
+            y="2.5"
+            width="3"
+            height="11"
+            rx="1"
+            fill="currentColor"
+          />
+          <rect
+            x="9"
+            y="2.5"
+            width="3"
+            height="11"
+            rx="1"
+            fill="currentColor"
+          />
+        </symbol>
+        <symbol id="i-prev" viewBox="0 0 16 16">
+          <path fill="currentColor" d="M13 3v10l-7-5z" />
+          <rect x="3" y="3" width="2" height="10" rx="1" fill="currentColor" />
+        </symbol>
+        <symbol id="i-next" viewBox="0 0 16 16">
+          <path fill="currentColor" d="M3 3v10l7-5z" />
+          <rect x="11" y="3" width="2" height="10" rx="1" fill="currentColor" />
+        </symbol>
+        <symbol id="i-mute" viewBox="0 0 16 16">
+          <path fill="currentColor" d="M7 2L3.6 5H1.4v6h2.2L7 14z" />
+          <path
+            d="M10 6l4 4M14 6l-4 4"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+          />
+        </symbol>
+        <symbol id="i-gh" viewBox="0 0 16 16">
+          <path
+            fill="currentColor"
+            d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38
         0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01
         1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95
         0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 014 0c1.53-1.04
         2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65
         3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"
-        />
-      </symbol>
-      <symbol id="i-bug" viewBox="0 0 16 16">
-        <ellipse cx="8" cy="9" rx="4" ry="5" fill="currentColor" />
-        <path
-          d="M8 4V2M4 7L1 5M12 7l3-2M4 11l-3 2M12 11l3 2"
-          stroke="currentColor"
-          stroke-width="1.3"
-          fill="none"
-        />
-      </symbol>
-      <!-- Four things the HUD never needed a pip for, but the rules sheet has to name: the keg,
+          />
+        </symbol>
+        <symbol id="i-bug" viewBox="0 0 16 16">
+          <ellipse cx="8" cy="9" rx="4" ry="5" fill="currentColor" />
+          <path
+            d="M8 4V2M4 7L1 5M12 7l3-2M4 11l-3 2M12 11l3 2"
+            stroke="currentColor"
+            stroke-width="1.3"
+            fill="none"
+          />
+        </symbol>
+        <!-- Four things the HUD never needed a pip for, but the rules sheet has to name: the keg,
          ice, a gull and a streak. Drawn in the same hand as the rest so a sheet of them reads
          as one set. -->
-      <!-- Show / hide the password. One eye and one struck-through eye, same hand as the rest. -->
-      <symbol id="i-eye" viewBox="0 0 16 16">
-        <path
-          d="M1 8s2.6-4.2 7-4.2S15 8 15 8s-2.6 4.2-7 4.2S1 8 1 8z"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-        />
-        <circle cx="8" cy="8" r="2.1" fill="currentColor" />
-      </symbol>
-      <symbol id="i-eyeoff" viewBox="0 0 16 16">
-        <path
-          d="M1 8s2.6-4.2 7-4.2S15 8 15 8s-2.6 4.2-7 4.2S1 8 1 8z"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.5"
-          stroke-opacity=".55"
-        />
-        <circle cx="8" cy="8" r="2.1" fill="currentColor" fill-opacity=".55" />
-        <path
-          d="M2.4 13.6 13.6 2.4"
-          stroke="currentColor"
-          stroke-width="1.6"
-          stroke-linecap="round"
-        />
-      </symbol>
-      <symbol id="i-keg" viewBox="0 0 16 16">
-        <!-- A barrel, not a box. Three things carry that at sixteen pixels and all three are
+        <!-- Show / hide the password. One eye and one struck-through eye, same hand as the rest. -->
+        <symbol id="i-eye" viewBox="0 0 16 16">
+          <path
+            d="M1 8s2.6-4.2 7-4.2S15 8 15 8s-2.6 4.2-7 4.2S1 8 1 8z"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+          />
+          <circle cx="8" cy="8" r="2.1" fill="currentColor" />
+        </symbol>
+        <symbol id="i-eyeoff" viewBox="0 0 16 16">
+          <path
+            d="M1 8s2.6-4.2 7-4.2S15 8 15 8s-2.6 4.2-7 4.2S1 8 1 8z"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-opacity=".55"
+          />
+          <circle
+            cx="8"
+            cy="8"
+            r="2.1"
+            fill="currentColor"
+            fill-opacity=".55"
+          />
+          <path
+            d="M2.4 13.6 13.6 2.4"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+          />
+        </symbol>
+        <symbol id="i-keg" viewBox="0 0 16 16">
+          <!-- A barrel, not a box. Three things carry that at sixteen pixels and all three are
            curves: the staves BULGE at the waist, the hoops bow with them, and the lid is an
            ellipse because you are looking at it slightly from above - the same angle everything
            on the board is drawn at. The silhouette is one flat colour like every other icon in
            the sheet; the interior is the usual black at low opacity, and the one pop of colour
            is the powder mark, in the same maroon the real keg carries. -->
-        <path
-          fill="currentColor"
-          d="M5 2.5h6c1.2 2 1.8 3.6 1.8 5.5S11.2 11.5 11 13.5H5c-1.2-2-1.8-3.6-1.8-5.5S3.8 4.5 5 2.5z"
-        />
-        <ellipse
-          cx="8"
-          cy="2.6"
-          rx="3"
-          ry="1.05"
-          fill="#000"
-          fill-opacity=".28"
-        />
-        <path
-          d="M3.5 5.1q4.5 1 9 0M3.5 10.9q4.5 1 9 0"
-          fill="none"
-          stroke="#000"
-          stroke-opacity=".38"
-          stroke-width="1.15"
-        />
-        <path
-          d="M6.1 3.2q-.5 4.8 0 9.6M9.9 3.2q.5 4.8 0 9.6"
-          fill="none"
-          stroke="#000"
-          stroke-opacity=".16"
-          stroke-width=".8"
-        />
-        <path
-          d="M6.3 6.6l3.4 3M9.7 6.6l-3.4 3"
-          stroke="#a83442"
-          stroke-width="1.7"
-          stroke-linecap="round"
-        />
-      </symbol>
-      <symbol id="i-ice" viewBox="0 0 16 16">
-        <path fill="currentColor" d="M8 1l5.4 3.5v7L8 15l-5.4-3.5v-7z" />
-        <path
-          d="M8 3.4l3.2 2.1v4.2L8 11.8l-3.2-2.1V5.5z"
-          fill="#000"
-          fill-opacity=".22"
-        />
-      </symbol>
-      <!-- The same wing the banner uses, scaled into the 16-unit grid. -->
-      <symbol id="i-gull" viewBox="0 0 16 16">
-        <g transform="translate(8 9) scale(0.29)" fill="currentColor">
           <path
-            d="M-26 0 C -18 -10, -8 -10, 0 -2 C 8 -10, 18 -10, 26 0 C 18 -5, 8 -4, 0 3 C -8 -4, -18 -5, -26 0 Z"
+            fill="currentColor"
+            d="M5 2.5h6c1.2 2 1.8 3.6 1.8 5.5S11.2 11.5 11 13.5H5c-1.2-2-1.8-3.6-1.8-5.5S3.8 4.5 5 2.5z"
           />
-        </g>
-      </symbol>
-      <symbol id="i-skull" viewBox="0 0 16 16">
-        <path
-          fill="currentColor"
-          d="M8 1.5a5.7 5.7 0 015.7 5.7v1.9a2.2 2.2 0 01-2.1 2.2v3.2H4.4v-3.2a2.2 2.2 0 01-2.1-2.2V7.2A5.7 5.7 0 018 1.5z"
-        />
-        <circle cx="5.8" cy="7.3" r="1.55" fill="#0d1117" />
-        <circle cx="10.2" cy="7.3" r="1.55" fill="#0d1117" />
-        <path
-          d="M6.4 11.9v2.6M8 11.9v2.6M9.6 11.9v2.6"
-          stroke="#0d1117"
-          stroke-width="0.9"
-        />
-      </symbol>
-    </defs>
-  </svg>
+          <ellipse
+            cx="8"
+            cy="2.6"
+            rx="3"
+            ry="1.05"
+            fill="#000"
+            fill-opacity=".28"
+          />
+          <path
+            d="M3.5 5.1q4.5 1 9 0M3.5 10.9q4.5 1 9 0"
+            fill="none"
+            stroke="#000"
+            stroke-opacity=".38"
+            stroke-width="1.15"
+          />
+          <path
+            d="M6.1 3.2q-.5 4.8 0 9.6M9.9 3.2q.5 4.8 0 9.6"
+            fill="none"
+            stroke="#000"
+            stroke-opacity=".16"
+            stroke-width=".8"
+          />
+          <path
+            d="M6.3 6.6l3.4 3M9.7 6.6l-3.4 3"
+            stroke="#a83442"
+            stroke-width="1.7"
+            stroke-linecap="round"
+          />
+        </symbol>
+        <symbol id="i-ice" viewBox="0 0 16 16">
+          <path fill="currentColor" d="M8 1l5.4 3.5v7L8 15l-5.4-3.5v-7z" />
+          <path
+            d="M8 3.4l3.2 2.1v4.2L8 11.8l-3.2-2.1V5.5z"
+            fill="#000"
+            fill-opacity=".22"
+          />
+        </symbol>
+        <!-- The same wing the banner uses, scaled into the 16-unit grid. -->
+        <symbol id="i-gull" viewBox="0 0 16 16">
+          <g transform="translate(8 9) scale(0.29)" fill="currentColor">
+            <path
+              d="M-26 0 C -18 -10, -8 -10, 0 -2 C 8 -10, 18 -10, 26 0 C 18 -5, 8 -4, 0 3 C -8 -4, -18 -5, -26 0 Z"
+            />
+          </g>
+        </symbol>
+        <symbol id="i-skull" viewBox="0 0 16 16">
+          <path
+            fill="currentColor"
+            d="M8 1.5a5.7 5.7 0 015.7 5.7v1.9a2.2 2.2 0 01-2.1 2.2v3.2H4.4v-3.2a2.2 2.2 0 01-2.1-2.2V7.2A5.7 5.7 0 018 1.5z"
+          />
+          <circle cx="5.8" cy="7.3" r="1.55" fill="#0d1117" />
+          <circle cx="10.2" cy="7.3" r="1.55" fill="#0d1117" />
+          <path
+            d="M6.4 11.9v2.6M8 11.9v2.6M9.6 11.9v2.6"
+            stroke="#0d1117"
+            stroke-width="0.9"
+          />
+        </symbol>
+      </defs>
+    </svg>
 
-  <!-- tabindex="-1": not in the tab order, but focusable in code. Sending a chat message hands
+    <!-- tabindex="-1": not in the tab order, but focusable in code. Sending a chat message hands
      focus back here, so the board is what the keyboard is pointed at. -->
-  <canvas id="game" tabindex="-1"></canvas>
-  <!-- The box the board may use, measured and never seen. The canvas is cut down inside it so
+    <canvas id="game" tabindex="-1"></canvas>
+    <!-- The box the board may use, measured and never seen. The canvas is cut down inside it so
      there is never more than four tiles of sea round the island - see applyBoardSize. -->
-  <div id="boardBox" aria-hidden="true"></div>
+    <div id="boardBox" aria-hidden="true"></div>
 
-  <div id="hud">
-    <div id="topbar" class="edge">
-      <span id="clock"
-        ><span class="v cast" id="vClock">-</span
-        ><span class="k">left</span></span
-      >
-      <!-- The dot lives with the ping, because they answer the same question: is the link
+    <div id="hud">
+      <div id="topbar" class="edge">
+        <span id="clock"
+          ><span class="v cast" id="vClock">-</span
+          ><span class="k">left</span></span
+        >
+        <!-- The dot lives with the ping, because they answer the same question: is the link
          healthy. Next to the volume controls it was just another icon in a row of icons. -->
-      <span class="stat"
-        ><span class="k">ping</span><span class="v" id="vPing">-</span
-        ><span id="conn" data-state="connecting" title="connecting"></span
-      ></span>
-      <span class="stat"
-        ><span class="k">alive</span><span class="v" id="vOnline">-</span></span
-      >
-      <span class="stat"
-        ><span class="k">map</span><span class="v" id="vMap">-</span></span
-      >
-      <span class="sep"></span>
+        <span class="stat"
+          ><span class="k">ping</span><span class="v" id="vPing">-</span
+          ><span id="conn" data-state="connecting" title="connecting"></span
+        ></span>
+        <span class="stat"
+          ><span class="k">alive</span
+          ><span class="v" id="vOnline">-</span></span
+        >
+        <span class="stat"
+          ><span class="k">map</span><span class="v" id="vMap">-</span></span
+        >
+        <span class="sep"></span>
 
-      <!-- One pip per live perk, in the order you are likely to find them. A pip lights up when
+        <!-- One pip per live perk, in the order you are likely to find them. A pip lights up when
          you have any of that perk at all, so the bar answers "what am I carrying" without
          anybody having to read the numbers. -->
-      <span id="gear">
-        <!-- Health, as a gold heart with three states and no number: whole and shining, half and
+        <span id="gear">
+          <!-- Health, as a gold heart with three states and no number: whole and shining, half and
            dull, or an empty outline while you are down. Inline rather than a <use>, because the
            two halves are filled separately. See MAX_HP and heartState in main.js. -->
-        <span class="pip heart full" id="pHeart" title="health: two hits">
-          <svg viewBox="0 0 16 16" aria-hidden="true">
-            <defs>
-              <linearGradient id="heartGold" x1="0" y1="0" x2="0" y2="1">
-                <!-- The .castSm ramp exactly: dark, highlight, body, dark. -->
-                <stop offset="0" stop-color="#a06a12" />
-                <stop offset="0.34" stop-color="#f6e7a9" />
-                <stop offset="0.62" stop-color="#edc24e" />
-                <stop offset="1" stop-color="#8a5a10" />
-              </linearGradient>
-            </defs>
-            <path
-              class="hL"
-              d="M8 14.2S1.6 10.2 1.6 5.8a3.2 3.2 0 0 1 6.4-1.1z"
-            />
-            <path class="hR" d="M8 14.2s6.4-4 6.4-8.4a3.2 3.2 0 0 0-6.4-1.1z" />
-            <path
-              class="hO"
-              d="M8 14.2S1.6 10.2 1.6 5.8a3.2 3.2 0 0 1 6.4-1.1 3.2 3.2 0 0 1 6.4 1.1c0 4.4-6.4 8.4-6.4 8.4z"
-            />
-          </svg>
-          <span class="glint" aria-hidden="true"></span>
-        </span>
-        <span class="pip" id="pBombs" title="bombs you can have out at once">
-          <svg><use href="#i-bomb" /></svg><span class="n">1</span
-          ><span class="cap"></span>
-        </span>
-        <span class="pip" id="pFire" title="blast radius">
-          <svg><use href="#i-fire" /></svg><span class="n">1</span
-          ><span class="cap"></span>
-        </span>
-        <span class="pip" id="pSpeed" title="boots: movement speed">
-          <svg><use href="#i-boot" /></svg><span class="n">0</span
-          ><span class="cap"></span>
-        </span>
-        <span class="pip" id="pShield" title="shield: survives one hit">
-          <svg><use href="#i-shield" /></svg><span class="n">0</span
-          ><span class="cap"></span>
-        </span>
-        <span
-          class="pip"
-          id="pStim"
-          title="stim: how long you can run before you tire"
-        >
-          <svg><use href="#i-bolt" /></svg><span class="n">0</span
-          ><span class="cap"></span>
-        </span>
-        <!-- Passive upgrades announce themselves directly under the loadout they just changed.
+          <span class="pip heart full" id="pHeart" title="health: two hits">
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <defs>
+                <linearGradient id="heartGold" x1="0" y1="0" x2="0" y2="1">
+                  <!-- The .castSm ramp exactly: dark, highlight, body, dark. -->
+                  <stop offset="0" stop-color="#a06a12" />
+                  <stop offset="0.34" stop-color="#f6e7a9" />
+                  <stop offset="0.62" stop-color="#edc24e" />
+                  <stop offset="1" stop-color="#8a5a10" />
+                </linearGradient>
+              </defs>
+              <path
+                class="hL"
+                d="M8 14.2S1.6 10.2 1.6 5.8a3.2 3.2 0 0 1 6.4-1.1z"
+              />
+              <path
+                class="hR"
+                d="M8 14.2s6.4-4 6.4-8.4a3.2 3.2 0 0 0-6.4-1.1z"
+              />
+              <path
+                class="hO"
+                d="M8 14.2S1.6 10.2 1.6 5.8a3.2 3.2 0 0 1 6.4-1.1 3.2 3.2 0 0 1 6.4 1.1c0 4.4-6.4 8.4-6.4 8.4z"
+              />
+            </svg>
+            <span class="glint" aria-hidden="true"></span>
+          </span>
+          <span class="pip" id="pBombs" title="bombs you can have out at once">
+            <svg><use href="#i-bomb" /></svg><span class="n">1</span
+            ><span class="cap"></span>
+          </span>
+          <span class="pip" id="pFire" title="blast radius">
+            <svg><use href="#i-fire" /></svg><span class="n">1</span
+            ><span class="cap"></span>
+          </span>
+          <span class="pip" id="pSpeed" title="boots: movement speed">
+            <svg><use href="#i-boot" /></svg><span class="n">0</span
+            ><span class="cap"></span>
+          </span>
+          <span class="pip" id="pShield" title="shield: survives one hit">
+            <svg><use href="#i-shield" /></svg><span class="n">0</span
+            ><span class="cap"></span>
+          </span>
+          <span
+            class="pip"
+            id="pStim"
+            title="stim: how long you can run before you tire"
+          >
+            <svg><use href="#i-bolt" /></svg><span class="n">0</span
+            ><span class="cap"></span>
+          </span>
+          <!-- Passive upgrades announce themselves directly under the loadout they just changed.
            See showUpgrade() in main.js. -->
-        <div id="ups"></div>
-      </span>
+          <div id="ups"></div>
+        </span>
 
-      <span class="right">
-        <a
-          class="iconBtn"
-          href="https://github.com/cobusvonwielligh/boom-beard"
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Boom Beard on GitHub"
-          aria-label="Boom Beard on GitHub"
-        >
-          <svg><use href="#i-gh" /></svg>
-        </a>
-        <a
-          class="iconBtn bug"
-          href="https://github.com/cobusvonwielligh/boom-beard/issues/new"
-          target="_blank"
-          rel="noopener noreferrer"
-          title="report a bug"
-          aria-label="report a bug"
-        >
-          <svg><use href="#i-bug" /></svg>
-        </a>
-        <button id="leave" title="esc">leave</button>
-      </span>
-    </div>
+        <span class="right">
+          <a
+            class="iconBtn"
+            href="https://github.com/cobusvonwielligh/boom-beard"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Boom Beard on GitHub"
+            aria-label="Boom Beard on GitHub"
+          >
+            <svg><use href="#i-gh" /></svg>
+          </a>
+          <a
+            class="iconBtn bug"
+            href="https://github.com/cobusvonwielligh/boom-beard/issues/new"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="report a bug"
+            aria-label="report a bug"
+          >
+            <svg><use href="#i-bug" /></svg>
+          </a>
+          <button id="leave" title="esc">leave</button>
+        </span>
+      </div>
 
-    <img id="avatar" src="/assets/img/avatar.cf938d0b.png" alt="" />
-    <!-- What the mascot is saying. To his LEFT, with the tail pointing right at him: he lives in
+      <img id="avatar" src="/assets/img/avatar.cf938d0b.png" alt="" />
+      <!-- What the mascot is saying. To his LEFT, with the tail pointing right at him: he lives in
        the top right corner of the window, so a bubble on his right would be off the screen. -->
-    <div id="say" aria-live="polite"></div>
+      <div id="say" aria-live="polite"></div>
 
-    <div id="side" class="edge">
-      <div id="card">
-        <span id="who" class="castSm"></span>
+      <div id="side" class="edge">
+        <div id="card">
+          <span id="who" class="castSm"></span>
 
-        <!-- The bar first, then the counts.
+          <!-- The bar first, then the counts.
            `lvl 4 · Rookie` is one fact in two halves, and it was split across two rows with the
            stats wedged in between - so the tier read as a caption on your NAME rather than as
            what it is: the name of the level sitting next to it. Joined, the head of the bar
            says everything about where you are, and the counts sit under it as the detail. -->
-        <div id="xp">
-          <div class="xpHead">
-            <span id="xpLevel">lvl 0</span>
-            <span id="rank"></span>
-            <span id="xpNums">0 / 200</span>
+          <div id="xp">
+            <div class="xpHead">
+              <span id="xpLevel">lvl 0</span>
+              <span id="rank"></span>
+              <span id="xpNums">0 / 200</span>
+            </div>
+            <div id="xpTrack"><div id="xpFill"></div></div>
           </div>
-          <div id="xpTrack"><div id="xpFill"></div></div>
-        </div>
 
-        <!-- Kills, deaths, coins. The round score used to be here and is not information: it is
+          <!-- Kills, deaths, coins. The round score used to be here and is not information: it is
            a number you cannot act on, derived from the other two plus pickups, and it is
            already the thing the scoreboard ranks by. Hours played is tracked on the server and
            deliberately not shown - nobody needs to be told how long they have been here. -->
-        <div id="cardStats">
-          <span><span class="k">kills</span><span id="vKills">0</span></span>
-          <span><span class="k">deaths</span><span id="vDeaths">0</span></span>
-          <span class="coinStat"
-            ><svg class="coin"><use href="#i-coin" /></svg
-            ><span id="vCoins">0</span></span
-          >
+          <div id="cardStats">
+            <span><span class="k">kills</span><span id="vKills">0</span></span>
+            <span
+              ><span class="k">deaths</span><span id="vDeaths">0</span></span
+            >
+            <span class="coinStat"
+              ><svg class="coin"><use href="#i-coin" /></svg
+              ><span id="vCoins">0</span></span
+            >
+          </div>
+          <!-- Lifetime podium finishes: the trophy cabinet. Filled from the scores broadcast. -->
+          <div id="cardMedals" aria-label="medals"></div>
         </div>
-        <!-- Lifetime podium finishes: the trophy cabinet. Filled from the scores broadcast. -->
-        <div id="cardMedals" aria-label="medals"></div>
-      </div>
 
-      <div>
-        <h2 class="panelHead castSm">scoreboard</h2>
-        <div class="liveHead">
-          <span></span><span>pirate</span><span>k / d</span><span>score</span>
+        <div>
+          <h2 class="panelHead castSm">scoreboard</h2>
+          <div class="liveHead">
+            <span></span><span>pirate</span><span>k / d</span><span>score</span>
+          </div>
+          <ul id="liveRows"></ul>
         </div>
-        <ul id="liveRows"></ul>
-      </div>
 
-      <div id="chat">
-        <h2 class="panelHead">chat</h2>
-        <ul id="chatList"></ul>
-        <input
-          id="chatInput"
-          placeholder="enter to chat &middot; /help for commands"
-          maxlength="140"
-        />
+        <div id="chat">
+          <h2 class="panelHead">chat</h2>
+          <ul id="chatList"></ul>
+          <input
+            id="chatInput"
+            placeholder="enter to chat &middot; /help for commands"
+            maxlength="140"
+          />
+        </div>
       </div>
     </div>
-  </div>
 
-  <!-- Centred on the BOARD, not the window: the side panel is 340px of chrome, and an
+    <!-- Centred on the BOARD, not the window: the side panel is 340px of chrome, and an
      announcement centred on the viewport sits visibly off to one side of the thing you are
      looking at. -->
-  <!-- The count-in: five seconds at the top of every round, in the same cast gold as the clock it
+    <!-- The count-in: five seconds at the top of every round, in the same cast gold as the clock it
      sits under. The ring is a second hand - one sweep per count - so the thing reads as a clock
      ticking rather than as a number changing. Driven from the round's own tick in client/main.js,
      which is why everybody sees the same digit at the same moment. -->
-  <div id="countIn" aria-hidden="true">
-    <span class="ring"></span>
-    <span class="n cast" id="countInN">5</span>
-  </div>
-
-  <div id="centre">
-    <div id="streak"><span class="big"></span><span class="who"></span></div>
-    <div id="deadBanner">
-      <span class="big">YOU DIED</span><span class="who"></span>
+    <div id="countIn" aria-hidden="true">
+      <span class="ring"></span>
+      <span class="n cast" id="countInN">5</span>
     </div>
-  </div>
 
-  <div id="dead">
-    <!-- The landing page's visualiser, between rounds, in the same place relative to the card.
+    <div id="centre">
+      <div id="streak"><span class="big"></span><span class="who"></span></div>
+      <div id="deadBanner">
+        <span class="big">YOU DIED</span><span class="who"></span>
+      </div>
+    </div>
+
+    <div id="dead">
+      <!-- The landing page's visualiser, between rounds, in the same place relative to the card.
        `#dead` happens to be exactly the board's box, so a canvas at inset:0 inside it puts the
        bars on the board's own left and right edges - the same frame the menu card gets. First in
        the markup so the card paints over it. See client/menuviz.js. -->
-    <canvas id="roundViz" aria-hidden="true"></canvas>
-    <div class="card small edge">
-      <h1 id="deadTitle">round over</h1>
-      <div id="roundTable">
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>name</th>
-              <th class="num">kills</th>
-              <th class="num">deaths</th>
-              <th class="num">score</th>
-            </tr>
-          </thead>
-          <tbody id="roundRows"></tbody>
-        </table>
-        <p class="sub" id="roundEmpty">no scores</p>
-        <!-- What comes next, and when. The bar fills over the whole intermission, so "how long
+      <canvas id="roundViz" aria-hidden="true"></canvas>
+      <div class="card small edge">
+        <h1 id="deadTitle">round over</h1>
+        <div id="roundTable">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>name</th>
+                <th class="num">kills</th>
+                <th class="num">deaths</th>
+                <th class="num">score</th>
+              </tr>
+            </thead>
+            <tbody id="roundRows"></tbody>
+          </table>
+          <p class="sub" id="roundEmpty">no scores</p>
+          <!-- What comes next, and when. The bar fills over the whole intermission, so "how long
            until we play" is a glance rather than a number to read. -->
-        <div id="roundNext">
-          <div class="nextMap">
-            <span class="k">next map</span><span id="nextMapName"></span>
+          <div id="roundNext">
+            <div class="nextMap">
+              <span class="k">next map</span><span id="nextMapName"></span>
+            </div>
+            <div id="roundBar"><div class="fill"></div></div>
+            <div class="nextWhen" id="roundCountdown"></div>
           </div>
-          <div id="roundBar"><div class="fill"></div></div>
-          <div class="nextWhen" id="roundCountdown"></div>
         </div>
-      </div>
-      <!-- Three choices, in the order you are likely to want them. No heading: the respawn
+        <!-- Three choices, in the order you are likely to want them. No heading: the respawn
          countdown IS the message, and "you died" over the top of a banner that just said so is
          the same sentence twice. -->
-      <button id="respawn">respawn</button>
-      <!-- Auto-respawn. Remembered across sessions like the volume sliders, because it is a
+        <button id="respawn">respawn</button>
+        <!-- Auto-respawn. Remembered across sessions like the volume sliders, because it is a
          preference rather than a per-round choice. A real checkbox underneath - keyboard,
          screen readers and main.js all see an ordinary input - dressed as a sliding switch. -->
-      <label id="autoRow"
-        ><span class="lbl">auto respawn</span
-        ><input type="checkbox" id="autoRespawn" role="switch" /><span
-          class="switch"
-          aria-hidden="true"
-          ><span class="knob"></span></span
-      ></label>
-      <button id="spectate" class="ghost">spectate mode</button>
-      <button id="deadLeave" class="ghost">leave</button>
+        <label id="autoRow"
+          ><span class="lbl">auto respawn</span
+          ><input type="checkbox" id="autoRespawn" role="switch" /><span
+            class="switch"
+            aria-hidden="true"
+            ><span class="knob"></span></span
+        ></label>
+        <button id="spectate" class="ghost">spectate mode</button>
+        <button id="deadLeave" class="ghost">leave</button>
+      </div>
     </div>
-  </div>
 
-  <!-- #scores is a positioning FRAME over the board; #scoresCard is the panel inside it. Two
+    <!-- #scores is a positioning FRAME over the board; #scoresCard is the panel inside it. Two
      elements because the frame has to match the canvas exactly and the card has to be a glance,
      and one element cannot be both. -->
-  <div id="scores">
-    <div id="scoresCard" class="edge">
-      <!-- Two panes behind one key. Tab is where you already look between rounds, which makes it
+    <div id="scores">
+      <div id="scoresCard" class="edge">
+        <!-- Two panes behind one key. Tab is where you already look between rounds, which makes it
          the only place a rules sheet gets read. -->
-      <div id="boardTabs">
-        <button class="bt on" data-pane="boards" type="button">boards</button>
-        <button class="bt" data-pane="rules" type="button">rules</button>
-      </div>
-      <div id="boardsPane">
-        <h2 class="boardHead castSm">this round</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>name</th>
-              <th>level</th>
-              <th>medals</th>
-              <th class="num">kills</th>
-              <th class="num">deaths</th>
-              <th class="num">coins</th>
-              <th class="num">round</th>
-              <th class="num">xp</th>
-            </tr>
-          </thead>
-          <tbody id="scoreRows"></tbody>
-        </table>
-        <div id="allTime">
-          <h2 class="castSm">all time</h2>
+        <div id="boardTabs">
+          <button class="bt on" data-pane="boards" type="button">boards</button>
+          <button class="bt" data-pane="rules" type="button">rules</button>
+        </div>
+        <div id="boardsPane">
+          <h2 class="boardHead castSm">this round</h2>
           <table>
             <thead>
               <tr>
@@ -550,136 +562,154 @@
                 <th class="num">kills</th>
                 <th class="num">deaths</th>
                 <th class="num">coins</th>
+                <th class="num">round</th>
                 <th class="num">xp</th>
               </tr>
             </thead>
-            <tbody id="allTimeRows"></tbody>
+            <tbody id="scoreRows"></tbody>
           </table>
+          <div id="allTime">
+            <h2 class="castSm">all time</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>name</th>
+                  <th>level</th>
+                  <th>medals</th>
+                  <th class="num">kills</th>
+                  <th class="num">deaths</th>
+                  <th class="num">coins</th>
+                  <th class="num">xp</th>
+                </tr>
+              </thead>
+              <tbody id="allTimeRows"></tbody>
+            </table>
+          </div>
         </div>
-      </div>
 
-      <!-- The rules sheet. The same icons the HUD uses, so a pip you saw mid-round and the line
+        <!-- The rules sheet. The same icons the HUD uses, so a pip you saw mid-round and the line
          that explains it are the same drawing. -->
-      <div id="rulesPane">
-        <h2 class="boardHead castSm">the rules, quickly</h2>
-        <p class="rline">
-          Ten minutes a round, five islands. Fire runs in a cross, stops at
-          walls, sets off any bomb it reaches. Your own kills you too.
-        </p>
-        <dl class="rules">
-          <dt>
-            <svg><use href="#i-bomb" /></svg>bombs &amp; fire
-          </dt>
-          <dd>Lands on the tile you face. Burns in a cross, 2.4 s fuse.</dd>
-          <dt>
-            <svg><use href="#i-keg" /></svg>powder kegs
-          </dt>
-          <dd>Seven tiles of blast, and they chain.</dd>
-          <dt>
-            <svg><use href="#i-bolt" /></svg>stamina
-          </dt>
-          <dd>
-            Thirteen seconds of running, then you limp. Stopping refills it.
-          </dd>
-          <dt>
-            <svg><use href="#i-boot" /></svg>the slide
-          </dt>
-          <dd>
-            Three and a half tiles, a fifth of your wind, no steering. Whoever
-            you hit is left confused.
-          </dd>
-          <dt>
-            <svg><use href="#i-fire" /></svg>perks
-          </dt>
-          <dd>
-            Bombs, fire, boots, shield, stim. Rum saves you from everything but
-            the bomb's own tile. Bombs and fire cap at five.
-          </dd>
-          <dt>
-            <svg><use href="#i-shield" /></svg>shields
-          </dt>
-          <dd>
-            One blast each, spent before your health. Two blasts at once cost
-            two.
-          </dd>
-          <dt>
-            <svg><use href="#i-heart" /></svg>health
-          </dt>
-          <dd>
-            Two hits. The first leaves you see-through and shedding dust; the
-            second kills. No healing until you respawn.
-          </dd>
-          <dt>
-            <svg><use href="#i-ice" /></svg>ice
-          </dt>
-          <dd>Melts to a puddle. Half pace, and you slide.</dd>
-          <dt>
-            <svg><use href="#i-coin" /></svg>gold
-          </dt>
-          <dd>Worth 400. Counted on the board, not in the round.</dd>
-          <dt>
-            <svg><use href="#i-gull" /></svg>seagulls
-          </dt>
-          <dd>
-            Catch one in your blast: three coins. Once a round, two of them pick
-            somebody and kill them.
-          </dd>
-          <dt>
-            <svg><use href="#i-skull" /></svg>streaks
-          </dt>
-          <dd>Double, triple, ultra, rampage. ACE takes the whole island.</dd>
-        </dl>
-        <h2 class="boardHead castSm">scoring</h2>
-        <ul class="score">
-          <li><b>+100</b> kill</li>
-          <li><b>+400</b> gold coin</li>
-          <li><b>+50</b> survive the round</li>
-          <li><b>+5</b> perk, <b>+15</b> at its cap</li>
-          <li><b>+2</b> block</li>
-          <li><b>&#8722;25</b> suicide</li>
-        </ul>
+        <div id="rulesPane">
+          <h2 class="boardHead castSm">the rules, quickly</h2>
+          <p class="rline">
+            Ten minutes a round, five islands. Fire runs in a cross, stops at
+            walls, sets off any bomb it reaches. Your own kills you too.
+          </p>
+          <dl class="rules">
+            <dt>
+              <svg><use href="#i-bomb" /></svg>bombs &amp; fire
+            </dt>
+            <dd>Lands on the tile you face. Burns in a cross, 2.4 s fuse.</dd>
+            <dt>
+              <svg><use href="#i-keg" /></svg>powder kegs
+            </dt>
+            <dd>Seven tiles of blast, and they chain.</dd>
+            <dt>
+              <svg><use href="#i-bolt" /></svg>stamina
+            </dt>
+            <dd>
+              Thirteen seconds of running, then you limp. Stopping refills it.
+            </dd>
+            <dt>
+              <svg><use href="#i-boot" /></svg>the slide
+            </dt>
+            <dd>
+              Three and a half tiles, a fifth of your wind, no steering. Whoever
+              you hit is left confused.
+            </dd>
+            <dt>
+              <svg><use href="#i-fire" /></svg>perks
+            </dt>
+            <dd>
+              Bombs, fire, boots, shield, stim. Rum saves you from everything
+              but the bomb's own tile. Bombs and fire cap at five.
+            </dd>
+            <dt>
+              <svg><use href="#i-shield" /></svg>shields
+            </dt>
+            <dd>
+              One blast each, spent before your health. Two blasts at once cost
+              two.
+            </dd>
+            <dt>
+              <svg><use href="#i-heart" /></svg>health
+            </dt>
+            <dd>
+              Two hits. The first leaves you see-through and shedding dust; the
+              second kills. No healing until you respawn.
+            </dd>
+            <dt>
+              <svg><use href="#i-ice" /></svg>ice
+            </dt>
+            <dd>Melts to a puddle. Half pace, and you slide.</dd>
+            <dt>
+              <svg><use href="#i-coin" /></svg>gold
+            </dt>
+            <dd>Worth 400. Counted on the board, not in the round.</dd>
+            <dt>
+              <svg><use href="#i-gull" /></svg>seagulls
+            </dt>
+            <dd>
+              Catch one in your blast: three coins. Once a round, two of them
+              pick somebody and kill them.
+            </dd>
+            <dt>
+              <svg><use href="#i-skull" /></svg>streaks
+            </dt>
+            <dd>Double, triple, ultra, rampage. ACE takes the whole island.</dd>
+          </dl>
+          <h2 class="boardHead castSm">scoring</h2>
+          <ul class="score">
+            <li><b>+100</b> kill</li>
+            <li><b>+400</b> gold coin</li>
+            <li><b>+50</b> survive the round</li>
+            <li><b>+5</b> perk, <b>+15</b> at its cap</li>
+            <li><b>+2</b> block</li>
+            <li><b>&#8722;25</b> suicide</li>
+          </ul>
+        </div>
+        <p class="sub">tab to close</p>
       </div>
-      <p class="sub">tab to close</p>
     </div>
-  </div>
 
-  <!-- Two rows, and they are two different machines.
+    <!-- Two rows, and they are two different machines.
      The bottom row is THIS computer: frame rate, how much of one core the game's own frame work
      is using, and how much of the JS heap it is holding. Everybody sees it.
      The top row is the SERVER, in its own colour, and only the owner's client ever unhides it -
      a number nobody else can act on is noise on fifteen screens. -->
-  <div id="perf" aria-label="performance diagnostics">
-    <div id="perfServer" hidden>
-      <div class="perfRow">
-        <span id="perfSrvCpu">SRV CPU --%</span><span class="perfSep">·</span>
-        <span id="perfSrvMem">RAM --%</span><span class="perfSep">·</span>
-        <span id="perfSrvDisk">DISK --%</span>
-      </div>
-      <!-- The second line is the one that actually wakes somebody up: whether the simulation is
+    <div id="perf" aria-label="performance diagnostics">
+      <div id="perfServer" hidden>
+        <div class="perfRow">
+          <span id="perfSrvCpu">SRV CPU --%</span><span class="perfSep">·</span>
+          <span id="perfSrvMem">RAM --%</span><span class="perfSep">·</span>
+          <span id="perfSrvDisk">DISK --%</span>
+        </div>
+        <!-- The second line is the one that actually wakes somebody up: whether the simulation is
          keeping inside its tick budget, who is in the room, how long since the last restart,
          and whether the host has left the game running at a silly speed. Anything over its
          threshold turns red; see sampleServerHealth. -->
-      <div class="perfRow">
-        <span id="perfSrvTick">TICK --ms</span><span class="perfSep">·</span>
-        <span id="perfSrvPlayers">0P 0B</span><span class="perfSep">·</span>
-        <span id="perfSrvUp">UP --</span>
-        <span id="perfSrvFlags"></span>
+        <div class="perfRow">
+          <span id="perfSrvTick">TICK --ms</span><span class="perfSep">·</span>
+          <span id="perfSrvPlayers">0P 0B</span><span class="perfSep">·</span>
+          <span id="perfSrvUp">UP --</span>
+          <span id="perfSrvFlags"></span>
+        </div>
+        <div class="perfRow perfSignups">
+          <span>SIGNUPS</span><span class="perfSep">·</span>
+          <span id="perfSignup24">24H --</span><span class="perfSep">·</span>
+          <span id="perfSignup7">7D --</span><span class="perfSep">·</span>
+          <span id="perfSignup30">30D --</span>
+        </div>
       </div>
-      <div class="perfRow perfSignups">
-        <span>SIGNUPS</span><span class="perfSep">·</span>
-        <span id="perfSignup24">24H --</span><span class="perfSep">·</span>
-        <span id="perfSignup7">7D --</span><span class="perfSep">·</span>
-        <span id="perfSignup30">30D --</span>
+      <div id="perfLocal">
+        <span id="perfFps">-- FPS</span><span class="perfSep">·</span>
+        <span id="perfCpu">CPU --%</span><span class="perfSep">·</span>
+        <span id="perfMem">RAM --%</span>
       </div>
     </div>
-    <div id="perfLocal">
-      <span id="perfFps">-- FPS</span><span class="perfSep">·</span>
-      <span id="perfCpu">CPU --%</span><span class="perfSep">·</span>
-      <span id="perfMem">RAM --%</span>
-    </div>
-  </div>
 
-  <!-- Audio, bottom left, outside the HUD on purpose.
+    <!-- Audio, bottom left, outside the HUD on purpose.
      The music starts on the menu, so the control for it has to be on the menu. The lazy version
      is a second set of widgets there, kept in step with these ones - which is two sources of
      truth and a sync bug waiting to happen. This is the same set of elements on both screens:
@@ -687,162 +717,162 @@
 
      Icon and level in one control: the icon is the mute toggle, the slider unrolls out of it on
      hover or focus, and the level stays readable as a bar under the glyph while collapsed. -->
-  <div id="dock">
-    <!-- Transport first, then the two faders. They were one control and that was a mistake: the
+    <div id="dock">
+      <!-- Transport first, then the two faders. They were one control and that was a mistake: the
        music level lived under the play/pause button, so the only volume you could SEE was the
        sound effects one and the other may as well not have existed. A button does one thing. -->
-    <button
-      class="volBtn skip"
-      id="prevTrack"
-      title="previous track"
-      aria-label="previous track"
-    >
-      <svg><use href="#i-prev" /></svg>
-    </button>
-    <button
-      class="volBtn"
-      id="musicBtn"
-      title="play/pause"
-      aria-label="play or pause the music"
-    >
-      <svg><use href="#i-play" /></svg>
-    </button>
-    <button
-      class="volBtn skip"
-      id="nextTrack"
-      title="next track"
-      aria-label="next track"
-    >
-      <svg><use href="#i-next" /></svg>
-    </button>
+      <button
+        class="volBtn skip"
+        id="prevTrack"
+        title="previous track"
+        aria-label="previous track"
+      >
+        <svg><use href="#i-prev" /></svg>
+      </button>
+      <button
+        class="volBtn"
+        id="musicBtn"
+        title="play/pause"
+        aria-label="play or pause the music"
+      >
+        <svg><use href="#i-play" /></svg>
+      </button>
+      <button
+        class="volBtn skip"
+        id="nextTrack"
+        title="next track"
+        aria-label="next track"
+      >
+        <svg><use href="#i-next" /></svg>
+      </button>
 
-    <span class="sep"></span>
+      <span class="sep"></span>
 
-    <!-- Two faders, side by side and identical: click the glyph to mute, hover or focus it and
+      <!-- Two faders, side by side and identical: click the glyph to mute, hover or focus it and
        the level slides up out of it. The level stays readable as a bar under the glyph while
        the fader is closed, so the collapsed state still answers "how loud is this". -->
-    <span class="vol" id="musicCtl">
-      <button
-        class="volBtn"
-        id="musicVolBtn"
-        title="music volume (click to mute)"
-        aria-label="music volume"
-      >
-        <svg><use href="#i-note" /></svg>
-      </button>
-      <span class="slot"
-        ><input
-          id="vol"
-          type="range"
-          min="0"
-          max="100"
-          value="10"
+      <span class="vol" id="musicCtl">
+        <button
+          class="volBtn"
+          id="musicVolBtn"
+          title="music volume (click to mute)"
           aria-label="music volume"
-      /></span>
-    </span>
-    <span class="vol" id="sfxCtl">
-      <button
-        class="volBtn"
-        id="sfxBtn"
-        title="sound effects volume (click to mute)"
-        aria-label="sound effect volume"
-      >
-        <svg><use href="#i-spk" /></svg>
-      </button>
-      <span class="slot"
-        ><input
-          id="sfxVol"
-          type="range"
-          min="0"
-          max="100"
-          value="75"
+        >
+          <svg><use href="#i-note" /></svg>
+        </button>
+        <span class="slot"
+          ><input
+            id="vol"
+            type="range"
+            min="0"
+            max="100"
+            value="10"
+            aria-label="music volume"
+        /></span>
+      </span>
+      <span class="vol" id="sfxCtl">
+        <button
+          class="volBtn"
+          id="sfxBtn"
+          title="sound effects volume (click to mute)"
           aria-label="sound effect volume"
-      /></span>
-    </span>
-    <!-- The filename, not a pretty title. Four tracks that are deliberately hard to tell apart
+        >
+          <svg><use href="#i-spk" /></svg>
+        </button>
+        <span class="slot"
+          ><input
+            id="sfxVol"
+            type="range"
+            min="0"
+            max="100"
+            value="75"
+            aria-label="sound effect volume"
+        /></span>
+      </span>
+      <!-- The filename, not a pretty title. Four tracks that are deliberately hard to tell apart
        from each other while you are being chased, and the file is the thing you would go and
        look for afterwards. -->
-    <span id="nowPlaying" aria-live="off"
-      ><i class="eq"><b></b><b></b><b></b></i><span class="t"></span
-    ></span>
-  </div>
+      <span id="nowPlaying" aria-live="off"
+        ><i class="eq"><b></b><b></b><b></b></i><span class="t"></span
+      ></span>
+    </div>
 
-  <!-- The emote picker. A compass, because the keys are a compass - up, left, down, right - so
+    <!-- The emote picker. A compass, because the keys are a compass - up, left, down, right - so
      there is nothing to learn beyond "hold shift". Centred on the board rather than the window,
      like every other centred thing here, and `pointer-events: none` throughout: it is a legend,
      not a menu, and the keyboard is the only way to use it. -->
-  <div id="emotePick" aria-hidden="true">
-    <div class="ring">
-      <span class="ekey up"><b></b><i>W</i></span>
-      <span class="ekey left"><b></b><i>A</i></span>
-      <span class="ekey down"><b></b><i>S</i></span>
-      <span class="ekey right"><b></b><i>D</i></span>
+    <div id="emotePick" aria-hidden="true">
+      <div class="ring">
+        <span class="ekey up"><b></b><i>W</i></span>
+        <span class="ekey left"><b></b><i>A</i></span>
+        <span class="ekey down"><b></b><i>S</i></span>
+        <span class="ekey right"><b></b><i>D</i></span>
+      </div>
     </div>
-  </div>
 
-  <div id="toast"></div>
+    <div id="toast"></div>
 
-  <!-- Delayed player dossier. Populated from the authoritative once-a-second score broadcast and
+    <!-- Delayed player dossier. Populated from the authoritative once-a-second score broadcast and
      shown only after a deliberate 2.5-second hover/focus on a player name. -->
-  <div id="playerHover" class="edge" role="tooltip" aria-hidden="true">
-    <div class="phHead">
-      <span id="phName" class="castSm"></span>
-      <span id="phBadge"></span>
-    </div>
-    <div id="phRank"></div>
-    <!-- No "this round" block. The round numbers are already on the scoreboard this card is being
+    <div id="playerHover" class="edge" role="tooltip" aria-hidden="true">
+      <div class="phHead">
+        <span id="phName" class="castSm"></span>
+        <span id="phBadge"></span>
+      </div>
+      <div id="phRank"></div>
+      <!-- No "this round" block. The round numbers are already on the scoreboard this card is being
        opened from, two rows away, and repeating them pushed the lifetime figures - the only
        thing here you cannot read anywhere else - down past a fold on a short window. -->
-    <div class="phSection">lifetime</div>
-    <div class="phGrid">
-      <span><i>xp</i><b id="phXp">0</b></span>
-      <span><i>kills / deaths</i><b id="phLifeKd">0 / 0</b></span>
-      <span><i>gold collected</i><b id="phCoins">0</b></span>
-      <span class="phMedalCell"><i>medals</i><b id="phMedals"></b></span>
+      <div class="phSection">lifetime</div>
+      <div class="phGrid">
+        <span><i>xp</i><b id="phXp">0</b></span>
+        <span><i>kills / deaths</i><b id="phLifeKd">0 / 0</b></span>
+        <span><i>gold collected</i><b id="phCoins">0</b></span>
+        <span class="phMedalCell"><i>medals</i><b id="phMedals"></b></span>
+      </div>
     </div>
-  </div>
 
-  <div id="menu">
-    <!-- The music, drawn. Absolutely placed so it escapes the centring grid, and first in the
+    <div id="menu">
+      <!-- The music, drawn. Absolutely placed so it escapes the centring grid, and first in the
        markup so the card paints over it. See client/menuviz.js. -->
-    <canvas id="menuViz" aria-hidden="true"></canvas>
-    <div id="menuWrap">
-      <div class="card edge">
-        <!-- The title and its version, as one block: `width: fit-content` on #title means the
+      <canvas id="menuViz" aria-hidden="true"></canvas>
+      <div id="menuWrap">
+        <div class="card edge">
+          <!-- The title and its version, as one block: `width: fit-content` on #title means the
            box is exactly as wide as the word, so a marker positioned against it lands under the
            final letter whatever the clamp() has done to the font size. -->
-        <div id="titleWrap">
-          <h1 id="title" class="titleArt">
-            <img
-              src="/assets/img/title-boom-beard-bandanas-bomb.1f959c46.webp"
-              alt="Boom Beard"
-              width="1600"
-              height="662"
-              fetchpriority="high"
-            />
-          </h1>
-          <span id="version">v1.0.6</span>
-        </div>
-        <!-- Three beats, and each one does a job: the number tells you the scale, the island
+          <div id="titleWrap">
+            <h1 id="title" class="titleArt">
+              <img
+                src="/assets/img/title-boom-beard-bandanas-bomb.1f959c46.webp"
+                alt="Boom Beard"
+                width="1600"
+                height="662"
+                fetchpriority="high"
+              />
+            </h1>
+            <span id="version">v1.0.6</span>
+          </div>
+          <!-- Three beats, and each one does a job: the number tells you the scale, the island
            tells you there is nowhere to go, and the last tells you what you actually DO. The
            old line opened with "Online multiplayer", which is a category rather than a hook -
            and the PLAY button two inches below it already says that. -->
-        <p class="sub sub-split">
-          <span>Plant bombs...</span>
-          <span>Cause chaos...</span>
-          <span>try to survive!</span>
-        </p>
-        <div class="playerid-group">
-          <label for="name">PLAYER ID:</label>
-          <input
-            id="name"
-            type="text"
-            placeholder="pick a player id"
-            autocomplete="off"
-            autofocus
-          />
-        </div>
-        <!-- The password, hidden until the server asks for it - which is the first time a name is
+          <p class="sub sub-split">
+            <span>Plant bombs...</span>
+            <span>Cause chaos...</span>
+            <span>try to survive!</span>
+          </p>
+          <div class="playerid-group">
+            <label for="name">PLAYER ID:</label>
+            <input
+              id="name"
+              type="text"
+              placeholder="pick a player id"
+              autocomplete="off"
+              autofocus
+            />
+          </div>
+          <!-- The password, hidden until the server asks for it - which is the first time a name is
            claimed, and the first time it arrives from a browser the server has not seen. After
            that this browser holds a token and the box never appears again. See server/accounts.js
            and the `auth` branch of onRejected in client/main.js.
@@ -850,256 +880,262 @@
            `autocomplete` is on and correct per mode (new-password / current-password) so a real
            password manager can do its job: the alternative is sixteen people typing the same four
            letters, which is worse security than any amount of hardening here can buy back. -->
-        <div class="playerid-group" id="pwGroup" hidden>
-          <label for="pw" id="pwLabel">PASSWORD:</label>
-          <!-- The field, the reveal button and the strength bar as one unit. No note underneath:
+          <div class="playerid-group" id="pwGroup" hidden>
+            <label for="pw" id="pwLabel">PASSWORD:</label>
+            <!-- The field, the reveal button and the strength bar as one unit. No note underneath:
              every reason - too short, too easy, wrong, locked out, name already playing - goes
              to the toast, which is where every other message in this game already appears. One
              place to look for "what went wrong" beats two. -->
-          <div class="pwField">
-            <input
-              id="pw"
-              type="password"
-              placeholder="your password"
-              autocomplete="current-password"
-            />
-            <button
-              id="pwEye"
-              class="pwEye"
-              type="button"
-              aria-label="show password"
-              aria-pressed="false"
-            >
-              <svg aria-hidden="true"><use href="#i-eye" /></svg>
-            </button>
-            <!-- Strength, as a bar and never as a sentence. It is only shown while setting a new
+            <div class="pwField">
+              <input
+                id="pw"
+                type="password"
+                placeholder="your password"
+                autocomplete="current-password"
+              />
+              <button
+                id="pwEye"
+                class="pwEye"
+                type="button"
+                aria-label="show password"
+                aria-pressed="false"
+              >
+                <svg aria-hidden="true"><use href="#i-eye" /></svg>
+              </button>
+              <!-- Strength, as a bar and never as a sentence. It is only shown while setting a new
                password, because telling somebody their EXISTING password is weak while they are
                trying to sign in is noise they cannot act on. -->
-            <div class="pwMeter" id="pwMeter" aria-hidden="true"><i></i></div>
+              <div class="pwMeter" id="pwMeter" aria-hidden="true"><i></i></div>
+            </div>
           </div>
-        </div>
-        <button id="play">play</button>
-        <!-- Always available, including when every seat is taken: a spectator costs nobody a
+          <button id="play">play</button>
+          <!-- Always available, including when every seat is taken: a spectator costs nobody a
            place, so "full" is not a reason to turn one away. -->
-        <button id="watch" class="ghost">spectate only</button>
-        <div class="keys">
-          <h2>Controls</h2>
-          <dl>
-            <dt>
-              <kbd>&#8592;</kbd><kbd>&#8593;</kbd><kbd>&#8595;</kbd
-              ><kbd>&#8594;</kbd> <span class="or">or</span> <kbd>W</kbd
-              ><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>
-            </dt>
-            <dd>Move</dd>
+          <button id="watch" class="ghost">spectate only</button>
+          <div class="keys">
+            <h2>Controls</h2>
+            <dl>
+              <dt>
+                <kbd>&#8592;</kbd><kbd>&#8593;</kbd><kbd>&#8595;</kbd
+                ><kbd>&#8594;</kbd> <span class="or">or</span> <kbd>W</kbd
+                ><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>
+              </dt>
+              <dd>Move</dd>
 
-            <dt>
-              <kbd>&#8592;</kbd><kbd>&#8592;</kbd> <span class="or">twice</span>
-            </dt>
-            <dd>Slide</dd>
+              <dt>
+                <kbd>&#8592;</kbd><kbd>&#8592;</kbd>
+                <span class="or">twice</span>
+              </dt>
+              <dd>Slide</dd>
 
-            <dt><kbd class="wide">Shift</kbd> + a direction</dt>
-            <dd>Emote</dd>
+              <dt><kbd class="wide">Shift</kbd> + a direction</dt>
+              <dd>Emote</dd>
 
-            <dt>
-              <kbd class="wide">Space</kbd> <span class="or">or</span>
-              <kbd>K</kbd>
-            </dt>
-            <dd>Bomb, or respawn</dd>
+              <dt>
+                <kbd class="wide">Space</kbd> <span class="or">or</span>
+                <kbd>K</kbd>
+              </dt>
+              <dd>Bomb, or respawn</dd>
 
-            <dt><kbd class="wide">Enter</kbd></dt>
-            <dd>Chat</dd>
+              <dt><kbd class="wide">Enter</kbd></dt>
+              <dd>Chat</dd>
 
-            <dt><kbd>/</kbd></dt>
-            <dd>Commands</dd>
+              <dt><kbd>/</kbd></dt>
+              <dd>Commands</dd>
 
-            <dt><kbd class="wide">Tab</kbd></dt>
-            <dd>Scores</dd>
+              <dt><kbd class="wide">Tab</kbd></dt>
+              <dd>Scores</dd>
 
-            <dt><kbd class="wide">Esc</kbd></dt>
-            <dd>Leave</dd>
+              <dt><kbd class="wide">Esc</kbd></dt>
+              <dd>Leave</dd>
 
-            <dt><code>/logout</code></dt>
-            <dd>Sign out</dd>
-          </dl>
+              <dt><code>/logout</code></dt>
+              <dd>Sign out</dd>
+            </dl>
+          </div>
+          <p class="menuFoot">
+            <a
+              href="https://github.com/cobusvonwielligh/boom-beard"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <svg><use href="#i-gh" /></svg>source
+            </a>
+            <a
+              class="bug"
+              href="https://github.com/cobusvonwielligh/boom-beard/issues/new"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <svg><use href="#i-bug" /></svg>report a bug
+            </a>
+          </p>
         </div>
-        <p class="menuFoot">
-          <a
-            href="https://github.com/cobusvonwielligh/boom-beard"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <svg><use href="#i-gh" /></svg>source
-          </a>
-          <a
-            class="bug"
-            href="https://github.com/cobusvonwielligh/boom-beard/issues/new"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <svg><use href="#i-bug" /></svg>report a bug
-          </a>
-        </p>
-      </div>
-      <!-- A stack of powder kegs sitting on the top edge of the card, over it rather than behind
+        <!-- A stack of powder kegs sitting on the top edge of the card, over it rather than behind
          it, and off to the left so it never crowds the title. -->
-      <div class="prop" id="propBarrels">
-        <img
-          src="/assets/img/bomb-barrels.4639014b.webp"
-          alt=""
-          width="440"
-          height="440"
-        />
-      </div>
+        <div class="prop" id="propBarrels">
+          <img
+            src="/assets/img/bomb-barrels.4639014b.webp"
+            alt=""
+            width="440"
+            height="440"
+          />
+        </div>
 
-      <!-- `.mascot-dash` is the size knob, and it is his alone - nothing else on the page uses it.
+        <!-- `.mascot-dash` is the size knob, and it is his alone - nothing else on the page uses it.
          It sets the BOX, never the <img>, for the reason spelled out beside it in style.css. -->
-      <div id="mascot" class="mascot-dash">
-        <img
-          src="/assets/img/mascot.8f66a578.webp"
-          alt=""
-          width="210"
-          height="210"
-          fetchpriority="high"
-        />
-        <!-- What he says when you hover PLAY. Inside #mascot so it rides the bob with him. -->
-        <div id="menuSay"></div>
+        <div id="mascot" class="mascot-dash">
+          <img
+            src="/assets/img/mascot.8f66a578.webp"
+            alt=""
+            width="210"
+            height="210"
+            fetchpriority="high"
+          />
+          <!-- What he says when you hover PLAY. Inside #mascot so it rides the bob with him. -->
+          <div id="menuSay"></div>
+        </div>
+      </div>
+      <div id="signupMeter" aria-label="human signup count">
+        <span class="signupScrew signupScrewA"></span>
+        <span class="signupScrew signupScrewB"></span>
+        <span class="signupLabel">players registered</span>
+        <span
+          id="signupDigits"
+          aria-live="polite"
+          aria-label="signup count unavailable"
+        >
+          <span class="signupDigit">-</span><span class="signupDigit">-</span>
+          <span class="signupDigit">-</span><span class="signupDigit">-</span>
+          <span class="signupDigit signupDigitLast">-</span>
+        </span>
       </div>
     </div>
-    <div id="signupMeter" aria-label="human signup count">
-      <span class="signupScrew signupScrewA"></span>
-      <span class="signupScrew signupScrewB"></span>
-      <span class="signupLabel">players registered</span>
-      <span id="signupDigits" aria-live="polite" aria-label="signup count unavailable">
-        <span class="signupDigit">-</span><span class="signupDigit">-</span>
-        <span class="signupDigit">-</span><span class="signupDigit">-</span>
-        <span class="signupDigit signupDigitLast">-</span>
-      </span>
-    </div>
-  </div>
 
-  <script type="module" src="/client/main.js"></script>
-  <style>
-    /* ========================================
+    <script type="module" src="/client/main.js"></script>
+    <style>
+      /* ========================================
    IN-GAME AVATAR / FACE
    Shrink by 15% and move slightly up
    ======================================== */
-    #avatar {
-      width: 85px;
-      height: 85px;
-      object-fit: contain;
-      /* 15px left and 5px down from where it was (-8px up). */
-      transform: translate(-15px, -3px);
-    }
+      #avatar {
+        width: 85px;
+        height: 85px;
+        object-fit: contain;
+        /* 15px left and 5px down from where it was (-8px up). */
+        transform: translate(-15px, -3px);
+      }
 
-    /* ========================================
+      /* ========================================
    PLAYER ID LABEL AND INPUT
    ======================================== */
-    .playerid-group {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-      width: 100%;
-    }
+      .playerid-group {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        width: 100%;
+      }
 
-    .playerid-group label {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      white-space: nowrap;
-      flex-shrink: 0;
-      margin: 0;
-      padding: 0;
-      line-height: 1;
-      font-size: calc(1em + 1px);
-      text-shadow:
-        0 2px 4px rgba(0, 0, 0, 0.8),
-        0 1px 2px rgba(0, 0, 0, 0.6);
-    }
+      .playerid-group label {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        white-space: nowrap;
+        flex-shrink: 0;
+        margin: 0;
+        padding: 0;
+        line-height: 1;
+        font-size: calc(1em + 1px);
+        text-shadow:
+          0 2px 4px rgba(0, 0, 0, 0.8),
+          0 1px 2px rgba(0, 0, 0, 0.6);
+      }
 
-    .playerid-group input {
-      flex: 1;
-      min-width: 0;
-      box-sizing: border-box;
-      margin: 0;
-    }
+      .playerid-group input {
+        flex: 1;
+        min-width: 0;
+        box-sizing: border-box;
+        margin: 0;
+      }
 
-    /* ========================================
+      /* ========================================
    XP PROGRESS BAR
    Move the progress line further down
    ======================================== */
 
-    /* Keep XP labels directly above the progress bar */
-    #xp {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
+      /* Keep XP labels directly above the progress bar */
+      #xp {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
 
-    #xp .xpHead {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      width: 100%;
-      margin: 0;
-      margin-top: 20px;
-      line-height: 1.2;
-    }
+      #xp .xpHead {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        margin: 0;
+        margin-top: 20px;
+        line-height: 1.2;
+      }
 
-    #xpTrack {
-      width: 100%;
-      margin-top: 5px;
-      flex-shrink: 0;
-    }
+      #xpTrack {
+        width: 100%;
+        margin-top: 5px;
+        flex-shrink: 0;
+      }
 
-    /* ========================================
+      /* ========================================
    PERFORMANCE PANEL - POSITION & SIZE
    ======================================== */
 
-    #perf {
-      position: fixed !important;
+      #perf {
+        position: fixed !important;
 
-      /* Position it at the bottom-left */
-      left: 10px !important;
-      right: auto !important;
-      bottom: 50px !important;
-      top: auto !important;
+        /* Position it at the bottom-left */
+        left: 10px !important;
+        right: auto !important;
+        bottom: 50px !important;
+        top: auto !important;
 
-      /* Shrink the entire panel and all its contents */
-      transform: scale(0.75);
-      transform-origin: bottom left;
+        /* Shrink the entire panel and all its contents */
+        transform: scale(0.75);
+        transform-origin: bottom left;
 
-      /* Keep it above the game canvas */
-      z-index: 9999;
-    }
+        /* Keep it above the game canvas */
+        z-index: 9999;
+      }
 
-    .sub-split {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      align-items: center;
-      width: 100%;
-      margin: 80px auto 0;
-      gap: 60px;
-    }
+      .sub-split {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        align-items: center;
+        width: 100%;
+        margin: 80px auto 0;
+        gap: 60px;
+      }
 
-    .sub-split span {
-      white-space: nowrap;
-    }
+      .sub-split span {
+        white-space: nowrap;
+      }
 
-    .sub-split span:first-child {
-      text-align: left;
-      justify-self: center;
-    }
+      .sub-split span:first-child {
+        text-align: left;
+        justify-self: center;
+      }
 
-    .sub-split span:nth-child(2) {
-      text-align: left;
-      justify-self: left;
-      transform: translateX(-45px);
-    }
+      .sub-split span:nth-child(2) {
+        text-align: left;
+        justify-self: left;
+        transform: translateX(-50px);
+      }
 
-    .sub-split span:last-child {
-      text-align: right;
-      justify-self: center;
-    }
-  </style>
+      .sub-split span:last-child {
+        text-align: left;
+        justify-self: left;
+        transform: translateX(-20px);
+      }
+    </style>
   </body>
 </html>
