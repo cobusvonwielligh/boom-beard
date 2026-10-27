@@ -937,6 +937,11 @@
               </div>
             </div>
           </form>
+          <div
+            id="regionPicker"
+            role="group"
+            aria-label="Game region"
+          ></div>
           <button id="play" type="submit" form="playerForm">play</button>
           <!-- Always available, including when every seat is taken: a spectator costs nobody a
            place, so "full" is not a reason to turn one away. -->
@@ -1044,6 +1049,7 @@
       </div>
     </div>
 
+    <script type="module" src="/client/region-picker.js"></script>
     <script type="module" src="/client/main.js"></script>
     <style>
       /* ========================================
