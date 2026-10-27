@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://boombeard.co.za">
-    <img src="public/assets/img/title-boom-beard-bandanas-bomb.webp" alt="Boom Beard" width="100%">
+    <img src="public/assets/img/title-boom-beard-bandanas-bomb.1f959c46.webp" alt="Boom Beard" width="100%">
   </a>
 </p>
 

@@ -35,6 +35,13 @@ function webpDimensions(rel) {
   assert.fail(`${rel} has no VP8L dimensions`);
 }
 
+test('README banner points to an existing image asset', () => {
+  const banner = text('README.md')
+    .match(/<img src="([^"]+)" alt="Boom Beard" width="100%">/)?.[1];
+  assert.ok(banner, 'README banner image is present');
+  assert.ok(fs.existsSync(path.join(ROOT, banner)), `README banner asset does not exist: ${banner}`);
+});
+
 test('desktop metadata and the LCP image are explicit', () => {
   const html = text('public/index.html');
   assert.match(html, /<html lang="en">/);
