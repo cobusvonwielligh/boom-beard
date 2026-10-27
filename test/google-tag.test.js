@@ -25,3 +25,9 @@ test('the document has an explicit head and the Google Ads CSP allowlist', () =>
   ]) assert.ok(server.includes(host), `${host} missing from CSP`);
   assert.match(server, /frame-src[^\n]*www\.googletagmanager\.com/);
 });
+
+test('the CSP permits status probes to both regional origins', () => {
+  const connect = server.match(/"connect-src[^"]*"/)?.[0] ?? '';
+  assert.match(connect, /https:\/\/boombeard\.co\.za/);
+  assert.match(connect, /https:\/\/us\.boombeard\.co\.za/);
+});

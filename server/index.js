@@ -65,7 +65,7 @@ const CSP = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://pagead2.googlesyndication.com https://www.google.com",
   "media-src 'self'",
-  "connect-src 'self' ws: wss: https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://pagead2.googlesyndication.com https://www.google.com https://ad.doubleclick.net https://us.boombeard.co.za",
+  "connect-src 'self' ws: wss: https://boombeard.co.za https://us.boombeard.co.za https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://pagead2.googlesyndication.com https://www.google.com https://ad.doubleclick.net",
   "frame-src https://www.googletagmanager.com",
   "object-src 'none'",
   "base-uri 'none'",
