@@ -170,8 +170,9 @@ The dashboard currently requires TLS to terminate directly in the app. It is not
    certificate renewal, and TCP 22 only from the administrator's current IP. Optionally
    allow UDP/443 for WebTransport; WebSocket over TCP/443 remains available without it.
 3. Secure `~/Downloads/bombs-away-na.pem` with mode `600`, then run
-   `infra/bootstrap.sh` with `HOST=52.21.210.27 REGION_ID=us` and the Let's Encrypt
-   contact email. The IP certificate uses the `shortlived` profile and renews daily.
+   `infra/bootstrap.sh` with `HOST=52.21.210.27 REGION_ID=us`. `EMAIL` is optional;
+   without it, Certbot sends no expiry notices, so monitor the daily renewal timer.
+   The IP certificate uses the `shortlived` profile and renews daily.
 4. Keep `/var/lib/boom-beard` on the US instance; do not copy ZA accounts or game data.
    Deploy the same `main` commit to both instances, using `SSH_HOST=52.21.210.27`,
    `SSH_USER=ec2-user`, and the US key for the US manual deployment.
@@ -261,8 +262,9 @@ regional hostname:
 2. Confirm its security group allows inbound TCP 443 and TCP 80 from `0.0.0.0/0`, and
    SSH/TCP 22 only from the administrator's IP. Optionally allow UDP/443 for WebTransport.
 3. Secure `~/Downloads/bombs-away-na.pem` with `chmod 600`. Run bootstrap using
-   `HOST=52.21.210.27 REGION_ID=us` and the Let's Encrypt contact email. This requests
-   an IP-address certificate with the six-day `shortlived` profile and daily renewal.
+   `HOST=52.21.210.27 REGION_ID=us`. `EMAIL` is optional; without it, Certbot sends
+   no expiry notices, so monitor the daily renewal timer. This requests an IP-address
+   certificate with the six-day `shortlived` profile and daily renewal.
 4. Deploy the same verified `main` commit to both instances. For manual US deployment,
    set `SSH_HOST=52.21.210.27`, `SSH_USER=ec2-user`, and
    `KEY=~/Downloads/bombs-away-na.pem`.

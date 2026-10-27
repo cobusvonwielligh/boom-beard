@@ -128,7 +128,7 @@ Change the Certbot systemd timer from weekly to daily. Preserve the existing pre
 
 - [ ] **Step 4: Update deployment documentation**
 
-Document `HOST=52.21.210.27 REGION_ID=us`, the six-day `shortlived` IP certificate, daily renewal, and required inbound TCP 80/443. Keep the existing `EMAIL` environment requirement for certificate expiry notices; never hard-code an address in the repository. Remove `us.boombeard.co.za` as a deployment prerequisite or game origin. State that ZA remains the only landing/admin website.
+Document `HOST=52.21.210.27 REGION_ID=us`, the six-day `shortlived` IP certificate, daily renewal, and required inbound TCP 80/443. Keep `EMAIL` optional and never hard-code an address in the repository; without it, state that expiry notices are unavailable and the daily renewal timer must be monitored. Remove `us.boombeard.co.za` as a deployment prerequisite or game origin. State that ZA remains the only landing/admin website.
 
 - [ ] **Step 5: Run bootstrap tests**
 

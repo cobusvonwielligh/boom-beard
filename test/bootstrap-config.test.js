@@ -52,3 +52,10 @@ test('US bootstrap is IP-only and does not require the ZA dashboard password', a
   assert.match(script, /if \[ "\$REGION_ID" = za \] && \[ "\$SKIP_TLS" != 1 \]/);
   assert.match(script, /US game server is game-only/);
 });
+
+test('bootstrap can register without a contact email when none exists', async () => {
+  const script = await readFile(path.join(ROOT, 'infra/bootstrap.sh'), 'utf8');
+
+  assert.match(script, /--register-unsafely-without-email/);
+  assert.match(script, /CERTBOT_ACCOUNT_ARGS=\(-m "\$EMAIL"\)/);
+});

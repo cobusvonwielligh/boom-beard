@@ -14,7 +14,8 @@
 #   HOST       required. Primary hostname or IP address; it must point/reach this box.
 #   ALT_HOSTS  optional. Space-separated extra DNS names for the same certificate (e.g. www).
 #   REGION_ID  `za` or `us`; defaults to an existing config value or `za`.
-#   EMAIL      required unless SKIP_TLS=1. For certificate expiry notices.
+#   EMAIL      optional contact for certificate expiry notices. If absent, Certbot registers
+#              without email alerts; the daily renewal timer must be monitored.
 #   SKIP_TLS=1 provision everything except the certificate; serve plain HTTP on 8080. Use this
 #   before DNS or ingress is ready, or behind a load balancer that terminates TLS. The /admin dashboard
 #   requires app-level TLS and is unavailable in this mode.
@@ -33,7 +34,6 @@ REGION_ID="${REGION_ID:-}"
 # SSH form, because the repo is private. The box authenticates with a read-only deploy key that
 # this script generates; add the printed public key under GitHub > Settings > Deploy keys.
 REPO="${REPO:-git@github.com:cobusvonwielligh/boom-beard.git}"
-[ "$SKIP_TLS" = 1 ] || : "${EMAIL:?set EMAIL for certificate expiry notices}"
 
 APP_DIR=/opt/boom-beard
 DATA_DIR=/var/lib/boom-beard
@@ -227,6 +227,14 @@ if [ ! -x /opt/certbot/bin/certbot ]; then
 fi
 sudo /opt/certbot/bin/pip install -q --upgrade pip certbot
 
+CERTBOT_ACCOUNT_ARGS=()
+if [ -n "$EMAIL" ]; then
+  CERTBOT_ACCOUNT_ARGS=(-m "$EMAIL")
+else
+  CERTBOT_ACCOUNT_ARGS=(--register-unsafely-without-email)
+  echo "No certificate contact email; monitor the daily renewal timer."
+fi
+
 CERT_IDENTIFIER_ARGS=()
 if [ "$HOST_IS_IP" = 1 ]; then
   [ -z "$ALT_HOSTS" ] || { echo "ALT_HOSTS cannot be used with an IP certificate" >&2; exit 1; }
@@ -244,7 +252,8 @@ echo "==> certificate for $HOST ${ALT_HOSTS:+(+ $ALT_HOSTS)}"
 # domain happened to come first and can fork a second lineage when the list changes, at which
 # point the deploy hook below is copying from a path that no longer gets renewed.
 if ! sudo /opt/certbot/bin/certbot certonly --standalone --non-interactive --agree-tos \
-  --cert-name "$HOST" --keep-until-expiring --expand -m "$EMAIL" "${CERT_IDENTIFIER_ARGS[@]}"; then
+  --cert-name "$HOST" --keep-until-expiring --expand "${CERTBOT_ACCOUNT_ARGS[@]}" \
+  "${CERT_IDENTIFIER_ARGS[@]}"; then
   if ! sudo systemctl start boom-beard; then
     echo "certificate request failed and the game service could not be restarted" >&2
   else
