@@ -43,7 +43,7 @@ UNIT=/etc/systemd/system/boom-beard.service
 echo "==> packages"
 # `npm` pulls in nodejs18 as a dependency and wins the alternatives link, so install 22
 # explicitly and then claim the link. Without the --set, `node` is silently 18.
-sudo dnf -q -y install nodejs22 nodejs22-npm git rsync python3-pip
+sudo dnf -q -y install nodejs22 nodejs22-npm git rsync python3-pip python3.11
 sudo alternatives --set node /usr/bin/node-22
 node --version
 [ "$(node -p 'process.versions.node.split(".")[0]')" -ge 20 ] || { echo "need node >= 20"; exit 1; }
@@ -222,10 +222,16 @@ if [ "$SKIP_TLS" = 1 ]; then
 fi
 
 echo "==> certbot"
-if [ ! -x /opt/certbot/bin/certbot ]; then
-  sudo python3 -m venv /opt/certbot
+CERTBOT_HOME=/opt/certbot311
+if [ ! -x "$CERTBOT_HOME/bin/certbot" ]; then
+  sudo python3.11 -m venv "$CERTBOT_HOME"
 fi
-sudo /opt/certbot/bin/pip install -q --upgrade pip certbot
+sudo "$CERTBOT_HOME/bin/pip" install -q --upgrade pip certbot
+CERTBOT_HELP=$("$CERTBOT_HOME/bin/certbot" certonly --help all 2>&1)
+if [ "$HOST_IS_IP" = 1 ] && [[ "$CERTBOT_HELP" != *"--ip-address"* ]]; then
+  echo "installed Certbot does not support IP-address certificates" >&2
+  exit 1
+fi
 
 CERTBOT_ACCOUNT_ARGS=()
 if [ -n "$EMAIL" ]; then
@@ -251,7 +257,7 @@ echo "==> certificate for $HOST ${ALT_HOSTS:+(+ $ALT_HOSTS)}"
 # --cert-name pins the lineage to $HOST. Without it certbot names the directory after whichever
 # domain happened to come first and can fork a second lineage when the list changes, at which
 # point the deploy hook below is copying from a path that no longer gets renewed.
-if ! sudo /opt/certbot/bin/certbot certonly --standalone --non-interactive --agree-tos \
+if ! sudo "$CERTBOT_HOME/bin/certbot" certonly --standalone --non-interactive --agree-tos \
   --cert-name "$HOST" --keep-until-expiring --expand "${CERTBOT_ACCOUNT_ARGS[@]}" \
   "${CERT_IDENTIFIER_ARGS[@]}"; then
   if ! sudo systemctl start boom-beard; then
@@ -288,7 +294,7 @@ sudo tee /etc/systemd/system/certbot-renew.service >/dev/null <<'UNIT'
 Description=Renew TLS certificates
 [Service]
 Type=oneshot
-ExecStart=/opt/certbot/bin/certbot renew --quiet --standalone --pre-hook "systemctl stop boom-beard" --post-hook "systemctl start boom-beard"
+ExecStart=$CERTBOT_HOME/bin/certbot renew --quiet --standalone --pre-hook "systemctl stop boom-beard" --post-hook "systemctl start boom-beard"
 UNIT
 sudo tee /etc/systemd/system/certbot-renew.timer >/dev/null <<'UNIT'
 [Unit]

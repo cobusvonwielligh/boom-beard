@@ -120,7 +120,7 @@ Expected: FAIL because bootstrap only requests domain certificates and the timer
 
 - [ ] **Step 2: Add IP/domain identifier handling**
 
-In `infra/bootstrap.sh`, detect whether `HOST` is an IP address with Python's standard-library `ipaddress`. Require an IP whenever `REGION_ID=us`, including `SKIP_TLS=1`. For an IP, pass `--ip-address "$HOST" --preferred-profile shortlived`; for a ZA DNS hostname, preserve the current `-d "$HOST"` and `ALT_HOSTS` behavior. Keep the existing standalone HTTP-01 challenge and certificate deploy hook.
+In `infra/bootstrap.sh`, detect whether `HOST` is an IP address with Python's standard-library `ipaddress`. Require an IP whenever `REGION_ID=us`, including `SKIP_TLS=1`. Install Certbot in a Python 3.11 virtual environment so the compatible Certbot release exposes `--ip-address`; verify that capability before stopping the game service. For an IP, pass `--ip-address "$HOST" --preferred-profile shortlived`; for a ZA DNS hostname, preserve the current `-d "$HOST"` and `ALT_HOSTS` behavior. Keep the existing standalone HTTP-01 challenge and certificate deploy hook.
 
 - [ ] **Step 3: Schedule reliable six-day certificate renewal**
 

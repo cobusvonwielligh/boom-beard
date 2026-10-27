@@ -36,11 +36,11 @@ test('bootstrap validates IP certificate arguments before stopping the service',
 
 test('a failed certificate request restores the running game service', async () => {
   const script = await readFile(path.join(ROOT, 'infra/bootstrap.sh'), 'utf8');
-  const request = script.indexOf('if ! sudo /opt/certbot/bin/certbot certonly');
+  const request = script.indexOf('if ! sudo "$CERTBOT_HOME/bin/certbot" certonly');
   const recovery = script.indexOf('sudo systemctl start boom-beard', request);
 
   assert.ok(request >= 0 && recovery > request);
-  assert.match(script.slice(request, recovery), /^if ! sudo \/opt\/certbot\/bin\/certbot certonly/);
+  assert.match(script.slice(request, recovery), /^if ! sudo "\$CERTBOT_HOME\/bin\/certbot" certonly/);
 });
 
 test('US bootstrap is IP-only and does not require the ZA dashboard password', async () => {
@@ -58,4 +58,13 @@ test('bootstrap can register without a contact email when none exists', async ()
 
   assert.match(script, /--register-unsafely-without-email/);
   assert.match(script, /CERTBOT_ACCOUNT_ARGS=\(-m "\$EMAIL"\)/);
+});
+
+test('IP bootstrap installs Certbot on Python 3.11 and checks IP-certificate support', async () => {
+  const script = await readFile(path.join(ROOT, 'infra/bootstrap.sh'), 'utf8');
+
+  assert.match(script, /CERTBOT_HOME=\/opt\/certbot311/);
+  assert.match(script, /python3\.11 -m venv "\$CERTBOT_HOME"/);
+  assert.match(script, /CERTBOT_HELP=\$\("\$CERTBOT_HOME\/bin\/certbot" certonly --help all/);
+  assert.match(script, /--ip-address/);
 });
