@@ -80,9 +80,10 @@ function decodePath(urlPath) {
 function resolveFile(urlPath) {
   const clean = decodePath(urlPath);
   if (clean === null || clean.includes('\0') || clean.includes('\\') || clean.split('/').includes('..')) return null;
+  const resolvedPath = clean === '/favicon.ico' ? '/assets/img/favicon.ico' : clean;
   for (const { prefix, dir } of MOUNTS) {
-    if (!clean.startsWith(prefix)) continue;
-    let rel = clean.slice(prefix.length) || 'index.html';
+    if (!resolvedPath.startsWith(prefix)) continue;
+    let rel = resolvedPath.slice(prefix.length) || 'index.html';
     if (rel.endsWith('/')) rel += 'index.html';
     const file = path.join(dir, rel);
     // Belt and braces: path.join already collapsed `..`, this proves we stayed inside the mount.

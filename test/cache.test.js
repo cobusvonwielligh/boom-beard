@@ -82,6 +82,15 @@ test('static caching', async t => {
     assert.equal(ordinary.status, 200);
     assert.equal(ordinary.headers.get('cache-control'), 'public, max-age=300');
     await ordinary.arrayBuffer();
+
+    const rootIcon = await fetch(base + '/favicon.ico');
+    const assetIcon = await fetch(base + '/assets/img/favicon.ico');
+    assert.equal(rootIcon.status, 200);
+    assert.equal(rootIcon.headers.get('content-type'), 'image/x-icon');
+    assert.deepEqual(
+      Buffer.from(await rootIcon.arrayBuffer()),
+      Buffer.from(await assetIcon.arrayBuffer()),
+    );
   });
 
   for (const url of ['/client/main.js', '/shared/constants.js', '/assets/art.js', '/style.css']) {
