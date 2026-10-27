@@ -63,7 +63,7 @@ Create a local HTTP server around `createSharedDataHttpHandler`. Assert unauthen
 
 - [ ] **Step 2: Add shared-store config**
 
-Read `shared_data_token`, `shared_data_host`, and `shared_data_servername` in `server/config.js`; validate that all are configured on US when shared mode is enabled. Keep the token only in ignored `config.ini`/environment. Add blank placeholders, never real secrets, to `config.example.ini`.
+Read the shared token, host, and TLS server name in `server/config.js`; require a fixed ZA IP and a token of at least 32 characters on US. Keep the token only in ignored `config.ini`/environment. Add blank placeholders, never real secrets, to `config.example.ini`.
 
 - [ ] **Step 3: Implement one internal JSON RPC route**
 
@@ -73,11 +73,11 @@ Use `POST /internal/shared-data`, `Authorization: Bearer <shared_data_token>`, a
 {"op":"account.checkDevice","name":"cobusvw","token":"opaque-device-token"}
 ```
 
-Support only the allowlisted account/career operations defined in the handler. Compare the token with `sameSecret`, bound the JSON body size, return `401` on auth failure, `400` on invalid requests, and `503` for store errors. Never log request bodies, passwords, device tokens, or hashes.
+Support only the allowlisted account/career operations defined in the handler. Compare the token with `sameSecret`, cap JSON bodies at 8 MiB, return `401` on auth failure, `400` on invalid requests, and `503` for store errors. Keep the route behind `guard.allowRequest`, emit no CORS header, and never log request bodies, passwords, device tokens, or hashes.
 
 - [ ] **Step 4: Register the handler on ZA only**
 
-In `server/index.js`, call the internal handler before static-file routing only when `config.regionId === 'za'`. Keep `/admin` and public `/region-status` behavior unchanged. Do not add the internal route to CORS.
+In `server/index.js`, call the internal handler before static-file routing only when `config.regionId === 'za'`. Keep `/admin` and public `/region-status` behavior unchanged.
 
 - [ ] **Step 5: Run API tests**
 
@@ -101,7 +101,7 @@ Inject `httpsRequest` and assert `createSharedDataClient` connects to the config
 
 - [ ] **Step 2: Implement the HTTPS API client**
 
-Export `createSharedDataClient({ host, servername, token, httpsRequest, timeoutMs })`. Connect to the fixed ZA Elastic IP as `host`, set `servername` to `boombeard.co.za`, and keep certificate verification enabled. POST to `/internal/shared-data`, validate `{ok:true,result}`, and throw a descriptive error for non-2xx responses. Inject `httpsRequest` in tests.
+Export `createSharedDataClient({ host, servername, token, requestImpl, timeoutMs })`. Connect to the fixed ZA Elastic IP as `host`, set `servername` to `boombeard.co.za`, and keep certificate verification enabled. POST to `/internal/shared-data`, validate `{ok:true,result}`, and throw a descriptive error for non-2xx responses. Inject `requestImpl` in tests.
 
 - [ ] **Step 3: Make shared account checks awaitable**
 

@@ -101,7 +101,7 @@ test('landing page places a labeled region dialog after the play controls', asyn
   assert.ok(dialogStart >= 0);
   assert.ok(picker > dialogStart, 'picker belongs inside the dialog');
   assert.match(html, /id="regionDialog"[^>]*aria-labelledby="regionDialogHeading"/);
-  assert.match(html, /id="regionDialogHeading"[^>]*>Choose your region</);
+  assert.match(html, /id="regionDialogHeading"[^>]*>\s*Choose your region\s*</);
   assert.match(html, /id="regionConfirm"/);
   assert.match(html, /id="regionCancel"/);
   assert.match(html, /id="regionRefresh"[^>]*aria-label="Refresh region status and ping"/);
