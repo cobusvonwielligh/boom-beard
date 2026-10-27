@@ -14,7 +14,6 @@
 #   HOST       required. Primary hostname. Must already resolve to this box.
 #   ALT_HOSTS  optional. Space-separated extra names for the same certificate (e.g. www).
 #   REGION_ID  `za` or `us`; defaults to an existing config value or `za`.
-#   ADMIN_KEY  Optional owner key override; an existing key is preserved otherwise.
 #   EMAIL      required unless SKIP_TLS=1. For certificate expiry notices.
 #   SKIP_TLS=1 provision everything except the certificate; serve plain HTTP on 8080. Use this
 #   before DNS has propagated, or behind a load balancer that terminates TLS. The /admin dashboard
@@ -30,7 +29,6 @@ ALT_HOSTS="${ALT_HOSTS:-}"
 SKIP_TLS="${SKIP_TLS:-0}"
 EMAIL="${EMAIL:-}"
 REGION_ID="${REGION_ID:-}"
-ADMIN_KEY="${ADMIN_KEY:-}"
 # SSH form, because the repo is private. The box authenticates with a read-only deploy key that
 # this script generates; add the printed public key under GitHub > Settings > Deploy keys.
 REPO="${REPO:-git@github.com:cobusvonwielligh/boom-beard.git}"
@@ -145,11 +143,11 @@ sudo visudo -c -f /etc/sudoers.d/boom-beard >/dev/null
 # Guard the file test rather than relying on 2>/dev/null: with `set -o pipefail` a missing file
 # makes the whole pipeline fail and takes the script with it.
 TOKEN=""
+ADMIN_KEY=""
 DASHBOARD_PASSWORD=${ADMIN_DASHBOARD_PASSWORD:-}
 if [ -f "$APP_DIR/config.ini" ]; then
   TOKEN=$(sed -n 's/^ *token *= *//p' "$APP_DIR/config.ini" | head -1 || true)
-  [ -n "$ADMIN_KEY" ] \
-    || ADMIN_KEY=$(sed -n 's/^ *key *= *//p' "$APP_DIR/config.ini" | head -1 || true)
+  ADMIN_KEY=$(sed -n 's/^ *key *= *//p' "$APP_DIR/config.ini" | head -1 || true)
   [ -n "$REGION_ID" ] \
     || REGION_ID=$(sed -n 's/^ *region_id *= *//p' "$APP_DIR/config.ini" | head -1 || true)
   [ -n "$DASHBOARD_PASSWORD" ] \
@@ -160,6 +158,10 @@ case "$REGION_ID" in
   za|us) ;;
   *) echo "REGION_ID must be za or us" >&2; exit 1 ;;
 esac
+if [ "$SKIP_TLS" != 1 ] && [ -z "$DASHBOARD_PASSWORD" ]; then
+  echo "ADMIN_DASHBOARD_PASSWORD is required for TLS deployments" >&2
+  exit 1
+fi
 [ -n "$TOKEN" ] || TOKEN=$(openssl rand -hex 32)
 [ -n "$ADMIN_KEY" ] || ADMIN_KEY=$(openssl rand -hex 16)
 

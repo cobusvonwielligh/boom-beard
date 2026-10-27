@@ -173,8 +173,10 @@ The dashboard currently requires TLS to terminate directly in the app. It is not
 2. Allow inbound TCP 443 (game), TCP 80 (redirect and ACME renewal), and TCP 22 only from the
    administrator's current IP.
 3. Use `REGION_ID=us`, `HOST=us.boombeard.co.za`, and the North America key with
-   `infra/bootstrap.sh`. Keep `/var/lib/boom-beard` on that instance; do not copy the ZA
-   accounts or leaderboard.
+   `infra/bootstrap.sh`. Bootstrap creates a unique admin key for the host and prints a
+   one-time enrollment link; do not copy the ZA admin key. Supply the dashboard password
+   through the server environment. Keep `/var/lib/boom-beard` on that instance; do not copy
+   the ZA accounts or leaderboard.
 4. Deploy the same `main` commit to both hosts. Set `region_id=za` on the existing instance
    (the default) and `region_id=us` on the new instance.
 

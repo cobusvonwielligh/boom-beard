@@ -10,7 +10,9 @@ test('bootstrap preserves and writes the configured regional identity', async ()
   const script = await readFile(path.join(ROOT, 'infra/bootstrap.sh'), 'utf8');
 
   assert.match(script, /REGION_ID="\$\{REGION_ID:-\}"/);
-  assert.match(script, /ADMIN_KEY="\$\{ADMIN_KEY:-\}"/);
   assert.match(script, /region_id\s+=\s+\$REGION_ID/);
   assert.match(script, /REGION_ID must be za or us/);
+  assert.match(script, /ADMIN_KEY=\$\(\s*openssl rand -hex 16\s*\)/);
+  assert.doesNotMatch(script, /ADMIN_KEY="\$\{ADMIN_KEY:-\}"/);
+  assert.match(script, /SKIP_TLS.*DASHBOARD_PASSWORD/);
 });

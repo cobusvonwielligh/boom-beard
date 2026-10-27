@@ -584,8 +584,9 @@ export const trustKey = (region, name) => region === 'za'
 ```
 
 Import and use these helpers in `public/client/net.js` for player ID and trust reads
-and writes. Keep `bv.name`, `bv.device`, and the existing shared admin key behavior
-unchanged.
+and writes. Keep `bv.name` and `bv.device` shared. Keep the existing admin key scoped
+to the current page origin; each server receives a unique key, so host privileges only
+apply when the browser is on that regional origin.
 
 Create `test/region-credentials.test.js`:
 
@@ -673,14 +674,14 @@ Run: `node --test test/config.test.js`
 
 Expected before implementation: config has no `regionId`.
 
-- [ ] **Step 3: Make bootstrap preserve and write the selected region**
+- [ ] **Step 3: Make bootstrap preserve region and generate a unique admin key**
 
-Initialize `REGION_ID` and `ADMIN_KEY` from their environment values before reading
-the server's existing `config.ini`. Only read stored values when the environment
-override is blank. Default an unset region to `za`; reject anything other than `za`
-or `us`; write `region_id = $REGION_ID` in the generated `[server]` section. Keep
-the existing password-preservation behavior. This lets the NA bootstrap use the same
-owner admin key without printing it, while re-runs preserve existing configuration.
+Initialize `REGION_ID` from the environment, otherwise read an existing config value,
+otherwise default to `za`. Reject anything other than `za` or `us`; write
+`region_id = $REGION_ID` in the generated `[server]` section. Preserve an existing
+admin key on re-runs; generate a new random key for a fresh instance, never copy the
+ZA key. Keep the dashboard password from the environment or existing config. The
+bootstrap-provided owner link enrolls the unique key on that host.
 
 In `server/config.js`, use this validation before constructing `config`:
 
@@ -759,10 +760,10 @@ remote tag. Record the resulting full commit SHA for both deployments.
 - [ ] **Step 4: Bootstrap the NA instance**
 
 Use `infra/bootstrap.sh` with `HOST=us.boombeard.co.za`, `REGION_ID=us`, and the
-existing Let's Encrypt contact from the ZA certificate registration. Use the same
-owner admin key and dashboard password as the existing deployment without echoing
-either value. Keep `/var/lib/boom-beard` separate on the NA server; do not rsync ZA
-user data.
+existing Let's Encrypt contact from the ZA certificate registration. Supply the
+dashboard password without echoing it; let bootstrap generate a unique NA admin key
+and keep its enrollment link private. Keep `/var/lib/boom-beard` separate on the NA
+server; do not rsync ZA user data.
 
 - [ ] **Step 5: Deploy the same commit to both regions**
 
