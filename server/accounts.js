@@ -74,7 +74,7 @@ const TOKEN_BYTES = 32;
 // which is also the only cleanup this ever needs.
 export const DEVICE_TTL_MS = 30 * 24 * 3600_000;
 export const MAX_DEVICES = 5;
-const SIGNUP_COUNT_EXCLUSIONS = new Set(['cobus', 'cobusvw', 'cobusvonw']);
+const SIGNUP_COUNT_EXCLUSIONS = new Set(['cobus', 'cobusvw', 'cobusvonw', 'test', 'awe']);
 
 /* Guessing limits, in memory only.
  *

@@ -198,7 +198,7 @@ test('signup statistics count unique accounts in inclusive rolling windows', asy
   const a = createAccounts({ dataDir: d });
   for (const name of [
     'fresh', 'day-edge', 'week-edge', 'month-edge', 'old', 'legacy',
-    'cobus', 'cobusvw', 'cobusvonw',
+    'cobus', 'cobusvw', 'cobusvonw', 'test', 'awe',
   ]) {
     assert.equal((await a.register(name, PW)).ok, true);
   }
