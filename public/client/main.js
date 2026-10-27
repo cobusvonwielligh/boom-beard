@@ -1824,7 +1824,7 @@ function syncCountdown(now) {
   if (el.textContent !== text) el.textContent = text;     // called every frame; write once a second
 }
 
-/* ─── the count-in ──────────────────────────────────────────────────────────────
+/* ─── shared and personal countdowns ────────────────────────────────────────────
  *
  * Five seconds in the middle of the board at the top of every round, ticking like a clock, with
  * NOBODY ABLE TO MOVE until it reaches zero.
@@ -1840,29 +1840,40 @@ function syncCountdown(now) {
  * tick (see `counting` in server/room.js), and the loop above neither predicts nor sends over the
  * same window. The round clock is pushed out by the same five seconds, so a ten-minute round is
  * still ten minutes of play.
+ *
+ * A requested respawn uses this same animation after the shared count-in. Its remaining ticks
+ * come from the server snapshot and do not freeze the rest of the board.
  */
 let countInShown = -1;             // the digit on screen, so each second is written once
 
 function syncCountIn() {
   const el = $('countIn');
-  // The server's number, not ours: it is the tick the freeze lifts on, and the digit has to be
-  // counting down to the same instant the board unfreezes or it is a decoration.
+  // Both round starts and respawns use server ticks so the number stays aligned with placement.
   const me = world.me();
   const sharedUntil = world.startsAtTick || 0;
+  const respawnPending = !!me && !me.alive && !me.arriving
+    && me.respawnTicks !== null && me.respawnTicks !== undefined;
+  const roundCountInActive = sharedUntil > 0 && world.tick - sharedUntil <= TICK_HZ;
+  const personalRespawn = respawnPending && !roundCountInActive;
   const personalArrival = !!me?.arriving && me.arriveAt > sharedUntil;
   const until = personalArrival ? me.arriveAt : sharedUntil;
-  if (!until) { if (countInShown !== -1) { el.classList.remove('on', 'hot'); countInShown = -1; } return; }
-  const left = until - world.tick;
+  if (!personalRespawn && !until) {
+    if (countInShown !== -1) { el.classList.remove('on', 'hot'); countInShown = -1; }
+    return;
+  }
+  const left = personalRespawn ? me.respawnTicks : until - world.tick;
   // Over, or not this round: the GO frame is left to finish its own animation.
-  if (left < -TICK_HZ || !world.ready) {
+  if (!world.ready || (personalRespawn ? left <= 0 : left < -TICK_HZ)) {
     if (countInShown !== -1) { el.classList.remove('on', 'hot'); countInShown = -1; }
     return;
   }
   // 5..1 while there is time left, then 0 for the GO beat.
-  const n = Math.max(0, Math.ceil(left / TICK_HZ));
-  const seconds = personalArrival
-    ? ARRIVE_DELAY_TICKS / TICK_HZ
-    : Math.max(1, Math.round(until / TICK_HZ));
+  const n = personalRespawn
+    ? Math.ceil(left / (RESPAWN_COUNTDOWN_TICKS / 3))
+    : Math.max(0, Math.ceil(left / TICK_HZ));
+  const seconds = personalRespawn ? 3
+    : personalArrival ? ARRIVE_DELAY_TICKS / TICK_HZ
+      : Math.max(1, Math.round(until / TICK_HZ));
   if (n === countInShown) return;
   countInShown = n;
 
@@ -1922,10 +1933,12 @@ function showDeadBanner(by) {
 const DEAD_DIALOG_DELAY_TICKS = Math.round(4.4 * TICK_HZ);
 
 function showDead(dead) {
-  const firstSpawn = world.me()?.deaths === 0;
+  const me = world.me();
+  const firstSpawn = me?.deaths === 0;
+  const pendingRespawn = me?.respawnTicks !== null && me?.respawnTicks !== undefined;
   const held = dead && !firstSpawn && diedAtTick >= 0
     && world.tick - diedAtTick < DEAD_DIALOG_DELAY_TICKS;
-  const visible = dead && !held;
+  const visible = dead && !held && !pendingRespawn;
   $('dead').style.display = visible ? 'grid' : 'none';
   if (!roundOverUntil) {
     const changed = shopVisible !== visible;

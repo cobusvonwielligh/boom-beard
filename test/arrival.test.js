@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRoom } from '../server/room.js';
 import {
-  ARRIVE_DELAY_TICKS, COUNT_IN_TICKS, TICK_HZ,
+  ARRIVE_DELAY_TICKS, COUNT_IN_TICKS, STATUS, TICK_HZ,
 } from '../shared/constants.js';
 
 const RESPAWN_COUNTDOWN_TICKS = Math.round(4.5 * TICK_HZ);
@@ -114,6 +114,7 @@ test('a new player waits in the shop and can respawn without a death cooldown', 
     assert.equal(p.alive, false, 'the countdown was skipped after the click');
     for (let i = 0; i <= RESPAWN_COUNTDOWN_TICKS; i++) r.tick();
     assert.equal(p.alive, true, 'the first spawn did not happen after its countdown');
+    assert.ok(p.status & STATUS.INVULN, 'the normal spawn protection was not applied');
     r.tick(); r.tick();
     assert.ok(snaps.some(s => s.ev.some(e => e.e === 'spawn' && e.i === seat)), 'no spawn event to show the arrival');
   } finally { r.stop(); }
