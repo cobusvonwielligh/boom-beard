@@ -99,8 +99,11 @@ async function unlock() {
   if (name !== 'cobusvw') {
     throw new Error('Sign in to the game as cobusvw in this browser first.');
   }
-  if (!deviceToken || !adminKey) {
-    throw new Error('This browser needs the trusted cobusvw login and the configured admin flag.');
+  if (!deviceToken) {
+    throw new Error('Sign in to the game as cobusvw in this browser before opening the Command Deck.');
+  }
+  if (!adminKey) {
+    throw new Error('Open the configured admin link once in this browser to save its admin flag.');
   }
 
   const response = await fetch('/admin/api/login', {

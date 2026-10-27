@@ -1,4 +1,7 @@
+import { MAPS } from '../shared/maps.js';
+
 const isCount = value => Number.isSafeInteger(value) && value >= 0;
+const mapIds = new Set(MAPS.map(map => map.id));
 const LANDING_ORIGIN = 'https://boombeard.co.za';
 
 export function createRegionStatusHandler({ regionId, getStats }) {
@@ -26,7 +29,8 @@ export function createRegionStatusHandler({ regionId, getStats }) {
     }
 
     const stats = getStats();
-    if (!stats || !isCount(stats.players) || !isCount(stats.bots) || !isCount(stats.maxPlayers)) {
+    if (!stats || !mapIds.has(stats.map)
+      || !isCount(stats.players) || !isCount(stats.bots) || !isCount(stats.maxPlayers)) {
       console.error('region status: invalid room statistics');
       res.writeHead(500, headers);
       res.end(JSON.stringify({ error: 'region status unavailable' }));
@@ -36,6 +40,7 @@ export function createRegionStatusHandler({ regionId, getStats }) {
     res.writeHead(200, headers);
     res.end(JSON.stringify({
       region: regionId,
+      map: stats.map,
       humanPlayers: Math.max(0, stats.players - stats.bots),
       bots: stats.bots,
       maxPlayers: stats.maxPlayers,

@@ -9,6 +9,7 @@ const regions = REGIONS;
 
 const status = (region, overrides = {}) => ({
   region,
+  map: region === 'us' ? 'twins' : 'arena',
   humanPlayers: 3,
   bots: 2,
   maxPlayers: 16,

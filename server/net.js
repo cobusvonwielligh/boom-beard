@@ -322,6 +322,7 @@ export function attachHub(server, config) {
 
   const room = createRoom({
     onBroadcast: broadcast,
+    regionId: config.regionId,
     /* The key OR the name, not one or the other.
      *
      * The name used to grant nothing as soon as a key was configured, on the reasoning that a

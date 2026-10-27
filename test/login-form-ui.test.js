@@ -18,7 +18,7 @@ test('player id and password use a real form submission', async () => {
   assert.ok(formStart >= 0 && formEnd > formStart, 'player form is present');
   assert.match(form, /id="name"/, 'player id belongs to the form');
   assert.match(form, /id="pw"/, 'password belongs to the same form');
-  assert.match(html, /<button id="play" class="goldAction" type="submit" form="playerForm">LETS GO!<\/button>/,
+  assert.match(html, /<button id="play" class="goldAction" type="submit" form="playerForm">\s*LETS GO!\s*<\/button>/,
     'LETS GO submits the player form using the shared gold action design');
   assert.match(html, /<button id="watch" type="button"/,
     'spectating does not submit the player form');
@@ -26,4 +26,15 @@ test('player id and password use a real form submission', async () => {
     'form submission reuses the existing play validation without navigation');
   assert.doesNotMatch(main, /nameInput\.onkeydown\s*=|\$\('pw'\)\.onkeydown\s*=/,
     'Enter is handled by form submission instead of duplicate key handlers');
+});
+
+test('player form follows the lifted landing slogan without retaining its bottom margin', async () => {
+  const css = await read('public/style.css');
+  assert.match(css, /#menuWrap > \.card > \.sub-split\s*\{[^}]*margin-bottom:\s*0;/);
+});
+
+test('controls describe bomb and respawn as one Space action', async () => {
+  const html = await read('public/index.html');
+  assert.match(html, /<dd>Bomb \/ respawn<\/dd>/);
+  assert.doesNotMatch(html, /<dd>Bomb, or respawn<\/dd>/);
 });

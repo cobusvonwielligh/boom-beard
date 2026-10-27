@@ -34,6 +34,9 @@ test('admin page contains the protected dashboard, filters, and no embedded pass
   assert.doesNotMatch(script, /bv\.trust\.cobusvw/);
   assert.match(script, /bv\.adminKey/);
   assert.match(script, /\/admin\/api\/login/);
+  assert.match(script, /if \(!deviceToken\)[\s\S]*?Sign in to the game as cobusvw in this browser before opening the Command Deck/);
+  assert.match(script, /if \(!adminKey\)[\s\S]*?Open the configured admin link/);
+  assert.doesNotMatch(script, /This browser needs the trusted cobusvw login and the configured admin flag/);
   assert.match(script, /\/admin\/api\/players/);
   assert.match(script, /instance:\s*regionId/);
   assert.match(script, /\/admin\/api\/metrics\?region=\$\{encodeURIComponent\(instance\)\}/);

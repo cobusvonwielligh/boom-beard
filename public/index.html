@@ -965,7 +965,9 @@
               </div>
             </div>
           </form>
-          <button id="play" class="goldAction" type="submit" form="playerForm">LETS GO!</button>
+          <button id="play" class="goldAction" type="submit" form="playerForm">
+            LETS GO!
+          </button>
           <!-- Always available, including when every seat is taken: a spectator costs nobody a
            place, so "full" is not a reason to turn one away. -->
           <button id="watch" type="button" class="ghost">spectate only</button>
@@ -1005,7 +1007,9 @@
               aria-live="polite"
             ></p>
             <div class="regionDialogActions">
-              <button id="regionConfirm" class="goldAction" type="button">continue</button>
+              <button id="regionConfirm" class="goldAction" type="button">
+                continue
+              </button>
               <button id="regionCancel" class="ghost" type="button">
                 cancel
               </button>
@@ -1034,7 +1038,7 @@
                 <kbd class="wide">Space</kbd> <span class="or">or</span>
                 <kbd>K</kbd>
               </dt>
-              <dd>Bomb, or respawn</dd>
+              <dd>Bomb / respawn</dd>
 
               <dt><kbd class="wide">Enter</kbd></dt>
               <dd>Chat</dd>
@@ -1172,12 +1176,12 @@
       }
 
       .sub-split {
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
+        display: flex;
         align-items: center;
+        justify-content: space-between;
         width: 100%;
         margin: 10px auto 0;
-        gap: 60px;
+        gap: 0;
         transform: translateY(-43px);
       }
 
@@ -1186,20 +1190,15 @@
       }
 
       .sub-split span:first-child {
-        text-align: left;
-        justify-self: center;
+        transform: translateX(30px);
       }
 
       .sub-split span:nth-child(2) {
-        text-align: left;
-        justify-self: left;
-        transform: translateX(-50px);
+        transform: translateX(-80px);
       }
 
       .sub-split span:last-child {
-        text-align: left;
-        justify-self: left;
-        transform: translateX(-20px);
+        transform: translateX(-80px);
       }
     </style>
   </body>

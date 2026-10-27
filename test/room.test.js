@@ -10,11 +10,27 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocket } from 'ws';
 import { IN_RIGHT, IN_DOWN } from '../shared/constants.js';
+import { MAPS } from '../shared/maps.js';
 import { createRoom } from '../server/room.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PORT = 8097;
 let server;
+
+test('regional rooms begin their map rotation at their configured index', () => {
+  const originalRandom = Math.random;
+  const rooms = [];
+  Math.random = () => 0.8;
+  try {
+    rooms.push(createRoom({ regionId: 'za', onBroadcast: () => {} }));
+    rooms.push(createRoom({ regionId: 'us', onBroadcast: () => {} }));
+    assert.equal(rooms[0].state.map.id, MAPS[0].id);
+    assert.equal(rooms[1].state.map.id, MAPS[2].id);
+  } finally {
+    Math.random = originalRandom;
+    for (const room of rooms) room.stop();
+  }
+});
 
 const startServer = () => new Promise((resolve, reject) => {
   server = spawn(process.execPath, ['server/index.js'], {

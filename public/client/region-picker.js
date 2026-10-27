@@ -1,10 +1,12 @@
 import { REGIONS, transportUrls } from '../../shared/regions.js';
 import { PING_BURST_GAP_MS, RTT_SAMPLES } from '../../shared/constants.js';
+import { MAPS } from '../../shared/maps.js';
 import { selectedRegionId } from '../../shared/region-selection.js';
 import { startPingBurst } from './ping-burst.js';
 
 const REGION_STORE_KEY = 'bv.region';
 const REGION_DOUBLE_CLICK_MS = 450;
+const mapsById = new Map(MAPS.map(map => [map.id, map]));
 let nextPingId = 0;
 
 class PingProbeError extends Error {}
@@ -40,7 +42,8 @@ function validStatus(status, region) {
     && status.bots >= 0
     && Number.isSafeInteger(status.maxPlayers)
     && status.maxPlayers > 0
-    && status.humanPlayers + status.bots <= status.maxPlayers;
+    && status.humanPlayers + status.bots <= status.maxPlayers
+    && (status.map === undefined || mapsById.has(status.map));
 }
 
 export function pingClass(rttMs) {
@@ -223,6 +226,7 @@ export async function probeRegion(region, {
     name: region.name,
     flag: region.flag,
     region: status.region,
+    map: status.map ?? null,
     humanPlayers: status.humanPlayers,
     bots: status.bots,
     maxPlayers: status.maxPlayers,
@@ -302,6 +306,7 @@ export function createRegionPicker({
   function render() {
     const buttons = regions.map(region => {
       const result = results.find(item => item.id === region.id);
+      const mapName = result?.map ? mapsById.get(result.map)?.name ?? result.map : '';
       const button = doc.createElement('button');
       button.type = 'button';
       button.className = 'regionOption';
@@ -333,6 +338,12 @@ export function createRegionPicker({
         online.className = 'regionOnline';
         online.textContent = `${players}/${result.maxPlayers} players`;
         details.append(ping, online);
+        if (mapName) {
+          const currentMap = doc.createElement('span');
+          currentMap.className = 'regionMap';
+          currentMap.textContent = `MAP · ${mapName}`;
+          details.append(currentMap);
+        }
       } else {
         details.textContent = 'OFFLINE';
       }
@@ -341,7 +352,7 @@ export function createRegionPicker({
       button.setAttribute('aria-label', !result
         ? `${region.name}, checking server status`
         : result.statusReady
-          ? `${region.name}, ${Number.isFinite(result.rttMs)
+          ? `${region.name}, ${mapName ? `${mapName} map, ` : ''}${Number.isFinite(result.rttMs)
             ? `${result.rttMs} milliseconds` : 'ping checking'}, ` +
             `${result.humanPlayers + result.bots} of ${result.maxPlayers} players online`
           : `${region.name}, offline`);

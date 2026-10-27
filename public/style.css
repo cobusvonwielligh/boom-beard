@@ -4567,6 +4567,10 @@ h1 {
 #menuWrap > .card > .sub {
   margin: 6px 0 16px;
 }
+/* Its visible lift is visual only, so remove the margin still separating it from the form. */
+#menuWrap > .card > .sub-split {
+  margin-bottom: 0;
+}
 /* The two lines that introduce the game are centred; everything below them is a form and stays
    left-aligned, so the eye still has one edge to run down. */
 #title,
@@ -4909,13 +4913,19 @@ input[type="text"]:focus,
   text-transform: uppercase;
   white-space: nowrap;
 }
+.regionMap {
+  color: var(--gold-hi);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
 .regionPing {
   white-space: nowrap;
   animation: regionPingUpdate 0.18s ease-out;
 }
 @keyframes regionPingUpdate {
-  from { opacity: 0.55; transform: translateY(2px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0.55; filter: blur(2px); }
+  to { opacity: 1; filter: blur(0); }
 }
 .regionPing.pingGood {
   color: #70dc91;

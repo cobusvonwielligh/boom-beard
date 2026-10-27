@@ -26,6 +26,7 @@ test('region status returns only safe region-local player counts', async t => {
   const handler = createRegionStatusHandler({
     regionId: 'za',
     getStats: () => ({
+      map: 'arena',
       players: 9, bots: 4, maxPlayers: 16,
       names: ['private name'], score: 100, signups: 200, geography: ['ZA'],
     }),
@@ -39,7 +40,7 @@ test('region status returns only safe region-local player counts', async t => {
   const response = await fetch(`${base}/region-status`);
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), {
-    region: 'za', humanPlayers: 5, bots: 4, maxPlayers: 16,
+    region: 'za', map: 'arena', humanPlayers: 5, bots: 4, maxPlayers: 16,
   });
   assert.equal(response.headers.get('cache-control'), 'no-store');
 });
@@ -47,7 +48,7 @@ test('region status returns only safe region-local player counts', async t => {
 test('region status allows CORS only for an exact configured region origin', async t => {
   const handler = createRegionStatusHandler({
     regionId: 'us',
-    getStats: () => ({ players: 2, bots: 1, maxPlayers: 16 }),
+    getStats: () => ({ map: 'twins', players: 2, bots: 1, maxPlayers: 16 }),
   });
   const { server, base } = await startHandler(handler);
   t.after(async () => {
@@ -78,7 +79,7 @@ test('region status allows CORS only for an exact configured region origin', asy
 test('region status rejects non-GET methods without caching', async t => {
   const handler = createRegionStatusHandler({
     regionId: 'za',
-    getStats: () => ({ players: 0, bots: 0, maxPlayers: 16 }),
+    getStats: () => ({ map: 'arena', players: 0, bots: 0, maxPlayers: 16 }),
   });
   const { server, base } = await startHandler(handler);
   t.after(async () => {
@@ -95,7 +96,7 @@ test('region status rejects non-GET methods without caching', async t => {
 test('region status does not handle other paths', () => {
   const handler = createRegionStatusHandler({
     regionId: 'za',
-    getStats: () => ({ players: 0, bots: 0, maxPlayers: 16 }),
+    getStats: () => ({ map: 'arena', players: 0, bots: 0, maxPlayers: 16 }),
   });
   const response = { writeHead() {}, end() {} };
   assert.equal(handler({ url: '/healthz', method: 'GET', headers: {} }, response), false);
@@ -104,7 +105,7 @@ test('region status does not handle other paths', () => {
 test('region status returns a server error for invalid player statistics', async t => {
   const handler = createRegionStatusHandler({
     regionId: 'za',
-    getStats: () => ({ players: 'many', bots: 1, maxPlayers: 16 }),
+    getStats: () => ({ map: 'arena', players: 'many', bots: 1, maxPlayers: 16 }),
   });
   const { server, base } = await startHandler(handler);
   t.after(async () => {

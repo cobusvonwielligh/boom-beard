@@ -82,6 +82,7 @@ const regions = REGIONS;
 
 const status = region => ({
   region,
+  map: region === 'us' ? 'twins' : 'arena',
   humanPlayers: 3,
   bots: 2,
   maxPlayers: 16,
@@ -128,6 +129,8 @@ test('every connection attempt opens the dialog and saves only a confirmed choic
   await flushProbes();
   assert.equal(dialog.open, true);
   assert.ok(['za', 'us'].includes(picker.selectedRegion()));
+  assert.match(root.children.find(child => child.attributes['data-region'] === 'us').textContent,
+    /MAP · Twins/);
   const buttons = root.children.filter(child => child.tagName === 'BUTTON');
   buttons[1].click();
   await confirmButton.click();
@@ -202,9 +205,10 @@ test('cards show local flags, latency, online capacity, and offline state withou
   assert.equal(flag.attributes.src, '/assets/img/flag-south-africa-round-xs.png');
   assert.equal(flag.attributes.alt, 'South Africa flag');
   assert.match(southAfrica.textContent, /South Africa/);
+  assert.match(southAfrica.textContent, /MAP · Arena/);
   assert.match(southAfrica.textContent, /5\/16 players/);
   assert.equal(southAfrica.attributes['aria-label'],
-    'South Africa, 0 milliseconds, 5 of 16 players online');
+    'South Africa, Arena map, 0 milliseconds, 5 of 16 players online');
   assert.match(ping.className, /pingGood|pingFair|pingPoor/);
   assert.match(unitedStates.textContent, /OFFLINE/);
   assert.equal(unitedStates.disabled, true);
@@ -235,7 +239,9 @@ test('picker styles preserve focus and use the requested ping colors responsivel
   assert.match(css, /\.regionPing\.pingFair/);
   assert.match(css, /\.regionPing\.pingPoor/);
   assert.match(css, /\.regionPing\s*\{[^}]*animation:\s*regionPingUpdate/s);
-  assert.match(css, /@keyframes\s+regionPingUpdate/);
+  assert.match(css, /@keyframes\s+regionPingUpdate\s*\{[^}]*filter:\s*blur\(2px\)/s);
+  assert.doesNotMatch(css.match(/@keyframes\s+regionPingUpdate\s*\{[^}]*\}/s)?.[0] || '',
+    /translateY/);
   assert.match(css, /\.regionFlag\s*\{[^}]*width:\s*26px[^}]*height:\s*26px[^}]*object-fit:\s*contain/s);
   assert.match(css, /\.goldAction\s*\{[^}]*var\(--gold-lit\)[\s\S]*?var\(--gold-deep\)/s);
   assert.match(index, /id="play"[^>]*class="goldAction"/);
@@ -246,6 +252,8 @@ test('picker styles preserve focus and use the requested ping colors responsivel
   assert.match(index, /class="sub sub-split"/);
   assert.match(index, /id="play"[^>]*>\s*LET'?S GO!\s*</i);
   assert.match(index, /transform:\s*translateY\(-43px\)/);
+  assert.match(index, /transform:\s*translateX\(30px\)/);
+  assert.match(index, /transform:\s*translateX\(-80px\)/);
   assert.match(css, /#regionPicker\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);
   assert.match(css, /@media\s*\(max-width:\s*600px\)[\s\S]*?\.regionDialog[\s\S]*?width:/);
 });

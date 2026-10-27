@@ -204,8 +204,11 @@ The dashboard currently requires TLS to terminate directly in the app. It is not
    routes redirect to the ZA website; game clients load all page assets from ZA.
 
 The browser probes each public `/region-status` endpoint. It returns only that
-instance's region ID, connected human count, bot count, and seat limit; it does not
-expose `/healthz`, player names, scores, registrations, or geography.
+instance's region ID, current map, connected human count, bot count, and seat limit;
+it does not expose `/healthz`, player names, scores, registrations, or geography.
+The map cycle starts at index 0 (`Arena`) in ZA and index 2 (`Twins`) in US, then
+advances normally in each region.
+The region buttons display each instance's current map name.
 For player joins, the ZA page verifies or registers the password through its same-origin
 `/auth/preflight` endpoint before opening the region picker. The chosen game server then
 validates the shared trusted-device token again during the socket handshake.

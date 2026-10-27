@@ -45,7 +45,8 @@ export const BOT_NAMES = [
   'Wendell', 'Yusuf', 'Zara', 'Lena', 'Bruno', 'Gus', 'Mabel',
 ];
 
-export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = MAX_PLAYERS, leaderboard = null,
+export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = MAX_PLAYERS,
+  leaderboard = null, regionId = 'za',
   // Overridable so a test can watch a seat be recycled without waiting 45 real seconds.
   graceTicks = RECONNECT_GRACE_TICKS,
   // How many bots to keep topped up while people are here; see AUTO_BOTS_MIN. Zero - the
@@ -64,10 +65,8 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
   arriveIn = 0,
   botEmoteRandom = Math.random,
 }) {
-  // Start somewhere random rather than always on the first map. Rotation between rounds works
-  // fine, but a server that restarts - a deploy, a crash, a reboot - always came back to Arena,
-  // so in practice that is the only map anybody ever saw.
-  let mapIndex = (Math.random() * MAPS.length) | 0;
+  // Start the regional queues at different maps while keeping their round-by-round rotation.
+  let mapIndex = regionId === 'us' ? 2 : 0;
   let state = createState(MAPS[mapIndex]);
 
   // seat -> { playerId, name, mask, inputs, lastAckTick, connected, goneSince }
