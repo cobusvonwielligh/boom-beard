@@ -1189,31 +1189,18 @@
       }
 
       .sub-split {
-        position: relative;
-        display: flex;
+        display: grid;
+        grid-template-columns: 23% 46% 31%;
         align-items: center;
-        justify-content: space-between;
         width: 100%;
         margin: 10px auto 0;
-        gap: 30px;
         transform: translateY(-24px);
       }
 
-      .sub-split span {
-        white-space: nowrap;
-      }
+      .sub-split span { white-space: nowrap; }
 
       .sub-split span:first-child {
-        transform: translateX(15px);
-      }
-
-      .sub-split span:nth-child(2) {
-        transform: translateX(-135px);
-      }
-
-      .sub-split span:last-child {
-        gap: 50px;
-        transform: translateX(-30px);
+        margin-left: 10px;
       }
     </style>
   </body>

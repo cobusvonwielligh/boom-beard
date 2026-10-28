@@ -340,13 +340,15 @@ test('picker styles preserve focus and use the requested ping colors responsivel
   assert.match(sloganStyle, /-webkit-text-stroke:\s*1px\s+#f6e7a9/);
   assert.match(sloganStyle, /paint-order:\s*stroke fill/);
   assert.doesNotMatch(index, /\.sub-split::after/);
+  const sloganLayout = index.slice(index.indexOf('.sub-split {'), index.indexOf('</style>'));
   assert.match(index, /class="sub sub-split"/);
   assert.match(index, /id="play"[^>]*>\s*LET'?S GO!\s*</i);
   assert.match(index, /transform:\s*translateY\(-24px\)/);
   assert.match(index, /width:\s*100%/);
-  assert.match(index, /\.sub-split span:first-child\s*\{[^}]*translateX\(15px\)/);
-  assert.match(index, /\.sub-split span:nth-child\(2\)\s*\{[^}]*translateX\(-135px\)/);
-  assert.match(index, /\.sub-split span:last-child\s*\{[^}]*translateX\(-30px\)/);
+  assert.match(sloganLayout, /display:\s*grid/);
+  assert.match(sloganLayout, /grid-template-columns:\s*23%\s+46%\s+31%/);
+  assert.match(sloganLayout, /\.sub-split span:first-child\s*\{[^}]*margin-left:\s*10px/);
+  assert.doesNotMatch(sloganLayout, /translateX\(/);
   assert.match(css, /#regionPicker\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);
   assert.match(css, /\.regionProgressTrack\s*\{[^}]*height:\s*6px/);
   assert.match(css, /\.regionProgressFill\s*\{[^}]*transition:\s*width/);
