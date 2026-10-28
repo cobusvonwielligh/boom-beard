@@ -1393,20 +1393,20 @@ export const PERK_ART = {
   // Two forward chevrons and a plus: speed-up reads without a shoe silhouette.
   3: c => {
     c.strokeStyle = '#5fd8f0'; c.lineWidth = 3; c.lineCap = 'round'; c.lineJoin = 'round';
-    for (const x of [3, 12]) {
+    for (const x of [7, 16]) {
       c.beginPath();
       c.moveTo(x, 8); c.lineTo(x + 6, 16); c.lineTo(x, 24);
       c.stroke();
     }
     c.strokeStyle = '#fff'; c.lineWidth = 3;
     c.beginPath();
-    c.moveTo(18, 8); c.lineTo(18, 14);
-    c.moveTo(15, 11); c.lineTo(21, 11);
+    c.moveTo(22, 8); c.lineTo(22, 14);
+    c.moveTo(19, 11); c.lineTo(25, 11);
     c.stroke();
     c.strokeStyle = '#101820'; c.lineWidth = 1.8;
     c.beginPath();
-    c.moveTo(18, 8); c.lineTo(18, 14);
-    c.moveTo(15, 11); c.lineTo(21, 11);
+    c.moveTo(22, 8); c.lineTo(22, 14);
+    c.moveTo(19, 11); c.lineTo(25, 11);
     c.stroke();
   },
   // Shield: a heater shield with a boss, rather than the old flat pentagon.

@@ -33,7 +33,7 @@ test('the speed icon uses two chevrons and a plus in HUD, shop, and pickup art',
     html.indexOf('</symbol>', html.indexOf('<symbol id="i-boot"')),
   );
 
-  assert.match(collectible, /for \(const x of \[3, 12\]\)/);
+  assert.match(collectible, /for \(const x of \[7, 16\]\)/);
   assert.match(collectible, /moveTo\(x, 8\); c\.lineTo\(x \+ 6, 16\); c\.lineTo\(x, 24\)/);
   assert.ok(
     collectible.indexOf("strokeStyle = '#fff'") < collectible.indexOf("strokeStyle = '#101820'"),
@@ -41,16 +41,16 @@ test('the speed icon uses two chevrons and a plus in HUD, shop, and pickup art',
   );
   assert.match(collectible, /strokeStyle = '#fff'; c\.lineWidth = 3/);
   assert.match(collectible, /strokeStyle = '#101820'; c\.lineWidth = 1\.8/);
-  assert.match(collectible, /moveTo\(18, 8\); c\.lineTo\(18, 14\)/);
-  assert.match(collectible, /moveTo\(15, 11\); c\.lineTo\(21, 11\)/);
-  assert.match(symbol, /M1 4l3 4-3 4M5 4l3 4-3 4/);
-  assert.match(symbol, /M8 4v4M6 6h4/);
+  assert.match(collectible, /moveTo\(22, 8\); c\.lineTo\(22, 14\)/);
+  assert.match(collectible, /moveTo\(19, 11\); c\.lineTo\(25, 11\)/);
+  assert.match(symbol, /M3 4l3 4-3 4M7 4l3 4-3 4/);
+  assert.match(symbol, /M10 4v4M8 6h4/);
   assert.ok(symbol.indexOf('stroke="#fff"') < symbol.indexOf('stroke="#101820"'),
     'the HUD plus mark lacks a white border');
   assert.match(symbol, /stroke="#fff"[\s\S]*?stroke-width="2"/);
   assert.match(symbol, /stroke="#101820"[\s\S]*?stroke-width="1\.3"/);
-  assert.match(readmeIcon, /M1 4l3 4-3 4M5 4l3 4-3 4/);
-  assert.match(readmeIcon, /M8 4v4M6 6h4/);
+  assert.match(readmeIcon, /M3 4l3 4-3 4M7 4l3 4-3 4/);
+  assert.match(readmeIcon, /M10 4v4M8 6h4/);
   assert.ok(readmeIcon.indexOf('stroke="#fff"') < readmeIcon.indexOf('stroke="#101820"'),
     'the README plus mark lacks a white border');
   assert.match(readmeIcon, /stroke="#fff" stroke-width="2"/);
