@@ -83,8 +83,21 @@
           />
         </symbol>
         <symbol id="i-boot" viewBox="0 0 16 16">
-          <path d="M4 2h4v6l4 2v4H4z" fill="currentColor" />
-          <path d="M2 14h12" stroke="currentColor" stroke-width="1.4" />
+          <path
+            d="M1 4l3 4-3 4M5 4l3 4-3 4"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          <path
+            d="M12 6v4M10 8h4"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+          />
         </symbol>
         <symbol id="i-shield" viewBox="0 0 16 16">
           <path
@@ -372,7 +385,7 @@
             <svg><use href="#i-fire" /></svg><span class="n">1</span
             ><span class="cap"></span>
           </span>
-          <span class="pip" id="pSpeed" title="boots: movement speed">
+          <span class="pip" id="pSpeed" title="speed upgrades">
             <svg><use href="#i-boot" /></svg><span class="n">0</span
             ><span class="cap"></span>
           </span>
@@ -551,7 +564,7 @@
                 ><svg aria-hidden="true"><use href="#i-boot" /></svg
               ></span>
               <span class="shopName">speed</span
-              ><span class="shopBundle">+2</span>
+              ><span class="shopBundle">+1</span>
               <span class="shopPrice"
                 ><svg aria-hidden="true"><use href="#i-coin" /></svg>1</span
               >
@@ -714,12 +727,12 @@
           </dl>
           <h2 class="boardHead castSm">scoring</h2>
           <ul class="score">
-            <li><b>+100</b> kill</li>
-            <li><b>+400</b> gold coin</li>
+            <li><b>+450</b> kill</li>
+            <li><b>+65</b> gold coin</li>
             <li><b>+50</b> survive the round</li>
             <li><b>+5</b> perk, <b>+15</b> at its cap</li>
             <li><b>+2</b> block</li>
-            <li><b>&#8722;25</b> suicide</li>
+            <li><b>−35</b> suicide</li>
           </ul>
         </div>
         <p class="sub">tab to close</p>

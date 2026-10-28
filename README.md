@@ -56,7 +56,7 @@ optional `ADMIN_KEY` is only for in-game owner commands.
 | <img src="docs/readme/icons/bomb.svg" width="18" align="middle"> | **Bombs and fire** | A cross, stopped by walls, handed on to any bomb it reaches. |
 | <img src="docs/readme/icons/keg.svg" width="18" align="middle"> | **Powder kegs** | Rare barrels. Break one and it takes the neighbourhood with it. At least one and at most twelve a round. |
 | <img src="docs/readme/icons/bolt.svg" width="18" align="middle"> | **Stamina** | Ten seconds of sprint, then you limp. Stopping to breathe is a real decision. |
-| <img src="docs/readme/icons/boot.svg" width="18" align="middle"> | **Perks** | More bombs, longer fire, boots, a shield, stim, and rum - which saves you from everything except the tile the bomb was on, and steers like a shopping trolley. |
+| <img src="docs/readme/icons/boot.svg" width="18" align="middle"> | **Perks** | More bombs, longer fire, speed boosts, a shield, stim, and rum - which saves you from everything except the tile the bomb was on, and steers like a shopping trolley. |
 | <img src="docs/readme/icons/ice.svg" width="18" align="middle"> | **Ice** | Melts to a puddle when it is hit. Half pace, and you keep going after you let go. |
 | <img src="docs/readme/icons/coin.svg" width="18" align="middle"> | **Gold** | The rarest thing on the floor. Worth nothing in the round, worth a lot on the board. |
 | <img src="docs/readme/icons/gull.svg" width="18" align="middle"> | **Seagulls** | Scenery, until you catch one in a blast - then three coins go straight to the fire's owner. Up to four cross at once; once a round, two pick a player and settle it themselves. |
@@ -81,12 +81,12 @@ the all-time board, alongside kills, deaths, medals and coins.
 
 | | |
 |---|---|
-| Kill | +100 |
-| Gold coin | +400 |
+| Kill | +450 |
+| Gold coin | +65 |
 | Survive the round | +50 |
 | Perk | +5, or +15 once it is capped |
 | Block | +2 |
-| Suicide | &minus;25 |
+| Suicide | &minus;35 |
 
 ## <img src="docs/readme/icons/crown.svg" width="20" align="middle"> Ranks
 

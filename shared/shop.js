@@ -8,7 +8,7 @@ export const SHOP_ITEMS = Object.freeze({
     perk: PERK.BOMB, cost: 1, bundle: 2, cap: MAX_BOMBS_CARRIED - START_BOMBS,
   }),
   fire: Object.freeze({ perk: PERK.FIRE, cost: 1, bundle: 1, cap: MAX_RADIUS - START_RADIUS }),
-  speed: Object.freeze({ perk: PERK.SKATE, cost: 1, bundle: 2, cap: MAX_SKATES }),
+  speed: Object.freeze({ perk: PERK.SKATE, cost: 1, bundle: 1, cap: MAX_SKATES }),
   shield: Object.freeze({ perk: PERK.SHIELD, cost: 2, bundle: 1, cap: MAX_SHIELDS }),
   stim: Object.freeze({ perk: PERK.STAMINA, cost: 1, bundle: 2, cap: MAX_STAMINA_LEVELS }),
 });

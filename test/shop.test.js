@@ -16,7 +16,8 @@ test('shop catalog matches the existing perk caps', () => {
   assert.deepEqual(SHOP_ITEMS.fire,
     { perk: PERK.FIRE, cost: 1, bundle: 1, cap: MAX_RADIUS - START_RADIUS });
   assert.deepEqual(SHOP_ITEMS.speed,
-    { perk: PERK.SKATE, cost: 1, bundle: 2, cap: MAX_SKATES });
+    { perk: PERK.SKATE, cost: 1, bundle: 1, cap: 3 });
+  assert.equal(MAX_SKATES, 3);
   assert.deepEqual(SHOP_ITEMS.shield,
     { perk: PERK.SHIELD, cost: 2, bundle: 1, cap: MAX_SHIELDS });
   assert.deepEqual(SHOP_ITEMS.stim,
@@ -30,7 +31,7 @@ test('shop queue normalization returns a fresh, capped, integer-only queue', () 
   };
   const queue = normaliseShopQueue(source);
 
-  assert.deepEqual(queue, { bombs: 4, fire: 4, speed: 4, shield: 2, stim: 3 });
+  assert.deepEqual(queue, { bombs: 4, fire: 4, speed: 3, shield: 2, stim: 3 });
   assert.notEqual(queue, source);
   assert.deepEqual(source, {
     bombs: 9, fire: 4, speed: 9, shield: 2, stim: 3, extra: 99, negative: -1,
@@ -56,10 +57,10 @@ test('shop bundle additions reject unknown keys and never partially exceed a cap
   assert.deepEqual(addShopBundle(emptyShopQueue(), 'bombs'),
     { bombs: 2, fire: 0, speed: 0, shield: 0, stim: 0 });
   assert.deepEqual(addShopBundle(emptyShopQueue(), 'speed'),
-    { bombs: 0, fire: 0, speed: 2, shield: 0, stim: 0 });
+    { bombs: 0, fire: 0, speed: 1, shield: 0, stim: 0 });
   assert.deepEqual(addShopBundle({ speed: 2 }, 'speed'),
-    { bombs: 0, fire: 0, speed: 4, shield: 0, stim: 0 });
-  assert.equal(addShopBundle({ speed: 4 }, 'speed'), null);
+    { bombs: 0, fire: 0, speed: 3, shield: 0, stim: 0 });
+  assert.equal(addShopBundle({ speed: 3 }, 'speed'), null);
   assert.deepEqual(addShopBundle({ bombs: 2 }, 'bombs'),
     { bombs: 4, fire: 0, speed: 0, shield: 0, stim: 0 });
   assert.equal(addShopBundle({ bombs: 4 }, 'bombs'), null);

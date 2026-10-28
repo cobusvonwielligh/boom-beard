@@ -16,6 +16,26 @@ function room() {
   return { r, snaps };
 }
 
+function roomWithLeaderboard() {
+  const pending = { bombs: 0, fire: 0, speed: 0, shield: 0, stim: 0 };
+  const leaderboard = {
+    consumePending: () => ({ ...pending }),
+    record: () => {},
+    flush: () => {},
+    top: () => [],
+    get: () => null,
+    economy: () => ({ wallet: 0 }),
+    award: () => {},
+    buy: () => ({ ok: false }),
+  };
+  return createRoom({
+    countIn: 0,
+    arriveIn: ARRIVE_DELAY_TICKS,
+    leaderboard,
+    onBroadcast: () => {},
+  });
+}
+
 test('the delay is three seconds', () => {
   assert.equal(ARRIVE_DELAY_TICKS, 3 * TICK_HZ);
 });
@@ -135,6 +155,77 @@ test('rejoining while alive lifts you off and places you again after the delay',
     assert.equal(p.arriving, true);
     for (let i = 0; i <= ARRIVE_DELAY_TICKS; i++) r.tick();
     assert.equal(p.alive, true);
+  } finally { r.stop(); }
+});
+
+test('a same-round reconnect restores pre-leave powerup stats and score, but not temporary statuses', () => {
+  const r = roomWithLeaderboard();
+  try {
+    const { seat } = r.join('a', 'alice');
+    r.requestRespawn(seat);
+    for (let i = 0; i <= RESPAWN_COUNTDOWN_TICKS; i++) r.tick();
+
+    const p = r.state.players[seat];
+    Object.assign(p, {
+      bombs: 4, radius: 5, speed: 3, shields: 2,
+      staminaLevel: 2, stamina: 1000, tired: true, score: 987,
+    });
+    p.status |= STATUS.DRUNK | STATUS.INVISIBLE;
+    p.statusUntil[STATUS.DRUNK] = r.state.tick + 500;
+    p.statusUntil[STATUS.INVISIBLE] = r.state.tick + 600;
+
+    r.disconnect(seat);
+    assert.equal(r.join('a', 'alice').resumed, true);
+    for (let i = 0; i <= ARRIVE_DELAY_TICKS; i++) r.tick();
+
+    assert.deepEqual({
+      bombs: p.bombs, radius: p.radius, speed: p.speed, shields: p.shields,
+      staminaLevel: p.staminaLevel, score: p.score,
+    }, {
+      bombs: 4, radius: 5, speed: 3, shields: 2,
+      staminaLevel: 2, score: 987,
+    });
+    assert.ok(p.stamina >= 1000 && p.stamina < 2300);
+    assert.equal(p.tired, true);
+    assert.equal(p.status & (STATUS.DRUNK | STATUS.INVISIBLE), 0);
+  } finally { r.stop(); }
+});
+
+test('reconnect does not restore pre-leave powerups after an offline death', () => {
+  const r = roomWithLeaderboard();
+  try {
+    const { seat } = r.join('a', 'alice');
+    r.requestRespawn(seat);
+    for (let i = 0; i <= RESPAWN_COUNTDOWN_TICKS; i++) r.tick();
+
+    const p = r.state.players[seat];
+    p.speed = 3;
+    r.disconnect(seat);
+    p.deaths++;
+    p.speed = 0;
+    p.alive = false;
+    assert.equal(r.join('a', 'alice').resumed, true);
+    r.requestRespawn(seat);
+    for (let i = 0; i <= RESPAWN_COUNTDOWN_TICKS; i++) r.tick();
+
+    assert.equal(p.speed, 0);
+  } finally { r.stop(); }
+});
+
+test('a new round clears a disconnected player’s saved loadout', () => {
+  const r = roomWithLeaderboard();
+  try {
+    const { seat } = r.join('a', 'alice');
+    r.requestRespawn(seat);
+    for (let i = 0; i <= RESPAWN_COUNTDOWN_TICKS; i++) r.tick();
+    r.state.players[seat].speed = 3;
+    r.disconnect(seat);
+
+    r.restartRound();
+    assert.equal(r.state.players[seat].speed, 0);
+    assert.equal(r.join('a', 'alice').resumed, true);
+    for (let i = 0; i <= ARRIVE_DELAY_TICKS; i++) r.tick();
+    assert.equal(r.state.players[seat].speed, 0);
   } finally { r.stop(); }
 });
 

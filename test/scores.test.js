@@ -15,6 +15,20 @@ import { SCORE, levelForXp, tierForLevel } from '../shared/constants.js';
 
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
+test('scoring values match the approved gameplay table', () => {
+  assert.deepEqual({
+    kill: SCORE.KILL,
+    gold: SCORE.GOLD,
+    survive: SCORE.SURVIVE_ROUND,
+    perk: SCORE.PERK,
+    cappedPerk: SCORE.PERK_CAPPED,
+    block: SCORE.BLOCK,
+    suicide: SCORE.SUICIDE,
+  }, {
+    kill: 450, gold: 65, survive: 50, perk: 5, cappedPerk: 15, block: 2, suicide: -35,
+  });
+});
+
 async function withRoom(fn) {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'bv-scores-'));
   const leaderboard = createLeaderboard({ dataDir });

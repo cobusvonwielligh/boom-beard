@@ -56,7 +56,7 @@ test('room-authoritative gold shop', async t => {
     existingRoom.stop();
     const result = {
       ok: true, bought: 'speed', wallet: 3,
-      pending: { bombs: 0, fire: 0, speed: 2, shield: 0, stim: 0 },
+      pending: { bombs: 0, fire: 0, speed: 1, shield: 0, stim: 0 },
     };
     const shared = {
       ...local,
@@ -85,7 +85,7 @@ test('room-authoritative gold shop', async t => {
     assert.equal(p.alive, false, 'the first spawn skipped the requested countdown');
     for (let i = 0; i <= RESPAWN_COUNTDOWN_TICKS; i++) room.tick();
     assert.equal(p.alive, true, 'the first spawn did not complete its countdown');
-    assert.equal(p.speed, 2, 'the queued upgrade did not apply on first spawn');
+    assert.equal(p.speed, 1, 'the queued upgrade did not apply on first spawn');
   });
 
   await t.test('an unspawned player stays in the shop across a round reset', async t => {
@@ -119,7 +119,7 @@ test('room-authoritative gold shop', async t => {
     assert.equal(p.alive, true);
     assert.equal(p.bombs, MAX_BOMBS_CARRIED - 2);
     assert.equal(p.radius, START_RADIUS + 1);
-    assert.equal(p.speed, 2);
+    assert.equal(p.speed, 1);
     assert.equal(p.shields, 1);
     assert.equal(p.staminaLevel, 2);
     assert.equal(p.stamina, staminaMaxFor(p));
@@ -169,7 +169,7 @@ test('room-authoritative gold shop', async t => {
     room.restartRound();
     const loaded = room.state.players[seat];
     assert.equal(loaded.bombs, MAX_BOMBS_CARRIED);
-    assert.equal(loaded.speed, 2);
+    assert.equal(loaded.speed, 1);
     assert.equal(loaded.shields, 1);
     assert.equal(loaded.staminaLevel, 2);
     assert.equal(loaded.stamina, staminaMaxFor(loaded));
@@ -177,7 +177,7 @@ test('room-authoritative gold shop', async t => {
     const welcome = messages.findLast(m => m.t === 'welcome');
     const wirePlayer = welcome.players.find(player => player.i === seat);
     assert.deepEqual([wirePlayer.b, wirePlayer.f, wirePlayer.sp, wirePlayer.sh],
-      [MAX_BOMBS_CARRIED, START_RADIUS + 1, 2, 1]);
+      [MAX_BOMBS_CARRIED, START_RADIUS + 1, 1, 1]);
     assert.deepEqual(leaderboard.economy(careerKey('human-id', 'ann')).pending,
       { bombs: 0, fire: 0, speed: 0, shield: 0, stim: 0 });
 
@@ -195,7 +195,7 @@ test('room-authoritative gold shop', async t => {
     assert.equal(room.buyShop(held, 'speed').ok, true);
     room.disconnect(held);
     room.restartRound();
-    assert.equal(leaderboard.economy(careerKey('held-id', 'held')).pending.speed, 2);
+    assert.equal(leaderboard.economy(careerKey('held-id', 'held')).pending.speed, 1);
 
     const lateKey = careerKey('late-id', 'late');
     leaderboard.record(lateKey, { name: 'late', coins: 1 });

@@ -20,6 +20,28 @@ test('streak fire tones animate through the spectrum', () => {
   assert.notEqual(first.cool, first.mid);
 });
 
+test('the speed icon uses two chevrons and a plus in HUD, shop, and pickup art', () => {
+  const art = fs.readFileSync(new URL('../public/assets/art.js', import.meta.url), 'utf8');
+  const html = fs.readFileSync(new URL('../public/index.html', import.meta.url), 'utf8');
+  const readmeIcon = fs.readFileSync(new URL('../docs/readme/icons/boot.svg', import.meta.url), 'utf8');
+  const collectible = art.slice(
+    art.indexOf('  3: c =>', art.indexOf('export const PERK_ART')),
+    art.indexOf('  // Shield:'),
+  );
+  const symbol = html.slice(
+    html.indexOf('<symbol id="i-boot"'),
+    html.indexOf('</symbol>', html.indexOf('<symbol id="i-boot"')),
+  );
+
+  assert.match(collectible, /for \(const x of \[3, 12\]\)/);
+  assert.match(collectible, /moveTo\(x, 8\); c\.lineTo\(x \+ 6, 16\); c\.lineTo\(x, 24\)/);
+  assert.match(collectible, /moveTo\(26, 12\); c\.lineTo\(26, 20\)/);
+  assert.match(symbol, /M1 4l3 4-3 4M5 4l3 4-3 4/);
+  assert.match(symbol, /M12 6v4M10 8h4/);
+  assert.match(readmeIcon, /M1 4l3 4-3 4M5 4l3 4-3 4/);
+  assert.match(readmeIcon, /M12 6v4M10 8h4/);
+});
+
 test('outside-facing coastline corners use a smooth curved cut and outline', () => {
   const source = fs.readFileSync(new URL('../public/assets/art.js', import.meta.url), 'utf8');
   const carve = source.slice(

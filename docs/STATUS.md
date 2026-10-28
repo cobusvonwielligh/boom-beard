@@ -76,13 +76,17 @@ long time to be losing.
 
 ### (c) The perk set is smaller, with a rare ghost pickup
 
-Bomb, Fire, Boots, Shield, **Stim** (stamina capacity), **Rum**, and the **Veil**. The **Gift**
+Bomb, Fire, Speed, Shield, **Stim** (stamina capacity), **Rum**, and the **Veil**. The **Gift**
 has been removed; the remaining contagious diseases are dormant.
 
 Rum and the Veil share weight 11, about **2.6% of drops** each. Rum softens damage and makes you
-drunk. The Veil lasts 16 seconds: only its carrier sees a translucent ghost with a broken
-two-tone outline; other clients hide the pirate, name tag, movement traces, shadow, and radar
-marker. Bombs and pickups remain visible. It cannot be bought and adds no dedicated stat.
+drunk for about 13 seconds. The Veil lasts 20 seconds: only its carrier sees a translucent ghost
+with a broken two-tone outline; other clients hide the pirate, name tag, movement traces, shadow,
+and radar marker. Bombs and pickups remain visible. It cannot be bought and adds no dedicated stat.
+
+A reconnect during the reserved-seat grace period keeps the current round score and restores
+pre-disconnect powerup stats if the player was not killed while away. Temporary statuses do not
+persist; death and new-round resets continue to apply normally.
 
 ### (d) New systems that were never in the plan
 
@@ -235,8 +239,8 @@ Every one of these is in `shared/constants.js`. Nothing is inline.
 |---|---|
 | Tick | 30 Hz, snapshots every 2 ticks (15 Hz) |
 | Round | 10 min, `/roundtime 0.1–60` to change |
-| Speed | `[27, 35, 43, 51, 59]` units/tick by boot count - 3.2 to 6.9 tiles/s |
-| Caps | 5 bombs carried, radius 5, 4 boots, 2 shields, 4 stims |
+| Speed | `[27, 32, 37, 41]` units/tick by boost level - 3.2 to 4.8 tiles/s; bonuses reduced 40% |
+| Caps | 5 bombs carried, radius 5, 3 speed boosts, 2 shields, 4 stims |
 | Stamina | 6900 twentieths (+1500 per stim), empty = half pace until a third is back |
 | Respawn | 11 s death cooldown, then a 3 s 3-2-1 countdown; safe spawns are distance-weighted with a full-map fallback |
 | Fire | drawn 15 ticks, lethal 10; damage box 13/20 of the movement box |
@@ -244,8 +248,8 @@ Every one of these is in `shared/constants.js`. Nothing is inline.
 | Radar | your light and maroon foe blips ride the canvas frame, which is cut down so it is never more than 4 tiles of sea from the island (`SEA_MAX_MARGIN_TILES`) |
 | Colours | picked per player; ≤8 players are always the 8 most distinct; only reshuffled between rounds |
 | Perk drops | 35% base, scaled by what is on the floor and how fast it is taken |
-| Rum | 2.7% of drops. Softens damage, sways your walk, rolls your camera for 12 s |
-| Gold | 2.1% of drops, ≤5 a round. 400 XP. Changes nothing about the round - it is a collectible |
+| Rum / Veil | 2.6% each. Rum lasts 389 ticks; Veil lasts 600 ticks |
+| Gold | 2.1% of drops, ≤5 a round. 65 XP. Changes nothing about the round - it is a collectible |
 | Kegs | ≤12 a round, ≥1 guaranteed, radius 7 |
 | Gulls | first at 25 s, then every 10–22 s, ≤4 aloft, ~3 tiles/s, three coins direct to the fire owner |
 | Bots | US keeps its configured target of 4 while idle; ZA retires after 2 empty rounds |

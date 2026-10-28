@@ -316,7 +316,7 @@ test('persistent gold shop economy', async t => {
     assert.equal(lb.buy('n:ann', 'stim').wallet, 3);
     assert.equal(lb.buy('n:ann', 'fire').wallet, 2);
     assert.deepEqual(lb.economy('n:ann'), {
-      wallet: 2, pending: { bombs: 4, fire: 1, speed: 2, shield: 1, stim: 4 },
+      wallet: 2, pending: { bombs: 4, fire: 1, speed: 1, shield: 1, stim: 4 },
     });
 
     const before = lb.economy('n:ann');
@@ -363,7 +363,7 @@ test('persistent gold shop economy', async t => {
     }));
     const lb = createLeaderboard({ dataDir: dir });
     assert.deepEqual(lb.economy('n:ann'), {
-      wallet: 10, pending: { bombs: 0, fire: 0, speed: 4, shield: 0, stim: 4 },
+      wallet: 10, pending: { bombs: 0, fire: 0, speed: 3, shield: 0, stim: 4 },
     });
     await lb.flush();
     assert.equal((await read(dir)).version, 1);

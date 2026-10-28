@@ -13,6 +13,7 @@ import {
 
 test('Veteran lands on exactly 100 hours', () => {
   const hours = xpForLevel(VETERAN_LEVEL) / XP_PER_HOUR;
+  assert.equal(XP_PER_HOUR, 48_000, 'XP calibration must reflect the updated score values');
   assert.equal(HOURS_TO_VETERAN, 100, 'the brief says 100 hours');
   assert.ok(Math.abs(hours - 100) < 0.5, `Veteran is at ${hours.toFixed(1)} hours`);
 });

@@ -69,7 +69,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
   let mapIndex = regionId === 'us' ? 2 : 0;
   let state = createState(MAPS[mapIndex]);
 
-  // seat -> { playerId, name, mask, inputs, lastAckTick, connected, goneSince }
+  // seat -> identity/input state plus a same-round, pre-disconnect loadout snapshot
   const seats = new Array(maxPlayers).fill(null);
   let timer = null;
   let nextDeadline = 0;
@@ -250,6 +250,18 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
   function disconnect(seat) {
     const s = seats[seat];
     if (!s) return;
+    const p = state.players[seat];
+    if (p?.alive) {
+      // Reconnect arrives through respawn(), which reapplies a queued shop loadout. Preserve
+      // current-round pickups across that path, but only if no death happened while away.
+      s.resumeLoadout = {
+        bombs: p.bombs, radius: p.radius, speed: p.speed, shields: p.shields,
+        staminaLevel: p.staminaLevel, stamina: p.stamina, tired: p.tired,
+        deaths: p.deaths,
+      };
+    } else if (!p?.arriving) {
+      s.resumeLoadout = null;
+    }
     s.connected = false;
     s.goneSince = state.tick;
     s.mask = 0;                 // stop walking into a wall while you are away
@@ -382,6 +394,20 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     const pick = { tx: pool[idx][0], ty: pool[idx][1] };
 
     applyPendingShopLoadout(p);
+    const seat = seats[p.i];
+    const resumeLoadout = seat?.resumeLoadout;
+    if (resumeLoadout) {
+      seat.resumeLoadout = null;
+      if (resumeLoadout.deaths === p.deaths) {
+        p.bombs = resumeLoadout.bombs;
+        p.radius = resumeLoadout.radius;
+        p.speed = resumeLoadout.speed;
+        p.shields = resumeLoadout.shields;
+        p.staminaLevel = resumeLoadout.staminaLevel;
+        p.stamina = resumeLoadout.stamina;
+        p.tired = resumeLoadout.tired;
+      }
+    }
     p.x = tileCentre(pick.tx);
     p.y = tileCentre(pick.ty);
     p.alive = true;
@@ -674,7 +700,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     // as well or the next bank would compute a negative delta and the board would ignore it.
     const carried = seats.map(s =>
       (s ? { ...s, inputs: new Map(), mask: 0, goneSince: 0, lastAckTick: 0, lastInputAt: 0,
-             banked: null } : null));
+             resumeLoadout: null, banked: null } : null));
     state = createState(MAPS[mapIndex]);
     // The only thing the simulation is told about the clock, and only the gull raid reads it:
     // see GULL_RAID_AT_MIN. Everything else that cares about the end of the round is up here.

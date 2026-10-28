@@ -81,7 +81,7 @@ refreshSignupMeter();
  * those are worth a beat of celebration.
  */
 const UPGRADES = {
-  3:  { icon: '#i-boot',   text: 'boots',  colour: '#5fd8f0', of: () => MAX_SKATES },
+  3:  { icon: '#i-boot',   text: 'speed',  colour: '#5fd8f0', of: () => MAX_SKATES },
   4:  { icon: '#i-shield', text: 'shield', colour: '#5ad1a0', of: () => MAX_SHIELDS },
   15: { icon: '#i-bolt',   text: 'stim',   colour: '#ffe04a', of: () => MAX_STAMINA_LEVELS },
 };

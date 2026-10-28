@@ -150,7 +150,7 @@ function killInFire(state) {
     //
     // The centre tile is the documented rule (RULES.md §3) and stays the first choice, so every
     // outcome that was already right is unchanged. The fallback used to be `fresh[0]` - the oldest
-    // still-burning fire ANYWHERE on the map - which handed +100 and the kill-feed line to a
+    // still-burning fire ANYWHERE on the map - which handed the kill score and feed line to a
     // player who was not involved, or scored a suicide when that stray fire happened to be the
     // victim's own. A 160-unit hitbox straddles a tile boundary most of the time, so the centre
     // tile misses often and the wrong fallback fired often.

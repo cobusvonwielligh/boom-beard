@@ -23,7 +23,7 @@ test('death and intermission shop reuse the approved game assets and palette', a
   for (const [item, icon, bundle, cost] of [
     ['bombs', '#i-bomb', '+2', 1],
     ['fire', '#i-fire', '+1', 1],
-    ['speed', '#i-boot', '+2', 1],
+    ['speed', '#i-boot', '+1', 1],
     ['shield', '#i-shield', '+1', 2],
     ['stim', '#i-bolt', '+2', 1],
   ]) {
@@ -31,7 +31,7 @@ test('death and intermission shop reuse the approved game assets and palette', a
     const itemMarkup = shop.slice(shop.indexOf(`data-shop-item="${item}"`),
       shop.indexOf('</button>', shop.indexOf(`data-shop-item="${item}"`)));
     has(itemMarkup, new RegExp(`<use href="${icon}"`), `${item} uses the existing icon`);
-    assert.ok(shop.includes(`<span class="shopBundle">${bundle}</span>`),
+    assert.ok(itemMarkup.includes(`<span class="shopBundle">${bundle}</span>`),
       `${item} has the correct bundle size`);
     has(itemMarkup, /class="shopIcon"/, `${item} icon has a glow wrapper`);
     has(itemMarkup, new RegExp(`<span class="shopPrice"\\s*>\\s*<svg[^>]*><use href="#i-coin"\\s*\\/><\\/svg>\\s*${cost}\\s*<\\/span\\s*>`),

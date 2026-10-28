@@ -27,10 +27,9 @@ const HALF_TILE = UNITS_PER_TILE >> 1;
  *
  * Three limits, and all three matter:
  *
- *   ALIGN_RATE     never faster than the legs. At 2x it outran a deliberate move, and with
- *                  boots at 59 units a tick that was half a tile of sideways travel in ONE
- *                  tick - a snap, not an assist, and the commonest place to feel it is walking
- *                  off a bomb you just placed, where the tile turns solid underneath you.
+ *   ALIGN_RATE     never faster than the legs. At 2x it outran a deliberate move and became a
+ *                  snap, not an assist; the commonest place to feel it is walking off a bomb
+ *                  you just placed, where the tile turns solid underneath you.
  *   ALIGN_FRACTION a quarter of whatever is left, so it decelerates into the lane instead of
  *                  arriving at full speed and stopping dead. This is the part that reads as
  *                  smooth rather than as correct.

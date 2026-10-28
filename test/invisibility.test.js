@@ -24,8 +24,11 @@ test('invisibility is a rare, non-purchasable perk at rum rarity', () => {
   assert.doesNotMatch(upgrades, /\b18:/, 'invisibility was added as a permanent stat upgrade');
 });
 
-test('invisibility lasts 33 percent longer than rum and does not spread by touch', () => {
-  assert.equal(STATUS_TICKS[STATUS.INVISIBLE], Math.round(STATUS_TICKS[STATUS.DRUNK] * 4 / 3));
+test('Veil and Drunk durations include their requested extensions and remain non-contagious', () => {
+  assert.equal(STATUS_TICKS[STATUS.INVISIBLE], 600);
+  assert.equal(STATUS_TICKS[STATUS.DRUNK], 389);
+  assert.equal(STATUS_TICKS[STATUS.INVISIBLE], Math.round(480 * 1.25));
+  assert.equal(STATUS_TICKS[STATUS.DRUNK], Math.round(360 * 1.08));
   assert.equal(CONTAGIOUS & STATUS.INVISIBLE, 0);
   assert.ok(!CONTAGIOUS_LIST.includes(STATUS.INVISIBLE));
 });

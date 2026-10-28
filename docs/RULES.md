@@ -42,8 +42,9 @@ read is worse than a map you cannot see all of.
 | Property | Value |
 |---|---|
 | Base speed | **27 units/tick** ≈ 3.2 tiles/s |
-| Per Boots | **+8 units/tick** |
-| Max boots | **4** → 59 units/tick ≈ 6.9 tiles/s |
+| Speed by boosts (0–3) | **27, 32, 37, 41 units/tick** |
+| Boot bonus | **40% lower** than the previous curve; base pace is unchanged |
+| Max speed boosts | **3** → 41 units/tick ≈ 4.8 tiles/s |
 | Slowdown status | speed × 0.5, rounded down |
 | Exhausted | speed × 0.5, rounded down - see §9 |
 | Movement hitbox | 160 × 160 units (20 × 20 px), centred |
@@ -83,10 +84,10 @@ fuse ends.
 | | |
 |---|---|
 | Gesture | the same direction twice inside **160 ms** (client-side; the server sees one bit) |
-| Launch | **3 ×** your walking pace; only 90% of the boots bonus counts toward a slide |
+| Launch | **3 ×** your walking pace; only 90% of the reduced speed bonus counts toward a slide |
 | Drag | **× 0.94** of the velocity per tick |
 | Ends at | **26 units/tick**, or on hitting anything solid |
-| Distance | about **3.2 tiles at base speed**, with a modest increase from boots |
+| Distance | about **3.2 tiles at base speed**, with a smaller increase from boots |
 | Cost | **700 stamina**, a fifth of a fresh bar, taken in full at the launch |
 | Cooldown | **18 ticks** before another |
 | Refused when | already sliding, cooling down, exhausted, or short of the cost |
@@ -236,9 +237,9 @@ Drop weights, applied after the drop roll:
 | Bomb | 108 | 26.3 % | +1 max bombs | 8 |
 | Fire | 100 | 24.3 % | +1 blast radius | 6 |
 | Stim | 72 | 17.5 % | +75 maximum stamina, and tops you up | 4 |
-| Boots | 72 | 17.5 % | +1 speed step | 4 |
+| Speed | 72 | 17.5 % | +1 speed step | 3 |
 | Shield | 48 | 11.7 % | Each absorbs one blast before your health does; a blue ring per shield on your pirate. Two blasts on the same tick cost two; one arriving inside the 0.6 s grace after a hit costs nothing (§6) | 2 held |
-| Rum | 11 | 2.7 % | Blast arms stop killing you for 12 s; you walk drunk | - |
+| Rum | 11 | 2.6 % | Blast arms stop killing you for about 13 s; you walk drunk | - |
 
 The weights live in `PERK_WEIGHTS` in `shared/constants.js`; this table is a copy of them.
 
@@ -339,6 +340,11 @@ Fire hurts you unless you are Invulnerable. **Two hits kill.**
   half and dull, or an empty socket while you are down - and the mascot in the corner smoulders.
 - **Death** drops your stats to the starting values (1 bomb, radius 1, no boots, shields, or
   stamina upgrades) and clears all statuses.
+- **Disconnect and reconnect:** while your seat is reserved (for the existing reconnect grace
+  period), a same-round return restores the bombs, fire, boots, shields, and stamina upgrades you
+  had when you left, and keeps your round score. Temporary statuses do not return. If you die
+  while disconnected, that death and its normal loadout reset stand; a new round also clears the
+  saved reconnect loadout. Once the seat reservation expires, joining again is a fresh start.
 - **Kill streaks** continue when you get another kill within **11 seconds**; dying or letting that
   window expire ends the run. Streak text cycles through RGB colours while active.
 - On death you drop **up to 3 perks** on nearby free tiles, so a good kill is rewarded.
@@ -381,11 +387,11 @@ the contagious status with its **remaining duration**, and the carrier keeps it.
 | Invulnerability | 90 t / 60 t | no | Cannot die. From respawn or a broken shield. |
 | Pacifism | 300 t (10 s) | yes | Cannot place bombs. |
 | Slowdown | 300 t | yes | Speed × 0.5. |
-| Invisibility | 480 t (16 s) | no | Other players cannot see your pirate, overhead name, shadow, movement trail, or radar blip. You see a translucent ghost with a broken black-and-blip-light outline. Bombs and pickups remain visible. |
+| Invisibility | 600 t (20 s) | no | Other players cannot see your pirate, overhead name, shadow, movement trail, or radar blip. You see a translucent ghost with a broken black-and-blip-light outline. Bombs and pickups remain visible. |
 | Changeling | 300 t | yes | Up/down and left/right inverted, sprite drawn upside down. |
 | Reduction | 450 t (15 s) | yes | Half-size hitbox (10 × 10), may pass **columns**. |
 | Fast Detonation | 300 t | yes | Your bombs fuse in 36 ticks. |
-| Drunk | 360 t (12 s) | no | From rum. Only the bomb's own tile kills you; your walk sways. |
+| Drunk | 389 t (about 13 s) | no | From rum. Only the bomb's own tile kills you; your walk sways. |
 | Confused | 45 t | no | From a slide (§2). A question mark over your head, no bombs, and speed × ¾. |
 
 **Invulnerability is never contagious and is never overwritten by a weaker status.**
@@ -398,12 +404,13 @@ the contagious status with its **remaining duration**, and the carrier keeps it.
 
 | Event | Score |
 |---|---:|
-| Kill another player | +100 |
-| Suicide (your own fire) | −25, floored at 0 for the round |
-| Killed by another player | 0 |
+| Kill another player | +450 |
+| Gold coin | +65 |
+| Alive at round end | +50 |
 | Perk picked up | +5 (+15 if already capped) |
 | Block destroyed | +2 |
-| Alive at round end | +50 |
+| Suicide (your own fire) | −35, floored at 0 for the round |
+| Killed by another player | 0 |
 
 Round score resets each round. **Lifetime score persists** per `playerId` and is your XP.
 
@@ -417,7 +424,7 @@ the **16-second** between-round intermission, spend the listed cost to queue a b
 |---|---:|---|---:|
 | Bombs | 1 gold | +2 max bombs | 4 (5 total including your starting bomb) |
 | Fire | 1 gold | +1 blast radius | 4 |
-| Speed | 1 gold | +2 speed levels | 4 |
+| Speed | 1 gold | +1 speed level | 3 |
 | Shield | 2 gold | +1 shield | 2 |
 | Stim | 1 gold | +2 stamina levels | 4 |
 

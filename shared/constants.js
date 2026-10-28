@@ -82,11 +82,10 @@ export const MAX_PLAYERS = 16;
 // at the old pace a full-speed player crossed a tile in under five ticks, which is faster than
 // the eye can plan a turn in and made corners feel like luck rather than judgement.
 //
-// The STEP is double what it was - 8 units a boot rather than 4. Four was a 59% gain across all
-// four boots; eight makes a fully booted player 119% faster than a fresh one, 3.2 tiles a second
-// against 6.9. Worth crossing the map for, which the old step was not.
-export const SPEED_UNITS_PER_TICK = [27, 35, 43, 51, 59];
-export const MAX_SKATES = SPEED_UNITS_PER_TICK.length - 1; // 4
+// Boot bonuses are 40% lower: keep the base pace, and retain 60% of each former bonus.
+// The rounded progression ends at 41 units/tick and caps at three levels.
+export const SPEED_UNITS_PER_TICK = [27, 32, 37, 41];
+export const MAX_SKATES = SPEED_UNITS_PER_TICK.length - 1; // 3
 export const SLOWDOWN_NUM = 1, SLOWDOWN_DEN = 2; // speed * 1/2, integer division
 
 export const HITBOX_UNITS = 20 * (UNITS_PER_TILE / TILE_PX); // 20 px → 160 units
@@ -511,8 +510,7 @@ export const PERK = {
  * out far more than a short one on a sparse map, so the reward would be a function of the map
  * rather than of the player. Five is about one every two minutes at the top end.
  *
- * Worth a lot of XP, because the whole point of something this rare is that finding one matters.
- * SCORE.GOLD is roughly four kills.
+ * Worth enough XP to be noticed, but less than one fifth of a kill.
  */
 export const GOLD_MAX_PER_ROUND = 5;
 
@@ -650,14 +648,12 @@ export const STATUS_TICKS = {
   [STATUS.INVULN]: 90,        // 3 s from respawn
   [STATUS.PACIFISM]: 300,
   [STATUS.SLOWDOWN]: 300,
-  [STATUS.INVISIBLE]: 480,     // 16 s: 33% longer than drunk
+  [STATUS.INVISIBLE]: 600,     // 20 s: 25% longer than its former 16 s duration
   [STATUS.CHANGELING]: 300,
   [STATUS.REDUCTION]: 450,
   [STATUS.FAST_DET]: 300,
-  // 360 ticks, 12 s. Was 600, then 480. Twenty seconds of fighting the controls is long enough
-  // that the only play is to wait it out, which makes rum a timeout rather than a trade-off;
-  // sixteen was still on the long side, so a quarter came off it on request.
-  [STATUS.DRUNK]: 360,
+  // 389 ticks, just under 13 s: an 8% extension of the former 360-tick duration.
+  [STATUS.DRUNK]: 389,         // 13 s: 8% longer than its former 12 s duration
   // 45 ticks, a second and a half. Short on purpose: it is there to buy the slider the doorway,
   // not to take somebody out of the fight. Long enough to matter, over before it is annoying.
   [STATUS.CONFUSED]: 45,
@@ -704,30 +700,29 @@ export const CONTAGION_COOLDOWN_TICKS = TICK_HZ; // 1 s per pair
 // ─── Scoring & ranks ──────────────────────────────────────────────────────────
 
 export const SCORE = {
-  KILL: 100,
-  SUICIDE: -25,
+  KILL: 450,
+  SUICIDE: -35,
   PERK: 5,
   PERK_CAPPED: 15,
   BLOCK: 2,
   SURVIVE_ROUND: 50,
-  // A gold coin, which is 2% of drops and capped at five a round. Four kills' worth: rare
-  // enough that it has to be worth stopping for, bounded enough that it cannot be a strategy.
-  GOLD: 400,
+  // A gold coin, 2% of drops and capped at five a round.
+  GOLD: 65,
 };
 
 // ─── Levels ───────────────────────────────────────────────────────────────────
 //
 // XP is lifetime score. The curve is calibrated against the real scoring table rather than
-// guessed: a decent player in a ten-minute round takes roughly 20 kills (2000), 150 blocks (300),
-// 40 perks (200) and the survival bonus, minus about ten suicides, for ~2300 a round and
-// ~13 800 an hour. Round that down to 12 000 to be honest about the average session.
+// guessed: a decent player in a ten-minute round takes roughly 20 kills (9000), 150 blocks (300),
+// 40 perks (200) and the survival bonus, minus about ten suicides (350), for ~9200 a round.
+// Round 55 200 per hour down to 48 000 to be honest about the average session.
 //
 // From there the only free parameters are where level 1 lands and where Veteran does. Level 1 at
 // 200 XP is about a minute, which is the right feel for a first level; Veteran at 20 is pinned to
 // 100 hours by the brief, and the exponent is DERIVED from those two rather than tuned by hand -
 // so changing the hours or the scoring table moves the whole curve correctly instead of silently
 // making the target wrong.
-export const XP_PER_HOUR = 12_000;
+export const XP_PER_HOUR = 48_000;
 export const HOURS_TO_VETERAN = 100;
 export const VETERAN_LEVEL = 20;
 export const XP_LEVEL_BASE = 200;

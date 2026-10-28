@@ -260,9 +260,8 @@ export function gulls(state) {
     /* Paid to the shooter, in the air, the moment it falls.
      *
      * Three coins into the hand of whoever owned the fire - see GULL_COINS for why that is better
-     * than a coin on the floor. The XP is still one coin's worth: SCORE.GOLD is already about
-     * four kills, and three of them for one shot would make a lucky blast worth more than
-     * winning the round. The coins are the trophy; the score is the shot.
+     * than a coin on the floor. The XP is still one coin's worth; the coins are the trophy, the
+     * score is for the shot.
      *
      * A keg has no owner, so that case keeps the old behaviour and leaves a coin on the ground
      * rather than quietly paying nobody.

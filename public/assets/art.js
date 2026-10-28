@@ -1390,18 +1390,19 @@ export const PERK_ART = {
     c.bezierCurveTo(12, 20, 11.5, 16, 16, 11);
     c.fillStyle = PALETTE.fireCore; c.fill();
   },
-  // Skate: a boot in profile with a wing, which is the one shape nobody confuses with a bomb.
+  // Two forward chevrons and a plus: speed-up reads without a shoe silhouette.
   3: c => {
-    c.fillStyle = '#e8eef7';
-    c.beginPath();
-    c.moveTo(11, 7); c.lineTo(17, 7); c.lineTo(17, 17); c.lineTo(23, 20);
-    c.lineTo(23, 24); c.lineTo(11, 24); c.closePath();
-    c.fill();
-    px(c, 11, 21, 12, 3, '#9fb0c8');                     // sole
-    c.strokeStyle = '#5fd8f0'; c.lineWidth = 1.6; c.lineCap = 'round';
-    for (const [y, len] of [[10, 7], [13, 5], [16, 3]]) {   // speed lines behind the heel
-      c.beginPath(); c.moveTo(10, y); c.lineTo(10 - len, y); c.stroke();
+    c.strokeStyle = '#5fd8f0'; c.lineWidth = 3; c.lineCap = 'round'; c.lineJoin = 'round';
+    for (const x of [3, 12]) {
+      c.beginPath();
+      c.moveTo(x, 8); c.lineTo(x + 6, 16); c.lineTo(x, 24);
+      c.stroke();
     }
+    c.strokeStyle = '#ffe04a'; c.lineWidth = 2.5;
+    c.beginPath();
+    c.moveTo(26, 12); c.lineTo(26, 20);
+    c.moveTo(22, 16); c.lineTo(30, 16);
+    c.stroke();
   },
   // Shield: a heater shield with a boss, rather than the old flat pentagon.
   4: c => {

@@ -127,7 +127,10 @@ Log a warning if any tick exceeds 20 ms. That is the early signal that something
 ## 6. Failure handling
 
 - **Socket closes:** reconnect with backoff 1 → 2 → 4 → 8 s, re-send `hello` with the stored
-  `playerId`, get re-seated.
+  `playerId`, and reclaim the reserved seat during its grace period. A living same-round return
+  keeps round score and restores pre-disconnect powerup stats if no death occurred while away;
+  temporary statuses are cleared by the arrival respawn. Seat expiry or a new round ends that
+  preservation.
 - **Tab backgrounded:** on resume, hard-resync the clock and throw away all pending inputs. Do
   not replay two minutes of simulation.
 - **Server restart:** clients reconnect and get a fresh `welcome`. The round is lost, the

@@ -7,7 +7,7 @@ import { createState, createPlayer, setTile, tileAt, tileCentre, hashState } fro
 import { step, blocked, speedOf } from '../shared/sim/movement.js';
 import {
   BLOCK, IN_RIGHT, IN_LEFT, IN_DOWN, IN_UP, UNITS_PER_TILE, CORNER_ASSIST_UNITS,
-  SPEED_UNITS_PER_TICK, STATUS, DIR_R, DIR_D, DIR_L, BLOCK_HP, DIAG_NUM, DIAG_DEN,
+  SPEED_UNITS_PER_TICK, MAX_SKATES, STATUS, DIR_R, DIR_D, DIR_L, BLOCK_HP, DIAG_NUM, DIAG_DEN,
 } from '../shared/constants.js';
 import { applyStatus } from '../shared/sim/state.js';
 import { mossValue, mossyTile } from '../shared/moss.js';
@@ -39,10 +39,13 @@ test('movement', async t => {
   });
 
   await t.test('roller-skates stack up to the cap and no further', () => {
+    assert.deepEqual(SPEED_UNITS_PER_TICK, [27, 32, 37, 41],
+      'speed should cap at three levels, with base pace and 40%-reduced bonuses');
+    assert.equal(MAX_SKATES, 3);
     const p = createPlayer(0, 'p');
     const seen = [];
     for (let s = 0; s <= 8; s++) { p.speed = s; seen.push(speedOf(p)); }
-    assert.deepEqual(seen.slice(0, 5), SPEED_UNITS_PER_TICK);
+    assert.deepEqual(seen.slice(0, MAX_SKATES + 1), SPEED_UNITS_PER_TICK);
     assert.equal(seen[8], SPEED_UNITS_PER_TICK.at(-1), 'over-cap speed clamps');
   });
 
