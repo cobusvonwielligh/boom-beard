@@ -46,8 +46,8 @@ origin. The US server redirects website and admin requests to ZA. There is no lo
 balancer, CDN, or central database.
 
 **No Docker.** Each region is one Node process and one systemd service. systemd restarts it
-on crash and survives reboots; `npm run deploy` is an rsync instead of an image build. If
-this moves to ECS Fargate, add a container definition then.
+on crash and survives reboots; `npm run deploy` runs the existing rsync deployment for ZA and
+US instead of building an image. If this moves to ECS Fargate, add a container definition then.
 
 **No load balancer or regional hostname.** The player selects a region after pressing
 Play and connects directly to the selected game origin. Only the ZA host renders the
@@ -130,10 +130,11 @@ bootstrap; the script consumes it without displaying the secret.
 npm run deploy
 ```
 
-The configured `[deploy] ssh_host`, user and key select the ZA instance. The command runs the
-full test suite, rsyncs, installs production dependencies when needed, restarts the service, and
-polls `/healthz`. For US, repeat with `SSH_HOST=52.21.210.27`, `SSH_USER=ec2-user`, and
-`KEY=~/Downloads/bombs-away-na.pem`. On failure the script prints the last 40 journal lines.
+The dual-region wrapper reads ZA from `[deploy]` and US from `[deploy_us]` in the ignored local
+`config.ini`. It validates both targets and key files before deploying ZA and then US. Each
+instance runs the full tests, sync, dependency check, restart and `/healthz` poll. Use
+`npm run deploy:single` to deploy one configured host; `deploy:fast` skips the full suite for
+both while retaining the boot preflight.
 
 ---
 
@@ -159,6 +160,7 @@ Precedence is **environment variable > `config.ini` > built-in default**, so a o
 | | `min_bots` | `MIN_BOTS` | `5 (ZA), 4 (US)` | Bot target. ZA retires bots after two empty rounds; US keeps its target while idle. 0 turns bots off. Explicit config/env values override defaults; `config.example.ini` sets 6 as an example override. |
 | `deploy` | `token` | `DEPLOY_TOKEN` | blank | Secret for `POST /deploy`. **Blank disables the endpoint entirely** - correct on a laptop. |
 | | `ssh_host` / `ssh_user` / `ssh_key` | same | - | Used by `infra/deploy.sh`. |
+| `deploy_us` | `ssh_host` / `ssh_user` / `ssh_key` | `US_SSH_HOST` / `US_SSH_USER` / `US_SSH_KEY` | - | US target for the second stage of `npm run deploy`. |
 | `admin` | `key` | `ADMIN_KEY` | blank | Optional game-host flag. Open `https://<host>/?admin=<key>` once; the browser keeps it and the address bar drops it. It is not required for the Command Deck. `bootstrap.sh` generates one. |
 | | `name` | `ADMIN_NAME` | `cobusvw` | Only used when `key` is blank, which is right on a laptop and wrong anywhere else: names are not secret. |
 | | `dashboard_password` | `ADMIN_DASHBOARD_PASSWORD` | blank | Second factor for `/admin`; blank disables the dashboard. Set the secret only in the server environment or ignored `config.ini`, never in the repository. |
@@ -329,10 +331,10 @@ regional hostname:
    `EMAIL` is optional; without it, Certbot sends no expiry notices, so monitor the daily
    renewal timer. This requests an IP-address certificate with the six-day `shortlived`
    profile and daily renewal.
-4. Deploy the same verified `main` commit to both instances. For manual US deployment,
-   set `SSH_HOST=52.21.210.27`, `SSH_USER=ec2-user`, and
-   `KEY=~/Downloads/bombs-away-na.pem`.
-   Keep `min_bots=4` in the US `[server]` config; the US room retains those bots while idle.
+4. Configure the local ignored `[deploy_us]` section with `52.21.210.27`,
+   `ec2-user`, and the US SSH key. `npm run deploy` then deploys the same verified `main`
+   commit to ZA and US in order. Use `npm run deploy:single` for a one-region deploy. Keep
+   `min_bots=4` in the US `[server]` config; the US room retains those bots while idle.
 5. Verify `/version` on ZA, and `/healthz` plus `/region-status` on both instances. The US
    `/version` route redirects to the ZA website with other non-game routes; use the build
    reported by US `/healthz` to verify its deployed commit. US root and `/admin` requests must
@@ -364,7 +366,6 @@ Deploy the same tagged commit to both regions with the full-test path:
 
 ```bash
 npm run deploy
-SSH_HOST=52.21.210.27 SSH_USER=ec2-user KEY="$HOME/Downloads/bombs-away-na.pem" npm run deploy
 ```
 
 Verify `/version` on ZA and compare both `/healthz.version` values to the tag. Both

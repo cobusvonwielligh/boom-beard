@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Boom Beard - manual deploy. Pushes your working tree, including uncommitted work.
+# Boom Beard - single-instance deployer. Pushes your working tree, including uncommitted work.
 #
-#   npm run deploy            tests, then deploy
-#   npm run deploy:fast       skip the full suite (the boot preflight still runs)
+#   npm run deploy:single     deploy one configured host
+#   npm run deploy            deploys ZA, then US via infra/deploy-both.sh
+#   npm run deploy:fast       deploys both while skipping full tests (preflight still runs)
 #   npm run rollback          back to the previous deploy
 #   npm run logs              follow the server journal
 #

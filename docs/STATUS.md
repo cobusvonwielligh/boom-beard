@@ -317,8 +317,8 @@ world. See [DESIGN.md](DESIGN.md) → Non-goals.
 
 ## 7. Operating it
 
-- **Deploy:** `npm run deploy` runs the full tests and deploys to the configured instance. Repeat
-  with the US SSH host and key for the second region; see [DEPLOY.md](DEPLOY.md) §7.
+- **Deploy:** `npm run deploy` runs the full tests and deploys ZA then US using the two local
+  config targets. Use `npm run deploy:single` for one region; see [DEPLOY.md](DEPLOY.md) §7.
 - **Health:** `/healthz` - tick timings, player count, map, version, and both transports.
   `"webtransport": 0` means the listener is up with no sessions; `null` means it failed to start
   and everyone is on WebSocket.
