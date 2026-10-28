@@ -1398,10 +1398,10 @@ export const PERK_ART = {
       c.moveTo(x, 8); c.lineTo(x + 6, 16); c.lineTo(x, 24);
       c.stroke();
     }
-    c.strokeStyle = '#ffe04a'; c.lineWidth = 2.5;
+    c.strokeStyle = '#101820'; c.lineWidth = 1.8;
     c.beginPath();
-    c.moveTo(18, 7); c.lineTo(18, 15);
-    c.moveTo(14, 11); c.lineTo(22, 11);
+    c.moveTo(18, 8); c.lineTo(18, 14);
+    c.moveTo(15, 11); c.lineTo(21, 11);
     c.stroke();
   },
   // Shield: a heater shield with a boss, rather than the old flat pentagon.
