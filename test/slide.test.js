@@ -77,13 +77,13 @@ test('a double-tap costs stamina up front and covers more ground than running', 
   assert.ok(ticks < 30, `the slide ran for ${ticks} ticks - that is a vehicle, not a slide`);
 });
 
-test('40-percent-reduced boot bonuses add a moderate slide-distance bonus', () => {
+test('boosted slide distance follows the revised maximum speed bonus', () => {
   const unboosted = slideDistance(0);
   const fullyBoosted = slideDistance(MAX_SKATES);
 
   assert.equal(unboosted, 813, 'the base-speed slide was unintentionally changed');
   assert.ok(
-    fullyBoosted >= 5.4 * UNITS_PER_TILE && fullyBoosted <= 5.6 * UNITS_PER_TILE,
+    fullyBoosted >= 6 * UNITS_PER_TILE && fullyBoosted <= 6.2 * UNITS_PER_TILE,
     `a fully boosted slide covered ${(fullyBoosted / UNITS_PER_TILE).toFixed(2)} tiles`,
   );
 });

@@ -35,11 +35,12 @@ test('the speed icon uses two chevrons and a plus in HUD, shop, and pickup art',
 
   assert.match(collectible, /for \(const x of \[3, 12\]\)/);
   assert.match(collectible, /moveTo\(x, 8\); c\.lineTo\(x \+ 6, 16\); c\.lineTo\(x, 24\)/);
-  assert.match(collectible, /moveTo\(26, 12\); c\.lineTo\(26, 20\)/);
+  assert.match(collectible, /moveTo\(18, 7\); c\.lineTo\(18, 15\)/);
+  assert.match(collectible, /moveTo\(14, 11\); c\.lineTo\(22, 11\)/);
   assert.match(symbol, /M1 4l3 4-3 4M5 4l3 4-3 4/);
-  assert.match(symbol, /M12 6v4M10 8h4/);
+  assert.match(symbol, /M8 3v6M5 6h6/);
   assert.match(readmeIcon, /M1 4l3 4-3 4M5 4l3 4-3 4/);
-  assert.match(readmeIcon, /M12 6v4M10 8h4/);
+  assert.match(readmeIcon, /M8 3v6M5 6h6/);
 });
 
 test('outside-facing coastline corners use a smooth curved cut and outline', () => {

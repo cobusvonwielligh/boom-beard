@@ -39,8 +39,8 @@ test('movement', async t => {
   });
 
   await t.test('roller-skates stack up to the cap and no further', () => {
-    assert.deepEqual(SPEED_UNITS_PER_TICK, [27, 32, 37, 41],
-      'speed should cap at three levels, with base pace and 40%-reduced bonuses');
+    assert.deepEqual(SPEED_UNITS_PER_TICK, [27, 33, 38, 44],
+      'base pace stays fixed; boost bonuses rise 10%, with 10% extra at max');
     assert.equal(MAX_SKATES, 3);
     const p = createPlayer(0, 'p');
     const seen = [];

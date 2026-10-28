@@ -42,9 +42,9 @@ read is worse than a map you cannot see all of.
 | Property | Value |
 |---|---|
 | Base speed | **27 units/tick** ≈ 3.2 tiles/s |
-| Speed by boosts (0–3) | **27, 32, 37, 41 units/tick** |
-| Boot bonus | **40% lower** than the previous curve; base pace is unchanged |
-| Max speed boosts | **3** → 41 units/tick ≈ 4.8 tiles/s |
+| Speed by boosts (0–3) | **27, 33, 38, 44 units/tick** |
+| Boost bonus | **10% higher** at levels 1–2; max level adds another 10%; base pace unchanged |
+| Max speed boosts | **3** → 44 units/tick ≈ 5.2 tiles/s |
 | Slowdown status | speed × 0.5, rounded down |
 | Exhausted | speed × 0.5, rounded down - see §9 |
 | Movement hitbox | 160 × 160 units (20 × 20 px), centred |

@@ -1,6 +1,6 @@
 # Boom Beard - Where We Stand
 
-Last updated: **2026-10-28**, release **v1.1.0**. Live on `boombeard.co.za` and the US game
+Last updated: **2026-10-28**, release **v1.1.1**. Live on `boombeard.co.za` and the US game
 instance. The full Node test suite runs with `npm test`. The security review dated 2026-10-25 is
 recorded in [DEPLOY.md](DEPLOY.md) §12.
 
@@ -33,6 +33,13 @@ and ZA is the authority for global account, career, wallet and shop data. See
 | Identity | ✅ password-owned, device-token trusted, normalized unique names, reconnect reservations |
 | Moderation | ✅ severe English/Afrikaans terms rejected in names and starred in chat; ordinary swearing allowed |
 | Mobile | ⬜ out of scope, unchanged |
+
+### v1.1.1 release
+
+The gameplay update adds the Veil, improves same-round reconnect recovery, and refines emote and
+pickup feedback. Speed now caps at three levels, costs one gold per level, and uses a chevron-plus
+mark; scoring is rebalanced and XP progression is recalibrated to keep Veteran near 100 hours.
+Moss is softer, late joiners are protected from the gull raid, and the emote picker fades smoothly.
 
 ### v1.1.0 release
 
@@ -239,7 +246,7 @@ Every one of these is in `shared/constants.js`. Nothing is inline.
 |---|---|
 | Tick | 30 Hz, snapshots every 2 ticks (15 Hz) |
 | Round | 10 min, `/roundtime 0.1–60` to change |
-| Speed | `[27, 32, 37, 41]` units/tick by boost level - 3.2 to 4.8 tiles/s; bonuses reduced 40% |
+| Speed | `[27, 33, 38, 44]` units/tick by boost level - 3.2 to 5.2 tiles/s; last level gets an extra 10% |
 | Caps | 5 bombs carried, radius 5, 3 speed boosts, 2 shields, 4 stims |
 | Stamina | 6900 twentieths (+1500 per stim), empty = half pace until a third is back |
 | Respawn | 11 s death cooldown, then a 3 s 3-2-1 countdown; safe spawns are distance-weighted with a full-map fallback |

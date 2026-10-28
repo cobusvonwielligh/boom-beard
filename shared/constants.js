@@ -82,9 +82,9 @@ export const MAX_PLAYERS = 16;
 // at the old pace a full-speed player crossed a tile in under five ticks, which is faster than
 // the eye can plan a turn in and made corners feel like luck rather than judgement.
 //
-// Boot bonuses are 40% lower: keep the base pace, and retain 60% of each former bonus.
-// The rounded progression ends at 41 units/tick and caps at three levels.
-export const SPEED_UNITS_PER_TICK = [27, 32, 37, 41];
+// Keep base pace; raise the prior boost bonus by 10% at levels 1-2 and 20% at max.
+// The integer progression is [27, 33, 38, 44] and caps at three levels.
+export const SPEED_UNITS_PER_TICK = [27, 33, 38, 44];
 export const MAX_SKATES = SPEED_UNITS_PER_TICK.length - 1; // 3
 export const SLOWDOWN_NUM = 1, SLOWDOWN_DEN = 2; // speed * 1/2, integer division
 
