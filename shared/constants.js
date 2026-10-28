@@ -414,6 +414,8 @@ export const GULL_RAID_COINS = 9;
  * it would read as a bug in the scoring rather than as a bird.
  */
 export const GULL_RAID_AT_MIN = 0.7, GULL_RAID_AT_MAX = 0.9;
+// Protect players who arrive once the final 70% of the round has begun.
+export const GULL_RAID_LATE_JOIN_FRACTION = 0.3;
 export const GULL_RAID_SPEED_UNITS = 105;            // about four times a cruising gull
 export const GULL_RAID_RUN_TILES = 11;               // how far out they turn and start the run
 export const GULL_RAID_RETRY_TICKS = 20;             // nobody alive to pick on: look again shortly
@@ -498,6 +500,8 @@ export const PERK = {
    * accumulates. Currency later; for now it is a number that goes up, which is most of what
    * currency is anyway. */
   GOLD: 17,
+   // A rare, temporary ghost state. It is not a permanent stat or a shop upgrade.
+   INVISIBLE: 18,
 };
 
 /* Gold coins. 2% of drops and never more than five a round.
@@ -520,22 +524,11 @@ export const GOLD_MAX_PER_ROUND = 5;
  * and switches back on with one number.
  */
 export const PERK_WEIGHTS = {
-  /* 9 of 420 is 2.1%. A tenth of the rum, which was itself already the rare one. */
+  /* 9 of 431 is 2.1%, slightly rarer than either special status drop. */
   [PERK.GOLD]: 9,
-  /* Every weight but rum is the old one multiplied by four.
-   *
-   * Rum wanted to be a quarter as likely as it was, and the honest way to do that is to make
-   * the denominator bigger rather than to pull one number down to 3 and hope: at these
-   * magnitudes a single step is a quarter of a percent, so the next tweak to it can be as small
-   * as it needs to be. All the OTHER perks keep their exact relative frequencies, which is the
-   * property that matters - this change is about rum and nothing else.
-   *
-   * 11 of 411 is 2.7%, down from 11 of 111, which was 9.9%. It is the only perk that changes
-   * how the game is played rather than how well, so it should be an event you remember rather
-   * than a thing you have.
-   */
+  /* The two special status drops share a rare weight: 11 of 422 non-gold rolls each. */
   [PERK.BOMB]: 108, [PERK.FIRE]: 100, [PERK.SKATE]: 72, [PERK.SHIELD]: 48,
-  [PERK.STAMINA]: 72, [PERK.RUM]: 11,
+  [PERK.STAMINA]: 72, [PERK.RUM]: 11, [PERK.INVISIBLE]: 11,
   [PERK.KICK]: 0, [PERK.JELLY]: 0, [PERK.DETONATOR]: 0, [PERK.BAT]: 0, [PERK.JETPACK]: 0,
   [PERK.NUKE]: 0, [PERK.BLUE_FIRE]: 0, [PERK.HEART]: 0, [PERK.KEY]: 0,
 };
@@ -657,7 +650,7 @@ export const STATUS_TICKS = {
   [STATUS.INVULN]: 90,        // 3 s from respawn
   [STATUS.PACIFISM]: 300,
   [STATUS.SLOWDOWN]: 300,
-  [STATUS.INVISIBLE]: 300,
+  [STATUS.INVISIBLE]: 480,     // 16 s: 33% longer than drunk
   [STATUS.CHANGELING]: 300,
   [STATUS.REDUCTION]: 450,
   [STATUS.FAST_DET]: 300,
@@ -704,7 +697,7 @@ export const DRUNK_STAGGER_TICKS = 4;      // how long one lasts
 export const RESPAWN_DELAY_TICKS = 11 * TICK_HZ;
 export const RESPAWN_COUNTDOWN_TICKS = 3 * TICK_HZ;
 
-export const CONTAGIOUS = STATUS.PACIFISM | STATUS.SLOWDOWN | STATUS.INVISIBLE |
+export const CONTAGIOUS = STATUS.PACIFISM | STATUS.SLOWDOWN |
                           STATUS.CHANGELING | STATUS.REDUCTION | STATUS.FAST_DET;
 export const CONTAGION_COOLDOWN_TICKS = TICK_HZ; // 1 s per pair
 

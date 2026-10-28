@@ -179,6 +179,7 @@ export function createSfx({ listener }) {
     [PERK.FIRE]: [79, 83],      // major third - bright
     [PERK.SKATE]: [81, 93],     // octave, quick - it is about speed
     [PERK.SHIELD]: [84, 91],    // high and open
+    [PERK.INVISIBLE]: [88, 98, 105], // a cool triad, like light passing through glass
   };
 
   // ─── the sounds ─────────────────────────────────────────────────────────────

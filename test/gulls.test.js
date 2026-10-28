@@ -138,7 +138,7 @@ test('height is no longer a defence, but embers and bots are not shots', () => {
 // ─── the raid ─────────────────────────────────────────────────────────────────
 
 /** A round's worth of gull ticks, with one person and one bot standing on floor. */
-function raidRound({ person = true } = {}) {
+function raidRound({ person = true, joinFraction = 0 } = {}) {
   const s = fresh();
   s.roundTicks = 60 * 30;
   let at = null;
@@ -156,6 +156,7 @@ function raidRound({ person = true } = {}) {
     return p;
   };
   const p = person ? stand(1, 'cobus', false) : null;
+  if (p) p.joinedAtTick = Math.round(s.roundTicks * joinFraction);
   const bot = stand(2, 'Charles', true);
 
   const raids = [], kills = [];
@@ -206,9 +207,25 @@ test('a room of nothing but bots is never raided', () => {
   assert.equal(bot.gulled, false);
 });
 
+test('a player joining during the final 70% is not eligible for the gull raid', () => {
+  const { p, raids, kills } = raidRound({ joinFraction: 0.4 });
+  assert.equal(raids.length, 0, 'the raid targeted a late joiner');
+  assert.equal(kills.length, 0, 'the late joiner was killed');
+  assert.equal(p.deaths, 0);
+});
+
 // ─── bots ─────────────────────────────────────────────────────────────────────
 
 const room = () => createRoom({ countIn: 0, onBroadcast: () => {}, minBots: AUTO_BOTS_MIN });
+
+test('the room records a human join tick for gull-raid eligibility', () => {
+  const r = room();
+  try {
+    r.state.tick = 321;
+    const { seat } = r.join('late', 'late');
+    assert.equal(r.state.players[seat].joinedAtTick, 321);
+  } finally { r.stop(); }
+});
 
 /** Play out one (six-second) round, then start the next by hand. */
 function round(r) {

@@ -1365,6 +1365,7 @@ const PERK_SKIN = {
   15: { dark: '#4a4212', mid: '#75671d', rim: '#ffe04a' },  // stim   - yellow
   16: { dark: '#3d2415', mid: '#64402a', rim: '#d99a55' },  // rum    - bottle brown
   17: { dark: '#4a3608', mid: '#7d5c0f', rim: '#f6e7a9' },  // gold   - the plinth is treasure
+  18: { dark: '#16263a', mid: '#2c4864', rim: '#bfe8ff' },  // veil   - spectral blue
 };
 
 export const PERK_ART = {
@@ -1530,11 +1531,43 @@ export const PERK_ART = {
     c.moveTo(12.6, 16.5); c.lineTo(19.4, 16.5);
     c.stroke();
   },
+  // A ghostly veil: hood, hollow eyes, and a broken hem that reads as a disappearing edge.
+  18: c => {
+    c.beginPath();
+    c.moveTo(16, 3.5);
+    c.bezierCurveTo(23, 3.5, 26, 9.5, 26, 15);
+    c.lineTo(26, 21);
+    c.lineTo(22, 19);
+    c.lineTo(18, 24);
+    c.lineTo(14, 21);
+    c.lineTo(10, 24);
+    c.lineTo(6, 21);
+    c.lineTo(6, 15);
+    c.bezierCurveTo(6, 9.5, 9, 3.5, 16, 3.5);
+    c.closePath();
+    c.fillStyle = '#bfe8ff';
+    c.globalAlpha = 0.82;
+    c.fill();
+    c.globalAlpha = 1;
+    c.strokeStyle = '#16263a';
+    c.lineWidth = 1.5;
+    c.stroke();
+
+    c.fillStyle = '#102033';
+    c.fillRect(11, 12, 2.5, 3.5);
+    c.fillRect(18.5, 12, 2.5, 3.5);
+    c.strokeStyle = '#e7f7ff';
+    c.lineWidth = 1.4;
+    c.setLineDash([2, 1.5]);
+    c.beginPath();
+    c.moveTo(8, 18.5); c.lineTo(24, 18.5);
+    c.stroke();
+    c.setLineDash([]);
+  },
 };
 
-/* Which perks glow on the floor. Rum because it is rare; gold because it is rarer still, and
- * because a coin that does not catch the light is a disc. */
-export const PERK_GLOWS = new Set([16, 17]);
+/* Rare drops glow so they are findable; gold keeps its treasure light and the veil its cold one. */
+export const PERK_GLOWS = new Set([16, 17, 18]);
 
 // Everything that lies on the floor waiting to be walked over, at 85% - the same trim the bombs
 // got, so a tile with a bomb on it and a tile with a perk on it still read as the same scale.

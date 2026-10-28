@@ -1,4 +1,4 @@
-// The contagious diseases. Game of Bombs' most distinctive idea: most statuses spread by
+// The contagious diseases. Game of Bombs' most distinctive idea: many statuses spread by
 // touch, so a crowded corridor changes how everyone plays for the next ten seconds.
 //
 // docs/RULES.md §7.
@@ -10,7 +10,7 @@ import { has, applyStatus } from './state.js';
 
 /** Every contagious status, as a list, in a fixed order - iteration order is part of the sim. */
 export const CONTAGIOUS_LIST = [
-  STATUS.PACIFISM, STATUS.SLOWDOWN, STATUS.INVISIBLE,
+  STATUS.PACIFISM, STATUS.SLOWDOWN,
   STATUS.CHANGELING, STATUS.REDUCTION, STATUS.FAST_DET,
 ];
 

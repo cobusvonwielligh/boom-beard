@@ -208,6 +208,7 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
     };
     streaks[seat] = newStreak();
     const p = createPlayer(seat, name);
+    p.joinedAtTick = state.tick;
     state.players[seat] = p;
     p.respawnAt = state.tick;
     topUpBots();

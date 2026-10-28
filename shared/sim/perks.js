@@ -120,6 +120,10 @@ function apply(state, p, type) {
       applyStatus(state, p, STATUS.DRUNK, STATUS_TICKS[STATUS.DRUNK]);
       return true;
 
+    case PERK.INVISIBLE:
+      applyStatus(state, p, STATUS.INVISIBLE, STATUS_TICKS[STATUS.INVISIBLE]);
+      return true;
+
     /* Gold changes nothing. That is the design, not an omission.
      *
      * Every other perk makes you better at the round you are in, which means every other perk

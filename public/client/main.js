@@ -94,6 +94,7 @@ const PERK_LABEL = {
   15: { text: '+ STIM', colour: '#ffe04a' },
   16: { text: 'RUM', colour: '#d99a55' },
   17: { text: 'GOLD!', colour: '#f6e7a9' },
+  18: { text: 'INVISIBLE', colour: '#bfe8ff' },
 };
 
 // The mascot is an image now, ringed by the same moving gradient as the panels. The hand-drawn
@@ -604,10 +605,9 @@ const net = createNet({
             showUpgrade(type);
             if (type === PERK.RUM) quips.rum();
           }
-          // Say what it was. Four of the five perks are a number going up somewhere in the top
-          // bar, which is the last place you are looking while somebody is chasing you.
+          // Name temporary effects as well as permanent upgrades; they need no persistent stat row.
           const label = PERK_LABEL[type];
-          if (label) {
+          if (label && (e.i === world.you || !(p.status & STATUS.INVISIBLE))) {
             renderer?.addFloater(
               ((p.rx ?? p.x) / UNITS_PER_TILE) * TILE_PX,
               ((p.ry ?? p.y) / UNITS_PER_TILE) * TILE_PX - TILE_PX * 0.5,
@@ -1103,14 +1103,11 @@ function sendEmote(slot) {
   net.send({ t: 'chat', msg: e });
 }
 
-/* One emote per Shift.
- *
- * The wheel goes the moment you pick, even with Shift still down, and does not come back until
- * you have let go and held again. Holding Shift is the question; picking is the answer; leaving
- * the question on screen after it has been answered is a legend sitting over the board while
- * you are trying to see what you walked into. */
-let pickerSpent = false;
-const showPicker = on => $('emotePick').classList.toggle('on', on && !pickerSpent);
+const showPicker = on => {
+  const picker = $('emotePick');
+  picker.classList.toggle('on', on);
+  picker.setAttribute('aria-hidden', on ? 'false' : 'true');
+};
 
 // The picker's glyphs come from the same array, so the legend and what it sends cannot drift
 // apart. Here rather than at the top of the file: `EMOTES` is a const, and reading it before
@@ -1120,15 +1117,8 @@ for (const [i, el] of [...document.querySelectorAll('#emotePick .ekey b')].entri
 }
 
 const input = createInput({
-  onEmote: slot => {
-    sendEmote(slot);
-    pickerSpent = true;
-    showPicker(false);
-  },
-  onEmoteMenu: on => {
-    if (!on) pickerSpent = false;      // Shift released: the next hold gets a wheel again
-    showPicker(on);
-  },
+  onEmote: sendEmote,
+  onEmoteMenu: showPicker,
   onReserved: what => toast(`${what} is not in this build yet`),
 });
 

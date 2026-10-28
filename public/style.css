@@ -2849,9 +2849,8 @@ body.hurt:not(.dead) #avatar {
 /* ─── emotes ──────────────────────────────────────────────────────────────────
  * The picker, while Shift is held.
  *
- * Over the board and centred on it, so it is where your eyes are - but it appears INSTANTLY
- * and leaves instantly, because it is on screen for about a third of a second and a fade-out
- * would still be going when you need to see what you just walked into.
+ * The ring keeps one stable position and fades as a unit. Staggering four spring animations
+ * made the compass jitter; a short opacity/scale transition stays legible without delaying play.
  *
  * Nothing here takes a pointer event. It is a legend for keys you are already holding, not a
  * menu, and a menu you could click would be a second way to do the same thing with different
@@ -2865,11 +2864,16 @@ body.hurt:not(.dead) #avatar {
   left: var(--gap);
   width: calc(100vw - var(--side) - var(--gap) * 3);
   height: calc(100vh - var(--bar) - var(--gap) * 3);
-  display: none;
+  display: grid;
   place-items: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 120ms ease, visibility 0s linear 120ms;
 }
 #emotePick.on {
-  display: grid;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 120ms ease, visibility 0s;
 }
 @media (max-width: 1080px) {
   #emotePick {
@@ -2885,6 +2889,11 @@ body.hurt:not(.dead) #avatar {
   position: relative;
   width: 190px;
   height: 190px;
+  transform: scale(0.94);
+  transition: transform 120ms ease-out;
+}
+#emotePick.on .ring {
+  transform: scale(1);
 }
 .ring .ekey {
   position: absolute;
@@ -2897,15 +2906,7 @@ body.hurt:not(.dead) #avatar {
   background: #0d1117e8;
   border: 1.5px solid #ffffff1f;
   box-shadow: 0 6px 20px #000a;
-  /* Each one springs out from the middle, staggered by direction, so the cross assembles
-     rather than appearing. 90ms total - fast enough that it has finished before you have
-     chosen, which is the point: the animation must never be something you wait through.
-
-     SCALE ONLY, and no `backwards`. Animating opacity with a backwards fill means the slot
-     sits at zero until the animation starts - so anything that stops animations running at all
-     leaves an invisible picker, which is a worse outcome than never having animated it. At
-     worst this now pops in at full size. */
-  animation: emotePop 0.09s cubic-bezier(0.2, 1.6, 0.4, 1);
+  /* The shell animates as one stable compass; the four keys do not stagger. */
 }
 .ring .up {
   left: 50%;
@@ -2914,27 +2915,15 @@ body.hurt:not(.dead) #avatar {
 .ring .left {
   left: 14%;
   top: 50%;
-  animation-delay: 0.02s;
 }
 .ring .down {
   left: 50%;
   top: 86%;
-  animation-delay: 0.04s;
 }
 .ring .right {
   left: 86%;
   top: 50%;
-  animation-delay: 0.06s;
 }
-@keyframes emotePop {
-  from {
-    transform: scale(0.3);
-  }
-  to {
-    transform: scale(1);
-  }
-}
-
 .ring .ekey b {
   font-size: 26px;
   line-height: 1;
@@ -2956,8 +2945,9 @@ body.hurt:not(.dead) #avatar {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ring .ekey {
-    animation: none;
+  #emotePick,
+  #emotePick .ring {
+    transition: none;
   }
 }
 

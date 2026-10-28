@@ -5,7 +5,7 @@
 // sprites. Same approach Game of Bombs uses. docs/ARCHITECTURE.md §6.
 
 import {
-  TILE_PX, CHUNK_TILES, UNITS_PER_TILE, TRACER_SAMPLES, FUSE_TICKS, FIRE_TICKS, STATUS,
+  TILE_PX, CHUNK_TILES, UNITS_PER_TILE, TRACER_SAMPLES, FUSE_TICKS, FIRE_TICKS, STATUS, PERK,
   BLOCK, BLOCK_HP, SEA_MARGIN_TILES, SEA_FIT_MARGIN_TILES, SEA_MAX_MARGIN_TILES,
   SPAWN_POP_TICKS, SPAWN_POP_SCALE,
   MIN_ZOOM, MAX_ZOOM,
@@ -816,7 +816,9 @@ export function createRenderer(canvas, world) {
    * makes it read as moss is the SHAPE, not the saturation. So the alpha came down by nearly
    * half and everything that was spent on colour is spent on edges instead.
    */
-  const MOSS_MAX = 0.2;
+  const MOSS_MAX = 0.16;
+  const MOSS_LINE_ALPHA_MAX = 0.272;
+  const MOSS_LINE_ALPHA_SCALE = 0.44;
 
   const smooth = t => t * t * (3 - 2 * t);
 
@@ -1004,7 +1006,9 @@ export function createRenderer(canvas, world) {
           // stone. The separate field keeps the lines sparse and prevents a regular stamp pattern.
           const lineChance = noiseAt(tx * 5 + 19, ty * 5 + 7, 0.7, 0x4a11e);
           if (m > 0.3 && lineChance > 0.48) {
-            cc.globalAlpha = Math.min(0.34, m * 0.55 * intensity);
+            cc.globalAlpha = Math.min(
+              MOSS_LINE_ALPHA_MAX, m * MOSS_LINE_ALPHA_SCALE * intensity,
+            );
             const lw = w * (0.72 + lump * 0.18);
             cc.drawImage(mossLines, px - lw / 2, py - lw / 2, lw, lw);
           }
@@ -3056,11 +3060,12 @@ export function createRenderer(canvas, world) {
     // Wading. A ring at the feet of anyone moving through water, so you can see who is slowed.
     if (pools.size) {
       for (const p of world.players) {
-        if (!p || !p.alive || !p.moving || ripples.length >= 24) continue;
+        if (!p || !p.alive || !p.moving || ripples.length >= 24
+            || ((p.status & STATUS.INVISIBLE) && p.i !== world.you)) continue;
         const tx = (p.rx ?? p.x) >> 8, ty = (p.ry ?? p.y) >> 8;
         if (!pools.has(`${tx},${ty}`) || Math.random() > dtMs / 110) continue;
         ripples.push({ x: ((p.rx ?? p.x) / UNITS_PER_TILE) * TILE_PX, y: ((p.ry ?? p.y) / UNITS_PER_TILE) * TILE_PX + 9,
-          life: 1, max: 7, rate: 1.6, w: 1.2 });
+          life: 1, max: 7, rate: 1.6, w: 1.2, owner: p.i });
       }
     }
 
@@ -3138,6 +3143,11 @@ export function createRenderer(canvas, world) {
 
     for (let i = pops.length - 1; i >= 0; i--) {
       const b = pops[i];
+      if (b.owner !== undefined && b.owner !== world.you
+          && (world.players[b.owner]?.status & STATUS.INVISIBLE)) {
+        pops.splice(i, 1);
+        continue;
+      }
       b.life -= dt / 0.28;
       if (b.life <= 0) { pops.splice(i, 1); continue; }
       ctx.globalAlpha = b.life * b.life * 0.5;
@@ -3151,6 +3161,11 @@ export function createRenderer(canvas, world) {
     ctx.strokeStyle = '#d8f1ff';
     for (let i = ripples.length - 1; i >= 0; i--) {
       const r = ripples[i];
+      if (r.owner !== undefined && r.owner !== world.you
+          && (world.players[r.owner]?.status & STATUS.INVISIBLE)) {
+        ripples.splice(i, 1);
+        continue;
+      }
       r.life -= dt * r.rate;
       if (r.life <= 0) { ripples.splice(i, 1); continue; }
       ctx.globalAlpha = r.life * r.life * 0.55;
@@ -3836,13 +3851,14 @@ export function createRenderer(canvas, world) {
        */
       if (PERK_GLOWS.has(k.type)) {
         const beat = 0.6 + 0.4 * Math.sin((world.tick + k.id * 11) / 9);
+        const spectral = k.type === PERK.INVISIBLE;
         const g = ctx.createRadialGradient(
           TILE_PX / 2, TILE_PX / 2, TILE_PX * 0.12,
           TILE_PX / 2, TILE_PX / 2, TILE_PX * (0.85 + 0.15 * beat),
         );
-        g.addColorStop(0, `rgba(255,186,92,${0.42 * beat})`);
-        g.addColorStop(0.5, `rgba(217,154,85,${0.2 * beat})`);
-        g.addColorStop(1, 'rgba(217,154,85,0)');
+        g.addColorStop(0, `rgba(${spectral ? '191,232,255' : '255,186,92'},${0.42 * beat})`);
+        g.addColorStop(0.5, `rgba(${spectral ? '114,158,195' : '217,154,85'},${0.2 * beat})`);
+        g.addColorStop(1, spectral ? 'rgba(114,158,195,0)' : 'rgba(217,154,85,0)');
         ctx.fillStyle = g;
         ctx.fillRect(-TILE_PX, -TILE_PX, TILE_PX * 3, TILE_PX * 3);
       }
@@ -4609,8 +4625,8 @@ export function createRenderer(canvas, world) {
     ctx.globalAlpha = 1;
   }
 
-  // One coloured pip per active status, above the head. Statuses are contagious, so knowing at a
-  // glance what the person running at you is carrying is most of playing around them.
+  // One coloured pip per visible status, above the head. It helps identify the conditions that
+  // change how a player moves or fights.
   const PIPS = [
     [STATUS.PACIFISM, '#9aa6b5'], [STATUS.SLOWDOWN, '#5b7fd4'], [STATUS.INVISIBLE, '#b98fd9'],
     [STATUS.CHANGELING, '#d45b8f'], [STATUS.REDUCTION, '#5ad1a0'], [STATUS.FAST_DET, '#e8655a'],
@@ -4629,6 +4645,10 @@ export function createRenderer(canvas, world) {
 
   function drawTracer(c, p, ox, oy) {
     if (!p.trail.length || !p.alive) return;
+    if ((p.status & STATUS.INVISIBLE) && p.i !== world.you) {
+      p.trail.length = 0;
+      return;
+    }
     const k = playerShades(p.i);
     for (let n = 0; n < p.trail.length; n++) {
       const f = (n + 1) / TRACER_SAMPLES;
@@ -4805,6 +4825,10 @@ export function createRenderer(canvas, world) {
       if (s.until <= now) { says.delete(i); continue; }
       const p = world.players[i];
       if (!p || !p.alive) { says.delete(i); continue; }
+      if ((p.status & STATUS.INVISIBLE) && p.i !== world.you) {
+        says.delete(i);
+        continue;
+      }
 
       const bx = (ox + (p.rx / UNITS_PER_TILE) * TILE_PX) * zoom;
       const by = (oy + (p.ry / UNITS_PER_TILE) * TILE_PX - TILE_PX * 0.95) * zoom;
@@ -4975,6 +4999,22 @@ export function createRenderer(canvas, world) {
     }
   }
 
+  function drawInvisibleOutline(c, x, y, seat) {
+    c.save();
+    c.globalAlpha = 1;
+    c.lineWidth = 1.5;
+    c.setLineDash([3, 3]);
+    c.beginPath();
+    c.roundRect(x - 2, y - 2, TILE_PX + 4, TILE_PX + 4, 6);
+    c.lineDashOffset = 0;
+    c.strokeStyle = '#05090f';
+    c.stroke();
+    c.lineDashOffset = 3;
+    c.strokeStyle = playerShades(seat).light;
+    c.stroke();
+    c.restore();
+  }
+
   /* The outline with the middle cut out, for a pirate drawn see-through.
    *
    * The ordinary edge is four nudged copies of a solid silhouette, and only reads as an outline
@@ -5044,7 +5084,7 @@ export function createRenderer(canvas, world) {
     // Invulnerable players flash, so "I am safe" and "I am about to not be" are readable at a
     // glance in a crowd. Four hertz: fast enough to notice, slow enough not to hurt.
     if (p.status & STATUS.INVULN) c.globalAlpha = (world.tick >> 2) % 2 ? 0.45 : 1;
-    if (p.status & STATUS.INVISIBLE) c.globalAlpha = 0.35;
+    if (p.status & STATUS.INVISIBLE) c.globalAlpha = 0.22;
 
     // Baked per colour, not per seat; see bake() and COLOUR_PREFERENCE.
     const sprite = baked.players[seatSlot(p.i)][p.dir * 2 + frame];
@@ -5147,13 +5187,21 @@ export function createRenderer(canvas, world) {
       c.translate(px + TILE_PX / 2, py + TILE_PX / 2);
       c.scale(sx, sy);
       c.globalAlpha = edgeA;
-      drawEdge(c, sprite, -TILE_PX / 2, -TILE_PX / 2, isMe, half);
+      if (p.status & STATUS.INVISIBLE) {
+        drawInvisibleOutline(c, -TILE_PX / 2, -TILE_PX / 2, p.i);
+      } else {
+        drawEdge(c, sprite, -TILE_PX / 2, -TILE_PX / 2, isMe, half);
+      }
       c.globalAlpha = base * life;
       c.drawImage(sprite, -TILE_PX / 2, -TILE_PX / 2);
       c.restore();
     } else {
       c.globalAlpha = edgeA;
-      drawEdge(c, sprite, Math.round(px), Math.round(py), isMe, half);
+      if (p.status & STATUS.INVISIBLE) {
+        drawInvisibleOutline(c, Math.round(px), Math.round(py), p.i);
+      } else {
+        drawEdge(c, sprite, Math.round(px), Math.round(py), isMe, half);
+      }
       c.globalAlpha = base * life;
       c.drawImage(sprite, Math.round(px), Math.round(py));
     }
@@ -5277,6 +5325,7 @@ export function createRenderer(canvas, world) {
    */
   function drawTipsy(c, p, ox, oy) {
     if (!(p.status & STATUS.DRUNK) || !p.alive) return;
+    if ((p.status & STATUS.INVISIBLE) && p.i !== world.you) return;
     const bx = ox + (p.rx / UNITS_PER_TILE) * TILE_PX;
     const by = oy + (p.ry / UNITS_PER_TILE) * TILE_PX;
 
@@ -5436,6 +5485,7 @@ export function createRenderer(canvas, world) {
    */
   function drawStamina(c, p, ox, oy) {
     if (!p.alive || p.stamina === undefined) return;
+    if ((p.status & STATUS.INVISIBLE) && p.i !== world.you) return;
     const max = staminaMaxFor(p);
     const frac = Math.max(0, Math.min(1, p.stamina / max));
     if (frac >= STAMINA_SHOW_AT && !p.tired) return;
@@ -5557,9 +5607,9 @@ export function createRenderer(canvas, world) {
   const DUST_MAX = 220;
   const slideSeen = new Map();     // seat -> last velocity, for spotting the launch frame
 
-  function addDust(x, y, vx, vy, { r = 2.4, life = 0.5, tone = '#c9b89c', rise = 0 } = {}) {
+  function addDust(x, y, vx, vy, { r = 2.4, life = 0.5, tone = '#c9b89c', rise = 0, owner } = {}) {
     if (dust.length >= DUST_MAX) return;
-    dust.push({ x, y, vx, vy, r, life: 1, span: life, tone, rise, spin: Math.random() * 6 });
+    dust.push({ x, y, vx, vy, r, life: 1, span: life, tone, rise, owner, spin: Math.random() * 6 });
   }
 
   /* Dust off the heels of anybody actually walking, and more of it the faster they are.
@@ -5597,7 +5647,7 @@ export function createRenderer(canvas, world) {
       const s = 8 + Math.random() * (10 + (p.speed || 0) * 8);
       addDust(px + (Math.random() - 0.5) * 8, py + (Math.random() - 0.5) * 3,
         Math.cos(a) * s, Math.sin(a) * s,
-        { r: 1 + Math.random() * 1.5, life: 0.3 + Math.random() * 0.22 });
+        { r: 1 + Math.random() * 1.5, life: 0.3 + Math.random() * 0.22, owner: p.i });
     }
   }
 
@@ -5608,6 +5658,7 @@ export function createRenderer(canvas, world) {
       const was = slideSeen.get(p.i) || 0;
       const now = p.alive ? (p.slideV || 0) : 0;
       slideSeen.set(p.i, now);
+      if ((p.status & STATUS.INVISIBLE) && p.i !== world.you) continue;
       if (!now) { footDust(p, dt); continue; }
       // Board space for everything that goes into a particle pool; the streaks below are the
       // only thing here drawn straight to the context, and they add the offset themselves.
@@ -5618,12 +5669,13 @@ export function createRenderer(canvas, world) {
 
       if (!was) {
         // The launch. A ring on the floor where the push came from, and a fan of dust behind.
-        pops.push({ x: px, y: py + TILE_PX * 0.3, life: 1 });
+        pops.push({ x: px, y: py + TILE_PX * 0.3, life: 1, owner: p.i });
         for (let i = 0; i < 10; i++) {
           const a = Math.atan2(-v[1], -v[0]) + (Math.random() - 0.5) * 1.5;
           const s = 40 + Math.random() * 70;
           addDust(px + (Math.random() - 0.5) * 6, py + TILE_PX * 0.28 + (Math.random() - 0.5) * 4,
-            Math.cos(a) * s, Math.sin(a) * s, { r: 2.2 + Math.random() * 2.6, life: 0.5 });
+            Math.cos(a) * s, Math.sin(a) * s,
+            { r: 2.2 + Math.random() * 2.6, life: 0.5, owner: p.i });
         }
       }
 
@@ -5635,7 +5687,8 @@ export function createRenderer(canvas, world) {
         const s = 20 + Math.random() * 45;
         addDust(px - v[0] * 5 + (Math.random() - 0.5) * 7,
           py + TILE_PX * 0.3 - v[1] * 3 + (Math.random() - 0.5) * 4,
-          Math.cos(a) * s, Math.sin(a) * s, { r: 1.6 + Math.random() * 2.2, life: 0.42 });
+          Math.cos(a) * s, Math.sin(a) * s,
+          { r: 1.6 + Math.random() * 2.2, life: 0.42, owner: p.i });
       }
 
       // Two streaks off the shoulders, across the direction of travel.
@@ -5691,10 +5744,11 @@ export function createRenderer(canvas, world) {
           life: DEATH_DUST_S * (0.45 + Math.random() * 0.55),
           tone: tones[(Math.random() * tones.length) | 0],
           rise: 6 + Math.random() * 14,
+          owner: seat,
         });
     }
     // The puff at the moment it goes, so the collapse has a beat to it.
-    pops.push({ x: px, y: py + TILE_PX * 0.25, life: 1 });
+    pops.push({ x: px, y: py + TILE_PX * 0.25, life: 1, owner: seat });
   }
 
   /**
@@ -5710,6 +5764,11 @@ export function createRenderer(canvas, world) {
     ctx.save();
     for (let i = dust.length - 1; i >= 0; i--) {
       const d = dust[i];
+      if (d.owner !== undefined && d.owner !== world.you
+          && (world.players[d.owner]?.status & STATUS.INVISIBLE)) {
+        dust.splice(i, 1);
+        continue;
+      }
       d.life -= dt / d.span;
       if (d.life <= 0) { dust.splice(i, 1); continue; }
       const drag = Math.exp(-dt * 3.4);
@@ -5742,6 +5801,7 @@ export function createRenderer(canvas, world) {
    */
   function drawConfused(c, p, ox, oy) {
     if (!(p.status & STATUS.CONFUSED) || !p.alive) return;
+    if ((p.status & STATUS.INVISIBLE) && p.i !== world.you) return;
     const x = ox + (p.rx / UNITS_PER_TILE) * TILE_PX;
     const y = oy + (p.ry / UNITS_PER_TILE) * TILE_PX - TILE_PX * 0.95;
     const t = seaT * 2.4 + p.i;

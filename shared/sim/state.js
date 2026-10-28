@@ -60,6 +60,7 @@ export function createPlayer(i, name) {
   return {
     i,
     name,
+    joinedAtTick: 0, // Round-relative; the gull raid protects late arrivals.
     alive: false,
     x: 0, y: 0,
     dir: DIR_D,
@@ -181,7 +182,7 @@ export function hashState(state) {
   mix(state.tick);
   for (const p of state.players) {
     if (!p) { mix(0xdeadbeef); continue; }
-    mix(p.i); mix(p.x); mix(p.y); mix(p.dir);
+    mix(p.i); mix(p.joinedAtTick ?? 0); mix(p.x); mix(p.y); mix(p.dir);
     mix(p.alive ? 1 : 0); mix(p.bombs); mix(p.radius); mix(p.speed);
     mix(p.shields); mix(p.status); mix(p.score); mix(p.kills); mix(p.deaths); mix(p.hp | 0);
     mix(p.streakCount ?? 0); mix(p.streakLastKillTick ?? -1);

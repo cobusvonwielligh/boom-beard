@@ -13,7 +13,8 @@ import {
   UNITS_PER_TILE, BLOCK, PERK, FIRE_TICKS, FIRE_LETHAL_TICKS, GULL_GAP_MIN_TICKS, GULL_GAP_MAX_TICKS, GULL_MAX, GULL_SPEED_UNITS,
   GULL_OFFMAP_TILES, GULL_WEAVE_UNITS, GULL_WEAVE_TICKS, GULL_DIVE_EVERY_TICKS, GULL_DIVE_TICKS,
   GULL_LOITER, GULL_COINS, GULL_DEPTH_MIN, GULL_DEPTH_MAX, SCORE,
-  GULL_RAID_AT_MIN, GULL_RAID_AT_MAX, GULL_RAID_SPEED_UNITS, GULL_RAID_RUN_TILES,
+  GULL_RAID_AT_MIN, GULL_RAID_AT_MAX, GULL_RAID_LATE_JOIN_FRACTION,
+  GULL_RAID_SPEED_UNITS, GULL_RAID_RUN_TILES,
   GULL_RAID_RETRY_TICKS, RESPAWN_DELAY_TICKS, START_BOMBS, START_RADIUS, GULL_RAID_COINS,
 } from '../constants.js';
 import { tileAt } from './state.js';
@@ -204,12 +205,14 @@ export function gulls(state) {
   /* The raid, before the ordinary traffic.
    *
    * Scheduled once the room has told the state how long the round is, launched at that tick
-   * against a living PERSON - picked from whoever is standing at that moment, so it is never
-   * somebody who spent the round dead - and landing half a run later.
+   * against a living person who joined before the late-join cutoff, so it is never a bot or a
+   * newcomer caught by the final-70% raid - and landing half a run later.
    */
   if (!state.raidAt && state.roundTicks) scheduleRaid(state);
   if (state.raidAt > 0 && state.tick >= state.raidAt) {
-    const targets = state.players.filter(p => p && p.alive && !p.isBot);
+    const joinCutoff = state.roundTicks * GULL_RAID_LATE_JOIN_FRACTION;
+    const targets = state.players.filter(p =>
+      p && p.alive && !p.isBot && (p.joinedAtTick ?? 0) < joinCutoff);
     if (targets.length) launchRaid(state, targets[randInt(state.gullNext, targets.length)]);
     // Nobody to pick on. Try again shortly, and give up for the round once the window has gone
     // - birds arriving on the whistle would read as a scoring bug.

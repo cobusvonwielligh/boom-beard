@@ -74,16 +74,15 @@ and this game exists to be played in an office, so WebTransport can never be the
 And the host can change it live with `/roundtime N`, in tenths of a minute. Sixteen minutes is a
 long time to be losing.
 
-### (c) The perk set is smaller and there are two new ones
+### (c) The perk set is smaller, with a rare ghost pickup
 
-Bomb, Fire, Boots, Shield, **Stim** (stamina capacity) and **Rum**. The **Gift** has been
-removed. It was the only thing that handed out diseases, so the contagious statuses in
-`statuses.js` are now dormant: still implemented and tested, but nothing in play starts one.
+Bomb, Fire, Boots, Shield, **Stim** (stamina capacity), **Rum**, and the **Veil**. The **Gift**
+has been removed; the remaining contagious diseases are dormant.
 
-Rum is the odd one. At weight 11 of 411 it is **2.7% of drops**, it glows on the floor, and it
-is the only perk you might not want: it softens damage and makes you drunk, which sways your
-walk and rolls the camera. It is the only perk whose effect is visible to the person carrying
-it and nobody else - and the only one rare enough to be an event rather than a thing you have.
+Rum and the Veil share weight 11, about **2.6% of drops** each. Rum softens damage and makes you
+drunk. The Veil lasts 16 seconds: only its carrier sees a translucent ghost with a broken
+two-tone outline; other clients hide the pirate, name tag, movement traces, shadow, and radar
+marker. Bombs and pickups remain visible. It cannot be bought and adds no dedicated stat.
 
 ### (d) New systems that were never in the plan
 
@@ -100,12 +99,11 @@ it and nobody else - and the only one rare enough to be an event rather than a t
 - **Powder kegs.** A destructible block that detonates at radius 7 on the tick it breaks. At most
   six a round, at least one guaranteed. They chain into each other and into bombs, because a keg
   *is* a bomb as far as the blast code is concerned. See [RULES.md](RULES.md) §10.
-- **Seagulls.** One crosses the island every minute or so. Catch one in a blast at the bottom of
-  its dive - hard on purpose: about one tick in nine of its flight, and its shadow is the tell -
-  and it drops a gold coin that does not count against the round's five. The server describes a
-  flight once (start, end, departure tick, phases) and the client draws it from its own clock,
-  so a gull costs a few dozen bytes a snapshot. See [RULES.md](RULES.md) §8c and
-  `shared/sim/gulls.js`.
+- **Seagulls.** One crosses every 10–22 seconds. Catch one in a blast at the bottom of its dive
+  for three gold coins. A once-per-round raid also targets a human at 70–90% of the round, but
+  excludes players who joined during its final 70%. The server describes flights once (start, end,
+  departure tick, phases) and the client draws them from its own clock. See [RULES.md](RULES.md)
+  §8c and `shared/sim/gulls.js`.
 - **Bots that manage themselves.** At least six the moment anybody joins; all of them gone after
   two rounds with nobody there. A host removing bots by hand turns the top-up off until the room
   has emptied for those two rounds. See [RULES.md](RULES.md) §12.

@@ -368,32 +368,25 @@ type here, not implemented in v1.
 
 ## 7. Statuses
 
-Statuses are timed flags. **Only Invulnerability and Drunk (rum) occur in play today.** The
-contagious diseases below were handed out by the Gift, which has been removed, so nothing starts
-an outbreak any more. Their effects and the contagion rule are still implemented and tested - a
-new source is one call to `applyStatus` - but treat this table as dormant.
+Statuses are timed flags. **Invulnerability, Drunk (rum), Invisibility (the Veil), and Confused**
+occur in play. The other contagious diseases below were handed out by the Gift, which has been
+removed, so those effects are dormant.
 
-Most are **contagious**: when two players' hitboxes overlap and one has
-a contagious status, the other catches it with the **remaining duration**, and the carrier keeps
-it. Contagion has a **1 s per-pair cooldown** so a scrum does not ping-pong.
+The statuses marked **yes** are contagious: when two players' hitboxes overlap, the other catches
+the contagious status with its **remaining duration**, and the carrier keeps it. Contagion has a
+**1 s per-pair cooldown** so a scrum does not ping-pong.
 
 | Status | Duration | Contagious | Effect |
-|
-
-**Confused** is the only status that does not come out of a bottle: it is what a slide leaves
-behind (§2). A question mark over the head, **no bombs**, and **speed × ¾**, for **45 ticks**. It
-is not contagious - a confused player barging about cannot confuse anybody else - and
-Invulnerability protects against it like it protects against the diseases.
-
----|---:|:---:|---|
+|---|---:|:---:|---|
 | Invulnerability | 90 t / 60 t | no | Cannot die. From respawn or a broken shield. |
 | Pacifism | 300 t (10 s) | yes | Cannot place bombs. |
 | Slowdown | 300 t | yes | Speed × 0.5. |
-| Invisibility | 300 t | yes | Invisible to other clients. Your own tracer still shows to you. |
+| Invisibility | 480 t (16 s) | no | Other players cannot see your pirate, overhead name, shadow, movement trail, or radar blip. You see a translucent ghost with a broken black-and-blip-light outline. Bombs and pickups remain visible. |
 | Changeling | 300 t | yes | Up/down and left/right inverted, sprite drawn upside down. |
 | Reduction | 450 t (15 s) | yes | Half-size hitbox (10 × 10), may pass **columns**. |
 | Fast Detonation | 300 t | yes | Your bombs fuse in 36 ticks. |
 | Drunk | 360 t (12 s) | no | From rum. Only the bomb's own tile kills you; your walk sways. |
+| Confused | 45 t | no | From a slide (§2). A question mark over your head, no bombs, and speed × ¾. |
 
 **Invulnerability is never contagious and is never overwritten by a weaker status.**
 
@@ -537,6 +530,10 @@ is nothing to burn it with. Height changes size, speed, haze and shadow offset s
 depth, but every layer is equally catchable. Gulls draw from their own random stream, so adding
 them changed no drop or regrowth roll.
 
+Once per round, a pair of raid gulls crosses a real player at **70–90%** of the round and kills
+them regardless of shields. Anyone who joined at or after **30% elapsed** is not eligible, so a
+player arriving during the final 70% cannot be chosen.
+
 ---
 
 ## 9. Observer mode
@@ -563,7 +560,7 @@ Exactly Game of Bombs', minus what we did not build.
 | TAB | Scoreboard |
 | P | Fullscreen |
 | ESC | Close overlays |
-| SHIFT + direction | Emote |
+| Hold SHIFT + direction, then release the direction | Emote |
 | SHIFT / L | *reserved* - detonate radio bomb |
 | I | *reserved* - safe-house |
 | F | *reserved* - jetpack |

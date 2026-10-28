@@ -92,6 +92,8 @@ export function createInput({ onReserved, onEmote, onEmoteMenu, isTyping = typin
   const down = new Set();
   // Shift held: the picker is open and WASD chooses rather than walks.
   let picking = false;
+  let pickerUsed = false;
+  let pendingEmote = null;
 
   /* The slide gesture: the same direction, twice, inside SLIDE_DOUBLE_TAP_MS.
    *
@@ -116,6 +118,8 @@ export function createInput({ onReserved, onEmote, onEmoteMenu, isTyping = typin
   const setPicking = on => {
     if (picking === on) return;
     picking = on;
+    pendingEmote = null;
+    pickerUsed = false;
     /* Everything stops when the picker opens.
      *
      * Holding Shift takes WASD away from walking, so the mask has to be cleared or you keep
@@ -137,11 +141,15 @@ export function createInput({ onReserved, onEmote, onEmoteMenu, isTyping = typin
       const slot = EMOTE_KEYS[e.code];
       if (slot !== undefined) {
         e.preventDefault();
-        if (!e.repeat) onEmote?.(slot);
+        if (!e.repeat && !pickerUsed && pendingEmote === null) {
+          pendingEmote = { code: e.code, slot };
+        }
         return;
       }
-      // Any other key while picking: close rather than swallow. Escape should always escape.
-      if (e.code === 'Escape') { e.preventDefault(); setPicking(false); return; }
+      // Escape or any non-direction key cancels before reaching gameplay controls.
+      e.preventDefault();
+      setPicking(false);
+      return;
     }
     // Auto-repeat carries no information here: the key is already in `down`, so the mask is
     // already right. Swallowing it early keeps the reserved-key hint from firing thirty times a
@@ -163,6 +171,15 @@ export function createInput({ onReserved, onEmote, onEmoteMenu, isTyping = typin
 
   addEventListener('keyup', e => {
     if (e.key === 'Shift') { setPicking(false); return; }
+    if (picking && pendingEmote?.code === e.code) {
+      e.preventDefault();
+      const { slot } = pendingEmote;
+      pendingEmote = null;
+      pickerUsed = true;
+      onEmote?.(slot);
+      onEmoteMenu?.(false);
+      return;
+    }
     if (!BINDINGS[e.code]) return;
     // Never gate keyup on isTyping: focusing a field mid-stride would otherwise strand the key
     // down forever and you would walk into a wall until you pressed it again.

@@ -26,7 +26,7 @@ Ten minutes a round, five islands in rotation. Drop a bomb, get clear, be standi
 | Move | <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> or the arrows. Hold two for a diagonal |
 | Bomb | <kbd>Space</kbd> or <kbd>K</kbd>, on the tile you are facing. Same key gets you back up |
 | Slide | Double-tap a direction. Costs stamina, goes through people |
-| Emote | <kbd>Shift</kbd> + a direction |
+| Emote | Hold <kbd>Shift</kbd> + a direction; release the direction to send |
 | Chat | <kbd>Enter</kbd> |
 | Scoreboard | <kbd>Tab</kbd> - round and all-time |
 | Back out | <kbd>Esc</kbd> |

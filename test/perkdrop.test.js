@@ -210,6 +210,11 @@ test('gold is capped per round, and the cap counts drops rather than pickups', (
 
 test('ordinary drops thin selected non-gold perks without changing gold or direct drops', () => {
   const forced = BLOCK.REINFORCED;
+  const totalWeight = Object.values(PERK_WEIGHTS).reduce((sum, weight) => sum + weight, 0);
+  const beforeGold = Object.entries(PERK_WEIGHTS)
+    .filter(([type]) => Number(type) < PERK.GOLD)
+    .reduce((sum, [, weight]) => sum + weight, 0);
+  const goldRoll = (beforeGold + PERK_WEIGHTS[PERK.GOLD] / 2) / totalWeight;
   const withRolls = (values, fn) => {
     let calls = 0;
     const s = fresh();
@@ -221,7 +226,7 @@ test('ordinary drops thin selected non-gold perks without changing gold or direc
     return { s, calls };
   };
 
-  const gold = withRolls([0.99], s => maybeDrop(s, 4, 4, forced));
+  const gold = withRolls([goldRoll], s => maybeDrop(s, 4, 4, forced));
   assert.equal(gold.calls, 1, 'gold selection should not consume a thinning roll');
   assert.equal(gold.s.perks[0].type, PERK.GOLD);
   assert.equal(gold.s.goldDropped, 1);
@@ -236,7 +241,7 @@ test('ordinary drops thin selected non-gold perks without changing gold or direc
   assert.equal(discarded.calls, 2, 'a discarded drop must not reroll into another perk');
   assert.deepEqual(discarded.s.perks, []);
 
-  const cappedGold = withRolls([0.99, 0.1, NON_GOLD_DROP_KEEP_CHANCE], s => {
+  const cappedGold = withRolls([goldRoll, 0.1, NON_GOLD_DROP_KEEP_CHANCE], s => {
     s.goldDropped = GOLD_MAX_PER_ROUND;
     maybeDrop(s, 4, 4, forced);
   });

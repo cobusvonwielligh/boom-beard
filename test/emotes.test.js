@@ -81,13 +81,22 @@ test('emotes are rate-limited on the client, and never faster than the server al
     'the cooldown is not actually checked before sending');
 });
 
-test('picking an emote closes the wheel until the modifier is released', () => {
-  // Holding Shift is the question and picking is the answer; a legend left over the board after
-  // it has been answered is in the way of seeing what you walked into.
-  assert.match(main, /pickerSpent = true;/, 'the wheel is not marked spent when you pick');
-  assert.match(main, /if \(!on\) pickerSpent = false;/,
-    'releasing the modifier does not re-arm the wheel');
-  assert.match(main, /on && !pickerSpent/, 'a spent wheel can still be shown');
+test('the emote is sent on direction release and hides the picker', () => {
+  const keyup = input.slice(input.indexOf("addEventListener('keyup'"));
+  assert.match(input, /let pendingEmote = null/);
+  assert.match(keyup, /pendingEmote\?\.code === e\.code/);
+  assert.match(keyup, /const \{ slot \} = pendingEmote/);
+  assert.match(keyup, /onEmote\?\.\(slot\)/);
+  assert.match(keyup, /onEmoteMenu\?\.\(false\)/);
+  assert.doesNotMatch(main, /pickerSpent/);
+});
+
+test('the picker shows both arrow and WASD bindings', () => {
+  const picker = html.slice(html.indexOf('<div id="emotePick"'), html.indexOf('<div id="toast"'));
+  for (const binding of ['↑ W', '← A', '↓ S', '→ D']) {
+    assert.ok(picker.includes(binding), `picker does not show ${binding}`);
+  }
+  assert.match(main, /setAttribute\('aria-hidden', on \? 'false' : 'true'\)/);
 });
 
 test('commands and server lines never appear over somebody’s head', () => {
@@ -105,17 +114,12 @@ test('the picker does not reuse another component’s class name', () => {
   assert.match(css, /\.ring \.ekey \{/, 'the picker keys are not .ekey');
 });
 
-test('nothing in the picker can be left invisible by an animation that never runs', () => {
-  /* The failure that caught this: `animation: ... backwards` with `from { opacity: 0 }` leaves
-   * the element at zero until the animation starts. Anything that stops animations running - a
-   * compositor giving up, a headless render, a system setting - then leaves an invisible
-   * picker, which is worse than never having animated it at all. */
-  const pop = css.match(/@keyframes emotePop \{([\s\S]*?)\n\}/);
-  assert.ok(pop, 'emotePop not found');
-  assert.ok(!/opacity/.test(pop[1]), 'emotePop animates opacity, so a stalled clock hides the picker');
-  const ring = css.slice(css.indexOf('.ring .ekey'));
-  assert.ok(!/animation:[^;]*backwards/.test(ring),
-    'the picker uses a backwards fill, which hides it before the animation starts');
+test('the picker fades smoothly without staggered slot animation', () => {
+  assert.match(css, /#emotePick\s*\{[^}]*opacity:\s*0[^}]*visibility:\s*hidden[^}]*transition:[^}]*opacity/s);
+  assert.match(css, /#emotePick\.on\s*\{[^}]*opacity:\s*1[^}]*visibility:\s*visible/s);
+  assert.match(css, /#emotePick\.on \.ring\s*\{[^}]*transform:\s*scale\(1\)/);
+  assert.match(css, /\.ring\s*\{[^}]*transform:\s*scale\((?:0)?\.94\)[^}]*transition:/s);
+  assert.doesNotMatch(css, /animation:\s*emotePop|@keyframes emotePop/);
 });
 
 test('a bubble is narrow, and wraps rather than spreading across the board', () => {
