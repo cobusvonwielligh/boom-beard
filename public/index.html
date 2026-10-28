@@ -1197,10 +1197,22 @@
         transform: translateY(-24px);
       }
 
-      .sub-split span { white-space: nowrap; }
+      .sub-split span {
+        position: relative;
+        white-space: nowrap;
+      }
 
       .sub-split span:first-child {
         margin-left: 10px;
+        inset-inline-start: -3px;
+      }
+
+      .sub-split span:nth-child(2) {
+        inset-inline-start: -11px;
+      }
+
+      .sub-split span:last-child {
+        inset-inline-start: -10px;
       }
     </style>
   </body>

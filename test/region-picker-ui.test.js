@@ -348,6 +348,9 @@ test('picker styles preserve focus and use the requested ping colors responsivel
   assert.match(sloganLayout, /display:\s*grid/);
   assert.match(sloganLayout, /grid-template-columns:\s*23%\s+46%\s+31%/);
   assert.match(sloganLayout, /\.sub-split span:first-child\s*\{[^}]*margin-left:\s*10px/);
+  assert.match(sloganLayout, /\.sub-split span:first-child\s*\{[^}]*inset-inline-start:\s*-3px/);
+  assert.match(sloganLayout, /\.sub-split span:nth-child\(2\)\s*\{[^}]*inset-inline-start:\s*-11px/);
+  assert.match(sloganLayout, /\.sub-split span:last-child\s*\{[^}]*inset-inline-start:\s*-10px/);
   assert.doesNotMatch(sloganLayout, /translateX\(/);
   assert.match(css, /#regionPicker\s*\{[^}]*grid-template-columns:\s*repeat\(2,/s);
   assert.match(css, /\.regionProgressTrack\s*\{[^}]*height:\s*6px/);
