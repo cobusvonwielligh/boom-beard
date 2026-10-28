@@ -4562,6 +4562,8 @@ h1 {
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 1px #f6e7a9;
+  paint-order: stroke fill;
   font-size: calc(14.5px - 1pt);
   font-weight: 600;
   filter: drop-shadow(0 1px 0 #000) drop-shadow(0 2px 4px #000c);

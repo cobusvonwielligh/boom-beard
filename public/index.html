@@ -913,7 +913,7 @@
           <p class="sub sub-split">
             <span>Plant bombs...</span>
             <span>...cause chaos...</span>
-            <span>...try to survive!</span>
+            <span>and try to survive the island!</span>
           </p>
           <form id="playerForm" autocomplete="on">
             <div class="playerid-group">
@@ -966,7 +966,7 @@
             </div>
           </form>
           <button id="play" class="goldAction" type="submit" form="playerForm">
-            LETS GO!
+            LET'S GO!
           </button>
           <!-- Always available, including when every seat is taken: a spectator costs nobody a
            place, so "full" is not a reason to turn one away. -->
@@ -1189,13 +1189,14 @@
       }
 
       .sub-split {
+        position: relative;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        width: 80%;
+        width: 100%;
         margin: 10px auto 0;
         gap: 30px;
-        transform: translateY(-43px);
+        transform: translateY(-24px);
       }
 
       .sub-split span {
@@ -1203,16 +1204,16 @@
       }
 
       .sub-split span:first-child {
-        transform: translateX(45px);
+        transform: translateX(15px);
       }
 
       .sub-split span:nth-child(2) {
-        transform: translateX(-140px);
+        transform: translateX(-135px);
       }
 
       .sub-split span:last-child {
         gap: 50px;
-        transform: translateX(60px);
+        transform: translateX(-30px);
       }
     </style>
   </body>
