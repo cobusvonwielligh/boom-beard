@@ -524,8 +524,8 @@ const net = createNet({
       startIntermission(ms);
       clearTimeout(roundOverTimer);
       roundOverTimer = setTimeout(endIntermission, ms);
-      setShopVisible(true);
-      requestShop();
+      setShopVisible(!m.observing);
+      if (!m.observing) requestShop();
     } else if (!m.mapOnly) {
       setShopVisible(false);
       const player = world.me();
@@ -796,8 +796,8 @@ const net = createNet({
     $('respawn').style.display = 'none';
     roundOverUntil = performance.now() + m.startsInMs;
     startIntermission(m.startsInMs);
-    setShopVisible(true);
-    requestShop();
+    setShopVisible(!observing);
+    if (!observing) requestShop();
     clearTimeout(roundOverTimer);
     roundOverTimer = setTimeout(endIntermission, m.startsInMs);
   },
@@ -1724,9 +1724,10 @@ function drawHud() {
     if (observing) {
       $('who').classList.remove('tinted');
       document.body.classList.remove('hurt');
+      document.body.classList.remove('dead');
       castText($('who'), 'spectating');
       setValue($('rank'), '');
-      $('dead').style.display = 'none';
+      $('dead').style.display = roundOverUntil ? 'grid' : 'none';
       if (shopVisible) setShopVisible(false);
       renderLive();
     }
@@ -2547,7 +2548,7 @@ async function preflightAuth(name, password) {
  * @param observe watch instead of play. A spectator takes no seat, so this is also the way in
  *   when the server is full - which is the whole reason the feature exists.
  */
-async function play(observe = false) {
+async function play(observe = false, reuseRegion = null) {
   const name = nameInput.value.trim();
   /* Everything that can be checked here is checked here, and every answer is a toast.
    *
@@ -2595,7 +2596,7 @@ async function play(observe = false) {
   }
   let regionId;
   try {
-    regionId = await regionPicker.chooseRegion();
+    regionId = reuseRegion ?? await regionPicker.chooseRegion();
   } catch (error) {
     toast(`server check failed: ${error.message}`);
     $('play').disabled = false;
@@ -2864,10 +2865,11 @@ nameInput.oninput = () => { if (pwOpen) closePassword(); };
 // the open one: the server frees the seat on disconnect, which is the point - somebody waiting
 // gets it, and that is a better outcome than a seat held by a person who has stopped playing.
 $('spectate').onclick = createTap()(() => {
+  const regionId = regionPicker.selectedRegion();
   $('dead').style.display = 'none';
   net.close();
   $('play').disabled = false;
-  play(true);
+  play(true, regionId);
 });
 $('deadLeave').onclick = createTap()(leave);
 
