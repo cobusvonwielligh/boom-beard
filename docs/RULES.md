@@ -261,8 +261,9 @@ open a wall is with a bomb, and that bomb is usually still burning when the perk
 player who did the work watched their own blast eat the reward. Expiry already stops a contested
 drop sitting there forever.
 
-A perk at its cap still gives **+15 score** instead of nothing, so late-round pickups are not
-dead.
+A capped upgrade or already-active timed perk stays on the floor and gives no score until it can
+benefit someone. This keeps late-round drops available to players who still need them, without
+letting a capped player farm points or refresh an active effect.
 
 **Reserved for later** - the type ids exist in `shared/constants.js` with zero weight, so adding
 them is a weight change and one effect function: Kick, Jelly, Detonator, Bat, Jetpack, Nuclear

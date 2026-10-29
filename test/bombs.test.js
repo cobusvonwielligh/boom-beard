@@ -309,14 +309,15 @@ test('bombs in the round loop', async t => {
     assert.ok(p.score > 0, 'and scored');
   });
 
-  await t.test('a perk at its cap still pays out rather than being nothing', () => {
+  await t.test('a capped perk stays available rather than paying out', () => {
     const st = room();
     const p = immortal(spawn(st, 0, 3, 3));
     p.radius = MAX_RADIUS;
     drop(st, 5, 3, PERK.FIRE);
     run(st, 40, [IN_RIGHT]);
     assert.equal(p.radius, MAX_RADIUS, 'capped');
-    assert.equal(p.score, SCORE.PERK_CAPPED, 'consolation points');
+    assert.equal(p.score, 0, 'a capped perk awarded score');
+    assert.equal(st.perks.length, 1, 'a capped perk disappeared');
   });
 
   await t.test('drop weights are honoured over many rolls', () => {
