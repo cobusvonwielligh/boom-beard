@@ -117,6 +117,9 @@ function apply(state, p, type) {
      * better perk, and this is supposed to be a decision.
      */
     case PERK.RUM:
+      // A live effect is not a fresh pickup. Leaving it on the floor prevents repeatedly walking
+      // over rum from extending the same status indefinitely.
+      if (p.status & STATUS.DRUNK) return false;
       applyStatus(state, p, STATUS.DRUNK, STATUS_TICKS[STATUS.DRUNK]);
       return true;
 
@@ -165,6 +168,9 @@ export function collect(state) {
       // gameplay perk, but they must leave coins for people to contest.
       if (perk.type === PERK.GOLD && p.isBot) continue;
       const gained = apply(state, p, perk.type);
+      // A capped upgrade or an already-active timed effect remains available on the floor. It
+      // must not vanish, award score, or refresh a cooldown when the player cannot benefit from it.
+      if (!gained && perk.type !== PERK.GOLD) continue;
       p.score += perk.type === PERK.GOLD ? SCORE.GOLD
         : gained ? SCORE.PERK : SCORE.PERK_CAPPED;
       state.perks.splice(k, 1);

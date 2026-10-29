@@ -14,6 +14,7 @@ import {
   PERK, PERK_DROP_CHANCE_SOFT, PERK_GLUT_FLOOR, PERK_SCARCE_BOOST, PERK_TARGET_MIN,
   HITBOX_UNITS, TICK_HZ, PERK_EXPIRE_TICKS, PERK_FADE_TICKS,
   GOLD_MAX_PER_ROUND, NON_GOLD_DROP_KEEP_CHANCE, SCORE,
+  MAX_BOMBS_CARRIED, STATUS, STATUS_TICKS,
 } from '../shared/constants.js';
 import { MAPS, buildMap, cellType } from '../shared/maps.js';
 import { PERK_WEIGHTS, BLOCK } from '../shared/constants.js';
@@ -294,4 +295,30 @@ test('bots leave gold for people to collect', () => {
   collect(s);
   assert.equal(bot.coins, 0, 'a bot collected gold');
   assert.equal(s.perks.length, 1, 'gold disappeared under a bot');
+});
+
+test('a capped power-up stays on the floor', () => {
+  const s = fresh();
+  const p = createPlayer(0, 'p');
+  p.alive = true; p.bombs = MAX_BOMBS_CARRIED;
+  p.x = tileCentre(3); p.y = tileCentre(3);
+  s.players[0] = p;
+  drop(s, 3, 3, PERK.BOMB);
+  collect(s);
+  assert.equal(s.perks.length, 1, 'the capped power-up disappeared');
+  assert.equal(p.score, 0, 'a capped power-up awarded score');
+});
+
+test('active rum cannot be collected again to refresh its duration', () => {
+  const s = fresh();
+  const p = createPlayer(0, 'p');
+  p.alive = true; p.x = tileCentre(3); p.y = tileCentre(3);
+  p.status = STATUS.DRUNK;
+  p.statusUntil[STATUS.DRUNK] = s.tick + STATUS_TICKS[STATUS.DRUNK] - 20;
+  s.players[0] = p;
+  drop(s, 3, 3, PERK.RUM);
+  collect(s);
+  assert.equal(s.perks.length, 1, 'active rum disappeared');
+  assert.equal(p.statusUntil[STATUS.DRUNK], s.tick + STATUS_TICKS[STATUS.DRUNK] - 20,
+    'active rum refreshed its duration');
 });
