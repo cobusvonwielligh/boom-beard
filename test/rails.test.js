@@ -1175,3 +1175,65 @@ test('the drawn path through a corner never stalls, reverses or jumps', () => {
     }
   }
 });
+
+/* The same question as the test above, asked of real maps and random input instead of one
+ * hand-built corner - and asked about the two properties that make a drawn path continuous rather
+ * than merely plausible.
+ *
+ *   NO REVERSAL WITHIN A TICK. Inside one tick the input is fixed, so a drawn path that doubles
+ *   back is the renderer's doing and nothing else. Across a tick boundary a reversal is the
+ *   player's own - random input presses left after right - which is why the boundary is checked
+ *   the other way.
+ *
+ *   NO SEAM AT THE BOUNDARY. A full fractional step must land exactly where the real tick lands,
+ *   to the unit. That is what makes the frames between ticks join up: the last frame of one tick
+ *   and the first of the next are the same point, by arithmetic rather than by tuning.
+ *
+ * Swept wider than this during the rework - every map, four paces, 216,000 drawn frames, zero of
+ * both - and trimmed here to what keeps the suite quick.
+ */
+test('the drawn path joins up tick to tick, on real maps under random input', () => {
+  const SUB = 4;
+  for (const map of [MAPS[0], MAPS[1]]) {
+    for (const speed of [0, MAX_SKATES]) {
+      const st = createState(map);
+      let at = null;
+      for (let ty = 1; ty < st.map.h - 1 && !at; ty++) {
+        for (let tx = 1; tx < st.map.w - 1; tx++) {
+          if (tileAt(st.map, tx, ty) === BLOCK.FLOOR) { at = { tx, ty }; break; }
+        }
+      }
+      const p = spawn(st, at.tx, at.ty, { speed });
+      const where = `${map.id} speed ${speed}`;
+      let seed = 31337;
+
+      for (let n = 0; n < 400; n++) {
+        seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+        const mask = (seed >>> 7) & (IN_RIGHT | IN_UP | IN_LEFT | IN_DOWN | IN_SLIDE);
+
+        const sub = [[p.x, p.y]];
+        for (let f = 1; f <= SUB; f++) {
+          const ghost = { ...p, statusUntil: { ...p.statusUntil } };
+          step(st, ghost, mask, f / SUB);
+          sub.push([ghost.x, ghost.y]);
+        }
+
+        let prev = null;
+        for (let i = 1; i < sub.length; i++) {
+          const dx = sub[i][0] - sub[i - 1][0], dy = sub[i][1] - sub[i - 1][1];
+          if (!dx && !dy) continue;
+          if (prev) {
+            assert.ok(prev[0] * dx + prev[1] * dy >= 0,
+              `${where} tick ${n}: the drawn path reversed inside one tick`);
+          }
+          prev = [dx, dy];
+        }
+
+        step(st, p, mask);
+        assert.deepEqual(sub[SUB], [p.x, p.y],
+          `${where} tick ${n}: a whole fractional step did not land where the tick did`);
+        assertOnRail(p, `${where} tick ${n}`);
+      }
+    }
+  }
+});

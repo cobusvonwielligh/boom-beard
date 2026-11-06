@@ -13,7 +13,7 @@ import {
   DIR_R, DIR_L, DIR_NONE, KICK_TILE_NUM, KICK_TILE_DEN, KICK_MAX_TILES, MAX_BOMBS_CARRIED,
 } from '../shared/constants.js';
 import { createState, createPlayer, setTile, tileCentre, tileAt } from '../shared/sim/state.js';
-import { placeable } from '../shared/sim/bombs.js';
+import { placeable, bombCanSlideInto } from '../shared/sim/bombs.js';
 import { tick } from '../shared/sim/round.js';
 
 /** A long clear room, so a slide and a kicked bomb both have somewhere to go. */
@@ -279,4 +279,116 @@ test('kicking a bomb, Game of Bombs style', async t => {
       'a skating bomb was not chained by a blast that reached it');
     assert.ok(lit);
   });
+});
+
+/* ─── what the kick LOOKS like ─────────────────────────────────────────────────
+ *
+ * The simulation only ever puts a bomb on a tile, so everything about how a kick reads is in the
+ * frames between those hops - and three versions of that drawing were shipped before one was
+ * right. The failures were never in the sim, so no test in this file could see them. This one can.
+ *
+ * It runs the renderer's own rule (client/render.js, the kick block) against a real kicked bomb,
+ * through a model of the wire: snapshots every two ticks, delivered late. The three things it
+ * asserts are the three that were wrong, each at a different time:
+ *
+ *   NEVER BACKWARDS. The drawing leads the authoritative tile by half a tile, because the true
+ *   position is somewhere inside that tile - but a lead has to be given back when the run ends,
+ *   and giving it back is a bomb recoiling off the wall it just stopped against. Bounding the
+ *   drawing at the resting tile is what makes it monotone.
+ *
+ *   NEVER STALLED while it still has somewhere to go. Parked on the tile it will rest on is the
+ *   bomb settling; parked anywhere else is the stutter that clock-based drawing produced.
+ *
+ *   NEVER FASTER than the kick. A jump is a correction being applied to a position, which is what
+ *   every earlier version did on every hop.
+ */
+test('the drawn skate is monotone, paced, and settles rather than recoiling', () => {
+  const LOOKAHEAD = 16, AIM = 0.5, GAIN = 0.15, RESYNC = 2.5;
+  const VEC = [[1, 0], [0, -1], [-1, 0], [0, 1]];
+  const FRAME_MS = 1000 / 60;
+  const tickMs = 1000 / 30;
+  const pace = (KICK_TILE_DEN / KICK_TILE_NUM) * (FRAME_MS / tickMs);
+
+  for (const [dir, press] of [[DIR_R, IN_RIGHT], [DIR_L, IN_LEFT]]) {
+    for (const latency of [1, 3, 6]) {
+      for (const wall of [0, 3]) {
+        const s = room(31, 9);
+        const [vx] = VEC[dir];
+        const p = spawn(s, 0, 15 - vx * 3, 4);
+        p.dir = dir;
+        const b = bombAt(s, 15, 4, 1);
+        if (wall) setTile(s.map, 15 + vx * wall, 4, BLOCK.IRON);
+
+        // The client's world: the map and players as they are, the bomb as last heard about.
+        let view = null;
+        const queue = [];
+        const seen = () => ({ map: s.map, bombs: view ? [view] : [], players: s.players, puddles: s.puddles });
+        const room0 = (bomb, step) => {
+          const left = Math.min(bomb.kickLeft ?? 0, LOOKAHEAD);
+          for (let n = 1; n <= left; n++) {
+            if (!bombCanSlideInto(seen(), bomb.tx + step[0] * n, bomb.ty + step[1] * n)) return n - 1;
+          }
+          return left;
+        };
+
+        let drawn = null, last = null, lastD = null, acc = 0, launched = false, moving = 0;
+        const where = `dir ${dir} latency ${latency} wall ${wall}`;
+        for (let frame = 0; frame < 160; frame++) {
+          acc += FRAME_MS;
+          while (acc >= tickMs) {
+            acc -= tickMs;
+            tick(s, launched ? [] : mask(p.i, press | IN_SLIDE));
+            launched = true;
+            if (s.tick % 2 === 0) queue.push({ at: s.tick + latency, bomb: { ...b } });
+            while (queue.length && queue[0].at <= s.tick) view = queue.shift().bomb;
+          }
+          if (!view) continue;
+          const step = view.kickDir >= 0 ? VEC[view.kickDir] : null;
+          if (step && !drawn) drawn = { x: view.tx, y: view.ty };
+          if (!drawn) continue;
+
+          if (Math.abs(drawn.x - view.tx) > RESYNC || Math.abs(drawn.y - view.ty) > RESYNC) {
+            drawn.x = view.tx; drawn.y = view.ty;
+          } else if (step && room0(view, step) > 0) {
+            const axis = step[0] ? 'x' : 'y';
+            const sign = step[0] || step[1];
+            const auth = step[0] ? view.tx : view.ty;
+            const off = (drawn[axis] - auth) * sign;
+            drawn[axis] += sign * Math.max(0, pace * (1 + GAIN * (AIM - off)));
+            const left = room0(view, step);
+            if ((drawn[axis] - auth) * sign > left) drawn[axis] = auth + sign * left;
+            if (step[0]) drawn.y = view.ty; else drawn.x = view.tx;
+          } else {
+            const gx = view.tx - drawn.x, gy = view.ty - drawn.y;
+            drawn.x += Math.sign(gx) * Math.min(Math.abs(gx), pace);
+            drawn.y += Math.sign(gy) * Math.min(Math.abs(gy), pace);
+          }
+
+          if (last && step) {
+            const dx = drawn.x - last[0], dy = drawn.y - last[1];
+            const d = Math.abs(dx) + Math.abs(dy);
+            const axis = step[0] ? 'x' : 'y';
+            const sign = step[0] || step[1];
+            const auth = step[0] ? view.tx : view.ty;
+            const resting = Math.abs((drawn[axis] - auth) * sign - room0(view, step)) < 0.002;
+            if (d < 1e-6) {
+              assert.ok(resting, `${where} frame ${frame}: the drawing stalled with ${
+                room0(view, step)} tiles still to run`);
+            } else {
+              moving++;
+              assert.ok(d <= pace * 1.6,
+                `${where} frame ${frame}: moved ${d.toFixed(3)} tiles against a pace of ${pace.toFixed(3)}`);
+              if (lastD) {
+                assert.ok(lastD[0] * dx + lastD[1] * dy >= 0,
+                  `${where} frame ${frame}: the drawn bomb went backwards`);
+              }
+              lastD = [dx, dy];
+            }
+          }
+          if (step) last = [drawn.x, drawn.y];
+        }
+        assert.ok(moving > 8, `${where}: only ${moving} frames of the kick drew any movement`);
+      }
+    }
+  }
 });

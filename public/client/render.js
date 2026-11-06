@@ -104,6 +104,24 @@ export function createRenderer(canvas, world) {
   /* Where a skating bomb is actually DRAWN, in tile units, per bomb id. Advanced by this module
    * at the kick's own pace and merely leashed to the snapshot - see the kick in the bomb loop. */
   const skate = new Map();
+  /**
+   * How many more tiles this kick will travel, by the server's own rule, run on our own world.
+   *
+   * Capped at `kickLeft`, so the range limit is honoured, and short-circuited at the first tile it
+   * cannot enter - a wall, the sea, another bomb, standing water, somebody's back. Walking the
+   * whole run rather than only checking the next tile is what lets the drawing be bounded by where
+   * the bomb will STOP instead of by where it currently is, which is the difference between
+   * settling against a wall and recoiling off it.
+   */
+  function skateRoom(b, step) {
+    const left = Math.min(b.kickLeft ?? 0, SKATE_MAX_LOOKAHEAD);
+    for (let n = 1; n <= left; n++) {
+      if (!bombCanSlideInto(world, b.tx + step[0] * n, b.ty + step[1] * n)) return n - 1;
+    }
+    return left;
+  }
+
+  const SKATE_MAX_LOOKAHEAD = 16;   // KICK_MAX_TILES with room to spare; a bound, not a rule
   const SKATE_AIM = 0.5;        // tiles ahead of the authoritative tile the drawing aims to sit
   const SKATE_GAIN = 0.15;      // how hard it is pulled back there: gently, as a rate, not a snap
   const SKATE_RESYNC = 2.5;     // beyond this it is not drift, so take the jump and be done
@@ -4042,8 +4060,7 @@ export function createRenderer(canvas, world) {
       if (drawn) {
         if (Math.abs(drawn.x - b.tx) > SKATE_RESYNC || Math.abs(drawn.y - b.ty) > SKATE_RESYNC) {
           drawn.x = b.tx; drawn.y = b.ty;             // a resync or a hidden tab, not a slide
-        } else if (kickStep && b.kickLeft > 0
-                   && bombCanSlideInto(world, b.tx + kickStep[0], b.ty + kickStep[1])) {
+        } else if (kickStep && skateRoom(b, kickStep) > 0) {
           /* Still going: advance at the kick's own pace, trimmed by a servo rather than a clamp.
            *
            * `off` is how far ahead of the authoritative tile the drawing has got. It is SUPPOSED
@@ -4063,8 +4080,22 @@ export function createRenderer(canvas, world) {
            */
           const axis = kickStep[0] ? 'x' : 'y';
           const sign = kickStep[0] || kickStep[1];
-          const off = (drawn[axis] - (kickStep[0] ? b.tx : b.ty)) * sign;
+          const auth = kickStep[0] ? b.tx : b.ty;
+          const off = (drawn[axis] - auth) * sign;
           drawn[axis] += sign * Math.max(0, skatePace * (1 + SKATE_GAIN * (SKATE_AIM - off)));
+          /* And never past the tile it is going to come to rest on.
+           *
+           * This is the other half of having a lead at all, and the sweep found it: the half tile
+           * of lead has to be GIVEN BACK when the run ends, and giving it back is the drawn bomb
+           * travelling backwards across half a tile at the exact moment everyone is watching it
+           * stop. Worse with latency, because the staircase the servo balances against is a tile
+           * behind, so the lead can reach a whole tile.
+           *
+           * Bounding the drawing at the resting tile means there is nothing to give back. The
+           * cost is that a bomb about to stop is drawn arriving a few frames early and waiting -
+           * which is a bomb settling against a wall, and reads as exactly that. */
+          const room = skateRoom(b, kickStep);
+          if ((drawn[axis] - auth) * sign > room) drawn[axis] = auth + sign * room;
           // Dead on the lane across the direction of travel; only one axis is ever in doubt.
           if (kickStep[0]) drawn.y = b.ty; else drawn.x = b.tx;
         } else {
