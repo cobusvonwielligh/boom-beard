@@ -143,6 +143,16 @@ export const IN_MASK = IN_RIGHT | IN_UP | IN_LEFT | IN_DOWN | IN_BOMB | IN_SLIDE
 // Facing
 export const DIR_R = 0, DIR_U = 1, DIR_L = 2, DIR_D = 3;
 
+/* "No direction", for anything that stores an optional DIR_*.
+ *
+ * NOT zero, and this is the reason the constant exists at all: DIR_R IS zero, so `if (dir)` is
+ * false for a perfectly good direction. The rails' buffered turn (see turnWant in sim/state.js)
+ * was written with 0 as its empty value and the result was that turning RIGHT never worked at
+ * all - every truthiness test read it as "nothing asked for". It cost a map-wide wander test to
+ * find, because every targeted test happened to turn upward.
+ */
+export const DIR_NONE = -1;
+
 /* The slide. Double-tap a direction and go.
  *
  * It exists because the game had exactly one verb for distance - walking - and the whole fight is
@@ -195,6 +205,49 @@ export const SLIDE_COOLDOWN_TICKS = 18;
  * costs a fifth of your wind and takes your steering away for half a second. Two quick taps.
  */
 export const SLIDE_DOUBLE_TAP_MS = 160;
+
+/* Rails: how far a turn request is carried before it is forgotten.
+ *
+ * A press across your lane cannot always be obeyed on the tick it arrives - you have to reach a
+ * tile centre first. So the press is REMEMBERED and spent at the first junction where it is
+ * legal, which is what makes a corner impossible to miss by pressing slightly early. It is the
+ * mechanism that replaces corner assist, and it is strictly better: assist needed you to already
+ * be nearly lined up, and this does not.
+ *
+ * IN UNITS OF TRAVEL, not in ticks, and that is the whole point of the number.
+ *
+ * It was ticks first - eight of them - and that is a promise about time pretending to be a
+ * promise about distance. The promise players actually feel is "a press anywhere in the tile
+ * before a junction lands", and the ticks a tile takes depends on your boots, your stamina, moss,
+ * water and whether somebody just slid through you: 9.5 ticks at base pace, 5.8 with four skates,
+ * and up to 256 for a tired and slowed pirate. Eight ticks was therefore slightly SHORT of one
+ * tile at base pace - a tap one tile out expired 13 units before the corner - and several tiles
+ * long for anybody limping. One number cannot be both.
+ *
+ * A tile and a half. One tile is the worst case within the guarantee (press immediately after
+ * leaving a junction, arrive at the next one), and the extra half is margin so it reads as
+ * reliable rather than as exactly-just-barely. At most two junctions are reached inside 384
+ * units, so a stray press can be tried at the next corner and the one after, and never at the
+ * "ten tiles and several seconds later" that makes a game feel like it is driving.
+ *
+ * A HELD key is re-stamped every tick, so holding a direction never expires - the buffer is only
+ * ever about a press you have already let go of.
+ */
+export const TURN_BUFFER_UNITS = UNITS_PER_TILE + (UNITS_PER_TILE >> 1);
+
+/* Rum, on rails. See DRUNK_SWAY_UNITS for what this replaces.
+ *
+ * Swaying a drunk pirate sideways is meaningless when there is no sideways to sway into, so the
+ * cost moves to the one place a rail pirate makes a decision: the turns. One turn in this many is
+ * fumbled - dropped, as if you missed the corner. Deterministic in (tick, seat), like the sway it
+ * replaces, so the client predicts the fumble instead of being corrected into it.
+ *
+ * Three is hard enough to be felt threading a maze and not so hard that the controls read as
+ * broken. A reversal was tried and rejected for the same reason the old stagger never reversed:
+ * going the opposite way to the one you asked for reads as a bug, where missing a corner reads as
+ * being too drunk to take it.
+ */
+export const DRUNK_FUMBLE_EVERY = 3;
 
 // ─── Bombs & fire ─────────────────────────────────────────────────────────────
 

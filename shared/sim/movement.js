@@ -2,77 +2,80 @@
 // which is the whole reason reconciliation is usually a no-op. See docs/NETCODE.md §2.
 //
 // Integers only. Positions are in units where one tile is 256, so a tile coordinate is `x >> 8`.
+//
+// ─── RAILS ───────────────────────────────────────────────────────────────────────────────────
+//
+// A pirate is ALWAYS on the centre line of a row or a column. There is no off-lane position to
+// be in - the invariant is that at the end of every tick either `x` or `y` is exactly
+// `tileCentre` of its tile, and at a tile centre both are.
+//
+// WHERE THE STATE LIVES. Position stays in the existing `x`/`y` pair, with that invariant, rather
+// than becoming an explicit lane index plus an offset. Two reasons, and the second is the one
+// that decided it: every other rule in the game - hitboxes, fire overlap, pickups, bomb
+// solidity, the renderer, the wire format - already reads `x`/`y` and does not care how the
+// position was reached, and a lane representation would have meant converting at every one of
+// those boundaries. The axis you are travelling on is derivable from `dir`, so it needs no
+// storage either.
+//
+// The only genuinely new state is the buffered turn: `turnWant` (a DIR_*, or 0) and `turnAt` (the
+// tick it was asked for, for expiry). Both are on the wire - see playerWire in server/room.js -
+// because prediction replays pending inputs from a snapshot, and a turn the client is holding
+// that the snapshot does not mention is a divergence waiting for the next corner.
+//
+// WHAT WENT AWAY. Lane centring (`ALIGN_*`) and corner assist (`ASSIST_*`) are gone, and so are
+// diagonals. Centring was approaching a line the rails are simply on; assist was a kindness for
+// being nearly lined up with a gap, which queued turns do better - they do not require you to be
+// lined up at all. The chamfer in `blocked` survives for bots and for the unstick seatbelt, but
+// ordinary rail travel never reaches it: a lane-centred hitbox is 160 units inside a 256-unit
+// lane, so it only ever touches the tiles its own lane passes through.
 
 import {
-  UNITS_PER_TILE, HITBOX_UNITS, HITBOX_REDUCED_UNITS, CORNER_ASSIST_UNITS,
+  UNITS_PER_TILE, HITBOX_UNITS, HITBOX_REDUCED_UNITS,
   SPEED_UNITS_PER_TICK, SLOWDOWN_NUM, SLOWDOWN_DEN,
   STAMINA_MAX, STAMINA_DRAIN_PER_TICK, STAMINA_REGEN_MOVING, STAMINA_REGEN_IDLE,
   STAMINA_RECOVER_UNITS, STAMINA_TIRED_NUM, STAMINA_TIRED_DEN, staminaMaxFor,
-  DRUNK_SWAY_UNITS, DRUNK_SWAY_RATE_A, DRUNK_SWAY_RATE_B,
-  DRUNK_STAGGER_EVERY, DRUNK_STAGGER_TICKS,
   PUDDLE_SPEED_NUM, PUDDLE_SPEED_DEN, PUDDLE_SLIDE_TICKS,
   SLIDE_PEAK_NUM, SLIDE_PEAK_DEN, SLIDE_DRAG_NUM, SLIDE_DRAG_DEN, SLIDE_EXIT_UNITS,
   SLIDE_SKATE_BONUS_SHAVE_NUM, SLIDE_SKATE_BONUS_SHAVE_DEN,
   SLIDE_MAX_TICKS, SLIDE_STAMINA_COST, SLIDE_COOLDOWN_TICKS,
-  CONFUSED_NUM, CONFUSED_DEN,
+  CONFUSED_NUM, CONFUSED_DEN, TURN_BUFFER_UNITS, DRUNK_FUMBLE_EVERY, DIR_NONE,
   IN_RIGHT, IN_UP, IN_LEFT, IN_DOWN, IN_SLIDE, DIR_R, DIR_U, DIR_L, DIR_D, STATUS, BLOCK,
-  DIAG_NUM, DIAG_DEN, CORNER_CUT_UNITS,
+  CORNER_CUT_UNITS,
 } from '../constants.js';
-import { walkable, has, tileCentre, tileAt } from './state.js';
+import { walkable, has, tileCentre, tileAt, toTile } from './state.js';
 import { mossValue, mossyTile } from '../moss.js';
 
 const HALF_TILE = UNITS_PER_TILE >> 1;
 
-/* Lane centring.
+/* Being shoved out of a solid tile eases rather than running at a constant rate: a fraction of
+ * whatever is left each tick, capped far below walking pace and floored so it still terminates.
  *
- * Three limits, and all three matter:
+ * Deliberately much slower than the legs. Walking pace felt like being shoved, because it was the
+ * same speed as a deliberate move and the eye read it as the player suddenly sprinting sideways
+ * of their own accord. A slow drift reads as the wall easing you aside, which is what it is - and
+ * the commonest case by far is a partial overlap from a wall regrowing beside you, which is over
+ * in a few ticks either way.
  *
- *   ALIGN_RATE     never faster than the legs. At 2x it outran a deliberate move and became a
- *                  snap, not an assist; the commonest place to feel it is walking off a bomb
- *                  you just placed, where the tile turns solid underneath you.
- *   ALIGN_FRACTION a quarter of whatever is left, so it decelerates into the lane instead of
- *                  arriving at full speed and stopping dead. This is the part that reads as
- *                  smooth rather than as correct.
- *   ALIGN_MAX      an absolute ceiling in units, so a fast player is not centred faster than a
- *                  slow one. Speed should change how far you travel, not how hard the game
- *                  pushes you sideways.
+ * Bombs cannot reach this code at all; see the note in `unstick`.
+ *
+ * EIGHT units a tick, up from four, and the reason is worth recording. The floor was four and the
+ * comment here claimed "being entombed costs about a second" - but clearing a 160-unit hitbox out
+ * of a 256-unit tile is 208 units of travel, which at four units a tick is 52 ticks, or nearly
+ * two seconds. The claim was true only because of a bug: the old flush-to-wall slide, applied
+ * from a position already overlapping a wall, computed an edge a whole tile further on and
+ * teleported the player 255 units in a single tick. That looked like a fast escape and was
+ * actually a visible snap, and test/unstick.test.js was passing on the strength of it.
+ *
+ * The rails have no such accident - travel is verified against `blocked` before it is taken - so
+ * the escape is now uniformly slow, and these two numbers are what make the documented intent
+ * true rather than aspirational. Eight units a tick with a floor of six on the easing tail clears
+ * those 208 units in 29 ticks: 0.97 seconds, which is the "about a second" this comment has
+ * always claimed. Eight is under a third of base walking pace (27), so it still reads as drifting
+ * rather than sprinting, and the taper from eight down to six keeps the arrival soft instead of
+ * stopping dead.
  */
-const ALIGN_RATE = 1;
-const ALIGN_FRACTION = 24;       // move 1/24 of the remaining offset
-const ALIGN_MIN_UNITS = 1;       // and never less than this, so it terminates
-const ALIGN_MAX_UNITS = 1;       // one unit a tick: a tile takes eight seconds
-
-/* Rounding a corner is a different job from tidying up a lane, and they used to share a rate.
- *
- * Corridor centring happens while you are walking along unobstructed and nothing is asking for
- * it - so it has to be invisible, and the numbers above make it so.
- *
- * Corner assist happens when you are PUSHING INTO a gap you are nearly lined up with and the
- * game is refusing the move. Every tick it takes is a tick of standing still against a doorway
- * you can plainly see you fit through, which is the single most infuriating thing a Bomberman
- * can do. It needs to be immediate, so it gets its own, much faster, rate.
- */
-const ASSIST_FRACTION = 2;       // half the remaining offset each tick
-const ASSIST_MIN_UNITS = 12;
-const ASSIST_RATE = 2;           // and it may outrun the legs, because it is not travel
-
-// Being shoved out of a solid tile eases rather than running at a constant rate: a fraction of
-// whatever is left each tick, capped far below walking pace and floored so it still terminates.
-//
-// A fifteenth of walking pace, with a floor of three units a tick so a player with no boots is
-// not left crawling out of a wall for seven seconds. Three units is a ninth of base pace: slow
-// enough to read as drifting, fast enough that being entombed costs about a second. The far
-// commoner case - a partial overlap from a wall regrowing beside you - is over in a few ticks.
-//
-// Bombs cannot reach this code at all; see the note in `unstick`.
-//
-// Deliberately much slower than the legs. Walking pace felt like being shoved, because it was
-// the same speed as a deliberate move and the eye read it as the player suddenly sprinting
-// sideways of their own accord. A twelfth of pace reads as the bomb easing you aside, which is
-// what it is - and the commonest case by far is stepping off your own bomb, where any visible
-// snap feels like the game taking the controls off you.
-const UNSTICK_MIN_UNITS = 1;
-const UNSTICK_MIN_PACE = 4;
+const UNSTICK_MIN_UNITS = 6;
+const UNSTICK_MIN_PACE = 8;
 const UNSTICK_EASE_SHIFT = 4;      // move 1/16 of the remaining gap each tick
 const UNSTICK_PACE_NUM = 1, UNSTICK_PACE_DEN = 15;
 
@@ -116,6 +119,9 @@ function startSlide(state, p, mask) {
   if (p.stamina <= 0) { p.stamina = 0; p.tired = true; }
   p.dir = dir;
   p.slideDir = dir;
+  // A slide is a commitment, so it starts with a clean slate: a turn asked for before the launch
+  // must not fire out the far end of it.
+  clearTurn(p);
   const bootPace = SPEED_UNITS_PER_TICK[Math.min(p.speed, SPEED_UNITS_PER_TICK.length - 1)];
   const bootBonus = Math.max(0, bootPace - SPEED_UNITS_PER_TICK[0]);
   const shave = (bootBonus * SLIDE_SKATE_BONUS_SHAVE_NUM / SLIDE_SKATE_BONUS_SHAVE_DEN) | 0;
@@ -136,8 +142,17 @@ function startSlide(state, p, mask) {
  * corner, and the one thing this mechanic must not become is a better way to walk.
  */
 function stepSlide(state, p) {
-  const [ax, ay] = DIR_VEC[p.slideDir] ?? DIR_VEC[DIR_D];
-  const moved = moveAxis(state, p, ax, ay, p.slideV);
+  /* Strictly along the lane, and it cannot turn.
+   *
+   * `dir` is forced to `slideDir` for the duration so `railTravel` runs down the slide's own lane
+   * rather than wherever the pirate was last facing, and any buffered turn is dropped at the
+   * launch - a slide you could steer round a corner would be a better way to walk, which is the
+   * one thing this mechanic must not become.
+   */
+  p.dir = p.slideDir;
+  // Same rule as walking: a tick spent easing back onto the lane is not a tick of sliding. The
+  // drag below still applies, so a slide that starts off-lane simply loses a little of itself.
+  const moved = pinToLane(state, p, p.slideV) ? p.slideV : railTravel(state, p, p.slideV);
   p.slideFor++;
   p.slideV = ((p.slideV * SLIDE_DRAG_NUM) / SLIDE_DRAG_DEN) | 0;
   // Stopped dead, out of speed, or the seatbelt: either way, put the brakes on and start the
@@ -299,114 +314,234 @@ export function blocked(state, p, x, y, bombsCount = true, chamfer = true) {
   return false;
 }
 
-/** Signed distance from the centre of the tile this coordinate sits in. */
-const offsetFromCentre = u => (u & (UNITS_PER_TILE - 1)) - HALF_TILE;
+/* ─── the rails ───────────────────────────────────────────────────────────────────────────────
+ *
+ * Four small helpers and one loop. Everything about travel is in here, and all of it is integer
+ * arithmetic on a 256-unit grid.
+ */
 
-/** Is the tile at (primary, lane) walkable, for whichever axis we are moving along? */
-const laneWalkable = (state, horizontal, primaryTile, laneTile, reduced) =>
-  horizontal ? walkable(state.map, primaryTile, laneTile, reduced)
-             : walkable(state.map, laneTile, primaryTile, reduced);
+/** Is this coordinate exactly on a lane centre line? */
+const onLane = u => (u & (UNITS_PER_TILE - 1)) === HALF_TILE;
+
+/** Is the pirate exactly on a tile centre - i.e. at a junction, where a turn may be spent? */
+const atJunction = p => onLane(p.x) && onLane(p.y);
 
 /**
- * Move along one axis.
+ * Point the pirate at the nearest junction on their current lane - which may be behind them.
  *
- * Grid games need two behaviours that sound unrelated and are actually the same decision:
- *
- *  - **auto-centring** - walking a corridor, drift onto its centre line so you never scrape;
- *  - **corner assist** - pushing into a wall while *nearly* lined up with the gap beside it,
- *    slide into the gap rather than stopping dead.
- *
- * Implemented separately they fight: centring drags you off the gap before you ever reach the
- * wall, so the assist never fires. So instead there is one question asked every tick - *which
- * lane do I want to be in?* - and the answer drives a single sideways drift:
- *
- *   way ahead is clear          -> stay in this lane
- *   blocked, gap beside, close  -> the adjacent lane  (corner assist)
- *   blocked, no gap, walled in  -> this lane's centre (corridor centring)
- *   open ground beside you      -> no drift at all, leave the player where they put themselves
- *
- * That last case is what makes the assist possible: never pull someone away from an opening
- * they might be aiming for.
+ * The travel loop can only spend a turn while standing exactly on a tile centre, so every path
+ * that wants a turn taken from mid-segment comes through here first. Nearest rather than
+ * next-ahead: from flush against a wall the junction behind is the only one reachable, and from
+ * a standstill mid-corridor the nearer one is simply the quicker answer.
  */
-function moveAxis(state, p, ax, ay, speed, assist = true) {
-  const horizontal = ax !== 0;
-  const dir = horizontal ? ax : ay;
+function faceNearestJunction(p, horizontal) {
+  const along = horizontal ? p.x : p.y;
+  const o = along & (UNITS_PER_TILE - 1);
+  const forward = o < HALF_TILE;          // the centre of this tile is still ahead of us
+  p.dir = horizontal ? (forward ? DIR_R : DIR_L) : (forward ? DIR_D : DIR_U);
+}
+
+/** The tile immediately ahead along the current facing, as [tx, ty]. */
+function aheadTile(p) {
+  const [vx, vy] = DIR_VEC[p.dir] ?? DIR_VEC[DIR_D];
+  return [toTile(p.x) + vx, toTile(p.y) + vy];
+}
+
+/**
+ * Could this pirate stand on this tile?
+ *
+ * Asked at the TILE'S CENTRE, which is what makes it an exact question about one tile: a
+ * lane-centred hitbox is 160 units inside a 256-unit tile, so `blocked` at a tile centre tests
+ * that tile and nothing else. Probing a unit or two ahead instead - the obvious thing - tests the
+ * tile you are already in, because the box has not reached the boundary yet.
+ */
+const canStand = (state, p, tx, ty) =>
+  !blocked(state, p, tileCentre(tx), tileCentre(ty));
+
+/** The next lane centre strictly ahead of `u` in direction `sign`. */
+function nextCentre(u, sign) {
+  const here = (u >> 8) * UNITS_PER_TILE + HALF_TILE;
+  if (sign > 0) return here > u ? here : here + UNITS_PER_TILE;
+  return here < u ? here : here - UNITS_PER_TILE;
+}
+
+/**
+ * The furthest point along this lane that leaves the hitbox touching, but not inside, the
+ * obstacle in the next tile.
+ *
+ * The far face of the tile we are standing in, pulled back by half a hitbox - 48 units past the
+ * tile centre with the standard box, less with Reduction. It is what makes a wall feel solid
+ * instead of repellent.
+ */
+function flushPoint(p, along, sign) {
   const half = halfBox(p);
-  const reduced = has(p, STATUS.REDUCTION);
+  const tile = along >> 8;
+  return sign > 0
+    ? (tile + 1) * UNITS_PER_TILE - half
+    : tile * UNITS_PER_TILE + half;
+}
 
-  const perp = horizontal ? p.y : p.x;
-  const lead = horizontal ? p.x : p.y;
-  const lane = perp >> 8;
-  const off = offsetFromCentre(perp);
-  const leadTile = lead >> 8;
+/**
+ * Travel along the current lane, turning at junctions as the buffer allows.
+ *
+ * One segment at a time, where a segment ends at the next lane centre. That structure is the
+ * whole trick, and it buys three things that a naive "move `speed` units, then see" does not:
+ *
+ *   - **No overshoot.** A turn is only ever spent standing exactly on a junction, so a corner is
+ *     never rounded from half a tile past it and then corrected backwards.
+ *   - **No lost pace.** Reaching a junction with movement left over spends the remainder down the
+ *     NEW lane in the same tick, so a corner costs exactly nothing. A corner that cost a tick of
+ *     pace is precisely what "catching on corners" feels like.
+ *   - **A bounded loop.** A segment is at most 256 units and the fastest pace is 44, so at most
+ *     two segments are crossed in a tick. The guard is a seatbelt, not the mechanism.
+ *
+ * @returns the distance actually travelled, in units.
+ */
+function railTravel(state, p, speed) {
+  let left = speed;
+  let moved = 0;
 
-  const nx = horizontal ? p.x + dir * speed : p.x;
-  const ny = horizontal ? p.y : p.y + dir * speed;
-  const wayBlocked = blocked(state, p, nx, ny);
+  for (let guard = 0; left > 0 && guard < 4; guard++) {
+    // At a junction: spend a buffered turn if the tile it points at can be stood on.
+    if (atJunction(p) && wantsTurn(p)) spendTurn(state, p);
 
-  /**
-   * Slide toward the centre line of the lane we are already in.
-   *
-   * Eased rather than flat out: a quarter of the remaining offset each tick, floored so it
-   * finishes and capped so it is never a lurch. From a third of a tile out that is about a
-   * dozen ticks, decelerating the whole way - you feel the game tidy you up, not shove you.
-   */
-  const straighten = (urgent = false) => {
-    const delta = -off;
-    const mag = Math.abs(delta);
-    const step = urgent
-      ? Math.min(mag, Math.max(ASSIST_MIN_UNITS, (mag / ASSIST_FRACTION) | 0), speed * ASSIST_RATE)
-      : Math.min(
-        mag,
-        Math.max(ALIGN_MIN_UNITS, (mag / ALIGN_FRACTION) | 0),
-        ALIGN_MAX_UNITS,
-        speed * ALIGN_RATE,
-      );
-    const pull = Math.sign(delta) * step;
-    const cx = horizontal ? p.x : p.x + pull;
-    const cy = horizontal ? p.y + pull : p.y;
-    if (blocked(state, p, cx, cy)) return false;
-    p.x = cx; p.y = cy;
-    return true;
-  };
+    const [vx, vy] = DIR_VEC[p.dir] ?? DIR_VEC[DIR_D];
+    const horizontal = vx !== 0;
+    const sign = horizontal ? vx : vy;
+    const along = horizontal ? p.x : p.y;
 
-  // Corner assist. You are heading for a gap you *are* lined up with, but your hitbox is clipping
-  // the solid tile next to it. Straighten up and you fit. Beyond the window, you are genuinely
-  // aiming at a wall and deserve to stop.
-  /* Both assists are off while moving diagonally, and that is not a shortcut.
-   *
-   * They are sideways drifts, and sideways on one axis of a diagonal is backwards along the
-   * other: centring would spend every tick undoing the travel the other axis just made, so a
-   * clean diagonal would crab and stutter. The chamfer in `blocked` is what gets a diagonal
-   * round a corner now, and it does it by letting the move happen rather than by steering.
-   */
-  if (assist && wayBlocked && off !== 0 && Math.abs(off) <= CORNER_ASSIST_UNITS) {
-    if (straighten(true)) return true;
-  }
+    /* How far we may travel in this direction right now.
+     *
+     * Always the NEXT LANE CENTRE ahead - and that is the part worth getting right, because a
+     * junction is where a turn can be spent and skipping one loses the turn. Two earlier versions
+     * both got this wrong in opposite directions: checking the way ahead only while standing on a
+     * junction let a pirate who had stopped flush against a wall walk into it on the next tick,
+     * and checking it unconditionally made a pirate approaching a wall jump straight to the flush
+     * point - sailing over the junction in between, where their buffered turn was waiting.
+     *
+     * Asking "can I stand on the tile the next centre is IN" answers both. Before the centre of
+     * your own tile that tile is the one you are standing in, so the limit is simply the centre.
+     * At or past it, it is the next tile along, so a blocked one stops you flush against it. The
+     * loop then comes back round, standing exactly on the junction, and spends the turn.
+     */
+    const junction = nextCentre(along, sign);
+    const jtx = horizontal ? junction >> 8 : toTile(p.x);
+    const jty = horizontal ? toTile(p.y) : junction >> 8;
 
-  if (!wayBlocked) {
-    p.x = nx; p.y = ny;
-    if (!assist) return true;
-    // Corridor centring: drift onto the centre line, but only where there is nothing beside you
-    // to aim at. On open ground, leave the player exactly where they put themselves - pulling
-    // them around would fight every attempt to line up with a gap.
-    if (off !== 0) {
-      const adj = lane + Math.sign(off);
-      if (!laneWalkable(state, horizontal, leadTile, adj, reduced)) straighten();
+    let limit = junction;
+    if (!canStand(state, p, jtx, jty)) {
+      /* Blocked - so stop FLUSH against it, not back at the last tile centre.
+       *
+       * A tile is 256 units and the hitbox is 160, so stopping at the centre leaves 48 units of
+       * visible daylight between the pirate and the wall they are walking into: walls stop
+       * feeling solid and start feeling repellent, and standing beside your own bomb looks like
+       * standing a step away from it.
+       *
+       * Going flush leaves the pirate mid-segment, where a turn cannot be spent - which is
+       * exactly why `step` glides back to the junction when a turn is pending and the way ahead
+       * is shut. The two halves are one mechanism: walls that feel solid AND corners that never
+       * refuse. Neither works without the other.
+       */
+      limit = flushPoint(p, along, sign);
     }
-    return true;
+
+    const seg = Math.min(left, Math.max(0, sign * (limit - along)));
+    if (seg <= 0) break;
+
+    const to = along + sign * seg;
+    const nx = horizontal ? to : p.x;
+    const ny = horizontal ? p.y : to;
+    // The arithmetic is the authority on the grid; `blocked` is the authority on geometry, and a
+    // bomb or a chamfer can still disagree. Verified rather than trusted.
+    if (blocked(state, p, nx, ny)) break;
+
+    p.x = nx; p.y = ny;
+    left -= seg;
+    moved += seg;
   }
 
-  // Blocked: slide flush to the wall rather than stopping a few units short, which would leave
-  // you unable to turn into a gap you look like you are standing in.
-  const edge = dir > 0
-    ? ((((horizontal ? p.x : p.y) + half) >> 8) + 1) * UNITS_PER_TILE - half - 1
-    : ((((horizontal ? p.x : p.y) - half) >> 8)) * UNITS_PER_TILE + half;
-  const ex = horizontal ? edge : p.x;
-  const ey = horizontal ? p.y : edge;
-  const forward = dir > 0 ? edge > (horizontal ? p.x : p.y) : edge < (horizontal ? p.x : p.y);
-  if (forward && !blocked(state, p, ex, ey)) { p.x = ex; p.y = ey; return true; }
-  return false;
+  return moved;
+}
+
+/**
+ * Spend the buffered turn, here, now. Only ever called standing on a junction.
+ *
+ * Rum fumbles one turn in DRUNK_FUMBLE_EVERY: the request is dropped as though the corner were
+ * missed. Deterministic in (tick, seat) so prediction fumbles identically rather than being
+ * corrected into it - the same property the old sway had, for the same reason.
+ */
+function spendTurn(state, p) {
+  const want = p.turnWant;
+  const [vx, vy] = DIR_VEC[want] ?? DIR_VEC[DIR_D];
+  const tx = toTile(p.x), ty = toTile(p.y);
+  if (!canStand(state, p, tx + vx, ty + vy)) return false;
+
+  if (has(p, STATUS.DRUNK)) {
+    const t = state.tick + p.i * 37;
+    if (t % DRUNK_FUMBLE_EVERY === 0) { clearTurn(p); return false; }
+  }
+
+  p.dir = want;
+  clearTurn(p);
+  return true;
+}
+
+const clearTurn = p => { p.turnWant = DIR_NONE; p.turnLeft = 0; };
+
+/* Is there a turn waiting? NEVER `if (p.turnWant)`.
+ *
+ * DIR_R is 0, so truthiness reads a request to turn right as no request at all - which is exactly
+ * the bug this helper exists to make impossible to write again. Gated on the BUDGET rather than
+ * on the direction, so there is one answer to "is a turn pending" and it cannot disagree with
+ * itself. See DIR_NONE in constants.js.
+ */
+const wantsTurn = p => p.turnLeft > 0 && p.turnWant !== DIR_NONE;
+
+/**
+ * Pin the axis we are NOT travelling along to its lane centre. The invariant, enforced.
+ *
+ * Never while the position is already illegal. `unstick` eases out of a wall along ONE axis over
+ * several ticks, and a snap on the other axis undoes it: an entombed pirate was shoved out and
+ * pulled straight back in, every tick, which is worse than the problem the seatbelt exists for.
+ * Skipping here leaves the pirate briefly off-lane, which is exactly what being stuck in a wall
+ * is - and the rails put them back on one as soon as they are standing somewhere legal.
+ */
+function pinToLane(state, p, speed) {
+  if (blocked(state, p, p.x, p.y, false)) return false;
+  const horizontal = p.dir === DIR_L || p.dir === DIR_R;
+  const perp = horizontal ? p.y : p.x;
+  if (onLane(perp)) return false;
+
+  /* Walk onto the lane, never teleport onto it.
+   *
+   * Capped at one tick of pace. Unclamped, this was a snap of up to half a tile in a single
+   * frame - 128 units sideways - and it fired exactly when it was most visible: the tick a pirate
+   * eased out of a wall and became legal again, they were yanked onto the nearest lane. The old
+   * code had a 255-unit version of the same artefact in its flush-to-wall slide, so this is the
+   * second time the same class of bug has been found here; bounding it by the legs is what stops
+   * a third.
+   *
+   * In ordinary play this never runs at all - rail travel keeps the invariant exactly, so there
+   * is nothing to correct. It only fires after something external moved the pirate: an unstick,
+   * a spawn, a map change.
+   *
+   * @returns true if it had to correct, in which case the caller must NOT also travel this tick.
+   *   Easing and travelling together would move both axes at once, which is the one thing a rail
+   *   pirate may never do - it is free 2D movement, briefly, and the invariant the whole design
+   *   rests on would be false for those ticks. A tick spent getting back onto the rails is not a
+   *   tick of walking, exactly as a tick spent being shoved out of a wall is not.
+   */
+  const gap = tileCentre(toTile(perp)) - perp;
+  const ease = Math.sign(gap) * Math.min(Math.abs(gap), Math.max(1, speed));
+  const want = perp + ease;
+  const nx = horizontal ? p.x : want;
+  const ny = horizontal ? want : p.y;
+  // Refuse a move that would put us inside something. That leaves the position illegal, which is
+  // exactly the case `unstick` exists for - better than easing into a wall to satisfy a
+  // bookkeeping invariant.
+  if (blocked(state, p, nx, ny)) return false;
+  p.x = nx; p.y = ny;
+  return true;
 }
 
 /**
@@ -561,80 +696,109 @@ export function step(state, p, mask) {
   stamina(p, !coasting);
   p.moving = true;
 
-  /* Drunk: you wander across the line you are walking along.
+  /* Resolve the input into travel along this lane, plus at most one turn request.
    *
-   * Two sines on the tick, at rates that do not divide into each other, seeded by seat so no
-   * two drunks stagger in step. Deterministic in (tick, seat) on purpose - the client replays
-   * the same arithmetic, so a drunk player is predicted exactly like a sober one and the whole
-   * thing costs nothing in reconciliation.
-   *
-   * Across the direction of travel rather than along it. Inverting the controls would be
-   * "broken", and slowing you down is already what Slowdown does; wandering is the only one of
-   * the three that reads as being drunk rather than as being punished - and it is genuinely
-   * hard to thread a corridor with, which is the point.
+   * The current lane axis comes from `dir`. Whichever input component lies ALONG it is travel;
+   * whichever lies across it is a turn request. With two keys held one of each is guaranteed -
+   * there is no such thing as two cross-lane components - so this is also where diagonals go: a
+   * diagonal is "keep going, and take the next corner that way", which is what a player holding
+   * two keys into a junction is actually asking for.
    */
-  if (has(p, STATUS.DRUNK)) {
-    const t = state.tick + p.i * 37;
-    // The stagger: briefly, you go the way you were NOT pointing. Only ever sideways - a
-    // reversal would read as broken controls, where a lurch into the wall beside you reads as
-    // being unable to walk straight, which is the thing being modelled.
-    if (t % DRUNK_STAGGER_EVERY < DRUNK_STAGGER_TICKS) {
-      const lurch = ((t / DRUNK_STAGGER_EVERY) | 0) % 2 ? 1 : -1;
-      if (dx) { dy = lurch; dx = 0; } else { dx = lurch; dy = 0; }
-      p.dir = dx > 0 ? DIR_R : dx < 0 ? DIR_L : dy < 0 ? DIR_U : DIR_D;
+  const horizontal = p.dir === DIR_L || p.dir === DIR_R;
+  const along = horizontal ? dx : dy;
+  const across = horizontal ? dy : dx;
+
+  if (across) {
+    const want = horizontal
+      ? (across > 0 ? DIR_D : DIR_U)
+      : (across > 0 ? DIR_R : DIR_L);
+    // Re-stamped every tick the key is held, so a held direction never expires. The buffer is
+    // only ever about a press already let go of.
+    p.turnWant = want;
+    p.turnLeft = TURN_BUFFER_UNITS;
+  }
+
+  if (along) {
+    // Along the lane, including a straight reversal - which needs no junction, because the tile
+    // behind you on your own lane is one you just came from.
+    p.dir = horizontal
+      ? (along > 0 ? DIR_R : DIR_L)
+      : (along > 0 ? DIR_D : DIR_U);
+
+    /* Running into a shut door with a turn waiting: back up to the junction and take it.
+     *
+     * This is how corners are actually taken under pressure - hold the direction you are going
+     * and press the one you want, and let the game sort it out at the corner. The pirate is
+     * flush against the wall, which is mid-segment, so the turn cannot be spent where they are
+     * standing; without this they sit in the corner with the request expiring, which is the
+     * complaint rails were built to answer.
+     *
+     * Only when the way along the lane is genuinely shut. A pirate with somewhere to go keeps
+     * going, and spends the turn at the junction they are already heading for.
+     */
+    if (wantsTurn(p) && !atJunction(p) && !canStand(state, p, ...aheadTile(p))) {
+      faceNearestJunction(p, horizontal);
     }
-    const sway = Math.round(
-      (Math.sin(t * DRUNK_SWAY_RATE_A) + Math.sin(t * DRUNK_SWAY_RATE_B)) * (DRUNK_SWAY_UNITS / 2),
-    );
-    if (sway) {
-      // Nudge the axis you are NOT travelling on. moveAxis sorts out the legality.
-      const nx = dx ? p.x : p.x + sway;
-      const ny = dx ? p.y + sway : p.y;
-      if (!blocked(state, p, nx, ny)) { p.x = nx; p.y = ny; }
+  } else if (!coasting) {
+    /* NOTHING pressed along this lane, so the pirate must not continue down it.
+     *
+     * This was the ugliest bug of the rail work and it broke the spec's own anti-goal - a press
+     * doing something other than what it asked. Standing at a junction facing down with a wall
+     * to the right, a press of RIGHT became a turn request, the request was refused by the wall,
+     * and travel then carried on along the old lane: you pressed right and walked DOWNWARDS.
+     *
+     * So when there is no along-lane input, the only two things that may happen are taking the
+     * turn and heading for the junction where it can be taken.
+     */
+    if (atJunction(p) && wantsTurn(p)) {
+      /* Take it if it is legal. If it is not, still FACE it and drop the request.
+       *
+       * Facing what you pressed is what every version of this game has done, and it is not
+       * cosmetic: `dir` is what bombs are aimed along. Pressing into a wall should turn you to
+       * look at the wall you are about to bomb, and travel then nudges you flush against it.
+       *
+       * Only ever with no along-lane input, which is what separates "standing here, pressing
+       * right into a wall" from "running right down a corridor while holding up" - the second
+       * must keep running, not stop and stare at the ceiling.
+       */
+      if (!spendTurn(state, p)) {
+        p.dir = p.turnWant;
+        clearTurn(p);
+      }
+    } else if (wantsTurn(p)) {
+      /* Head for the nearest junction, so the waiting turn can actually be spent.
+       *
+       * Two situations, which look different and are the same: standing still mid-corridor and
+       * pressing across the lane, and sitting flush against a wall and pressing across the lane.
+       * Flush is mid-segment, so both leave a turn that is unspendable where the pirate is
+       * standing - and with no along-lane input they would never reach a junction on their own.
+       * The press would do nothing until the buffer expired, which is the exact "stuck on a
+       * corner" feeling the rails exist to remove, re-introduced by the flush stop that was
+       * supposed to make walls feel solid. The two features only work together.
+       *
+       * The NEAREST junction, which may be behind them.
+       */
+      faceNearestJunction(p, horizontal);
     }
   }
 
-  /* Diagonals: both axes, in the same tick, at 1/√2 each.
-   *
-   * It used to be one axis a tick - whichever of the two was open, preferring your facing - so
-   * holding two keys walked you in a straight line and the second key was only ever a fallback
-   * for when the first was walled. That is cheap to interpolate and it is not what anybody
-   * pressing two keys is asking for.
-   *
-   * Now the step is a real diagonal: both axes move, each at DIAG_NUM/DIAG_DEN of your pace, so
-   * the distance covered is the same as walking straight and holding two keys is not a speed
-   * exploit. Each axis is still its own `moveAxis` call, which is what keeps every existing
-   * rule - the flush-to-wall slide, bomb solidity, reduction - exactly as it was, and what
-   * makes a diagonal into a wall slide ALONG it: the blocked axis contributes nothing and the
-   * open one carries you.
-   *
-   * Assists are off for both calls (see moveAxis) and the corner chamfer in `blocked` takes
-   * over: rounding the corner of a block diagonally is a glance off it rather than a catch.
-   *
-   * Facing stays with the axis you were already on when both are travelling, so the sprite does
-   * not flip back and forth every tick down a clear diagonal.
-   */
-  if (dx && dy) {
-    const pace = Math.max(1, ((speed * DIAG_NUM) / DIAG_DEN) | 0);
-    const facingH = p.dir === DIR_L || p.dir === DIR_R;
-    // The facing axis goes first. Which of the two moves first is observable - the second call
-    // sees the position the first one left - so the order has to be a rule, not an accident.
-    const first = facingH ? [dx, 0] : [0, dy];
-    const second = facingH ? [0, dy] : [dx, 0];
+  // A correction owns the tick; see pinToLane. In ordinary play it never fires.
+  const travelled = pinToLane(state, p, speed) ? 0 : railTravel(state, p, speed);
 
-    const wentFirst = moveAxis(state, p, first[0], first[1], pace, false);
-    const wentSecond = moveAxis(state, p, second[0], second[1], pace, false);
+  // One last chance at the turn, so arriving exactly on a junction this tick turns on this tick
+  // rather than on the next. Without it every corner costs a tick at the pace that lands square.
+  if (atJunction(p) && wantsTurn(p)) spendTurn(state, p);
 
-    const faceOf = ([ax, ay]) => (ax > 0 ? DIR_R : ax < 0 ? DIR_L : ay < 0 ? DIR_U : DIR_D);
-    // Face whatever actually moved. With both moving that is the axis already being faced, so
-    // nothing changes; with one walled it turns you along the wall you are sliding down.
-    if (wentFirst) p.dir = faceOf(first);
-    else if (wentSecond) p.dir = faceOf(second);
-    return;
+  /* Spend the buffer's budget on the ground actually covered.
+   *
+   * Charged AFTER the travel and only for distance travelled, which is the two properties that
+   * make the promise hold: a pirate pressed against a wall covers no ground, so their request
+   * does not quietly rot while they are stuck, and a fast pirate and a limping one both get the
+   * same tile and a half of grace rather than the same number of ticks. */
+  if (wantsTurn(p)) {
+    p.turnLeft -= travelled;
+    if (p.turnLeft <= 0) clearTurn(p);
   }
-
-  p.dir = dx > 0 ? DIR_R : dx < 0 ? DIR_L : dy < 0 ? DIR_U : DIR_D;
-  moveAxis(state, p, dx, dy, speed);
 }
 
 /** Every alive player, in seat order. Order is part of determinism - never iterate a Map here. */

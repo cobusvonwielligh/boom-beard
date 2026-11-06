@@ -3,7 +3,10 @@
 // Your own player is predicted from your keys and corrected by replaying unacknowledged inputs.
 // Everyone else is drawn from snapshots, a little in the past. docs/NETCODE.md §2.
 
-import { INTERP_DELAY_TICKS, TRACER_SAMPLES, TRACER_EVERY_TICKS, FIRE_TICKS, setSeatColours, MAX_HP } from '/shared/constants.js';
+import {
+  INTERP_DELAY_TICKS, TRACER_SAMPLES, TRACER_EVERY_TICKS, FIRE_TICKS, setSeatColours, MAX_HP,
+  DIR_NONE,
+} from '/shared/constants.js';
 import { createPlayer, tileCentre } from '/shared/sim/state.js';
 import { decodeCells, packCell, cellType } from '/shared/maps.js';
 import { BLOCK, BLOCK_HP } from '/shared/constants.js';
@@ -85,6 +88,9 @@ export function createWorld() {
     p.slideDir = wire.sd ?? p.dir;
     p.slideFor = wire.sf ?? 0;
     p.slideCool = wire.sc ?? 0;
+    // The buffered turn. Absent means none; see playerWire and the RAILS note in sim/movement.js.
+    p.turnWant = wire.tl > 0 ? wire.tw : DIR_NONE;
+    p.turnLeft = wire.tl ?? 0;
     p.gulled = !!wire.gl;
     if (wire.name) p.name = wire.name;
     p.rx ??= p.x; p.ry ??= p.y;        // rendered position, smoothed for remotes
@@ -239,6 +245,12 @@ export function createWorld() {
     me.slideDir = wire.sd ?? me.dir;
     me.slideFor = wire.sf ?? 0;
     me.slideCool = wire.sc ?? 0;
+    /* And the buffered turn, for the same reason as the slide velocity: the replay below has to
+     * start from the server's value. A turn the server is holding that we are not would make the
+     * replay turn at a corner the server will not, and vice versa - a divergence that is
+     * invisible until a junction and then reads as the pirate steering itself. */
+    me.turnWant = wire.tl > 0 ? wire.tw : DIR_NONE;
+    me.turnLeft = wire.tl ?? 0;
 
     for (const inp of w.pending) step(w, me, inp.mask);
 

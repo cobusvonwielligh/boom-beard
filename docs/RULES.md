@@ -50,26 +50,38 @@ read is worse than a map you cannot see all of.
 | Movement hitbox | 160 × 160 units (20 × 20 px), centred |
 | Fire-damage hitbox | 104 × 104 units (13/20 of movement), centred |
 
-**Diagonals.** Holding two directions still moves one axis per tick - that is what keeps a tile
-game feeling like one, and what lets remote interpolation draw an L rather than a diagonal. What
-the game picks is the axis that *works*: the one you are facing if it is open, the other if it
-is not. So a held diagonal slides along whatever it meets instead of stopping dead against it.
-Boxed into a corner where neither axis is open, you stop.
+### Rails
 
-**Lane centring** has three limits, and all three matter. It never runs faster than your legs,
-it moves a seventh of the remaining offset per tick so it decelerates into the lane, and it is
-capped at 6 units per tick absolutely. Without that last one, every future speed increase makes
-the assist more violent - at `speed × 2` a booted player was moved half a tile sideways in a
-single tick, which reads as the game taking the controls off you.
+**You are always on the centre line of a row or a column.** There is no off-lane position to be
+in. Travel runs along that line; a press *across* it is a **turn request**, remembered and spent
+at the first tile centre where the turn is legal.
 
-**Corner assist.** This is what makes Bomberman feel good and it is not optional. When you move
-into a blocked tile but the perpendicular offset from the tile centre is **≤ 112 units (0.44
-tile)**, slide toward that centre at full speed instead of stopping. Without this, players feel
-like they are fighting the grid.
+| | |
+|---|---|
+| Lanes | one of `x` or `y` is always exactly on a tile centre line; at a junction, both are |
+| Turning | only at a tile centre, and the turn costs **no** pace - the rest of the tick carries on down the new lane |
+| Turn buffer | a request survives **384 units of travel** (a tile and a half), then is forgotten |
+| Reversing | immediate, no junction needed - the tile behind you on your own lane is one you just left |
+| Diagonals | none. Facing is always one of four, and two keys mean "keep going, and take the next corner that way" |
+| Walls | you stop **flush** against them, touching, not a tile short |
 
-**Players do not collide with each other.** You walk straight through other players. This is both
-faithful to Game of Bombs and the thing that makes 180 ms latency invisible - see
-[NETCODE.md](NETCODE.md) §1b.
+The buffer is measured in **distance, not time**, and that is the whole point of it. The promise
+is "a press anywhere in the tile before a junction lands", and how many ticks a tile takes
+depends on your boots, your stamina, moss and water - 9.5 ticks at base pace, 5.8 with three
+skates, far more while limping. A tick count cannot keep that promise at both ends; a tile and a
+half of travel can.
+
+**Running into a corner and pressing the way you want to go always works.** Flush against a wall
+is mid-tile, where a turn cannot be spent, so the pirate walks the few units back to the junction
+and takes it there. That is the same mechanism as pressing across the lane while standing still.
+
+**Lane centring and corner assist are gone.** Centring approached a line the rails are simply on.
+Corner assist was a kindness for being *nearly* lined up with a gap, within 112 units of it;
+queued turns do its job from anywhere in the tile and need no window at all.
+
+**Players do not collide with each other.** You walk straight through other players, on rails
+exactly as before. This is both faithful to Game of Bombs and the thing that makes 180 ms latency
+invisible - see [NETCODE.md](NETCODE.md) §1b.
 
 **Bomb pass-through.** Anyone whose hitbox already overlaps a newly placed bomb may walk off it.
 The moment their hitbox clears that tile, the bomb becomes solid. This prevents a bomb dropped
@@ -94,8 +106,10 @@ fuse ends.
 
 Three rules make it a decision rather than free speed:
 
-**It owns the tick.** While one runs, the keys do nothing - no steering, no braking, no cutting it
-short. You chose the direction when you double-tapped. That is also what makes it a function of
+**It owns the tick, and its lane.** While one runs, the keys do nothing - no steering, no braking,
+no cutting it short - and it travels strictly along the lane it was launched down. A slide you
+could steer round a corner would be a better way to walk, which is the one thing it must not
+become. You chose the direction when you double-tapped. That is also what makes it a function of
 (velocity, direction, map), which is why the client can replay it to the unit.
 
 **Your hands are full.** No bombs from inside a slide. Without that rule the slide is a bomb

@@ -276,8 +276,17 @@ function ticksPerTile(p, state = null) {
  *
  * Timing is part of the answer, not a refinement: a tile is only a stepping stone if this player,
  * at the speed this player actually moves, is off it before it lights. `slack` buys extra ticks on
- * top of that estimate, because the real crossing is slower than perTile whenever a corner is
- * involved - the auto-centring slide spends part of the move on the perpendicular axis.
+ * top of that estimate.
+ *
+ * On rails there is one correction the tile count cannot see, and leaving it out cost real
+ * suicides. A corner itself is free - a queued turn is spent standing on the junction and the
+ * remaining pace carries on down the new lane, so a turn loses nothing. But a bot standing
+ * part-way through a tile has to reach that junction BEFORE the first counted tile begins, and
+ * that lead-in is up to half a tile of travel nobody has budgeted for. Under free movement it
+ * did not exist, because a bot could start cutting across immediately.
+ *
+ * So the lead-in is added explicitly: half a tile's worth of ticks, the worst case, rather than
+ * a larger `slack` that would hide the reason inside a fudge factor.
  *
  * Only a tile that no blast covers at all counts as safe. "Somewhere with a second still left on
  * it" sounds more flexible and is a trap: the tile one step along your own blast has sixty ticks
@@ -291,6 +300,8 @@ function ticksPerTile(p, state = null) {
 function flood(state, p, danger, extra, slack = 0) {
   const map = state.map, w = map.w;
   const perTile = ticksPerTile(p, state);
+  // The lead-in: ticks to reach the junction the first counted tile is measured from. See above.
+  const lead = Math.ceil(perTile / 2);
   const start = toTile(p.y) * w + toTile(p.x);
 
   const queue = [start];
@@ -307,7 +318,7 @@ function flood(state, p, danger, extra, slack = 0) {
     if (d > 0) {
       const t = threatAt(danger, extra, tx, ty);
       if (t === Infinity) return { dir: first.get(key), clear: true, gx: tx, gy: ty };
-      const margin = t - d * perTile;
+      const margin = t - (d * perTile + lead);
       if (margin > bestMargin) { bestMargin = margin; bestDir = first.get(key); bestX = tx; bestY = ty; }
     }
 
@@ -316,7 +327,7 @@ function flood(state, p, danger, extra, slack = 0) {
       const nk = ny * w + nx;
       if (depth.has(nk) || !walkable(map, nx, ny) || danger.solid.has(nk)) continue;
       // Arrive at (d+1)*perTile, leave one tile later. Burning before then makes it a wall.
-      if (threatAt(danger, extra, nx, ny) <= (d + 2) * perTile + slack) continue;
+      if (threatAt(danger, extra, nx, ny) <= (d + 2) * perTile + lead + slack) continue;
       depth.set(nk, d + 1);
       first.set(nk, d === 0 ? i : first.get(key));
       queue.push(nk);
@@ -484,68 +495,78 @@ function chooseDir(state, p, brain, danger, tx, ty) {
 /**
  * The keys to press to actually go `dir` from where this bot is standing.
  *
- * Everything above reasons in tiles; the body does not live in tiles. A bot that has just crossed
- * into a tile is ~128 units off its centre line, and corner assist only helps within
- * CORNER_ASSIST_UNITS (112) of it - so turning into a gap from there pushes the hitbox flat into
- * the wall beside the gap and nothing moves. The bot then re-derives the same direction from the
- * same tile on the next tick, and the next, until its own fuse runs out. Measured: that was 45% of
- * every bot death, the single largest cause by far.
+ * On rails this is simply the direction, and the simplicity is the point.
  *
- * A person nudges back toward the lane without thinking about it, so the bot does too: if the
- * move is blocked and we are off the centre line across it, slide toward the centre first.
- * Movement rules are untouched - this is only which keys are pressed.
+ * It used to be a workaround. Everything above reasons in tiles, the body did not live in tiles,
+ * and a bot that had just crossed into a tile sat ~128 units off its centre line - outside the
+ * window corner assist helped within, so turning into a gap from there pushed the hitbox flat
+ * into the wall beside the gap and nothing moved. The bot re-derived the same direction from the
+ * same tile every tick until its own fuse caught it: measured at 45% of all bot deaths, the
+ * single largest cause. So `steer` pressed the PERPENDICULAR key first to slide back to the lane.
+ *
+ * The rails removed the problem and then made the workaround actively harmful. A cross-lane press
+ * is now a TURN REQUEST (see sim/movement.js), so "nudge toward the centre" asked for a turn the
+ * bot never wanted, which fired at the next junction and steered it somewhere it had not
+ * evaluated - straight into blasts, often enough to be visible in botbench. Pressing the
+ * direction is now correct and sufficient: the request queues and the turn is taken at the
+ * junction, from anywhere in the tile, with no window to be outside of.
  */
 function steer(state, p, dir) {
-  const d = DIRS[dir];
-  const speed = speedOf(p);
-  if (!blocked(state, p, p.x + d.dx * speed, p.y + d.dy * speed, true, false)) return d.mask;
-  const off = d.dx ? (p.y & 255) - 128 : (p.x & 255) - 128;
-  if (off === 0) return d.mask;                    // squarely facing a wall; nothing to line up
-  if (d.dx) return off > 0 ? IN_UP : IN_DOWN;
-  return off > 0 ? IN_LEFT : IN_RIGHT;
+  return DIRS[dir].mask;
 }
 
-/* The second key.
+/* The second key, on rails.
  *
- * Movement travels on both axes in a tick now (see the diagonal block in sim/movement.js), and
- * for a long time the bots were the only ones on the island who did not know: they pressed one
- * key, walked the L, and took two legs over ground a person crossed in one. Escapes were the
- * worst of it - a flee route round a corner is exactly the shape a diagonal shortens.
+ * This was a DIAGONAL: movement used to travel on both axes in a tick, and the bots were the
+ * only ones on the island who did not know - they pressed one key, walked the L, and took two
+ * legs over ground a person crossed in one. So having chosen a direction, the bot added the
+ * perpendicular one when it pointed at the goal, the corner tile was open, and the corner was no
+ * more dangerous than the straight step.
  *
- * So: having chosen a direction, add the perpendicular one when all three hold.
+ * There are no diagonals any more, so the diagonal is gone with them. What a perpendicular press
+ * means now is "take the next junction that way", which is a different and much sharper tool: it
+ * commits the bot to a turn at a junction it has not reasoned about yet, one to two tiles ahead,
+ * and the old checks all described the geometry of a corner rather than the safety of that
+ * junction. Keeping them would have been checking the wrong thing confidently.
  *
- *   1. it points at the goal   - the safe tile the flood found, or whoever is being hunted.
- *   2. the diagonal is open    - the corner tile is walkable, free of bombs, and the body fits.
- *   3. it is no more dangerous - the corner's threat is at least the straight step's. A
- *                                diagonal that shaves a corner into a blast is not a shortcut.
- *
- * Only ever an ADDITION to a direction the bot had already committed to, so every rule above it
- * - the flee, the hold, the loop breaker - behaves exactly as it did.
+ * So the checks were rewritten to describe the junction instead. The bot pre-presses the
+ * cross-lane key only when it has worked out where that turn would actually put it - the tile
+ * reached by turning at the junction the turn will fire at - and that tile is open and no more
+ * dangerous than carrying straight on. Pre-pressing is worth having: it is how a player takes a
+ * corner without a tick of hesitation at it, and a bot that waits until it is standing on the
+ * junction to decide loses that tick on every corner of every chase.
  */
-function withDiagonal(state, p, danger, mask, dir, gx, gy) {
+function withQueuedTurn(state, p, danger, mask, dir, gx, gy) {
   if (dir < 0 || gx < 0) return mask;
   const d = DIRS[dir];
   const tx = toTile(p.x), ty = toTile(p.y);
-  // The axis we are NOT travelling on, and only if the goal is off it.
+
+  // The cross-lane direction toward the goal, and only if the goal is off this lane at all.
   const sx = d.dx ? 0 : Math.sign(gx - tx);
   const sy = d.dy ? 0 : Math.sign(gy - ty);
   if (!sx && !sy) return mask;
-
   const side = DIRS.findIndex(o => o.dx === sx && o.dy === sy);
   if (side < 0) return mask;
-  const cx = tx + d.dx + sx, cy = ty + d.dy + sy;
-  const map = state.map;
-  if (!walkable(map, cx, cy) || danger.solid.has(cy * map.w + cx)) return mask;
-  if (!walkable(map, tx + sx, ty + sy)) return mask;        // the side step itself has to exist
-  // Hitbox, not tile: a corner the centre clears but the shoulders do not is a bot wedged in it.
-  const pace = Math.max(1, (speedOf(p) * DIAG_NUM / DIAG_DEN) | 0);
-  // The SQUARE box: see the chamfer note in blocked(). A corner a person may glance off is not a
-  // corner a bot may plan through.
-  if (blocked(state, p, p.x + sx * pace, p.y + sy * pace, true, false)) return mask;
 
-  const straight = threatAt(danger, null, tx + d.dx, ty + d.dy);
-  if (threatAt(danger, null, cx, cy) < straight) return mask;
-  // Water is slow and it slides. Worth crossing to escape, never worth cutting a corner into.
+  /* Where the turn will fire, and where it leads.
+   *
+   * A queued turn is spent standing exactly on a tile centre. Standing on one already, that is
+   * here and the turn fires this tick - at a junction the turn beats the along-lane press, which
+   * is what makes "hold the way you are going, press the way you want" work for everybody. Mid
+   * tile, it fires at the next centre along the lane.
+   */
+  const atJunction = (p.x & 255) === 128 && (p.y & 255) === 128;
+  const jx = atJunction ? tx : tx + d.dx;
+  const jy = atJunction ? ty : ty + d.dy;
+  const cx = jx + sx, cy = jy + sy;
+
+  const map = state.map;
+  if (!walkable(map, jx, jy) || !walkable(map, cx, cy)) return mask;
+  if (danger.solid.has(cy * map.w + cx)) return mask;
+  // No more dangerous than simply carrying on. A turn that shaves a corner into a blast is not a
+  // shortcut, which was true of the diagonal this replaces and is true of the turn as well.
+  if (threatAt(danger, null, cx, cy) < threatAt(danger, null, jx, jy)) return mask;
+  // Water is slow and it slides. Worth crossing to escape, never worth turning into.
   if (state.puddles?.some(q => q.tx === cx && q.ty === cy && q.until > state.tick)) return mask;
 
   return mask | DIRS[side].mask;
@@ -585,7 +606,7 @@ export function think(state, p, brain, danger) {
       brain.dir = dir;
       brain.hold = 3;
       brain.aimX = gx; brain.aimY = gy;
-      return withDiagonal(state, p, danger, steer(state, p, dir), dir, gx, gy);
+      return withQueuedTurn(state, p, danger, steer(state, p, dir), dir, gx, gy);
     }
     // Nowhere to go. Fall through and keep moving rather than standing still and accepting it.
   } else brain.inDanger = false;
@@ -653,5 +674,5 @@ export function think(state, p, brain, danger) {
   const mark = nearestPlayer(state, p);
   const aimX = mark ? toTile(mark.x) : brain.aimX ?? -1;
   const aimY = mark ? toTile(mark.y) : brain.aimY ?? -1;
-  return withDiagonal(state, p, danger, steer(state, p, brain.dir), brain.dir, aimX, aimY);
+  return withQueuedTurn(state, p, danger, steer(state, p, brain.dir), brain.dir, aimX, aimY);
 }

@@ -759,6 +759,17 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
      * re-launched or cut short every time a snapshot landed mid-slide. */
     ...(p.slideV ? { sv: p.slideV, sd: p.slideDir, sf: p.slideFor } : null),
     ...(p.slideCool ? { sc: p.slideCool } : null),
+    /* The buffered turn, while there is one. See the RAILS note in shared/sim/movement.js.
+     *
+     * It has to be here even though it is derived from inputs the client also has, because
+     * prediction REPLAYS pending inputs from a snapshot: the replay starts from whatever the
+     * snapshot says, and a turn the server was holding that the snapshot never mentioned is a
+     * divergence that stays invisible until the next corner and then shows up as the pirate
+     * turning where the other machine did not.
+     *
+     * Absent means none, which is why `tw` is only sent alongside a live budget - DIR_R is 0, so
+     * a bare `tw` could not distinguish "turn right" from "nothing". */
+    ...(p.turnLeft > 0 ? { tw: p.turnWant, tl: p.turnLeft } : null),
     // Claimed by the gull raid. One player a round at most, so it is absent for everybody nearly
     // always - and it has to be in the snapshot, not only in the event, or a client that joined
     // after the raid would have no idea why the table says what it says.

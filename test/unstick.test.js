@@ -7,7 +7,7 @@ import { step, blocked, unstick, speedOf } from '../shared/sim/movement.js';
 import { place } from '../shared/sim/bombs.js';
 import { tick } from '../shared/sim/round.js';
 import {
-  BLOCK, BLOCK_HP, IN_RIGHT, IN_DOWN, IN_BOMB, FUSE_TICKS, DIR_R, DIR_D,
+  BLOCK, BLOCK_HP, IN_RIGHT, IN_DOWN, IN_BOMB, FUSE_TICKS, DIR_R, DIR_D, UNITS_PER_TILE,
 } from '../shared/constants.js';
 
 // A hand-authored empty room. The generated maps put an indestructible pillar on every even/even
@@ -109,51 +109,63 @@ test('step() unsticks before it reads the position', () => {
   assert.ok(!blocked(s, p, p.x, p.y));
 });
 
-test('lane centring is imperceptible, and corner assist is not', () => {
-  /* Two jobs, two rates, and conflating them was the bug.
-   *
-   * Corridor centring happens while you walk along unobstructed and nothing asked for it, so it
-   * has to be invisible - a unit a tick. Corner assist happens when you are pushing into a gap
-   * the game is refusing you, where every tick is a tick of standing still against a doorway you
-   * can see you fit through. That one has to be immediate.
-   */
-  const { s } = world();
-  const p = seat(s, 0, 2, 4);
-  p.speed = 4;                                   // fully booted: the worst case
-  // A corridor, so centring fires at all, with an offset small enough that the hitbox stays
-  // clear of the walls - otherwise this measures the assist instead.
-  for (let x = 1; x <= 7; x++) {
-    setTile(s.map, x, 3, BLOCK.SOFT, BLOCK_HP[BLOCK.SOFT]);
-    setTile(s.map, x, 5, BLOCK.SOFT, BLOCK_HP[BLOCK.SOFT]);
-  }
-  p.y = tileCentre(4) + 24;
+/* RAILS replaced both of the mechanisms this test used to measure.
+ *
+ * It asserted two things: that corridor centring was a gentle one-unit-a-tick drift onto the
+ * lane, and that corner assist cleared a near-miss at a doorway within a few dozen ticks. Lane
+ * centring is gone because the lane is exact rather than approached, and corner assist is gone
+ * because queued turns do its job without requiring you to already be nearly lined up.
+ *
+ * What is worth keeping is the PROPERTY both of them existed to protect: a pirate walking at a
+ * gap gets through it, and never spends ticks standing still against a doorway they can see they
+ * fit through. That is tested here against the rails, and at every pace - the old assist had a
+ * window (CORNER_ASSIST_UNITS) outside which it refused, and the rails have no such window.
+ */
+test('a pirate walking at a doorway always gets through it', () => {
+  for (let speed = 0; speed <= 3; speed++) {
+    // A doorway on row 4: solid above and below the gap, so the only way through is the lane.
+    const s = createState(ROOM);
+    for (const y of [3, 5]) setTile(s.map, 5, y, BLOCK.SOFT, BLOCK_HP[BLOCK.SOFT]);
+    const p = seat(s, 0, 2, 4);
+    p.speed = speed;
+    p.dir = DIR_R;
 
-  const offsets = [];
-  for (let n = 0; n < 40; n++) {
-    step(s, p, IN_RIGHT);
-    offsets.push(Math.abs((((p.y % 256) + 256) % 256) - 128));
+    let ticks = 0;
+    while ((p.x >> 8) < 7 && ticks < 200) { step(s, p, IN_RIGHT); ticks++; }
+    assert.ok((p.x >> 8) >= 7,
+      `speed ${speed}: stuck at ${p.x >> 8},${p.y >> 8} after ${ticks} ticks`);
+    assert.equal(p.y, tileCentre(4), `speed ${speed}: came off the lane getting through`);
   }
-  const steps = offsets.slice(0, -1).map((o, i) => o - offsets[i + 1]).filter(d => d > 0);
-  assert.ok(steps.length, 'centring never fired');
-  const biggest = Math.max(...steps);
-  // 2 rather than 1: the very last step rounds off whatever fraction of a unit is left.
-  assert.ok(biggest <= 2, `gentle centring moved ${biggest} units in one tick`);
-  assert.ok(biggest < speedOf(p), 'sideways drift outran walking');
-
-  // And the assist: pressed into the jamb, it must clear a near-miss in a handful of ticks.
-  const { s: s2 } = world();
-  const q = seat(s2, 0, 2, 4);
-  for (let x = 1; x <= 7; x++) {
-    if (x !== 4) { setTile(s2.map, x, 3, BLOCK.SOFT, BLOCK_HP[BLOCK.SOFT]); }
-    setTile(s2.map, x, 5, BLOCK.SOFT, BLOCK_HP[BLOCK.SOFT]);
-  }
-  setTile(s2.map, 3, 4, BLOCK.SOFT, BLOCK_HP[BLOCK.SOFT]);   // something to be refused by
-  q.y = tileCentre(4) + 100;
-  let ticks = 0;
-  while (Math.abs((((q.y % 256) + 256) % 256) - 128) > 0 && ticks < 200) { step(s2, q, IN_RIGHT); ticks++; }
-  assert.ok(ticks <= 40, `corner assist took ${ticks} ticks to line up - that is a stuck player`);
 });
 
+test('the escape from a wall is a drift, never a teleport', () => {
+  /* The regression this replaces was real and invisible.
+   *
+   * The old flush-to-wall slide, applied from a position already overlapping a wall, computed an
+   * edge a whole tile further on and moved the player 255 units in ONE tick. It read as a snap,
+   * and it was what made the entombed-escape test pass - so the escape looked about a second
+   * long while actually being two seconds of crawl and one frame of teleport.
+   */
+  const { s, tx, ty } = world();
+  const p = seat(s, 0, tx, ty);
+  setTile(s.map, tx, ty, BLOCK.SOFT, 1);
+
+  let biggest = 0, ticks = 0;
+  while (blocked(s, p, p.x, p.y) && ticks < 200) {
+    const bx = p.x, by = p.y;
+    step(s, p, IN_RIGHT);
+    biggest = Math.max(biggest, Math.abs(p.x - bx) + Math.abs(p.y - by));
+    ticks++;
+  }
+  assert.ok(!blocked(s, p, p.x, p.y), `never escaped: ${ticks} ticks`);
+  assert.ok(ticks <= 30, `the escape took ${ticks} ticks - entombment should cost about a second`);
+  /* Two tick-sized movements is the honest ceiling: the drift out of the wall, plus - on the one
+   * tick the position becomes legal again - easing back onto the lane. Both are bounded by the
+   * legs. What must never reappear is a jump of a whole tile or more. */
+  assert.ok(biggest <= 2 * speedOf(p),
+    `one tick of the escape moved ${biggest} units against a pace of ${speedOf(p)} - that is a snap`);
+  assert.ok(biggest < UNITS_PER_TILE, `one tick of the escape moved ${biggest} units - a teleport`);
+});
 
 test('walking off your own bomb never pushes you', () => {
   /* The commonest action in the game, and it used to shove you a third of a tile.

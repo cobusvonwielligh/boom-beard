@@ -118,11 +118,32 @@ test('movement', async t => {
     assert.equal(p.y, tileCentre(2), 'drifted exactly onto the centre line');
   });
 
-  await t.test('leaves you alone on open ground - centring must not fight the assist', () => {
+  /* RAILS. There is no "the line the player chose" any more.
+   *
+   * This test used to assert the opposite: that on open ground an off-centre pirate kept their
+   * own line, because centring them would have dragged them off a gap they might be aiming for.
+   * That trade-off existed because the gap had to be lined up with by hand. Queued turns removed
+   * the need - you press the direction and the corner is taken for you - so the lane is now
+   * exact, and being on it is the invariant everything else rests on.
+   */
+  await t.test('puts you on the lane and keeps you there, even on open ground', () => {
     const st = room(); const p = spawn(st, 2, 2);
+    p.dir = DIR_R;
     p.y = tileCentre(2) + 60;                       // open above and below
-    for (let i = 0; i < 5; i++) step(st, p, IN_RIGHT);
-    assert.equal(p.y, tileCentre(2) + 60, 'held the line the player chose');
+
+    /* Walked back onto the lane, not snapped onto it. 60 units at base pace is three ticks, and
+     * each of those ticks is spent correcting rather than travelling - easing sideways AND
+     * travelling in the same tick would move both axes at once, which is the one thing a rail
+     * pirate may never do. Only something external can put them off-lane in the first place. */
+    let ticks = 0;
+    while (p.y !== tileCentre(2) && ticks < 20) { step(st, p, IN_RIGHT); ticks++; }
+    assert.ok(p.y === tileCentre(2), `never reached the lane centre, stuck at ${p.y}`);
+    assert.ok(ticks <= 4, `took ${ticks} ticks to walk 60 units back onto the lane`);
+
+    for (let i = 0; i < 20; i++) {
+      step(st, p, IN_RIGHT);
+      assert.equal(p.y, tileCentre(2), 'drifted off the lane while running along it');
+    }
   });
 
   await t.test('changeling inverts both axes', () => {
@@ -262,21 +283,32 @@ test('a held diagonal slides along whatever is in the way', async t => {
     assert.ok((p.x >> 8) === 4 && (p.y >> 8) === 4, 'left the tile it was boxed into');
   });
 
-  await t.test('a clear diagonal travels on both axes, at the same pace as a straight line', () => {
-    // Both axes every tick at DIAG_NUM/DIAG_DEN, so the ground covered matches walking straight.
-    // What must not happen is either axis losing ticks to the other, or the pair of them adding
-    // up to more than a straight walk - which would make holding two keys a speed perk.
+  /* RAILS. Holding two keys is not a diagonal; it is "keep going, and take the next corner
+   * that way".
+   *
+   * The old behaviour moved both axes every tick at 1/sqrt(2) each, which is a real diagonal and
+   * cannot exist on a lane. What a player holding two keys into a junction actually wants is to
+   * round the corner without having to time the second press, and that is what the queued turn
+   * gives them. The ground covered per tick is unchanged - a full pace, never more - so holding
+   * two keys is still not a speed perk.
+   */
+  await t.test('two keys are travel plus a queued turn, never a diagonal', () => {
     const st = room();
     const p = spawn(st, 4, 4);
     p.dir = DIR_R;
-    const x0 = p.x, y0 = p.y;
-    const TICKS = 10;
-    for (let i = 0; i < TICKS; i++) step(st, p, IN_RIGHT | IN_DOWN);
-    const pace = Math.max(1, ((speedOf(p) * DIAG_NUM) / DIAG_DEN) | 0);
-    assert.equal(p.x - x0, pace * TICKS, 'the x axis lost ticks to the y axis');
-    assert.equal(p.y - y0, pace * TICKS, 'the y axis lost ticks to the x axis');
-    const travelled = Math.hypot(p.x - x0, p.y - y0);
-    assert.ok(Math.abs(travelled - speedOf(p) * TICKS) < speedOf(p),
-      `a diagonal covered ${travelled | 0} units where a straight line covers ${speedOf(p) * TICKS}`);
+    const pace = speedOf(p);
+    let sawCorner = false;
+    for (let i = 0; i < 40; i++) {
+      const bx = p.x, by = p.y;
+      step(st, p, IN_RIGHT | IN_DOWN);
+      const dxm = Math.abs(p.x - bx), dym = Math.abs(p.y - by);
+      // Never more than one tick of pace, whichever way it was spent.
+      assert.ok(dxm + dym <= pace,
+        `tick ${i}: covered ${dxm + dym} units against a pace of ${pace}`);
+      if (dxm && dym) sawCorner = true;
+      assert.ok(!blocked(st, p, p.x, p.y), `tick ${i}: ended up inside something`);
+    }
+    // And the second key did get used: the pirate turned rather than running straight forever.
+    assert.ok(sawCorner || p.dir === DIR_D, 'the across-lane key was ignored entirely');
   });
 });

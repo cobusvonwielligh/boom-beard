@@ -297,15 +297,41 @@ Ordered by how much it would change a Friday session.
 
 ### Worth doing
 
-1. **Bots are competent at not dying; they are not yet good at killing.** `npm run botbench`
-   (15 bots, every map, headless, ~3 s for 20 simulated minutes each) measures 0.10 suicides and
-   0.60 kills per bot per minute - the kills up from 0.40 since bots are sometimes slow to react
-   to a bomb that is not theirs (`SURPRISE_*` in `ai.js`), which was asked for to make them a
-   little easier to kill. It was 2.3 and 0.33 - 87% of deaths self-inflicted - and the
-   biggest cause was not the reasoning at all: a bot turning into a gap from just past the corner
-   assist window pushed flat into the wall and froze there until its own fuse ran out (see
-   `steer` in `ai.js`). Next: hunting. Bots bomb walls and wander toward the nearest player;
-   nothing tries to trap anyone.
+1. **Bots are competent at not dying; they are not yet good at killing, and the rails set them
+   back.** `npm run botbench` (15 bots, every map, headless, ~1 s for 25 simulated minutes) is
+   noisy run to run - suicides swing 0.15 to 0.23 on a single run - so these are averages of
+   **25 runs**, which is the only way to tell a change from a coin flip here:
+
+   | per bot per minute | before rails | with rails |
+   |---|---|---|
+   | deaths | 0.442 | 0.414 |
+   | suicides | 0.133 | 0.161 |
+   | kills | 0.309 | 0.253 |
+   | perks | 1.27 | 1.12 |
+
+   The kills and perks are **inherent to rails and are not a bot problem**: every path is now
+   Manhattan, so nobody - bot or person - covers ground toward an off-axis target as fast as a
+   diagonal did. Players lost exactly the same thing.
+
+   Two bot-side changes were needed and both are measured. `steer` used to press the
+   PERPENDICULAR key to nudge back toward the lane, which on rails is a turn request: it asked
+   for turns the bot never wanted and fired them at junctions it had not evaluated. And `flood`
+   did not budget the **lead-in** - a bot part-way through a tile must reach the junction before
+   its first counted tile begins, up to half a tile nobody was paying for. Fixing those took
+   suicides from 0.187 back to 0.161.
+
+   The old diagonal (`withDiagonal`) became `withQueuedTurn`, which checks the junction the turn
+   will actually fire at rather than the geometry of a corner that no longer exists. Restricting
+   it to non-fleeing bots was tried and measured **identical** at n=25, so it was not kept - the
+   simpler single path wins.
+
+   Before any of this it was 2.3 deaths and 0.33 kills, 87% self-inflicted, and the biggest cause
+   was not the reasoning at all: a bot turning into a gap from just past the corner-assist window
+   pushed flat into the wall and froze there until its own fuse ran out. The rails deleted that
+   failure mode outright.
+
+   Next: hunting, and closing the kill gap. Bots bomb walls and wander toward the nearest player;
+   nothing tries to trap anyone, and on rails that matters more than it did.
 2. **Diseases have no source.** The Gift is gone, so the contagious statuses never start. If they
    come back it needs a new way in (a map hazard, a cursed drop); Reduction's old "blast radius
    forced to 1" was never implemented and has been dropped from RULES.md.

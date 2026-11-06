@@ -3,7 +3,7 @@
 
 import {
   MAX_PLAYERS, START_BOMBS, START_RADIUS, UNITS_PER_TILE, DIR_D, STATUS, STATUS_TICKS,
-  STAMINA_MAX, GULL_FIRST_TICK, MAX_HP, STREAK_WINDOW_TICKS,
+  STAMINA_MAX, GULL_FIRST_TICK, MAX_HP, STREAK_WINDOW_TICKS, DIR_NONE,
 } from '../constants.js';
 import { buildMap, cellType, cellHp, packCell } from '../maps.js';
 import { BLOCK, BLOCK_WALKABLE } from '../constants.js';
@@ -92,6 +92,18 @@ export function createPlayer(i, name) {
     stamina: STAMINA_MAX,
     staminaLevel: 0,   // Lung perks collected; raises the ceiling, see staminaMaxFor
     tired: false,
+    /* The buffered turn. See the RAILS note at the top of sim/movement.js.
+     *
+     * `turnWant` is a DIR_*, or DIR_NONE. `turnLeft` is how many more UNITS OF TRAVEL it survives
+     * - see TURN_BUFFER_UNITS for why the budget is distance and not ticks. Both are on the wire
+     * (`tw`/`tl` in playerWire) because prediction replays pending inputs from a snapshot, and a
+     * turn the client is holding that the snapshot does not mention is a divergence waiting for
+     * the next corner.
+     *
+     * DIR_NONE rather than 0, because DIR_R is 0: see the note on DIR_NONE in constants.js.
+     */
+    turnWant: DIR_NONE,
+    turnLeft: 0,
     // Ticks of slide left after letting go of the keys on water. See PUDDLE_SLIDE_TICKS.
     slide: 0,
     /* The deliberate slide, from a double-tap. Three fields and they are all the state there is:
@@ -186,6 +198,9 @@ export function hashState(state) {
     mix(p.alive ? 1 : 0); mix(p.bombs); mix(p.radius); mix(p.speed);
     mix(p.shields); mix(p.status); mix(p.score); mix(p.kills); mix(p.deaths); mix(p.hp | 0);
     mix(p.streakCount ?? 0); mix(p.streakLastKillTick ?? -1);
+    // The buffered turn is real state that changes where the pirate goes next, so a
+    // divergence in it has to show up in the hash rather than a corner later.
+    mix(p.turnWant ?? DIR_NONE); mix(p.turnLeft ?? 0);
   }
   for (const b of state.bombs) {
     mix(b.id); mix(b.tx); mix(b.ty); mix(b.owner); mix(b.radius); mix(b.at);
