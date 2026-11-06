@@ -3,7 +3,7 @@
 import {
   FUSE_TICKS, FUSE_TICKS_FAST, FIRE_TICKS, CHAIN_CAP_PER_TICK, IN_BOMB, STATUS, MAX_RADIUS,
   BLOCK, POWDER_RADIUS, DIR_R, DIR_U, DIR_L, DIR_D, HITBOX_UNITS, HITBOX_REDUCED_UNITS,
-  KICK_TILE_TICKS, KICK_MAX_TILES, DIR_NONE,
+  KICK_TILE_NUM, KICK_TILE_DEN, KICK_MAX_TILES, DIR_NONE,
 } from '../constants.js';
 import { has, streakActive, toTile, tileAt } from './state.js';
 import { endSlide } from './movement.js';
@@ -196,8 +196,9 @@ export function kick(state) {
     if (!bombCanSlideInto(state, tx + step[0], ty + step[1])) continue;
 
     b.kickDir = p.slideDir;
-    b.kickAt = state.tick + KICK_TILE_TICKS;
     b.kickLeft = KICK_MAX_TILES;
+    b.kickOwe = 0;                 // a fresh kick starts the carry from nothing
+    scheduleHop(state, b);
     // The collision costs the slider everything. See `endSlide`.
     endSlide(p);
     state.events.push({
@@ -210,6 +211,25 @@ export function kick(state) {
 const KICK_STEP = {
   [DIR_R]: [1, 0], [DIR_U]: [0, -1], [DIR_L]: [-1, 0], [DIR_D]: [0, 1],
 };
+
+/**
+ * Book the next hop: `kickFrom` is now, `kickAt` is when it lands.
+ *
+ * A tile takes KICK_TILE_NUM/KICK_TILE_DEN ticks - 2.6 - and a tick is an integer, so each hop
+ * takes a whole number of them and the leftover fifths ride along in `kickOwe` to be spent on a
+ * later one. Five hops come to exactly thirteen ticks; no hop is ever shorter than one tick.
+ *
+ * Both ends of the hop are on the bomb, and both are on the wire, because the CLIENT draws the
+ * motion and cannot otherwise know how long this particular hop is meant to take - they are 3, 3,
+ * 2, 3, 2 and a renderer assuming an average would jerk at the end of every short one.
+ */
+function scheduleHop(state, b) {
+  b.kickOwe = (b.kickOwe ?? 0) + KICK_TILE_NUM;
+  const ticks = Math.max(1, (b.kickOwe / KICK_TILE_DEN) | 0);
+  b.kickOwe -= ticks * KICK_TILE_DEN;
+  b.kickFrom = state.tick;
+  b.kickAt = state.tick + ticks;
+}
 
 /**
  * Advance every skating bomb by one tile when its step is due, and stop the ones that meet
@@ -243,7 +263,7 @@ export function slideBombs(state) {
 
     b.tx = nx; b.ty = ny;
     b.kickLeft--;
-    b.kickAt = state.tick + KICK_TILE_TICKS;
+    scheduleHop(state, b);
   }
 }
 

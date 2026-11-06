@@ -379,6 +379,60 @@ function faceNearestJunction(p, horizontal) {
   p.dir = horizontal ? (forward ? DIR_R : DIR_L) : (forward ? DIR_D : DIR_U);
 }
 
+/**
+ * Flush against a wall with a turn waiting: pivot into it, this tick, without walking backwards.
+ *
+ * This is the "sometimes you jump back at a corner" bug, and it was not a rendering artefact.
+ * Running into a dead end stops you FLUSH - 48 units past the centre of your tile, because that
+ * is what makes a wall feel solid - and a turn can only be spent standing exactly on a tile
+ * centre. So a turn pressed after the stop had to be reached by walking 48 units BACKWARDS, which
+ * at boot speed is one whole tick: one tick of travel the wrong way with the sprite facing the
+ * wrong way, then the turn. Press the same turn a tick earlier, while still exactly on the
+ * junction, and the corner was instant - which is why it only happened sometimes.
+ *
+ * The 48 units are not optional; the rails put every turn on a tile centre and that is the whole
+ * reason corners are reliable. What is optional is spending a visible tick of travel on them. So
+ * they are folded INTO the turn: the along-axis goes back to the junction and the facing becomes
+ * the one that was asked for, in the same tick, and the rest of the tick's pace is then spent down
+ * the new lane. The renderer draws the tick as one line, so it reads as cutting the corner, which
+ * is what the player asked for. Nobody gains ground: the distance is one they had already
+ * travelled, and the exchange is a tick of latency for none.
+ *
+ * Refused unless the turn is actually takeable, so it never moves anybody for nothing.
+ *
+ * @returns true if the pivot happened, in which case the turn is spent and `dir` is the new one.
+ */
+function cornerPivot(state, p, horizontal) {
+  const along = horizontal ? p.x : p.y;
+  // Only from the far half of the tile - the flush band. Short of the centre the travel loop
+  // already stops on the junction by itself, and exactly on it there is nothing to fix.
+  if ((along & (UNITS_PER_TILE - 1)) <= HALF_TILE) return false;
+  /* And only with the way ahead genuinely shut, which is what BOUNDS the step back.
+   *
+   * A blocked tile ahead means the hitbox cannot be inside it, so the furthest past the centre
+   * you can be is flush - half a hitbox short of the boundary, 48 units. Without this guard the
+   * same code reached from a standstill mid-corridor could snap half a tile, which is a teleport
+   * and not a pivot.
+   */
+  if (canStand(state, p, ...aheadTile(p))) return false;
+
+  const want = p.turnWant;
+  const [vx, vy] = DIR_VEC[want] ?? DIR_VEC[DIR_D];
+  const tx = toTile(p.x), ty = toTile(p.y);
+  if (!canStand(state, p, tx + vx, ty + vy)) return false;
+
+  const back = tileCentre(toTile(along));
+  const nx = horizontal ? back : p.x, ny = horizontal ? p.y : back;
+  // It is where we came from, so it is legal - unless a wall grew there or a bomb landed on it
+  // while we stood flush. Verified rather than assumed, like every other move on the rails.
+  if (blocked(state, p, nx, ny)) return false;
+
+  p.x = nx; p.y = ny;
+  p.dir = want;
+  clearTurn(p);
+  return true;
+}
+
 /** The tile immediately ahead along the current facing, as [tx, ty]. */
 function aheadTile(p) {
   const [vx, vy] = DIR_VEC[p.dir] ?? DIR_VEC[DIR_D];
@@ -745,6 +799,7 @@ export function step(state, p, mask) {
   const horizontal = p.dir === DIR_L || p.dir === DIR_R;
   const along = horizontal ? dx : dy;
   const across = horizontal ? dy : dx;
+  let pivoted = false;
 
   if (across) {
     const want = horizontal
@@ -775,7 +830,9 @@ export function step(state, p, mask) {
      * going, and spends the turn at the junction they are already heading for.
      */
     if (wantsTurn(p) && !atJunction(p) && !canStand(state, p, ...aheadTile(p))) {
-      faceNearestJunction(p, horizontal);
+      // Pivot into the corner if we can, and only walk back to the junction if we cannot.
+      if (cornerPivot(state, p, horizontal)) pivoted = true;
+      else faceNearestJunction(p, horizontal);
     }
   } else if (!coasting) {
     /* NOTHING pressed along this lane, so the pirate must not continue down it.
@@ -823,14 +880,21 @@ export function step(state, p, mask) {
        * corner" feeling the rails exist to remove, re-introduced by the flush stop that was
        * supposed to make walls feel solid. The two features only work together.
        *
-       * The NEAREST junction, which may be behind them.
+       * The NEAREST junction, which may be behind them - unless they are flush against a wall,
+       * in which case the pivot takes the corner here and now rather than walking back to it.
        */
-      faceNearestJunction(p, horizontal);
+      if (cornerPivot(state, p, horizontal)) pivoted = true;
+      else faceNearestJunction(p, horizontal);
     }
   }
 
-  // A correction owns the tick; see pinToLane. In ordinary play it never fires.
-  const travelled = pinToLane(state, p, speed) ? 0 : railTravel(state, p, speed);
+  /* A correction owns the tick; see pinToLane. In ordinary play neither of these fires.
+   *
+   * The pivot owns it for the same reason the lane correction does: it has already moved the
+   * pirate along the lane this tick, and travelling on top of that would be two axes of movement
+   * bought with one tick of pace - the one thing rail travel may never do. One tick to turn in the
+   * corner, facing the way you asked, and the next tick walks out of it. */
+  const travelled = (pivoted || pinToLane(state, p, speed)) ? 0 : railTravel(state, p, speed);
 
   /* `moving` is GROUND COVERED, not keys held.
    *
@@ -841,7 +905,7 @@ export function step(state, p, mask) {
    * right", and that is exactly what it was. Nothing else about the tick changes; the stamina
    * drain above is still charged for pressing, because leaning on a wall is effort.
    */
-  p.moving = travelled > 0;
+  p.moving = travelled > 0 || pivoted;
 
   // One last chance at the turn, so arriving exactly on a junction this tick turns on this tick
   // rather than on the next. Without it every corner costs a tick at the pace that lands square.

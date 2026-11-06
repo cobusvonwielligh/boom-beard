@@ -10,7 +10,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   BLOCK, IN_RIGHT, IN_LEFT, IN_SLIDE, IN_BOMB, FUSE_TICKS, UNITS_PER_TILE, STAMINA_MAX,
-  DIR_R, DIR_L, DIR_NONE, KICK_TILE_TICKS, KICK_MAX_TILES, MAX_BOMBS_CARRIED,
+  DIR_R, DIR_L, DIR_NONE, KICK_TILE_NUM, KICK_TILE_DEN, KICK_MAX_TILES, MAX_BOMBS_CARRIED,
 } from '../shared/constants.js';
 import { createState, createPlayer, setTile, tileCentre, tileAt } from '../shared/sim/state.js';
 import { placeable } from '../shared/sim/bombs.js';
@@ -239,7 +239,7 @@ test('kicking a bomb, Game of Bombs style', async t => {
     assert.ok(b.tx > 6, 'could not kick my own bomb');
   });
 
-  await t.test('it travels about a tile every KICK_TILE_TICKS', () => {
+  await t.test('it travels a tile every KICK_TILE_NUM/KICK_TILE_DEN ticks, remainder and all', () => {
     const s = room(31, 9);
     const p = spawn(s, 0, 3, 4);
     const b = bombAt(s, 6, 4, 1);
@@ -256,11 +256,13 @@ test('kicking a bomb, Game of Bombs style', async t => {
     assert.ok(kicked, 'the bomb was never kicked');
 
     const from = b.tx;
-    const ticks = KICK_TILE_TICKS * 5;
+    // Five tiles, which is exactly KICK_TILE_NUM ticks: the carry in scheduleHop means the hops
+    // are 3, 3, 2, 3, 2 and the fifth one lands on the nose rather than a tick either side.
+    const ticks = KICK_TILE_NUM;
     for (let n = 0; n < ticks; n++) tick(s, []);
     const tiles = b.tx - from;
-    assert.ok(tiles >= 4 && tiles <= 6,
-      `covered ${tiles} tiles in ${ticks} ticks; ${KICK_TILE_TICKS} ticks a tile means about 5`);
+    assert.equal(tiles, KICK_TILE_DEN,
+      `covered ${tiles} tiles in ${ticks} ticks; the ratio says exactly ${KICK_TILE_DEN}`);
   });
 
   await t.test('a kicked bomb that is caught by fire still chains normally', () => {

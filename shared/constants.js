@@ -176,10 +176,16 @@ export const SLIDE_SKATE_BONUS_SHAVE_NUM = 1, SLIDE_SKATE_BONUS_SHAVE_DEN = 10;
 export const SLIDE_DRAG_NUM = 47, SLIDE_DRAG_DEN = 50;
 export const SLIDE_EXIT_UNITS = 26;
 export const SLIDE_MAX_TICKS = 30;
-// A fifth of a fresh bar, and it is taken in full at the launch rather than per tick: a slide you
-// can abort halfway through for half price is a slide nobody ever commits to. Scaled with
-// STAMINA_MAX for the same reason the Stim is - three slides should still be most of your wind.
-export const SLIDE_STAMINA_COST = 1400;
+/* Taken in full at the launch rather than per tick: a slide you can abort halfway through for half
+ * price is a slide nobody ever commits to. Scaled with STAMINA_MAX for the same reason the Stim
+ * is.
+ *
+ * 940, a third less than the 1400 it was. A fifth of a fresh bar made the slide something you
+ * spent the round saving up for, and a mechanic that is also the only way to kick a bomb cannot
+ * be rationed that hard - at a third less it is about seven slides to a bar instead of five, which
+ * is often enough to learn the kick with.
+ */
+export const SLIDE_STAMINA_COST = 940;
 // You may not chain them. Long enough that the second slide is a decision rather than the rest of
 // the first one, short enough to still be the answer to a chase.
 export const SLIDE_COOLDOWN_TICKS = 18;
@@ -305,19 +311,27 @@ export const CHAIN_CAP_PER_TICK = 64; // safety valve, see docs/RULES.md §3
  * with no answer. It also means a kick no longer needs any bookkeeping about the owner's bomb
  * slot: the bomb is still on the board, so the slot is still spent, by the ordinary rule.
  *
- * THREE ticks a tile - ten tiles a second, three times a pirate at base pace and about the speed
- * of a slide at full tilt. Six ticks was the first number and it was far too slow: a bomb you can
- * stroll away from is not a weapon. The floor on this is set by the wire, not by taste - the
- * client draws the hop by interpolating between tiles and snapshots arrive every two ticks, so a
- * hop shorter than about three ticks has no room left to be drawn smoothly in and goes back to
- * looking like a bomb teleporting.
+ * THIRTEEN FIFTHS of a tick a tile - 2.6, so 11.5 tiles a second. Six ticks was the first number
+ * and it was far too slow: a bomb you can stroll away from is not a weapon. Three was the second,
+ * and this is that 15% faster again.
+ *
+ * A RATIO rather than a count, because the tick is an integer and 2.6 is not. A hop is scheduled
+ * for a whole number of ticks and the fraction left over is carried into the next one, so the
+ * hops run 3, 3, 2, 3, 2 and five of them take exactly thirteen ticks. Rounding instead - 3, or
+ * 2 - is the only alternative, and it is a 15% error in the pace of the headline mechanic in a
+ * game where the same arithmetic has to come out identically on two machines. Carrying the
+ * remainder costs one small integer on the bomb and is exact.
+ *
+ * Every hop therefore has its own length, which the renderer must read rather than assume: see
+ * `kickFrom` in sim/bombs.js. A constant there would draw a 2-tick hop as though it had 2.6 to
+ * run and jerk back into place at the end of every one.
  *
  * KICK_MAX_TILES is the range. Eight tiles, then it stops wherever it got to and sits there
  * ticking. Unbounded travel made a kick a way to post a bomb to the far side of the map, which is
  * neither aimable nor answerable; eight is far enough to clear a room and short enough that the
  * person who kicked it is still part of what happens next.
  */
-export const KICK_TILE_TICKS = 3;
+export const KICK_TILE_NUM = 13, KICK_TILE_DEN = 5;
 export const KICK_MAX_TILES = 8;
 
 /* A parting shot. One death in ten leaves a live bomb on the tile where it happened.

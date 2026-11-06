@@ -334,6 +334,42 @@ test('rails: travel and turning', async t => {
     assert.equal(p.x, tileCentre(25), 'the held turn fired at the wrong column');
   });
 
+  /* Turning out of a dead end never walks you backwards, and never faces you backwards.
+   *
+   * A wall stops you FLUSH, 48 units past the centre of your tile, and a turn can only be spent
+   * standing exactly on a centre. So a turn pressed after the stop used to be reached by walking
+   * back to the junction - a tick of travel the wrong way with the sprite pointing the wrong way,
+   * which is the "sometimes you jump back at a corner" report. `cornerPivot` folds those 48 units
+   * into the turn itself, so the pirate never travels away from the corner and never looks away
+   * from it. The distance back is still spent; it is a correction rather than a stride.
+   */
+  await t.test('turning out of a dead end never steps or faces backwards', () => {
+    for (const speed of [0, MAX_SKATES]) {
+      const st = room(9, 9);
+      setTile(st.map, 6, 4, BLOCK.IRON);                 // the dead end, with a way out above
+      const p = spawn(st, 3, 4, { speed });
+
+      // Run at it until the wall stops us, so we end up flush and mid-segment.
+      for (let n = 0; n < 40; n++) step(st, p, IN_RIGHT);
+      assert.ok(offset(p.x) > HALF, `pace ${speed}: not flush against the wall`);
+      assert.equal(p.dir, DIR_R);
+
+      // NOW ask for the turn, which is the case that used to back up.
+      const flush = p.x;
+      step(st, p, IN_RIGHT | IN_UP);
+      assert.notEqual(p.dir, DIR_L, `pace ${speed}: the pirate turned to face away from the corner`);
+      assert.equal(p.dir, DIR_U, `pace ${speed}: pressing up at a dead end did not face up`);
+      assert.ok(p.x <= flush, `pace ${speed}: moved further into the wall`);
+      assert.equal(offset(p.x), HALF, `pace ${speed}: the pivot did not land on the junction`);
+
+      // And it is out of the corner on the very next tick, rather than still turning around.
+      const y = p.y;
+      step(st, p, IN_RIGHT | IN_UP);
+      assert.ok(p.y < y, `pace ${speed}: did not leave the corner on the tick after the pivot`);
+      assertOnRail(p, `pace ${speed}: after the pivot`);
+    }
+  });
+
   await t.test('reversing needs no junction and happens at once', () => {
     const st = room(21, 7);
     const p = spawn(st, 5, 3, { speed: 0 });
