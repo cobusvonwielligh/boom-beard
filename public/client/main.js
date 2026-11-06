@@ -1444,7 +1444,9 @@ function frame(now) {
     syncCountIn();
     fuseTicks();
     world.updateFires();
-    world.interpolate(net.serverTickNow(), dt);
+    // The accumulator's leftover IS how far through the current tick this frame is - the one
+    // number that lets your own pirate be drawn between ticks instead of chasing them.
+    world.interpolate(net.serverTickNow(), dt, Math.min(1, acc / step));
     renderer.frame(dt);
   }
 

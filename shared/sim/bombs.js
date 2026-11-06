@@ -3,9 +3,10 @@
 import {
   FUSE_TICKS, FUSE_TICKS_FAST, FIRE_TICKS, CHAIN_CAP_PER_TICK, IN_BOMB, STATUS, MAX_RADIUS,
   BLOCK, POWDER_RADIUS, DIR_R, DIR_U, DIR_L, DIR_D, HITBOX_UNITS, HITBOX_REDUCED_UNITS,
-  KICK_TILE_TICKS, DIR_NONE,
+  KICK_TILE_TICKS, KICK_MAX_TILES, DIR_NONE,
 } from '../constants.js';
 import { has, streakActive, toTile, tileAt } from './state.js';
+import { endSlide } from './movement.js';
 import { spread } from './fire.js';
 import { damage, melt } from './blocks.js';
 import { maybeDrop } from './perks.js';
@@ -155,29 +156,53 @@ export function place(state, p, mask) {
  * moving bomb and sending it back the other way is exactly the trick this mechanic is for.
  */
 export function kick(state) {
+  if (!state.bombs.length) return;
   const players = state.players;
   for (let i = 0; i < players.length; i++) {
     const p = players[i];
-    if (!p || !p.alive || !(p.slideV > 0)) continue;
-    if (!state.bombs.length) return;
+    // Sliding on THIS tick, which includes the tick a slide ended on - see `slideTick` in
+    // sim/movement.js. A slide launched from flush against a bomb covers no ground and is over
+    // inside the same tick, and that is still a kick.
+    if (!p || !p.alive || p.slideTick !== state.tick) continue;
+    const step = KICK_STEP[p.slideDir];
+    if (!step) continue;
 
-    const half = HITBOX_UNITS >> 1;
-    const x0 = (p.x - half) >> 8, x1 = (p.x + half - 1) >> 8;
-    const y0 = (p.y - half) >> 8, y1 = (p.y + half - 1) >> 8;
+    /* Read off the LEADING EDGE of the hitbox, one unit out.
+     *
+     * A bomb is solid to a slide, so the slide has already come to rest flush against it: the
+     * front face of the box is exactly on the tile boundary and the box overlaps nothing. An
+     * overlap test therefore finds nothing, and a test on "the tile ahead of my centre" fires up
+     * to 176 units early - most of a tile of daylight between the pirate and a bomb that has
+     * started moving. One unit past the front face is the contact itself.
+     */
+    const half = (has(p, STATUS.REDUCTION) ? HITBOX_REDUCED_UNITS : HITBOX_UNITS) >> 1;
+    const reach = half + 1;
+    const tx = toTile(p.x + step[0] * reach), ty = toTile(p.y + step[1] * reach);
+    // Not the one underfoot. Standing on a bomb and sliding away from it is not kicking it.
+    if (tx === toTile(p.x) && ty === toTile(p.y)) continue;
 
-    for (const b of state.bombs) {
-      if (b.tx < x0 || b.tx > x1 || b.ty < y0 || b.ty > y1) continue;
-      // Already going this way: do not restart the step clock, or a slider riding alongside a
-      // bomb would hold it at the start of a tile and it would never arrive anywhere.
-      if (b.kickDir === p.slideDir) continue;
+    const b = bombAt(state, tx, ty);
+    if (!b) continue;
+    // Already going this way: do not restart the step clock, or a slider riding alongside a
+    // bomb would hold it at the start of a tile and it would never arrive anywhere.
+    if (b.kickDir === p.slideDir) continue;
+    /* A bomb with nowhere to go is not kicked at all. Nothing happens to it, and no event.
+     *
+     * It is wedged against a wall, another bomb, the water or somebody's back, so the only thing
+     * a kick could do is restart its step clock and announce a shove that never moves it. The
+     * slide still stops - the bomb is solid, and that part is physics - but the bomb is left
+     * exactly as it was, fuse and all.
+     */
+    if (!bombCanSlideInto(state, tx + step[0], ty + step[1])) continue;
 
-      b.kickDir = p.slideDir;
-      b.kickAt = state.tick + KICK_TILE_TICKS;
-      b.kickBy = p.i;
-      state.events.push({
-        e: 'kick', tick: state.tick, id: b.id, x: b.tx, y: b.ty, by: p.i, d: p.slideDir,
-      });
-    }
+    b.kickDir = p.slideDir;
+    b.kickAt = state.tick + KICK_TILE_TICKS;
+    b.kickLeft = KICK_MAX_TILES;
+    // The collision costs the slider everything. See `endSlide`.
+    endSlide(p);
+    state.events.push({
+      e: 'kick', tick: state.tick, id: b.id, x: b.tx, y: b.ty, by: p.i, d: p.slideDir,
+    });
   }
 }
 
@@ -213,9 +238,11 @@ export function slideBombs(state) {
     if (!step) { b.kickDir = DIR_NONE; continue; }
     const nx = b.tx + step[0], ny = b.ty + step[1];
 
-    if (!bombCanSlideInto(state, nx, ny, b.kickBy)) { b.kickDir = DIR_NONE; continue; }
+    // Out of range, or something in the way: it comes to rest here, still ticking.
+    if (!(b.kickLeft > 0) || !bombCanSlideInto(state, nx, ny)) { b.kickDir = DIR_NONE; continue; }
 
     b.tx = nx; b.ty = ny;
+    b.kickLeft--;
     b.kickAt = state.tick + KICK_TILE_TICKS;
   }
 }
@@ -223,21 +250,20 @@ export function slideBombs(state) {
 /**
  * Is this tile somewhere a skating bomb may come to rest?
  *
- * `kickedBy` is the seat that kicked it, who is never an obstacle to their own kick. A slide
- * launches at three times walking pace, so the kicker passes straight THROUGH the bomb and is
- * usually ahead of it for the first few tiles - without this exception they would stop their own
- * kick dead the moment their slide ran out, which is both baffling to play and not what the
- * mechanic is for. Anybody else stops it, and so does the kicker's own bomb on the way back if
- * somebody returns it.
+ * Anybody standing on it stops it - that is what makes a kicked bomb a weapon you can answer. It
+ * comes to rest on the tile BEFORE them, still ticking, and they can kick it straight back.
+ *
+ * No exception for the kicker, and none for a player mid-slide. Both existed while a slide could
+ * pass through a bomb: the kicker outran their own kick and would have stopped it dead a few
+ * tiles later. A slide now collides with the bomb and ends there, so the kicker is always behind
+ * it and never in its path, and the exceptions were only a way for a bomb to pass through people.
  */
-function bombCanSlideInto(state, tx, ty, kickedBy) {
+function bombCanSlideInto(state, tx, ty) {
   if (tileAt(state.map, tx, ty) !== BLOCK.FLOOR) return false;
   if (bombAt(state, tx, ty)) return false;
   if (puddleAt(state, tx, ty)) return false;        // a fuse does not survive the water
   for (const p of state.players) {
     if (!p || !p.alive) continue;
-    if (p.i === kickedBy) continue;                 // never blocked by whoever kicked it
-    if (p.slideV > 0) continue;                     // mid-slide: passing through, not an obstacle
     if (toTile(p.x) === tx && toTile(p.y) === ty) return false;
   }
   return true;

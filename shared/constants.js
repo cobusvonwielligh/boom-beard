@@ -305,11 +305,20 @@ export const CHAIN_CAP_PER_TICK = 64; // safety valve, see docs/RULES.md §3
  * with no answer. It also means a kick no longer needs any bookkeeping about the owner's bomb
  * slot: the bomb is still on the board, so the slot is still spent, by the ordinary rule.
  *
- * Six ticks a tile is about 5.2 tiles a second - a shade faster than a pirate at base pace
- * (8.5 ticks a tile), so a bomb kicked at you is a thing you have to get out of the way of
- * rather than something you can casually outwalk.
+ * THREE ticks a tile - ten tiles a second, three times a pirate at base pace and about the speed
+ * of a slide at full tilt. Six ticks was the first number and it was far too slow: a bomb you can
+ * stroll away from is not a weapon. The floor on this is set by the wire, not by taste - the
+ * client draws the hop by interpolating between tiles and snapshots arrive every two ticks, so a
+ * hop shorter than about three ticks has no room left to be drawn smoothly in and goes back to
+ * looking like a bomb teleporting.
+ *
+ * KICK_MAX_TILES is the range. Eight tiles, then it stops wherever it got to and sits there
+ * ticking. Unbounded travel made a kick a way to post a bomb to the far side of the map, which is
+ * neither aimable nor answerable; eight is far enough to clear a room and short enough that the
+ * person who kicked it is still part of what happens next.
  */
-export const KICK_TILE_TICKS = 6;
+export const KICK_TILE_TICKS = 3;
+export const KICK_MAX_TILES = 8;
 
 /* A parting shot. One death in ten leaves a live bomb on the tile where it happened.
  *

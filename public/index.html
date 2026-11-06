@@ -905,6 +905,35 @@
       </div>
     </div>
 
+    <!-- Escape used to leave the round outright. It is the key that closes everything else on the
+     page, so a tap of it is a reflex - and the one thing in the game a reflex must not be able to
+     do is abandon a round you cannot rejoin in the same shape. The round keeps running behind
+     this, which the copy says plainly: a browser arena cannot pause for one player, and a modal
+     that pretended otherwise would get people killed while they read it.
+
+     A DIRECT CHILD OF BODY, and that is not tidiness. It used to live inside the menu card, and
+     the menu is `display: none` for the whole time you are playing - which is the only time this
+     dialog is ever opened. `showModal()` on a dialog with a `display: none` ancestor still puts
+     the document in the top layer's inert state, so every click on the page was swallowed, while
+     the dialog itself rendered nothing at all: press Escape and the game simply stopped responding
+     with no way back. Out here it has no hidden ancestor and the modal is visible, which is what
+     makes the inertness legible instead of a lock-up. -->
+    <dialog
+      id="leaveDialog"
+      class="regionDialog leaveDialog"
+      aria-labelledby="leaveDialogHeading"
+    >
+      <h2 class="regionHeading" id="leaveDialogHeading">Leave the game?</h2>
+      <p class="leaveDialogBody">
+        The round carries on without you, and your seat is held only for a short
+        while.
+      </p>
+      <div class="regionDialogActions">
+        <button id="leaveConfirm" class="goldAction" type="button">leave</button>
+        <button id="leaveCancel" class="ghost" type="button">keep playing</button>
+      </div>
+    </dialog>
+
     <div id="menu">
       <!-- The music, drawn. Absolutely placed so it escapes the centring grid, and first in the
        markup so the card paints over it. See client/menuviz.js. -->
@@ -1045,31 +1074,6 @@
               </button>
               <button id="regionCancel" class="ghost" type="button">
                 cancel
-              </button>
-            </div>
-          </dialog>
-          <!-- Escape used to leave the round outright. It is the key that closes everything else
-           on the page, so a tap of it is a reflex - and the one thing in the game a reflex must
-           not be able to do is abandon a round you cannot rejoin in the same shape. The round
-           keeps running behind this, which the copy says plainly: a browser arena cannot pause
-           for one player, and a modal that pretended otherwise would get people killed while
-           they read it. -->
-          <dialog
-            id="leaveDialog"
-            class="regionDialog leaveDialog"
-            aria-labelledby="leaveDialogHeading"
-          >
-            <h2 class="regionHeading" id="leaveDialogHeading">Leave the game?</h2>
-            <p class="leaveDialogBody">
-              The round carries on without you, and your seat is held only for a
-              short while.
-            </p>
-            <div class="regionDialogActions">
-              <button id="leaveConfirm" class="goldAction" type="button">
-                leave
-              </button>
-              <button id="leaveCancel" class="ghost" type="button">
-                keep playing
               </button>
             </div>
           </dialog>

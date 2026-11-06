@@ -3988,17 +3988,22 @@ export function createRenderer(canvas, world) {
        *
        * The simulation only ever puts a bomb on a tile - every rule that touches one, from the
        * blast shape to chains to solidity, is written against tx/ty - and it hops a whole tile
-       * every KICK_TILE_TICKS. Drawn raw that is a bomb teleporting five times a second. The
-       * wire carries `kickAt`, the tick of the NEXT hop, so the fraction of the way through the
-       * current hop is known exactly and the bomb can be drawn sliding back from where it is
-       * toward where it came from.
+       * every KICK_TILE_TICKS. Drawn raw that is a bomb teleporting. The wire carries `kickAt`,
+       * the tick of the NEXT hop, so the fraction of the way through the current hop is known
+       * exactly and the bomb can be drawn sliding back from where it is toward where it came from.
        *
-       * Reads the client's own interpolated clock, like everything else drawn here, so it stays
-       * smooth between snapshots rather than stepping once per snapshot.
+       * Against `tickNow` - the SNAPSHOT clock carried forward in real time - and not against
+       * `world.tickF`. That was the bug behind "the bomb jumps from block to block": `tickF` is
+       * INTERP_DELAY_TICKS in the past, because remote players are deliberately drawn four ticks
+       * behind, while `b.tx`/`b.ty` are from the newest snapshot and are not. So `kickAt - tickF`
+       * was about KICK_TILE_TICKS + 4, the fraction pinned itself at 1, and the bomb was drawn a
+       * whole tile behind itself - stepping once per snapshot and never gliding at all. A bomb's
+       * position is not interpolation-delayed, so it must not be read against a delayed clock;
+       * its fuse ring on the very next line already gets this right.
        */
       let bx = b.tx, by = b.ty;
       if (b.kickDir !== undefined && b.kickDir >= 0 && b.kickAt > 0) {
-        const left = Math.max(0, Math.min(1, (b.kickAt - (world.tickF ?? world.tick)) / KICK_TILE_TICKS));
+        const left = Math.max(0, Math.min(1, (b.kickAt - tickNow) / KICK_TILE_TICKS));
         const step = [[1, 0], [0, -1], [-1, 0], [0, 1]][b.kickDir];
         if (step) { bx -= step[0] * left; by -= step[1] * left; }
       }

@@ -105,6 +105,8 @@ export function createWorld() {
     if (!me) return;
     w.pending.push({ tick, mask });
     if (w.pending.length > 200) w.pending.shift();   // connection is gone; stop growing
+    // Where this tick STARTED, which is what the renderer interpolates from. See w.interpolate.
+    me.px = me.x; me.py = me.y;
     step(w, me, mask);
     // Deliberately does NOT touch rx/ry. The rendered position eases toward the simulated one in
     // interpolate(), which is what absorbs reconciliation corrections instead of showing them.
@@ -254,6 +256,17 @@ export function createWorld() {
 
     for (const inp of w.pending) step(w, me, inp.mask);
 
+    /* Carry the tick's starting point along with the correction.
+     *
+     * The renderer draws you between `px,py` and `x,y`, so leaving `px` where it was would turn a
+     * correction into a frame of impossible velocity - and the replay above re-runs the pending
+     * inputs, which moved `px` once per input already. Shifting it by the same delta the
+     * correction applied keeps the drawn speed continuous: a reconcile changes where you are, not
+     * how fast you look like you are going.
+     */
+    me.px = (me.px ?? me.x) + (me.x - before.x);
+    me.py = (me.py ?? me.y) + (me.y - before.y);
+
     if (Math.abs(me.x - before.x) > 8 || Math.abs(me.y - before.y) > 8) w.lastCorrection = performance.now();
   }
 
@@ -298,8 +311,13 @@ export function createWorld() {
     p.trail.length = 0;
   }
 
-  /** Called every frame: advance rendered positions and sample tracers. */
-  w.interpolate = (serverTickNow, dtMs = 16) => {
+  /**
+   * Called every frame: advance rendered positions and sample tracers.
+   *
+   * `frac` is how far through the CURRENT local tick this frame is, 0 to 1 - the leftover of the
+   * fixed-step accumulator in main.js. Your own pirate is drawn from it; see below.
+   */
+  w.interpolate = (serverTickNow, dtMs = 16, frac = 1) => {
     const renderTick = serverTickNow - INTERP_DELAY_TICKS;
     /* The fractional clock everything drawn should read.
      *
@@ -311,26 +329,34 @@ export function createWorld() {
       if (!p) continue;
 
       if (p.i === w.you) {
-        // Ease the drawn position toward the simulated one. Reconciliation runs 15 times a
-        // second and is usually a no-op, but when it is not, a hard assignment shows up as a
-        // stutter. An ~80 ms time constant hides a correction without feeling floaty.
-        // A longer time constant while being pushed out of something solid: the simulation is
-        // already moving slowly and deliberately there, and a fast follow would reintroduce
-        // exactly the flick the slow push exists to avoid.
-        const pushed = blocked(w, p, p.x, p.y);
-        const k = 1 - Math.exp(-dtMs / (pushed ? 180 : 18));
-        const dx = p.x - p.rx, dy = p.y - p.ry;
-        // A whole tile out means a respawn or a teleport, not a correction - just go.
+        /* Your own pirate is drawn BETWEEN the last two simulated positions, by how far through
+         * the current tick we are. Not eased toward the current one.
+         *
+         * It was an exponential ease with an ~18 ms time constant, and that is the whole of "the
+         * movement is choppy, and worse with boots". The target is a staircase - prediction moves
+         * it once a tick, 30 times a second, in one jump of `speed` units - and easing toward a
+         * staircase reproduces the staircase in the velocity: at 60 fps the drawn pirate covered
+         * 59% of the step on the frame the tick landed and 24% on the frame after, so every
+         * second frame was two and a half times longer than its neighbour. The RATIO is fixed, so
+         * the faster the legs the bigger the wobble in pixels, which is why skates made it worse.
+         *
+         * A lerp over the tick fraction has no such term: the frame-to-frame distance is the same
+         * every frame by construction, and the drawn position is exactly the simulated one at the
+         * instant the tick turns over. It also costs nothing in responsiveness - there is no lag
+         * term to tune, because the interpolation is between two positions we already have rather
+         * than a chase after one we do not.
+         */
+        const dx = p.x - (p.px ?? p.x), dy = p.y - (p.py ?? p.y);
+        // A whole tile in one tick means a respawn or an unstick teleport, not a walk.
         if (Math.abs(dx) > 256 || Math.abs(dy) > 256) teleport(p);
         else {
-          const nx = p.rx + dx * k, ny = p.ry + dy * k;
-          // The eased path is a straight line and the simulated one was not, so easing across a
-          // corner can draw you briefly inside a wall. Rather than snapping to the simulated
-          // position - which is the flick this used to produce - try each axis on its own: one
-          // of them is almost always legal, and taking just that one keeps the motion smooth.
+          const nx = (p.px ?? p.x) + dx * frac, ny = (p.py ?? p.y) + dy * frac;
+          // A tick that moved on both axes turned a corner, and the straight line between its
+          // ends cuts through the corner block. Try each axis alone: one of them is the path
+          // actually taken, and taking just that one keeps the motion smooth.
           if (!blocked(w, p, nx, ny)) { p.rx = nx; p.ry = ny; }
-          else if (!blocked(w, p, nx, p.ry)) { p.rx = nx; }
-          else if (!blocked(w, p, p.rx, ny)) { p.ry = ny; }
+          else if (!blocked(w, p, nx, p.y)) { p.rx = nx; p.ry = p.y; }
+          else if (!blocked(w, p, p.x, ny)) { p.rx = p.x; p.ry = ny; }
           else { p.rx = p.x; p.ry = p.y; }      // genuinely boxed in; nothing smooth left to do
         }
       } else if (p.buf.length >= 2) {

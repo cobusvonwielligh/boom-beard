@@ -10,7 +10,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   BLOCK, IN_RIGHT, IN_LEFT, IN_SLIDE, IN_BOMB, FUSE_TICKS, UNITS_PER_TILE, STAMINA_MAX,
-  DIR_R, DIR_L, DIR_NONE, KICK_TILE_TICKS, MAX_BOMBS_CARRIED,
+  DIR_R, DIR_L, DIR_NONE, KICK_TILE_TICKS, KICK_MAX_TILES, MAX_BOMBS_CARRIED,
 } from '../shared/constants.js';
 import { createState, createPlayer, setTile, tileCentre, tileAt } from '../shared/sim/state.js';
 import { placeable } from '../shared/sim/bombs.js';
@@ -112,11 +112,16 @@ test('kicking a bomb, Game of Bombs style', async t => {
     kickRight(s, p, 120);
     assert.equal(b.tx, 13, `stopped on column ${b.tx}, not against the person on 14`);
 
-    // And back the other way. The victim slides left, into the bomb resting beside them.
+    /* And back the other way. The victim slides left, into the bomb resting beside them.
+     *
+     * No assertion on `slideV` after the tick, deliberately: the bomb is solid, so this slide
+     * collides on the very tick it launches and is over inside it. That is the mechanic working -
+     * see `slideTick` in sim/movement.js for why the kick still fires. */
     victim.stamina = STAMINA_MAX;
     victim.slideCool = 0;
     tick(s, mask(victim.i, IN_LEFT | IN_SLIDE));
-    assert.ok(victim.slideV > 0, 'the return slide never launched');
+    assert.ok(s.events.some(e => e.e === 'kick' && e.id === b.id && e.by === victim.i),
+      'the return kick never happened');
     for (let n = 0; n < 30; n++) tick(s, []);
     assert.ok(b.tx < 13, `the bomb was not kicked back; it is on column ${b.tx}`);
   });
@@ -132,12 +137,66 @@ test('kicking a bomb, Game of Bombs style', async t => {
   });
 
   await t.test('it stops at the map edge rather than leaving', () => {
-    const s = room();
+    // Narrow enough that the border is inside KICK_MAX_TILES, or the range cap stops it first.
+    const s = room(16, 9);
     const p = spawn(s, 0, 3, 4);
     const b = bombAt(s, 6, 4, 1);
     kickRight(s, p, 300);
     assert.ok(s.bombs.includes(b), 'the bomb left the map');
     assert.equal(b.tx, s.map.w - 2, `ended on column ${b.tx}, not against the border`);
+  });
+
+  await t.test('it travels at most KICK_MAX_TILES', () => {
+    const s = room(40, 9);
+    const p = spawn(s, 0, 3, 4);
+    const b = bombAt(s, 6, 4, 1);
+    kickRight(s, p, 300);
+    assert.equal(b.tx, 6 + KICK_MAX_TILES,
+      `ran ${b.tx - 6} tiles down an empty room; the range is ${KICK_MAX_TILES}`);
+    assert.equal(b.kickDir, DIR_NONE, 'still marked as skating after it ran out of range');
+  });
+
+  await t.test('sliding into a bomb costs the slider the slide', () => {
+    const s = room();
+    const p = spawn(s, 0, 3, 4);
+    const b = bombAt(s, 6, 4, 1);
+
+    tick(s, mask(p.i, IN_RIGHT | IN_SLIDE));
+    let kicked = false;
+    for (let n = 0; n < 40 && !kicked; n++) {
+      kicked = s.events.some(e => e.e === 'kick' && e.id === b.id);
+      if (!kicked) tick(s, []);
+    }
+    assert.ok(kicked, 'the bomb was never kicked');
+    assert.equal(p.slideV, 0, 'the slider kept their momentum through the collision');
+    assert.ok(p.slideCool > 0, 'the cooldown did not start at the collision');
+    // Flush against the tile the bomb was on, not inside it and not a tile short of it.
+    assert.equal(p.x >> 8, 5, `stopped on column ${p.x >> 8}, not against the bomb on 6`);
+  });
+
+  await t.test('a bomb with nowhere to go is not kicked at all', () => {
+    const s = room();
+    const p = spawn(s, 0, 3, 4);
+    setTile(s.map, 7, 4, BLOCK.IRON);
+    const b = bombAt(s, 6, 4, 1);
+
+    tick(s, mask(p.i, IN_RIGHT | IN_SLIDE));
+    for (let n = 0; n < 40; n++) tick(s, []);
+
+    assert.equal(b.tx, 6, `the wedged bomb moved to column ${b.tx}`);
+    assert.equal(b.kickDir, DIR_NONE, 'a bomb that cannot move was still marked as skating');
+    assert.ok(!s.events.some(e => e.e === 'kick'), 'a kick was announced that moved nothing');
+    assert.equal(p.x >> 8, 5, 'the slider did not stop against the bomb');
+  });
+
+  await t.test('standing on a bomb and sliding off it does not kick it', () => {
+    const s = room();
+    const p = spawn(s, 0, 6, 4);
+    const b = bombAt(s, 6, 4, p.i);
+
+    tick(s, mask(p.i, IN_RIGHT | IN_SLIDE));
+    for (let n = 0; n < 40; n++) tick(s, []);
+    assert.equal(b.tx, 6, 'the bomb underfoot was kicked by sliding away from it');
   });
 
   await t.test('a skating bomb is still solid to somebody walking', () => {

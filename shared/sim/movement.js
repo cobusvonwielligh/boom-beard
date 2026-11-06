@@ -150,6 +150,14 @@ function stepSlide(state, p) {
    * one thing this mechanic must not become.
    */
   p.dir = p.slideDir;
+  /* The tick this slide was live on, which is how `kick` knows a slide happened at all.
+   *
+   * It cannot ask `slideV > 0` after the fact: a slide that launches already flush against a bomb
+   * covers no ground, so it is over by the end of this very function and the kick would never
+   * fire. Stamped rather than flagged so it clears itself - nothing has to remember to unset it,
+   * and it never needs to go on the wire, because the client does not simulate kicks.
+   */
+  p.slideTick = state.tick;
   // Same rule as walking: a tick spent easing back onto the lane is not a tick of sliding. The
   // drag below still applies, so a slide that starts off-lane simply loses a little of itself.
   const moved = pinToLane(state, p, p.slideV) ? p.slideV : railTravel(state, p, p.slideV);
@@ -158,12 +166,24 @@ function stepSlide(state, p) {
   // Stopped dead, out of speed, or the seatbelt: either way, put the brakes on and start the
   // cooldown from here rather than from the launch.
   if (!moved || p.slideV <= SLIDE_EXIT_UNITS || p.slideFor >= SLIDE_MAX_TICKS) {
-    p.slideV = 0;
-    p.slideFor = 0;
-    p.slideCool = SLIDE_COOLDOWN_TICKS;
+    endSlide(p);
     return false;
   }
   return true;
+}
+
+/**
+ * Put the brakes on, here and now. The cooldown starts from the stop, not from the launch.
+ *
+ * Exported because a kick ends a slide too: sliding into a bomb is a collision, and the whole
+ * point of a collision is that you do not come out of it with your momentum. See `kick` in
+ * sim/bombs.js - without this the bomb skates away and the slide, still carrying most of its
+ * velocity, simply chases it down the corridor it just cleared.
+ */
+export function endSlide(p) {
+  p.slideV = 0;
+  p.slideFor = 0;
+  p.slideCool = SLIDE_COOLDOWN_TICKS;
 }
 
 /**
@@ -222,17 +242,15 @@ const halfBox = p => (has(p, STATUS.REDUCTION) ? HITBOX_REDUCED_UNITS : HITBOX_U
  */
 function bombSolid(state, p, tx, ty) {
   if (!state.bombs) return false;
-  /* Nothing is solid to a slide, because a slide kicks it. See `kick` in sim/bombs.js.
+  /* A bomb is solid to a slide too, and that is the collision the kick is made of.
    *
-   * Without this the mechanic cannot exist: a bomb is solid, so a slide aimed at one stops flush
-   * against it and never overlaps the tile the kick is detected on. The slide has to pass over
-   * the bomb for there to be a kick at all.
-   *
-   * Safe against skipping one: the hitbox is 160 units wide and the fastest slide covers 132 in
-   * a tick, so the box cannot step over a 256-unit tile without overlapping it on some tick, and
-   * `kick` runs every tick immediately after movement.
+   * It used to be passable, so a slide ran straight over the bomb and the kick was detected from
+   * the overlap. That read as sliding THROUGH a bomb and nudging it along on the way past: you
+   * kept your speed, you ended up standing inside it, and nothing about the moment said you had
+   * hit something. Solid instead means `railTravel` stops the slide flush against the bomb's tile
+   * exactly as it would against a wall, `kick` reads that contact off the leading edge of the
+   * hitbox, and the slide is over - see `kick` in sim/bombs.js.
    */
-  if (p.slideV > 0) return false;
   for (const b of state.bombs) {
     if (b.tx !== tx || b.ty !== ty) continue;
     /* Still touching it? Then it is not solid to you yet.
@@ -813,6 +831,17 @@ export function step(state, p, mask) {
 
   // A correction owns the tick; see pinToLane. In ordinary play it never fires.
   const travelled = pinToLane(state, p, speed) ? 0 : railTravel(state, p, speed);
+
+  /* `moving` is GROUND COVERED, not keys held.
+   *
+   * It drives the two-frame walk cycle in the renderer, and it was set from the input - so a
+   * pirate holding a direction into a wall walked on the spot forever. The sprite's two frames
+   * are a stride, and a stride played against a position that is not changing is a pirate
+   * twitching from side to side: reported as "hold down against a wall and you jitter left and
+   * right", and that is exactly what it was. Nothing else about the tick changes; the stamina
+   * drain above is still charged for pressing, because leaning on a wall is effort.
+   */
+  p.moving = travelled > 0;
 
   // One last chance at the turn, so arriving exactly on a junction this tick turns on this tick
   // rather than on the next. Without it every corner costs a tick at the pace that lands square.
