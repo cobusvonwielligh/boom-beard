@@ -20,6 +20,7 @@ import {
 } from '../shared/constants.js';
 import {
   createState, createPlayer, setTile, tileAt, tileCentre, walkable, hashState, applyStatus,
+  expireStatuses,
 } from '../shared/sim/state.js';
 import { step, speedOf, blocked } from '../shared/sim/movement.js';
 import { tick } from '../shared/sim/round.js';
@@ -79,7 +80,10 @@ const atTileCentre = p => onLaneCentre(p.x) && onLaneCentre(p.y);
  * floor - is therefore still protected, and by a tighter statement than "one axis is exact".
  */
 function assertOnRail(p, where) {
-  const slip = HALF - ((p.status & STATUS.REDUCTION ? HITBOX_REDUCED_UNITS : HITBOX_UNITS) >> 1);
+  // The STANDARD box, whatever this pirate's box is right now - see SLIP_BUDGET in sim/movement.js.
+  // A budget derived from the current box can be invalidated by Reduction wearing off underneath
+  // an offset already being spent, which is a bug this helper used to share.
+  const slip = HALF - (HITBOX_UNITS >> 1);
   const horizontal = p.dir === DIR_L || p.dir === DIR_R;
   const perp = horizontal ? p.y : p.x;
   const out = Math.abs(offset(perp) - HALF);
@@ -1322,10 +1326,13 @@ test('the renderer cannot perturb the simulation', () => {
  * number is the real boundary and not a guess with slack in it.
  */
 test('inside the slip budget a pirate overlaps the same tiles as a lane-centred one', () => {
+  // ONE budget, sized by the standard box, checked against BOTH boxes - which is the point of it
+  // being fixed: Reduction can wear off underneath an offset already being spent, so a budget that
+  // was safe for the small box has to still be safe for the big one.
+  const slip = HALF - (HITBOX_UNITS >> 1);
   let checked = 0;
   for (const box of [HITBOX_UNITS, HITBOX_REDUCED_UNITS]) {
     const h = box >> 1;
-    const slip = HALF - h;
     for (let tile = 0; tile < 3; tile++) {
       const lane = tile * UNITS_PER_TILE + HALF;
       const spanOf = u => [(u - h) >> 8, (u + h - 1) >> 8];
@@ -1336,11 +1343,78 @@ test('inside the slip budget a pirate overlaps the same tiles as a lane-centred 
         assert.deepEqual(spanOf(lane + off), want,
           `box ${box}, ${off} units off the lane, touches different tiles from the lane centre`);
       }
-      for (const off of [-slip - 1, slip + 1]) {
-        assert.notDeepEqual(spanOf(lane + off), want,
-          `box ${box}: ${off} units off the lane is still inside it, so the budget has slack`);
+    }
+  }
+  // And the budget has no slack for the box that sets it: one unit more reaches the next tile.
+  const h = HITBOX_UNITS >> 1;
+  const spanOf = u => [(u - h) >> 8, (u + h - 1) >> 8];
+  assert.notDeepEqual(spanOf(HALF + slip + 1), spanOf(HALF),
+    'the budget has slack: a unit past it is still inside the lane');
+  assert.ok(checked > 400, `only ${checked} offsets checked`);
+});
+
+/* Statuses, which none of the corner rework had been exercised with.
+ *
+ * REDUCTION is the one that matters, and it is the reason `SLIP_BUDGET` is a constant rather than
+ * derived from the pirate's own hitbox. A reduced box means a deeper flush stop - 88 units past
+ * the centre rather than 48 - and the box can GROW BACK while that offset is still being paid off,
+ * which would leave a pirate over a budget they were already spending and with a shoulder in the
+ * next lane. Sized by the standard box it cannot happen, at the cost of corners falling back to
+ * walking to the junction for the few seconds Reduction lasts.
+ *
+ * The rest earn their place by changing the things the corner reads: CHANGELING inverts the input,
+ * DRUNK fumbles one turn in six, CONFUSED and SLOWDOWN change pace mid-stride, and each is also
+ * run with an expiry inside the run so the change happens under the pirate rather than before
+ * them. The drawn path is checked too, because the fractional step reads pace and status as well.
+ */
+test('the corner and the drawn path hold up under every status, including expiry', () => {
+  const slip = HALF - (HITBOX_UNITS >> 1);
+  for (const bit of [STATUS.REDUCTION, STATUS.DRUNK, STATUS.CHANGELING, STATUS.CONFUSED,
+    STATUS.SLOWDOWN]) {
+    for (const expireAt of [100000, 60]) {
+      for (const speed of [0, MAX_SKATES]) {
+        const st = room(21, 21);
+        for (const [x, y] of [[4, 4], [4, 5], [5, 4], [8, 3], [8, 4], [8, 5], [12, 7], [13, 7],
+          [6, 10], [7, 10], [8, 10], [15, 12], [15, 13], [15, 14], [10, 16], [11, 16]]) {
+          setTile(st.map, x, y, BLOCK.SOFT, 1);
+        }
+        const p = spawn(st, 2, 2, { speed });
+        applyStatus(st, p, bit, expireAt);
+        const where = `status ${bit} expiring ${expireAt} speed ${speed}`;
+        let seed = 8191;
+
+        for (let n = 0; n < 300; n++) {
+          expireStatuses(st, p);
+          seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+          const mask = (seed >>> 7) & (IN_RIGHT | IN_UP | IN_LEFT | IN_DOWN | IN_SLIDE);
+
+          const sub = [[p.x, p.y]];
+          for (let f = 1; f <= 4; f++) {
+            const ghost = { ...p, statusUntil: { ...p.statusUntil } };
+            step(st, ghost, mask, f / 4);
+            sub.push([ghost.x, ghost.y]);
+          }
+          let prev = null;
+          for (let i = 1; i < sub.length; i++) {
+            const dx = sub[i][0] - sub[i - 1][0], dy = sub[i][1] - sub[i - 1][1];
+            if (!dx && !dy) continue;
+            if (prev) {
+              assert.ok(prev[0] * dx + prev[1] * dy >= 0,
+                `${where} tick ${n}: the drawn path reversed inside one tick`);
+            }
+            prev = [dx, dy];
+          }
+
+          step(st, p, mask);
+          st.tick++;
+          assert.deepEqual(sub[4], [p.x, p.y],
+            `${where} tick ${n}: a whole fractional step did not land where the tick did`);
+
+          const horizontal = p.dir === DIR_L || p.dir === DIR_R;
+          const out = Math.abs(offset(horizontal ? p.y : p.x) - HALF);
+          assert.ok(out <= slip, `${where} tick ${n}: ${out} units off the lane, budget ${slip}`);
+        }
       }
     }
   }
-  assert.ok(checked > 400, `only ${checked} offsets checked`);
 });

@@ -403,7 +403,7 @@ function faceNearestJunction(p, horizontal) {
  * reversal and a stall, and it is a tick quicker as well as smoother.
  *
  * Only ever from the flush band with the way ahead shut, which is what bounds the offset to a
- * corner's worth - see `slipBudget`. And only when the turn has somewhere to go, so it never
+ * corner's worth - see `SLIP_BUDGET`. And only when the turn has somewhere to go, so it never
  * leaves a pirate pointed at a wall with an offset to pay off for nothing.
  *
  * @returns true if the turn was taken, in which case `dir` is the new one and travel this tick
@@ -425,7 +425,7 @@ function cornerTurn(state, p, horizontal) {
   const sign = p.dir === DIR_R || p.dir === DIR_D ? 1 : -1;
   const o = along & (UNITS_PER_TILE - 1);
   const past = sign > 0 ? o - HALF_TILE : HALF_TILE - o;
-  if (past <= 0 || past > slipBudget(p)) return false;
+  if (past <= 0 || past > SLIP_BUDGET) return false;
   /* And only with the way on genuinely shut, which is what makes this a CORNER.
    *
    * A pirate with somewhere to go keeps going and spends the turn at the junction they are already
@@ -442,7 +442,7 @@ function cornerTurn(state, p, horizontal) {
    * the rails exist to prevent. Found by the long random-input soak, which is the only test shaped
    * to notice; it reported a pirate 94 units off one lane and 114 off the other.
    *
-   * With the gate there is only ever one offset outstanding, it is always exactly `slipBudget`,
+   * With the gate there is only ever one offset outstanding, it is always within `SLIP_BUDGET`,
    * and it is always paid off inside a tick or two before another corner can be taken.
    */
   if (!onLane(horizontal ? p.y : p.x)) return false;
@@ -622,24 +622,34 @@ const wantsTurn = p => p.turnLeft > 0 && p.turnWant !== DIR_NONE;
 
 /* How far off your lane you are allowed to be, and why it is this number and not a nicer one.
  *
- * HALF_TILE minus half a hitbox - 48 units with the standard box. It is the overshoot a flush wall
- * stop produces, which is the only thing that ever creates an off-lane offset in ordinary play, so
- * the budget is exactly the debt. It is also the largest offset at which the hitbox STILL FITS
- * INSIDE its lane's tile band: 48 + 80 = 128, half a tile. That is the property that makes this
- * safe rather than a loosening - a pirate inside the budget overlaps exactly the tiles a
- * lane-centred one would, so solidity, fire, pickups and the chamfer cannot tell the difference.
+ * HALF_TILE minus half of the STANDARD hitbox - 48 units. It is the overshoot a flush wall stop
+ * produces, which is the only thing that creates an off-lane offset in ordinary play, so the
+ * budget is exactly the debt. It is also the largest offset at which the hitbox still fits INSIDE
+ * its lane's tile band: 48 + 80 = 128, half a tile. That is the property that makes this a sound
+ * relaxation rather than a hole - a pirate inside the budget overlaps exactly the tiles a
+ * lane-centred one would, so solidity, fire, pickups and the chamfer cannot tell the difference,
+ * and none of them had to learn about the slip. There is a test of exactly that.
+ *
+ * FIXED, not derived from the pirate's current box, and that distinction is a bug that was in
+ * here. Reduction shrinks the hitbox, so a budget of `HALF_TILE - halfBox(p)` grows to 88 while it
+ * is up - and the box can GROW BACK underneath the slip. A reduced pirate took a corner with 88
+ * units of debt, Reduction wore off mid-payment, and the budget they were already spending fell to
+ * 48: over budget for three ticks, and for two of them standing inside a wall, left to the unstick
+ * seatbelt. The standard box is the largest it can ever be, so a bound sized by it cannot be
+ * invalidated by anything that happens afterwards. The cost is that corners taken while Reduced
+ * fall back to walking to the junction, for the few seconds that lasts.
  *
  * Nothing can accumulate it. The ease below only ever reduces it, and the one thing that creates
  * it is a corner you had already walked into, so there is no diagonal to farm here: the 48 units
  * are a debt being repaid, not ground being gained.
  */
-const slipBudget = p => HALF_TILE - halfBox(p);
+const SLIP_BUDGET = HALF_TILE - (HITBOX_UNITS >> 1);
 
 /* May this pirate start travelling on the OTHER axis from where they are standing?
  *
  * Changing the axis you travel on hands your current along-axis offset to the perpendicular, and
  * on the perpendicular an offset is a lane debt that `easeToLane` has to walk off sideways. From a
- * junction or from flush against a wall that debt is zero or exactly `slipBudget`, which is a
+ * junction or from flush against a wall that debt is zero or at most `SLIP_BUDGET`, which is a
  * corner and is the whole point. From the middle of a segment it is up to half a tile, and walking
  * that off while travelling the new lane is not a corner - it is a diagonal across open floor.
  *
@@ -667,7 +677,7 @@ function canTurnAxis(p, dir) {
  * Now the turn is spent where the pirate stands (see `cornerTurn`) and the 48 units become an
  * offset on the NEW lane, worked off by this function at the same time as travel down that lane.
  * The two together are a diagonal out of the corner: one continuous forward motion, at full pace,
- * with nothing to reverse. Within `slipBudget` that is free of consequence, for the reason set out
+ * with nothing to reverse. Within `SLIP_BUDGET` that is free of consequence, for the reason set out
  * above - the hitbox has not left the lane's tiles.
  *
  * @returns true if the correction must OWN the tick, which is now only the case beyond the corner
@@ -704,7 +714,7 @@ function easeToLane(state, p, speed) {
   // bookkeeping invariant.
   if (blocked(state, p, nx, ny)) return false;
   p.x = nx; p.y = ny;
-  return Math.abs(gap) > slipBudget(p);
+  return Math.abs(gap) > SLIP_BUDGET;
 }
 
 /**
