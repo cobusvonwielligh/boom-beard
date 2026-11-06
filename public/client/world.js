@@ -5,7 +5,7 @@
 
 import {
   INTERP_DELAY_TICKS, TRACER_SAMPLES, TRACER_EVERY_TICKS, FIRE_TICKS, setSeatColours, MAX_HP,
-  DIR_NONE,
+  DIR_NONE, TELEPORT_UNITS,
 } from '/shared/constants.js';
 import { createPlayer, tileCentre } from '/shared/sim/state.js';
 import { decodeCells, packCell, cellType } from '/shared/maps.js';
@@ -254,19 +254,29 @@ export function createWorld() {
 
     for (const inp of w.pending) step(w, me, inp.mask);
 
-    /* Absorb the correction into a decaying offset rather than showing it.
+    /* A correction is HIDDEN; a teleport is SHOWN. See TELEPORT_UNITS.
      *
-     * The drawn position is now a straight function of the simulated one, so a correction would
-     * appear in full on the next frame. Usually there is nothing to show - the client runs the
-     * same movement function on the same inputs, which is the entire point of the shared
-     * simulation - but packet loss and the server's input narrowing can still produce one. Holding
-     * the difference here and bleeding it off over about a tenth of a second (see interpolate)
-     * means a correction moves the pirate smoothly rather than cutting them to the new truth.
+     * The drawn position is a straight function of the simulated one now, so anything the server
+     * changes would otherwise appear in full on the next frame. Usually there is nothing to show -
+     * the client runs the same movement function on the same inputs, which is the whole point of
+     * the shared simulation - but packet loss and the server's input narrowing still produce the
+     * odd one, and those are absorbed into an offset that bleeds away over a tenth of a second.
+     *
+     * A RESPAWN is not that, and the distinction had been lost: it arrives through this same
+     * assignment as a correction the width of the map, so it was being eased - the pirate was
+     * drawn flying from where they died to where they came back, trailing tracer dots the whole
+     * way, because nothing cleared them. Over the threshold the drawing is cut instead.
      */
-    me.ex = (me.ex ?? 0) + (before.x - me.x);
-    me.ey = (me.ey ?? 0) + (before.y - me.y);
+    const dx = me.x - before.x, dy = me.y - before.y;
+    if (Math.abs(dx) > TELEPORT_UNITS || Math.abs(dy) > TELEPORT_UNITS) {
+      me.ex = 0; me.ey = 0;
+      teleport(me);
+    } else {
+      me.ex = (me.ex ?? 0) - dx;
+      me.ey = (me.ey ?? 0) - dy;
+    }
 
-    if (Math.abs(me.x - before.x) > 8 || Math.abs(me.y - before.y) > 8) w.lastCorrection = performance.now();
+    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) w.lastCorrection = performance.now();
   }
 
   /**
@@ -410,17 +420,18 @@ export function createWorld() {
          */
         const ghost = { ...p, statusUntil: { ...p.statusUntil } };
         step(w, ghost, liveMask, frac);
-        // A whole tile in one tick means a respawn or an unstick teleport, not a walk.
-        if (Math.abs(ghost.x - p.x) > 256 || Math.abs(ghost.y - p.y) > 256) teleport(p);
-        else {
-          // The correction offset is cosmetic, so it is not allowed to put the drawn pirate
-          // somewhere the simulation never would. Dropped for this frame rather than clamped: it
-          // is decaying anyway, and a frame without it is invisible next to a shoulder in a wall.
-          const ox = ghost.x + (p.ex ?? 0), oy = ghost.y + (p.ey ?? 0);
-          const clear = !(p.ex || p.ey) || !blocked(w, p, ox, oy);
-          p.rx = clear ? ox : ghost.x;
-          p.ry = clear ? oy : ghost.y;
-        }
+        /* No teleport test here, deliberately: `ghost` is one tick of travel from `p` and nothing
+         * else, so it can never be a tile out and a check on it would be dead code pretending to
+         * be a seatbelt. A teleport arrives in `reconcile`, which is the only thing that moves
+         * your own pirate other than prediction, and it is dealt with there.
+         *
+         * The correction offset is cosmetic, so it is not allowed to put the drawn pirate
+         * somewhere the simulation never would. Dropped for this frame rather than clamped: it is
+         * decaying anyway, and a frame without it is invisible next to a shoulder in a wall. */
+        const ox = ghost.x + (p.ex ?? 0), oy = ghost.y + (p.ey ?? 0);
+        const clear = !(p.ex || p.ey) || !blocked(w, p, ox, oy);
+        p.rx = clear ? ox : ghost.x;
+        p.ry = clear ? oy : ghost.y;
       } else if (p.buf.length >= 2) {
         // The pair that BRACKETS the time being drawn, not the two newest - see pickPair. Taking
         // the newest two pinned every remote player to one snapshot until the next arrived, which
@@ -432,7 +443,7 @@ export function createWorld() {
 
         // Further than anyone can walk in one snapshot means a respawn, not a walk. Interpolating
         // it would drag the sprite across the whole map, straight through everything in between.
-        if (Math.abs(dx) > 512 || Math.abs(dy) > 512) {
+        if (Math.abs(dx) > TELEPORT_UNITS || Math.abs(dy) > TELEPORT_UNITS) {
           teleport(p);                    // p.x is already b.x - hydrate ran before this
         } else {
           pathAt(p, a.x, a.y, b.x, b.y, f);

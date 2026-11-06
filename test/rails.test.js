@@ -1303,3 +1303,44 @@ test('the renderer cannot perturb the simulation', () => {
 
   assert.equal(run(true), run(false), 'the renderer changed the simulation');
 });
+
+/* The claim the corner rework rests on, checked rather than argued.
+ *
+ * Taking a corner out of a dead end leaves the pirate up to `slipBudget` off the lane they are
+ * travelling down, for a tick or two, while that offset is walked off. Everything about whether
+ * that is a sound relaxation or a hole in the rails comes down to one property:
+ *
+ *   inside the budget, a pirate overlaps EXACTLY the tiles a lane-centred one would.
+ *
+ * If that holds, no rule in the game can tell the difference - solidity, fire overlap, pickups and
+ * the corner chamfer all read the same tiles, so none of them needed to learn about the slip. If
+ * it fails by one unit, a shoulder reaches into a neighbouring tile and every one of those rules
+ * is quietly wrong near a corner.
+ *
+ * The budget is HALF_TILE minus half a hitbox for exactly this reason, and the test checks both
+ * halves of that: every offset inside it is identical, and one unit outside it is not - so the
+ * number is the real boundary and not a guess with slack in it.
+ */
+test('inside the slip budget a pirate overlaps the same tiles as a lane-centred one', () => {
+  let checked = 0;
+  for (const box of [HITBOX_UNITS, HITBOX_REDUCED_UNITS]) {
+    const h = box >> 1;
+    const slip = HALF - h;
+    for (let tile = 0; tile < 3; tile++) {
+      const lane = tile * UNITS_PER_TILE + HALF;
+      const spanOf = u => [(u - h) >> 8, (u + h - 1) >> 8];
+      const want = spanOf(lane);
+
+      for (let off = -slip; off <= slip; off++) {
+        checked++;
+        assert.deepEqual(spanOf(lane + off), want,
+          `box ${box}, ${off} units off the lane, touches different tiles from the lane centre`);
+      }
+      for (const off of [-slip - 1, slip + 1]) {
+        assert.notDeepEqual(spanOf(lane + off), want,
+          `box ${box}: ${off} units off the lane is still inside it, so the budget has slack`);
+      }
+    }
+  }
+  assert.ok(checked > 400, `only ${checked} offsets checked`);
+});

@@ -926,6 +926,21 @@ export function progressFor(xp) {
 
 // ─── Net ──────────────────────────────────────────────────────────────────────
 
+/* Further than anything can WALK: past this, a change of position is an announcement, not a move.
+ *
+ * Two tiles. The fastest legs cover 48 units a tick and snapshots are two ticks apart, so neither
+ * a tick of prediction, a reconciliation correction, nor a gap between two snapshots can ever
+ * legitimately reach it - while a respawn, a join, or a round change always does.
+ *
+ * It matters because the two cases want opposite treatment and the renderer has to tell them
+ * apart with nothing but the numbers. A correction is HIDDEN: absorbed into an offset that bleeds
+ * away over a tenth of a second, because a pirate snapping sideways reads as a fault. A teleport
+ * is SHOWN: cut to, with the tracer cleared, because easing into it draws the pirate flying across
+ * the map from where they died and leaves a stripe of dots behind them. One number, named once, so
+ * the local and remote paths cannot drift apart on which is which.
+ */
+export const TELEPORT_UNITS = 2 * UNITS_PER_TILE;
+
 export const INTERP_DELAY_TICKS = 4;     // ≈133 ms behind, for remote players only
 export const CLOCK_SAFETY_MS = 50;       // added to rtt/2 when computing the client's lead
 export const PING_EVERY_MS = 2000;
