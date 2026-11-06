@@ -1299,7 +1299,7 @@ function startPerformanceMonitor() {
  * dazed or being mid-slide) and the click played for bombs that never appeared.
  *
  * Called AFTER this tick's movement is predicted, because that is the order the tick runs in:
- * a double-tap that launches a slide on the same tick as the bomb key leaves you mid-slide by
+ * a press of Ctrl that launches a slide on the same tick as the bomb key leaves you mid-slide by
  * the time place() asks, and the bomb is refused.
  */
 function localBombFeedback(mask) {
@@ -1423,7 +1423,7 @@ function frame(now) {
      */
     if (world.tick < world.startsAtTick) { input.clear(); continue; }
     // The slide bit rides on this tick's mask only. `takeSlide` clears as it reads, so the five
-    // steps a stalled frame can run cannot turn one double-tap into five launches.
+    // steps a stalled frame can run cannot turn one press of Ctrl into five launches.
     const mask = input.mask | (input.takeSlide() ? IN_SLIDE : 0);
     world.predict(tick, mask);
     localBombFeedback(mask);

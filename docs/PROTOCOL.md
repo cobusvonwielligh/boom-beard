@@ -109,9 +109,9 @@ whole exchange. See [ANTICHEAT.md](ANTICHEAT.md) §3.
 ```
 
 `m` is masked with `IN_MASK` on arrival, so a crafted packet cannot carry a bit the keyboard
-cannot produce. Bit 32 is the slide: the double-tap is detected in the browser and arrives as one
-bit, and the simulation applies its own cost, cooldown and velocity - so a client setting it every
-tick gets exactly what a player who double-taps perfectly gets.
+cannot produce. Bit 32 is the slide: the key is read in the browser and arrives as one bit, and the
+simulation applies its own cost, cooldown and velocity - so a client setting it every tick gets
+exactly what a player holding the key down gets, which is one slide per cooldown.
 
 `x` and `y` are **never read by the simulation**. They exist for a future desync log and are
 asserted-absent by test, because a server that believes a client about where it is has no

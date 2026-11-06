@@ -5745,7 +5745,7 @@ export function createRenderer(canvas, world) {
   /* ─── the slide ──────────────────────────────────────────────────────────────
    *
    * Drawn entirely from `slideV`, which is on the wire for everybody - so a remote pirate's slide
-   * looks like yours, and your own looks right the instant you double-tap rather than one
+   * looks like yours, and your own looks right the instant you press Ctrl rather than one
    * round trip later. No event, no bookkeeping that can get out of step with the simulation:
    * while the velocity is above zero there is a slide, and when it is zero there is not.
    *

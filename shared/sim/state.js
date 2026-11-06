@@ -106,7 +106,7 @@ export function createPlayer(i, name) {
     turnLeft: 0,
     // Ticks of slide left after letting go of the keys on water. See PUDDLE_SLIDE_TICKS.
     slide: 0,
-    /* The deliberate slide, from a double-tap. Three fields and they are all the state there is:
+    /* The deliberate slide, from a press of Ctrl. Three fields and they are all the state there is:
      * the velocity in units a tick (0 when not sliding, and the only test for "am I sliding"),
      * the direction it was launched in, and how many ticks it has run for. `slideCool` is the
      * wait before another one. See SLIDE_* in constants.js. */

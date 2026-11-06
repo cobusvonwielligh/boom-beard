@@ -95,7 +95,7 @@ fuse ends.
 
 | | |
 |---|---|
-| Gesture | the same direction twice inside **160 ms** (client-side; the server sees one bit) |
+| Key | **CTRL**, and you go the way you are pointed (client-side; the server sees one bit) |
 | Launch | **3 ×** your walking pace; only 90% of the reduced speed bonus counts toward a slide |
 | Drag | **× 0.94** of the velocity per tick |
 | Ends at | **26 units/tick**, or on hitting anything solid |
@@ -131,8 +131,15 @@ against them by the ordinary rule.
 **It owns the tick, and its lane.** While one runs, the keys do nothing - no steering, no braking,
 no cutting it short - and it travels strictly along the lane it was launched down. A slide you
 could steer round a corner would be a better way to walk, which is the one thing it must not
-become. You chose the direction when you double-tapped. That is also what makes it a function of
+become. The direction was settled when you pressed the key: whichever way you are holding, or the
+way you are facing if your hands are off the keys. That is also what makes it a function of
 (velocity, direction, map), which is why the client can replay it to the unit.
+
+**It was a double-tap of a direction, inside 160 ms, and that had to go.** Tapping a direction
+twice while lining up on a lane is ordinary corridor play, so slides fired by accident constantly -
+and a mechanic that costs a fifth of your wind, takes your steering away and then locks you out for
+`SLIDE_COOLDOWN_TICKS` must never happen without being asked for. A key cannot be pressed by
+accident while walking.
 
 **Your hands are full.** No bombs from inside a slide. Without that rule the slide is a bomb
 delivery vehicle: launch, cross three tiles in half a second, drop one at the far end from safety.
@@ -626,7 +633,7 @@ Exactly Game of Bombs', minus what we did not build.
 | Key | Action |
 |---|---|
 | Arrows / W A S D | Move |
-| Arrows / W A S D, **twice** | Slide that way - see §2 |
+| CTRL | Slide the way you are pointed - see §2 |
 | SPACE / K | Place bomb · respawn when dead |
 | Q | Toggle map overview |
 | ENTER | Toggle chat / send |

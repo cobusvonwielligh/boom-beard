@@ -63,12 +63,12 @@ construction:
   the game is a rule in the simulation, not a property of how often the client speaks.
 
 Bomb placement, the slide, stamina, pickups, damage, shields and the gull payout are all decided
-server-side from the mask. The slide is worth calling out because it is new and it is the one
-mechanic with a *gesture*: the double-tap is detected in the browser and arrives as a single bit,
-and the simulation then applies its own cost, cooldown and velocity. A client that sets that bit
-every tick gets exactly what a player who double-taps perfectly gets - one slide per
-`SLIDE_COOLDOWN_TICKS`, each costing `SLIDE_STAMINA_COST` - which is why the gesture can live in
-the client at all.
+server-side from the mask. The slide is worth calling out because its TRIGGER lives in the browser:
+the key is read there and arrives as a single bit, and the simulation then applies its own cost,
+cooldown and velocity. A client that sets that bit every tick gets exactly what a player leaning on
+the key gets - one slide per `SLIDE_COOLDOWN_TICKS`, each costing `SLIDE_STAMINA_COST` - which is
+why the binding can live in the client at all. It has been a double-tap gesture and it is now
+CTRL; neither is a rule, because the rules never saw either of them.
 
 ### Availability
 
@@ -193,5 +193,5 @@ Every time something is added, ask the two questions that keep §2 true:
 1. **Does the server decide it?** If a rule's outcome depends on a number the client sent, the
    client owns that rule. The gesture may live in the browser; the consequence may not.
 2. **Would it matter if a client lied about it?** If the answer is no, the client can keep it (the
-   slide's double-tap, the dust, the count-in digit). If the answer is yes, it belongs in
+   slide's key binding, the dust, the count-in digit). If the answer is yes, it belongs in
    `shared/sim` and is run on the server with the client merely predicting it.

@@ -690,15 +690,9 @@ function easeToLane(state, p, speed) {
    * second time the same class of bug has been found here; bounding it by the legs is what stops
    * a third.
    *
-   * In ordinary play this never runs at all - rail travel keeps the invariant exactly, so there
-   * is nothing to correct. It only fires after something external moved the pirate: an unstick,
-   * a spawn, a map change.
-   *
-   * @returns true if it had to correct, in which case the caller must NOT also travel this tick.
-   *   Easing and travelling together would move both axes at once, which is the one thing a rail
-   *   pirate may never do - it is free 2D movement, briefly, and the invariant the whole design
-   *   rests on would be false for those ticks. A tick spent getting back onto the rails is not a
-   *   tick of walking, exactly as a tick spent being shoved out of a wall is not.
+   * Outside a corner this never runs at all - rail travel keeps the lane exactly, so there is
+   * nothing to correct. It fires for a corner being paid off, and after something external moved
+   * the pirate: an unstick, a spawn, a map change.
    */
   const gap = tileCentre(toTile(perp)) - perp;
   const ease = Math.sign(gap) * Math.min(Math.abs(gap), Math.max(1, speed));
@@ -728,8 +722,10 @@ function easeToLane(state, p, speed) {
  * is wrong and this is the seatbelt, not the fix.
  *
  * @returns true if it had to intervene
+ *
+ * @param paceOf a fraction of a tick's escape, for the renderer only. See `step`.
  */
-export function unstick(state, p) {
+export function unstick(state, p, paceOf = 1) {
   /* Terrain only. A bomb never pushes anybody, ever.
    *
    * This is the seatbelt for positions that are illegal and cannot be walked out of: a wall
@@ -752,7 +748,7 @@ export function unstick(state, p) {
      * this one is cosmetic and a wall is not.
      */
     if (!blocked(state, p, p.x, p.y)) return false;
-    const gentle = Math.max(1, UNSTICK_MIN_PACE >> 1);
+    const gentle = Math.max(1, ((UNSTICK_MIN_PACE >> 1) * paceOf) | 0);
     for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
       const nx = p.x + dx * gentle, ny = p.y + dy * gentle;
       if (blocked(state, p, nx, ny)) continue;
@@ -786,7 +782,7 @@ export function unstick(state, p) {
     const left = Math.abs(gap);
     const pace = Math.max(UNSTICK_MIN_PACE, ((speedOf(p) * UNSTICK_PACE_NUM) / UNSTICK_PACE_DEN) | 0);
     const rate = Math.min(Math.max(left >> UNSTICK_EASE_SHIFT, UNSTICK_MIN_UNITS), pace);
-    const move = Math.sign(gap) * Math.min(left, rate);
+    const move = Math.sign(gap) * Math.min(left, Math.max(1, (rate * paceOf) | 0));
     if (horizontal) p.x += move; else p.y += move;
     return true;
   }
@@ -819,8 +815,13 @@ export function unstick(state, p) {
 export function step(state, p, mask, paceOf = 1) {
   if (!p || !p.alive) return;
 
-  // Before anything reads the position, make sure it is one we could legally be standing in.
-  unstick(state, p);
+  /* Before anything reads the position, make sure it is one we could legally be standing in.
+   *
+   * Scaled by `paceOf` like everything else that moves, which matters only to the renderer: the
+   * drawn position is the authoritative one plus a fraction of the tick, so an escape that ignored
+   * the fraction would be drawn in full on the first frame of every tick and then stand still -
+   * eight units of shimmer for as long as the escape lasted. */
+  unstick(state, p, paceOf);
 
   if (p.slideCool > 0) p.slideCool--;
 
@@ -828,7 +829,7 @@ export function step(state, p, mask, paceOf = 1) {
    *
    * While one is running the keys do nothing: no steering, no braking, no bomb-key dance to cut it
    * short. That is the trade the stamina paid for - three tiles of commitment, and the decision
-   * was made when you double-tapped. It also means the whole thing is a function of (velocity,
+   * was made when you pressed the key. It also means the whole thing is a function of (velocity,
    * direction, map), which is why the client can replay it to the unit.
    *
    * No stamina call either way. The cost was taken in full at the launch; draining on top of that

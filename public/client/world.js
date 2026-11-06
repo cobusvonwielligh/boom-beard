@@ -403,7 +403,15 @@ export function createWorld() {
         step(w, ghost, liveMask, frac);
         // A whole tile in one tick means a respawn or an unstick teleport, not a walk.
         if (Math.abs(ghost.x - p.x) > 256 || Math.abs(ghost.y - p.y) > 256) teleport(p);
-        else { p.rx = ghost.x + (p.ex ?? 0); p.ry = ghost.y + (p.ey ?? 0); }
+        else {
+          // The correction offset is cosmetic, so it is not allowed to put the drawn pirate
+          // somewhere the simulation never would. Dropped for this frame rather than clamped: it
+          // is decaying anyway, and a frame without it is invisible next to a shoulder in a wall.
+          const ox = ghost.x + (p.ex ?? 0), oy = ghost.y + (p.ey ?? 0);
+          const clear = !(p.ex || p.ey) || !blocked(w, p, ox, oy);
+          p.rx = clear ? ox : ghost.x;
+          p.ry = clear ? oy : ghost.y;
+        }
       } else if (p.buf.length >= 2) {
         // The pair that BRACKETS the time being drawn, not the two newest - see pickPair. Taking
         // the newest two pinned every remote player to one snapshot until the next arrived, which
