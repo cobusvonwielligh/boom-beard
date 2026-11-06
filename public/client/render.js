@@ -173,11 +173,53 @@ export function createRenderer(canvas, world) {
    * (see applyBoardSize) and measuring it would only ever report its own last answer. */
   const boardBox = document.getElementById('boardBox');
 
+  /* How many backing-store pixels the board may have, at most.
+   *
+   * The DPR was already capped at 2, but nothing bounded the PRODUCT, and the product is what
+   * costs. A maximised window on a 4K display is 8.3 million CSS pixels; at dpr 2 that is 33
+   * million in the backing store, and every one of them is painted more than once per frame -
+   * the water, two dozen `globalCompositeOperation` passes, and a FULL-CANVAS light layer
+   * (`lightLayer`, below) that is cleared, drawn into and composited over the whole board every
+   * single frame. The ceiling here is fill rate, not JavaScript, which is why the symptom is "it
+   * lags a little on a big screen and is fine on a small one" rather than a slow frame everywhere.
+   *
+   * ~2.3 million is a 1080p board at dpr 1.05, so an ordinary window at dpr 1 is untouched and a
+   * small retina window keeps its full sharpness. Only windows over the budget are scaled, and
+   * they are scaled by reducing the DPR. `view.smooth` is already set for non-integer scales (see
+   * recomputeZoom), so the result is filtered rather than blocky.
+   *
+   * THE KNOB, and the upgrade path: if a measurement shows this is not enough on a given machine,
+   * the next step is a measured device-tier system that reduces effects - NOT a smaller number
+   * here, which only trades more sharpness for the same full-canvas composite.
+   */
+  const MAX_CANVAS_PIXELS = 2_300_000;
+
+  /* How far below one device pixel per CSS pixel the budget may push us.
+   *
+   * This started at a hard floor of 1.0 and that made the cap useless for the machine most likely
+   * to need it. A floor of 1 only ever reduces a dpr ABOVE 1, so a retina window lost 72-75% of
+   * its fill cost - but a 4K monitor at 100% scaling reports dpr 1, and 3840x2160 is 8.3 million
+   * pixels that the cap was then forbidden to touch. A big cheap panel on a mid-range GPU is
+   * exactly the "lags a little on a big screen" case.
+   *
+   * 0.75 upscales such a board by a third with smoothing on, which is visible if you look for it
+   * and much less visible than a dropped frame. It can only ever apply to a window already well
+   * over budget: anything at or under it keeps a scale of 1 or better untouched, because the
+   * budget term is then greater than 1 and `want` wins.
+   */
+  const MIN_CANVAS_SCALE = 0.75;
+
   function resize() {
-    const dpr = Math.min(2, devicePixelRatio || 1);
     const r = (boardBox || canvas).getBoundingClientRect();
     const w = Math.round(r.width), h = Math.round(r.height);
     if (!w || !h) return;                   // laid out but not measured yet
+    // Scale the DPR down until the backing store fits the budget. Never zero, whatever the
+    // browser reports - a dpr of 0 is a canvas with no pixels in it.
+    const want = Math.min(2, devicePixelRatio || 1);
+    const dpr = Math.max(
+      MIN_CANVAS_SCALE,
+      Math.min(want, Math.sqrt(MAX_CANVAS_PIXELS / (w * h))),
+    );
     // Bail when nothing actually changed. Writing canvas.width resets the drawing surface and
     // can itself be observed as a resize, so an unguarded ResizeObserver callback that always
     // writes is a loop that clears the canvas every frame.
