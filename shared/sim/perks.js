@@ -214,11 +214,44 @@ export function collect(state) {
  */
 
 /** A good kill should be worth something: scatter a few of the dead player's upgrades. */
-export function scatterOnDeath(state, p) {
+/**
+ * What survives the death: each upgrade point you were carrying, on a coin toss.
+ *
+ * A clean wipe meant one unlucky blast cost a whole round of collecting, and the hole that left
+ * was not a setback but a reason to stop playing - you respawned into a board where everyone else
+ * was three perks up and nothing you could do about it. Half, give or take, keeps a death
+ * expensive without making it a demotion.
+ *
+ * PER POINT rather than per kind, so there is no cliff: five fire is far more likely to come back
+ * as two or three than as none or all five, and the player sees a loss they can read rather than
+ * a verdict. Rolled on the simulation's own PRNG, in a fixed order, so the server and anybody
+ * replaying it reach the same loadout.
+ *
+ * Shields are not in this. They are the thing standing between you and the hit you just took, and
+ * one that survives the death it failed to prevent is a shield that did its job twice.
+ *
+ * @returns the loadout to respawn with. The caller resets `p` from it, and hands it to
+ *   `scatterOnDeath`, which drops only what did NOT survive - the same perk may not both stay in
+ *   your hands and roll across the floor.
+ */
+export function keepOnDeath(state, p) {
+  const half = n => { let k = 0; for (let i = 0; i < n; i++) k += randInt(state.next, 2); return k; };
+  return {
+    bombs: START_BOMBS + half(Math.max(0, p.bombs - START_BOMBS)),
+    radius: START_RADIUS + half(Math.max(0, p.radius - START_RADIUS)),
+    speed: half(Math.max(0, p.speed)),
+  };
+}
+
+/**
+ * @param kept what `keepOnDeath` decided stays in their hands. Only the difference is scattered -
+ *   without it a death both keeps the perk and drops it, which is a way to print them.
+ */
+export function scatterOnDeath(state, p, kept = { bombs: START_BOMBS, radius: START_RADIUS, speed: 0 }) {
   const carried = [];
-  for (let n = 0; n < p.bombs - START_BOMBS; n++) carried.push(PERK.BOMB);
-  for (let n = 0; n < p.radius - START_RADIUS; n++) carried.push(PERK.FIRE);
-  for (let n = 0; n < p.speed; n++) carried.push(PERK.SKATE);
+  for (let n = 0; n < p.bombs - kept.bombs; n++) carried.push(PERK.BOMB);
+  for (let n = 0; n < p.radius - kept.radius; n++) carried.push(PERK.FIRE);
+  for (let n = 0; n < p.speed - kept.speed; n++) carried.push(PERK.SKATE);
 
   const tx = toTile(p.x), ty = toTile(p.y);
   let placed = 0;

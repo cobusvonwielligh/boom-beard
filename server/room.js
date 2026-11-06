@@ -83,7 +83,15 @@ export function createRoom({ onKick, onBroadcast, adminName = '', maxPlayers = M
   let roundTimer = null;
 
   // Percent of the real-time tick rate. The tick itself is always 1/30 s of simulated time.
-  let gamespeed = 100;
+  /* 110% of real time as standard, not 100.
+   *
+   * The tick rate is the game's clock, so this is the one dial that speeds EVERYTHING up together
+   * - legs, fuses, fire, kicks, regrowth - and keeps every tuned relationship between them
+   * exactly as it was. Ten percent is the difference between a round that reads as considered and
+   * one that reads as brisk, and nothing in the balance had to move for it. /gamespeed still
+   * takes any value; this is only where it starts.
+   */
+  let gamespeed = 110;
   // How long a round runs, in ticks. Defaults to ROUND_TICKS and is changeable at runtime by the
   // host with /roundtime - a Friday session is not always a ten-minute-round session.
   let roundTicks = ROUND_TICKS;

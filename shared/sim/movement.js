@@ -89,7 +89,7 @@ export function speedOf(p) {
   return Math.max(1, s);
 }
 
-/** The direction bit a mask is asking for, or 0. Diagonals resolve to the facing's axis. */
+/** The direction bit a mask is asking for, or null. Diagonals resolve to the facing's axis. */
 function askedDir(p, mask) {
   const dx = ((mask & IN_RIGHT) ? 1 : 0) - ((mask & IN_LEFT) ? 1 : 0);
   const dy = ((mask & IN_DOWN) ? 1 : 0) - ((mask & IN_UP) ? 1 : 0);
@@ -114,6 +114,14 @@ function askedDir(p, mask) {
 function startSlide(state, p, mask) {
   if (p.slideV > 0 || p.slideCool > 0 || p.tired) return false;
   if (p.stamina < SLIDE_STAMINA_COST) return false;
+  /* The way you are pointed: the direction held this tick, or the facing if your hands are off.
+   *
+   * Both halves matter now that the launch is a key of its own. The facing alone is a tick stale -
+   * the slide gate runs before this tick's direction keys are read, so standing still facing right
+   * and pressing left with Control would have sent you RIGHT, which is a key you cannot aim. The
+   * held direction alone is no good either, because Control on its own has to do something, and
+   * the only sensible something is "the way I am looking".
+   */
   const dir = askedDir(p, mask) ?? p.dir;
   p.stamina -= SLIDE_STAMINA_COST;
   if (p.stamina <= 0) { p.stamina = 0; p.tired = true; }

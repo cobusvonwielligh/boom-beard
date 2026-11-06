@@ -271,6 +271,42 @@ export function createWorld() {
   }
 
   /**
+   * Draw a pirate `f` of the way from (ax, ay) to (bx, by), along the path they actually took.
+   *
+   * ONE function for your own pirate and for everybody else, which it had not been - and the
+   * local half was the cruder of the two, which is why corners looked worse on your own screen
+   * than on anybody else's. The two cases are the same question asked of different samples: your
+   * own ends are consecutive simulated ticks, a remote's are two snapshots.
+   *
+   * A straight line when the straight line is legal, an L when it is not. Travel on both axes in
+   * one step is either a genuine diagonal - the tick a corner is taken spends part of its pace
+   * down each lane, see railTravel - or a corner TURN, and the two want opposite treatment: a
+   * lerp across a turn cuts the corner block, which is the "players walk through walls" everyone
+   * notices first, while an L across a real diagonal is the stutter the L exists to prevent.
+   *
+   * Telling them apart needs no extra state: is the midpoint legal? A real diagonal passes, a
+   * corner turn does not. Which arm of the L comes first is unknowable from two samples, so
+   * x-first, falling back to y-first when the x-first elbow is solid; one of the two is always
+   * the path that was taken.
+   *
+   * Measured along the PATH, not per axis, so the pace through an elbow is the pace into it -
+   * an L walked by lerping each axis independently slows down on the diagonal and speeds up on
+   * the way out, which is the corner wobble this is here to remove.
+   */
+  function pathAt(p, ax, ay, bx, by, f) {
+    const dx = bx - ax, dy = by - ay;
+    const sx = ax + dx * f, sy = ay + dy * f;
+    if (!dx || !dy || !blocked(w, p, sx, sy)) { p.rx = sx; p.ry = sy; return; }
+    const along = (Math.abs(dx) + Math.abs(dy)) * f;
+    const xFirst = !blocked(w, p, bx, ay);
+    const [u, v] = xFirst ? [dx, dy] : [dy, dx];
+    const pu = (xFirst ? ax : ay) + Math.sign(u) * Math.min(Math.abs(u), along);
+    const pv = (xFirst ? ay : ax) + Math.sign(v) * Math.max(0, Math.min(Math.abs(v), along - Math.abs(u)));
+    p.rx = xFirst ? pu : pv;
+    p.ry = xFirst ? pv : pu;
+  }
+
+  /**
    * Keep a drawn player out of the walls.
    *
    * When smoothing or interpolation puts the drawn point somewhere illegal, ease it back toward
@@ -325,12 +361,6 @@ export function createWorld() {
      * it steps rather than moves. A skating bomb hops a whole tile every few ticks and is the
      * first thing where that is obvious; see the kick interpolation in render.js. */
     w.tickF = renderTick;
-    /* And the UNDELAYED one, for anything that moves on a schedule the server wrote in ticks.
-     *
-     * A skating bomb carries the ticks its hops start and end on, so the only clock it can be
-     * drawn against is the one those numbers are in - the server's, now, not four ticks ago and
-     * not whenever the last packet happened to land. See the kick in render.js. */
-    w.tickRaw = serverTickNow;
     for (const p of w.players) {
       if (!p) continue;
 
@@ -352,19 +382,10 @@ export function createWorld() {
          * term to tune, because the interpolation is between two positions we already have rather
          * than a chase after one we do not.
          */
-        const dx = p.x - (p.px ?? p.x), dy = p.y - (p.py ?? p.y);
+        const ax = p.px ?? p.x, ay = p.py ?? p.y;
         // A whole tile in one tick means a respawn or an unstick teleport, not a walk.
-        if (Math.abs(dx) > 256 || Math.abs(dy) > 256) teleport(p);
-        else {
-          const nx = (p.px ?? p.x) + dx * frac, ny = (p.py ?? p.y) + dy * frac;
-          // A tick that moved on both axes turned a corner, and the straight line between its
-          // ends cuts through the corner block. Try each axis alone: one of them is the path
-          // actually taken, and taking just that one keeps the motion smooth.
-          if (!blocked(w, p, nx, ny)) { p.rx = nx; p.ry = ny; }
-          else if (!blocked(w, p, nx, p.y)) { p.rx = nx; p.ry = p.y; }
-          else if (!blocked(w, p, p.x, ny)) { p.rx = p.x; p.ry = ny; }
-          else { p.rx = p.x; p.ry = p.y; }      // genuinely boxed in; nothing smooth left to do
-        }
+        if (Math.abs(p.x - ax) > 256 || Math.abs(p.y - ay) > 256) teleport(p);
+        else pathAt(p, ax, ay, p.x, p.y, frac);
       } else if (p.buf.length >= 2) {
         // The pair that BRACKETS the time being drawn, not the two newest - see pickPair. Taking
         // the newest two pinned every remote player to one snapshot until the next arrived, which
@@ -379,32 +400,7 @@ export function createWorld() {
         if (Math.abs(dx) > 512 || Math.abs(dy) > 512) {
           teleport(p);                    // p.x is already b.x - hydrate ran before this
         } else {
-          /* A straight lerp if the straight line is legal, an L if it is not.
-           *
-           * Movement can now travel on both axes in one tick (see the diagonal block in
-           * sim/movement.js), so between two snapshots a remote player may genuinely have moved
-           * diagonally - and interpolating THAT along an L is the stutter the L was invented to
-           * prevent, just transposed. The old reason for the L has not gone away either: a lerp
-           * across a corner TURN cuts through the corner block, which is the "players walk
-           * through walls" everyone sees first.
-           *
-           * The test tells the two apart with no extra state: is the interpolated point legal?
-           * A real diagonal passes, a corner turn does not. Failing that, the L as before - and
-           * which arm comes first is unknowable from two samples, so x-first, falling back to
-           * y-first when the x-first elbow is solid. One of the two is always the path taken.
-           */
-          const sx = a.x + dx * f, sy = a.y + dy * f;
-          if (dx && dy && !blocked(w, p, sx, sy)) {
-            p.rx = sx; p.ry = sy;
-          } else {
-            const t = (Math.abs(dx) + Math.abs(dy)) * f;
-            const xFirst = !blocked(w, p, b.x, a.y);
-            const [u, v] = xFirst ? [dx, dy] : [dy, dx];
-            const pu = a[xFirst ? 'x' : 'y'] + Math.sign(u) * Math.min(Math.abs(u), t);
-            const pv = a[xFirst ? 'y' : 'x'] + Math.sign(v) * Math.max(0, Math.min(Math.abs(v), t - Math.abs(u)));
-            p.rx = xFirst ? pu : pv;
-            p.ry = xFirst ? pv : pu;
-          }
+          pathAt(p, a.x, a.y, b.x, b.y, f);
           // Walking is whether the drawn position is actually changing. The wire has no `moving`
           // flag, and without this every remote player slid around in their standing frame.
           p.moving = Math.abs(dx) + Math.abs(dy) > 2 && f < 1;

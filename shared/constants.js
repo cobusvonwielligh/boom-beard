@@ -189,17 +189,13 @@ export const SLIDE_STAMINA_COST = 940;
 // You may not chain them. Long enough that the second slide is a decision rather than the rest of
 // the first one, short enough to still be the answer to a chase.
 export const SLIDE_COOLDOWN_TICKS = 18;
-/* How long the client gives you between the two taps.
+/* The slide is bound to CONTROL and goes the way you are facing. There is no gesture any more.
  *
- * Client-side only: the server is told "slide" by a bit in the mask and never sees the taps, which
- * is what keeps the gesture a matter of local feel rather than of latency.
- *
- * 160 ms, down from 260. At the old window ordinary corridor play launched slides nobody asked
- * for - tapping a direction twice while lining up a gap is a normal thing to do, and a quarter
- * of a second is long enough to catch it. A slide should cost a deliberate gesture, because it
- * costs a fifth of your wind and takes your steering away for half a second. Two quick taps.
- */
-export const SLIDE_DOUBLE_TAP_MS = 160;
+ * It was a double-tap of a direction inside a 160 ms window, and no window worked: tapping a
+ * direction twice while lining up on a gap is ordinary corridor play, so slides fired by accident
+ * all round - and a mechanic that costs a fifth of your wind and takes your steering away for
+ * half a second must never happen by accident. The binding lives in client/input.js; the server
+ * still only ever sees one bit in the mask, so this is local feel and not a rule.
 
 /* Rails: how far a turn request is carried before it is forgotten.
  *

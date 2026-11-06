@@ -1,7 +1,7 @@
 // Keyboard to input bitmask. Arrows and WASD, per docs/RULES.md §10.
 
 import {
-  IN_RIGHT, IN_UP, IN_LEFT, IN_DOWN, IN_BOMB, SLIDE_DOUBLE_TAP_MS,
+  IN_RIGHT, IN_UP, IN_LEFT, IN_DOWN, IN_BOMB,
 } from '/shared/constants.js';
 
 const BINDINGS = {
@@ -95,20 +95,19 @@ export function createInput({ onReserved, onEmote, onEmoteMenu, isTyping = typin
   let pickerUsed = false;
   let pendingEmote = null;
 
-  /* The slide gesture: the same direction, twice, inside SLIDE_DOUBLE_TAP_MS.
+  /* The slide: CONTROL, and you go the way you are facing.
    *
-   * Kept here rather than in the simulation on purpose. The server is told "slide" by one bit in
-   * the input mask and never learns that it came from two taps, so the gesture costs nothing on
-   * the wire, works identically under any amount of lag, and could be rebound to a key tomorrow
-   * without the rules changing at all.
+   * It was a double-tap of a direction, and that gesture had to go. Two taps inside 160 ms is
+   * indistinguishable from the ordinary business of tapping a direction to line up on a lane, so
+   * slides fired constantly by accident - and the one thing a mechanic with a stamina cost and a
+   * cooldown must not be is something you do without meaning to. A key cannot be pressed by
+   * accident while walking.
    *
-   * Tracked per DIRECTION rather than per key code, so tapping Left on the arrows and then A
-   * counts - they are the same instruction, and a player with a hand on each is not making two
-   * different requests. Auto-repeat never reaches here (see the repeat guard in keydown), which is
-   * what stops holding a direction from reading as an endless stream of taps.
+   * Kept out of the simulation, as the gesture was: the server is told "slide" by one bit in the
+   * input mask and never learns what produced it, so this costs nothing on the wire and could be
+   * rebound again tomorrow without the rules changing at all.
    */
-  const lastTap = new Map();      // direction bit -> timestamp of the last fresh press
-  let slideTap = false;           // armed by a double-tap, consumed by the next tick
+  let slideTap = false;           // armed by a press of Control, consumed by the next tick
 
   const recompute = () => {
     mask = 0;
@@ -137,6 +136,15 @@ export function createInput({ onReserved, onEmote, onEmoteMenu, isTyping = typin
     // the one that opens it and a held shift repeats like anything else.
     if (e.key === 'Shift') { e.preventDefault(); setPicking(true); return; }
 
+    /* Control: slide. Before the repeat guard reads it, but after its own repeat check, because a
+     * held Control must arm exactly one slide and not thirty. The picker swallows it like
+     * everything else - a slide you did not ask for is worse coming out of a menu than anywhere. */
+    if (e.key === 'Control') {
+      e.preventDefault();
+      if (!e.repeat && !picking) slideTap = true;
+      return;
+    }
+
     if (picking) {
       const slot = EMOTE_KEYS[e.code];
       if (slot !== undefined) {
@@ -158,14 +166,6 @@ export function createInput({ onReserved, onEmote, onEmoteMenu, isTyping = typin
     if (RESERVED[e.code]) { e.preventDefault(); onReserved?.(RESERVED[e.code]); return; }
     if (!BINDINGS[e.code]) return;
     e.preventDefault();
-    const bit = BINDINGS[e.code];
-    if (bit !== IN_BOMB) {
-      const t = now();
-      const prev = lastTap.get(bit);
-      // Armed, and the clock is cleared: a third tap starts a new pair rather than firing again.
-      if (prev !== undefined && t - prev <= SLIDE_DOUBLE_TAP_MS) { slideTap = true; lastTap.delete(bit); }
-      else lastTap.set(bit, t);
-    }
     if (!down.has(e.code)) { down.add(e.code); recompute(); }
   });
 
@@ -194,8 +194,8 @@ export function createInput({ onReserved, onEmote, onEmoteMenu, isTyping = typin
   addEventListener('blur', () => {
     down.clear(); recompute(); setPicking(false);
     // An armed slide must not survive the tab losing focus: coming back to a launch nobody asked
-    // for, several seconds after the taps, is the worst kind of surprise in a game about position.
-    lastTap.clear(); slideTap = false;
+    // for, seconds after the key, is the worst kind of surprise in a game about position.
+    slideTap = false;
   });
 
   return {
@@ -204,7 +204,7 @@ export function createInput({ onReserved, onEmote, onEmoteMenu, isTyping = typin
     get mask() { return picking ? 0 : mask; },
     get picking() { return picking; },
     /**
-     * Was a slide asked for? One-shot: it reads and clears, so one double-tap is one slide
+     * Was a slide asked for? One-shot: it reads and clears, so one press of Control is one slide
      * whatever the frame rate - several simulation steps in one frame cannot launch twice.
      */
     takeSlide() {

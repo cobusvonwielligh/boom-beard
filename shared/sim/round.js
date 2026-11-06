@@ -14,7 +14,7 @@ import { expireStatuses, has, toTile, recordStreakKill, resetStreak } from './st
 import { stepAll } from './movement.js';
 import { place, detonate, expireFires, bombable, kick, slideBombs } from './bombs.js';
 import { randInt } from '../util/rng.js';
-import { collect, scatterOnDeath } from './perks.js';
+import { collect, scatterOnDeath, keepOnDeath } from './perks.js';
 import { regenerate, expirePuddles } from './blocks.js';
 import { burns } from './fire.js';
 import { spread as spreadStatuses, daze } from './statuses.js';
@@ -191,15 +191,21 @@ function killInFire(state) {
      */
     deathBomb(state, p);
 
-    scatterOnDeath(state, p);
+    /* Half your upgrades, give or take, come back with you. See keepOnDeath.
+     *
+     * Decided before the scatter and before the reset, because all three have to agree on one
+     * answer: what stays in your hands is exactly what does not roll across the floor, and the
+     * loadout below is the same list again. */
+    const kept = keepOnDeath(state, p);
+    scatterOnDeath(state, p, kept);
 
     p.alive = false;
     p.deaths++;
     resetStreak(p);
     p.shieldGrace = 0;
-    p.bombs = START_BOMBS;
-    p.radius = START_RADIUS;
-    p.speed = 0;
+    p.bombs = kept.bombs;
+    p.radius = kept.radius;
+    p.speed = kept.speed;
     p.shields = 0;
     p.stamina = STAMINA_MAX;
     p.staminaLevel = 0;
