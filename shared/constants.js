@@ -91,31 +91,23 @@ export const SLOWDOWN_NUM = 1, SLOWDOWN_DEN = 2; // speed * 1/2, integer divisio
 export const HITBOX_UNITS = 20 * (UNITS_PER_TILE / TILE_PX); // 20 px → 160 units
 export const HITBOX_REDUCED_UNITS = 10 * (UNITS_PER_TILE / TILE_PX);
 
-/* Diagonals, and the corners they have to get round.
+/* The corner cut: the hitbox's own corners are chamfered.
  *
- * Holding two keys moves you on BOTH axes in the same tick, each at 181/256 of your pace - the
- * integer 1/√2, so a diagonal covers the same ground per tick as a straight line and is not a
- * free speed boost. (181/256 = 0.7070; √½ = 0.7071.)
+ * A tile is only solid to you if you are into it by more than this on BOTH axes at once, which
+ * turns the 160-unit square box into an octagon. 96 units is twelve pixels of chamfer on a
+ * twenty-pixel box - most of the way to the middle of each side, which is as far as it can
+ * usefully go: at 80 the corners meet, the hitbox is a diamond, and a diamond slides off
+ * everything including the walls you meant to stop against.
  *
- * The corner cut is what makes it feel like anything. A square hitbox walked diagonally past the
- * corner of a square block catches on it: both shapes have a 90° corner and the two meet at a
- * single point, so there is nothing to slide along and you stop dead a pixel into the turn. So
- * the box's own corners are chamfered - a tile is only solid to you if you are into it by more
- * than this on BOTH axes at once, which turns the hitbox into an octagon and the catch into a
- * glance. 44 units is about five and a half pixels of chamfer on a twenty-pixel box.
+ * ORDINARY TRAVEL NEVER REACHES IT any more. It was there for diagonals, which the rails
+ * removed - a lane-centred hitbox is 160 units inside a 256-unit lane, so it only ever touches
+ * the tiles its own lane passes through and the chamfer has nothing to forgive. What still asks
+ * is `unstick`'s seatbelt and the bots, who reason about the SQUARE box precisely because a
+ * corner a person may glance off is not a corner a bot may plan through.
  *
- * It lives in `blocked`, not in the diagonal code, so the shape is the same shape for everything
- * that asks - walking, the unstick, bomb solidity, spawn safety. A hitbox that is one shape when
- * moving and another when being pushed is the kind of disagreement that ends in a desync.
+ * It lives in `blocked`, so the shape is the same shape for everything that asks. A hitbox that
+ * is one shape when moving and another when being pushed ends in a desync.
  */
-export const DIAG_NUM = 181, DIAG_DEN = 256;
-/* 96 units: twelve pixels of chamfer on a twenty-pixel box.
- *
- * It was 44, then 64, now half again as much. The box is 160 units across, so the chamfer is now
- * most of the way to the middle of each side - which is as far as it can usefully go: at 80 the
- * corners meet and the hitbox is a diamond, and a diamond slides off everything including the
- * walls you meant to stop against. At 96 it is still an octagon with real flats on it, and a
- * diagonal past a block corner glances off with nothing left to catch on. */
 export const CORNER_CUT_UNITS = 96;
 
 // Fire forgives a sliver of the sprite. The hitboxes above are what geometry collides with; fire
@@ -125,14 +117,6 @@ export const CORNER_CUT_UNITS = 96;
 // 13/20 of 160 units is 104 - three and a half pixels of mercy on each side, a shade more than
 // the 7/10 it started at. TUNE
 export const HITBOX_FIRE_NUM = 13, HITBOX_FIRE_DEN = 20;
-
-// Slide toward a tile centre instead of stopping when the perpendicular offset is within this.
-// This is what makes movement feel like Bomberman rather than like a grid. Do not remove.
-// Widened from 0.375 to 0.44 of a tile after playtesting: at the old window you could be visibly
-// most of the way into a doorway and still stop dead against its edge, which reads as the game
-// refusing a move you clearly made. There is no overshoot risk - the assist only ever pulls you
-// onto the centre line of a lane you are already in.
-export const CORNER_ASSIST_UNITS = 112; // 0.44 tile. TUNE
 
 // Input bitmask
 export const IN_RIGHT = 1, IN_UP = 2, IN_LEFT = 4, IN_DOWN = 8, IN_BOMB = 16, IN_SLIDE = 32;
@@ -780,22 +764,13 @@ export const CONFUSED_NUM = 3, CONFUSED_DEN = 4;
  * reconciliation. It is a sum of two sines on the tick, seeded per player, so both machines
  * compute the same stagger and it still never repeats in a way anybody notices.
  */
-// 20, down from 34. At a third of a tile the sway was not 'drunk', it was 'the controls are
-// broken': you could not hold a corridor at all, so the only thing to do with rum was wait
-// twenty seconds. Enough to be visibly unsteady and still thread a gap is the useful amount.
-export const DRUNK_SWAY_UNITS = 20;
-export const DRUNK_SWAY_RATE_A = 0.09, DRUNK_SWAY_RATE_B = 0.041;
-/* How often a drunk takes a step that was not asked for.
+/* The sway and the stagger are GONE; see DRUNK_FUMBLE_EVERY, which replaced them.
  *
- * The sway alone is a wobble you can simply correct for after a few seconds. The stagger is
- * what makes it genuinely hard: for a handful of ticks the axis you are travelling on is not
- * the one you pressed. Deterministic in (tick, seat) like everything else here, so the client
- * predicts the stumble rather than being corrected into it.
+ * Both moved you across the line you were walking along, and on rails there is no across to be
+ * moved into - the invariant is that you are on a lane centre, so a sideways nudge is not a cost,
+ * it is an impossibility. The cost had to stay, because a defensive perk with no downside is just
+ * a better perk, so it moved to the one place a rail pirate makes a decision: the turns.
  */
-// Less often and much shorter. Seven ticks is nearly a quarter of a second of going somewhere
-// you did not ask for, which at four stumbles a second of walking is most of the walking.
-export const DRUNK_STAGGER_EVERY = 79;     // ticks between stumbles, prime so it never syncs
-export const DRUNK_STAGGER_TICKS = 4;      // how long one lasts
 
 /* The death-screen cooldown happens before SPACE is accepted. Once requested, a separate
  * countdown gives the player a clear 3, 2, 1 before the server places them.

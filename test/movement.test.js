@@ -6,8 +6,8 @@ import assert from 'node:assert/strict';
 import { createState, createPlayer, setTile, tileAt, tileCentre, hashState } from '../shared/sim/state.js';
 import { step, blocked, speedOf } from '../shared/sim/movement.js';
 import {
-  BLOCK, IN_RIGHT, IN_LEFT, IN_DOWN, IN_UP, UNITS_PER_TILE, CORNER_ASSIST_UNITS,
-  SPEED_UNITS_PER_TICK, MAX_SKATES, STATUS, DIR_R, DIR_D, DIR_L, BLOCK_HP, DIAG_NUM, DIAG_DEN,
+  BLOCK, IN_RIGHT, IN_LEFT, IN_DOWN, IN_UP, UNITS_PER_TILE,
+  SPEED_UNITS_PER_TICK, MAX_SKATES, STATUS, DIR_R, DIR_D, DIR_L, BLOCK_HP,
 } from '../shared/constants.js';
 import { applyStatus } from '../shared/sim/state.js';
 import { mossValue, mossyTile } from '../shared/moss.js';
@@ -91,21 +91,35 @@ test('movement', async t => {
     return st;
   };
 
-  await t.test('corner assist straightens you through a doorway you are nearly lined up with', () => {
-    const st = doorway(); const p = spawn(st, 2, 2);
-    p.y = tileCentre(2) + CORNER_ASSIST_UNITS;      // clipping the lower jamb
-    // Centring is deliberately gentle - a few units a tick, easing - so getting lined up takes
-    // tens of ticks rather than two. The assertion is still that it arrives EXACTLY.
-    for (let i = 0; i < 220; i++) step(st, p, IN_RIGHT);
-    assert.equal(p.y, tileCentre(2), 'straightened onto the doorway centre line');
-    assert.ok(p.x > tileCentre(3), 'and went through');
+  /* RAILS. "Nearly lined up" is not a category any more, and that is the improvement.
+   *
+   * Corner assist had a WINDOW - within 112 units of the lane it straightened you through the
+   * doorway, and outside it you stopped dead against the jamb. The second of these two tests
+   * asserted exactly that refusal, and it only ever passed because 152 units off the centre of
+   * row 2 is not "far out of line in row 2" at all: it is row 3, a different lane, with no
+   * doorway in it. The window was never really being measured.
+   *
+   * On rails there is only ever one question - which LANE are you on - and the answer is exact.
+   * Anywhere in the doorway's lane goes through; another lane does not, until you turn onto it.
+   */
+  await t.test('anywhere in the doorway lane goes through it, however far off centre', () => {
+    for (const off of [0, 40, 84, 124]) {
+      const st = doorway(); const p = spawn(st, 2, 2);
+      p.dir = DIR_R;
+      p.y = tileCentre(2) + off;              // all of these are still row 2
+      assert.equal(p.y >> 8, 2, `an offset of ${off} left row 2, so this proves nothing`);
+      for (let i = 0; i < 220; i++) step(st, p, IN_RIGHT);
+      assert.equal(p.y, tileCentre(2), `offset ${off}: never settled onto the lane`);
+      assert.ok(p.x > tileCentre(3), `offset ${off}: did not get through the doorway`);
+    }
   });
 
-  await t.test('and does not when you are too far out of line', () => {
-    const st = doorway(); const p = spawn(st, 2, 2);
-    p.y = tileCentre(2) + CORNER_ASSIST_UNITS + 40; // beyond the window: aiming at the jamb
-    for (let i = 0; i < 30; i++) step(st, p, IN_RIGHT);
-    assert.ok(p.x < tileCentre(3), 'stopped at the wall, as it should');
+  await t.test('a pirate on another lane does not go through a doorway on this one', () => {
+    const st = doorway(); const p = spawn(st, 2, 3);   // row 3: the jamb, not the gap
+    p.dir = DIR_R;
+    for (let i = 0; i < 60; i++) step(st, p, IN_RIGHT);
+    assert.ok(p.x < tileCentre(3), 'walked through the jamb of a doorway on another lane');
+    assert.equal(p.y, tileCentre(3), 'drifted off its own lane');
   });
 
   await t.test('auto-centres onto a corridor while walking', () => {
