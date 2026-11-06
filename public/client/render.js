@@ -20,7 +20,7 @@ import {
   COAST_CORNERS, COAST_Q, COAST_RADIUS, carveRockCorners, drawCoastFillets, cornerCells,
   STONE_RADIUS,
 } from '/assets/art.js';
-import { placeable } from '/shared/sim/bombs.js';
+import { placeable, bombCanSlideInto } from '/shared/sim/bombs.js';
 import { gullAt } from '/shared/sim/gulls.js';
 import { mossValue } from '/shared/moss.js';
 import { streakActive } from '/shared/sim/state.js';
@@ -101,15 +101,6 @@ export function createRenderer(canvas, world) {
   const glow = [];                           // bioluminescent points; see drawGlow
   let glowSprites = null;                    // pre-drawn soft points, one per tint
   const bombClock = { tick: -1, at: 0 };    // when world.tick last changed; see the bomb loop
-  /* A free-running fractional tick for drawing MOTION between snapshots. See the kick below.
-   *
-   * Separate from `bombClock` because that one is re-anchored to the instant each snapshot lands,
-   * which is exactly what a moving object must not read: snapshots arrive every two ticks over a
-   * network, so their arrival jitter lands in the clock and a skating bomb twitches back and forth
-   * by however late the last packet was. This one is advanced by real time and merely PULLED
-   * toward the server's tick, so jitter becomes a slow phase correction instead of a jump.
-   */
-  const hopClock = { t: 0 };
   /* How far above quiet a band is, 0..1, LINEARLY.
    *
    * This used to be curved (x^1.5 from 0.35) so the music's usual level barely moved the water.
@@ -3983,19 +3974,21 @@ export function createRenderer(canvas, world) {
     if (world.tick !== bombClock.tick) { bombClock.tick = world.tick; bombClock.at = performance.now(); }
     const tickNow = world.tick + Math.min(1.95, (performance.now() - bombClock.at) / (world.tickMs || TICK_MS));
     const bombNow = performance.now();
-    /* The motion clock: real time forward, with a gentle pull toward the snapshot.
+    /* The motion clock for anything that MOVES on a schedule: the server's own tick, undelayed.
      *
-     * Aimed a tick PAST `world.tick`, because that is the middle of the window a snapshot covers -
-     * they land every two ticks, so on average the newest one is about a tick old. Aiming at the
-     * snapshot itself would park the clock at one end of every hop and clip it there.
+     * `world.tickRaw` is net.serverTickNow() - a continuous estimate of the tick the server is on
+     * right now, the clock a bomb's `kickFrom`/`kickAt` are written in. Everything else here reads
+     * a clock derived from snapshot ARRIVAL, and for a moving object that is the wrong clock: a
+     * packet 20 ms late moves the clock 20 ms, and the bomb twitches by however late the network
+     * was. This one does not know or care when the last packet landed.
      *
-     * A sixteenth of the error a frame is slow enough that jitter is invisible and fast enough to
-     * follow a gamespeed change. More than four ticks out is not drift - it is a resync, a hidden
-     * tab waking up, or a new round - so that one is taken whole.
+     * Half a tick of lead. The hop fraction below is clamped, so a clock that runs slightly AHEAD
+     * parks the bomb on the tile it is about to reach and the confirming snapshot then continues
+     * from exactly there - continuous. A clock that runs BEHIND is the one that jumps: the bomb is
+     * still drawn mid-hop when the new tile arrives, and the drawn position has to catch up in one
+     * frame. So the error is deliberately biased into the half that cannot be seen.
      */
-    const hopStep = dtMs / (world.tickMs || TICK_MS);
-    if (Math.abs(world.tick + 1 - hopClock.t) > 4) hopClock.t = world.tick + 1;
-    else hopClock.t += hopStep + (world.tick + 1 - hopClock.t) * 0.0625;
+    const hopNow = (world.tickRaw ?? world.tick) + 0.5;
     for (const b of world.bombs) {
       const owner = (b.o ?? b.owner) % 16;
       /* In quickly. A bomb used to exist from one frame to the next, which at sixteen players is
@@ -4023,26 +4016,36 @@ export function createRenderer(canvas, world) {
        * position is not interpolation-delayed, so it must not be read against a delayed clock;
        * its fuse ring on the very next line already gets this right.
        *
-       * Two details, and without either of them the hop still steps.
+       * Three details, and the hop steps without any one of them.
        *
        * THE SPAN IS PER-HOP. A tile takes 2.6 ticks and a tick is whole, so the hops run 3, 3, 2,
        * 3, 2 - see scheduleHop in sim/bombs.js. `kickFrom` is when this one started, so the
        * fraction is measured against the length of the hop actually being drawn; a constant here
        * draws a 2-tick hop as though it had 2.6 to run and snaps the last fifth of it into place.
        *
-       * THE CLOCK IS ITS OWN. `tickNow`, which the fuse ring uses, stops at 1.95 ticks past the
-       * last snapshot so a fuse can never burst a tick early - but snapshots are two ticks apart,
-       * so inside a 3-tick hop it ran smoothly for 1.95 ticks and then STALLED until the next one
-       * landed: the bomb glided, froze, jumped, glided. `hopClock` has no cap and no re-anchoring,
-       * so it keeps moving through a late packet; the fraction below is clamped to [0, 1], so the
-       * worst an overrun can do is leave the bomb sitting on the tile it has already reached.
-       */
+       * THE CLOCK IS THE SERVER'S, UNDELAYED. See hopNow above.
+       *
+       * IT IS DRAWN FORWARD, from the tile it is on toward the tile it is going to - not backward
+       * from where it is toward where it came from, which is what it used to do and what made it
+       * step however smooth the clock was. Backward drawing is only continuous if the new tile is
+       * observed at the instant the hop ends, and it never is: snapshots come every two ticks, so
+       * the bomb glided to its tile, SAT there waiting to be told it had moved, and then jumped
+       * when it was. Drawn forward, the clamp at a full tile parks it exactly where the next
+       * snapshot will say it is, so there is nothing left to jump.
+       *
+       * Drawing forward means drawing a tile the simulation has not reached yet, so it is only
+       * done when the bomb is genuinely going there: `bombCanSlideInto` is the same predicate the
+       * server steps by, run on the client's own world, and `kickLeft` is the range it has left.
+       * Without both, the last hop of every kick would be drawn into the wall that stopped it and
+       * then snap back a whole tile. */
       let bx = b.tx, by = b.ty;
       if (b.kickDir !== undefined && b.kickDir >= 0 && b.kickAt > 0) {
-        const span = Math.max(1, b.kickAt - (b.kickFrom ?? b.kickAt - 1));
-        const left = Math.max(0, Math.min(1, (b.kickAt - hopClock.t) / span));
         const step = [[1, 0], [0, -1], [-1, 0], [0, 1]][b.kickDir];
-        if (step) { bx -= step[0] * left; by -= step[1] * left; }
+        const span = Math.max(1, b.kickAt - (b.kickFrom ?? b.kickAt - 1));
+        const through = Math.max(0, Math.min(1, 1 - (b.kickAt - hopNow) / span));
+        const onward = step && b.kickLeft > 0
+          && bombCanSlideInto(world, b.tx + step[0], b.ty + step[1]) ? through : 0;
+        if (step) { bx += step[0] * onward; by += step[1] * onward; }
       }
       ctx.translate(ox + bx * TILE_PX, oy + by * TILE_PX);
       if (pop < 1) {

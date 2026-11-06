@@ -270,6 +270,11 @@ export function slideBombs(state) {
 /**
  * Is this tile somewhere a skating bomb may come to rest?
  *
+ * Exported because the RENDERER has to agree with it exactly. The client draws a hop forward,
+ * into the tile the bomb is heading for, which is only honest while the bomb is actually going
+ * there - so it asks this, on its own world, rather than keeping a second copy of the rule that
+ * could drift. See the kick interpolation in client/render.js.
+ *
  * Anybody standing on it stops it - that is what makes a kicked bomb a weapon you can answer. It
  * comes to rest on the tile BEFORE them, still ticking, and they can kick it straight back.
  *
@@ -278,7 +283,7 @@ export function slideBombs(state) {
  * tiles later. A slide now collides with the bomb and ends there, so the kicker is always behind
  * it and never in its path, and the exceptions were only a way for a bomb to pass through people.
  */
-function bombCanSlideInto(state, tx, ty) {
+export function bombCanSlideInto(state, tx, ty) {
   if (tileAt(state.map, tx, ty) !== BLOCK.FLOOR) return false;
   if (bombAt(state, tx, ty)) return false;
   if (puddleAt(state, tx, ty)) return false;        // a fuse does not survive the water

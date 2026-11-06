@@ -325,6 +325,12 @@ export function createWorld() {
      * it steps rather than moves. A skating bomb hops a whole tile every few ticks and is the
      * first thing where that is obvious; see the kick interpolation in render.js. */
     w.tickF = renderTick;
+    /* And the UNDELAYED one, for anything that moves on a schedule the server wrote in ticks.
+     *
+     * A skating bomb carries the ticks its hops start and end on, so the only clock it can be
+     * drawn against is the one those numbers are in - the server's, now, not four ticks ago and
+     * not whenever the last packet happened to land. See the kick in render.js. */
+    w.tickRaw = serverTickNow;
     for (const p of w.players) {
       if (!p) continue;
 

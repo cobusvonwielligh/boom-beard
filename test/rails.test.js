@@ -158,10 +158,24 @@ test('rails: invariants', async t => {
     const moveState = p =>
       `${p.x},${p.y},${p.dir},${p.turnWant},${p.turnLeft},${p.slideV},${p.slideDir},${p.slide}`;
 
+    /* The MAP has to be mirrored, or this test is a lottery.
+     *
+     * The server's tick regrows walls (step 9), and movement reads the map - so left alone the two
+     * worlds drift apart in terrain and the "divergence" found is the test's own doing. The real
+     * client does not drift: it is kept in step by the blocknew/blockdie events, which is exactly
+     * what this copy stands in for. Mirrored BEFORE each tick, so both sides step the same terrain.
+     *
+     * Found when a new map read in `step` started landing on a regrown wall around tick 1000. The
+     * read was correct; this test was passing on the strength of never having looked there. */
+    const mirrorMap = () => {
+      for (let i = 0; i < server.map.cells.length; i++) client.map.cells[i] = server.map.cells[i];
+    };
+
     let seed = 777;
     for (let n = 0; n < 1500; n++) {
       seed = (seed * 1103515245 + 12345) & 0x7fffffff;
       const mask = (seed >>> 8) & (IN_RIGHT | IN_UP | IN_LEFT | IN_DOWN | IN_SLIDE);
+      mirrorMap();
       tick(server, [mask]);                  // the server's whole tick
       step(client, cp, mask);                // the client's prediction
       client.tick++;                         // ...which only advances movement
@@ -367,6 +381,37 @@ test('rails: travel and turning', async t => {
       step(st, p, IN_RIGHT | IN_UP);
       assert.ok(p.y < y, `pace ${speed}: did not leave the corner on the tick after the pivot`);
       assertOnRail(p, `pace ${speed}: after the pivot`);
+    }
+  });
+
+  /* Two keys into a shut corner must be STILL, not a pirate spinning on the spot.
+   *
+   * This was the flip people reported as "my character jumps between facing opposite sides". Every
+   * tick, the cross press became a turn request; the request could not be spent flush against the
+   * wall, so the pirate was turned round to walk back to the junction; the along-lane press turned
+   * them round again on the next tick; and the request was re-stamped while the key was held, so
+   * it could never expire its way out. Facing reversed at fifteen hertz with 48 units of bounce
+   * underneath it. `turnLands` ends it by asking whether the turn has anywhere to go BEFORE
+   * setting off for the junction.
+   */
+  await t.test('holding two keys into a shut corner neither flips the facing nor shuffles', () => {
+    const st = room(9, 9);
+    setTile(st.map, 4, 3, BLOCK.IRON);         // the wall ahead
+    setTile(st.map, 3, 4, BLOCK.IRON);         // and the wall the turn points at
+    const p = spawn(st, 3, 3, { speed: MAX_SKATES });
+
+    // One tick to go flush against the wall ahead, which is where the flip used to start.
+    for (let n = 0; n < 4; n++) step(st, p, IN_RIGHT | IN_DOWN);
+    assert.ok(offset(p.x) > HALF, 'the test needs the pirate flush against the wall');
+    const settled = { x: p.x, y: p.y, dir: p.dir };
+    assert.equal(settled.dir, DIR_R, 'not facing the wall it ran into');
+
+    for (let n = 0; n < 40; n++) {
+      step(st, p, IN_RIGHT | IN_DOWN);
+      assert.equal(p.dir, DIR_R, `tick ${n}: facing flipped to ${p.dir} in a shut corner`);
+      assert.equal(p.x, settled.x, `tick ${n}: shuffled on the x axis`);
+      assert.equal(p.y, settled.y, `tick ${n}: shuffled on the y axis`);
+      assert.equal(p.moving, false, `tick ${n}: walking on the spot against a wall`);
     }
   });
 

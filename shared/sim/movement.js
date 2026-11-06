@@ -416,10 +416,7 @@ function cornerPivot(state, p, horizontal) {
    */
   if (canStand(state, p, ...aheadTile(p))) return false;
 
-  const want = p.turnWant;
-  const [vx, vy] = DIR_VEC[want] ?? DIR_VEC[DIR_D];
-  const tx = toTile(p.x), ty = toTile(p.y);
-  if (!canStand(state, p, tx + vx, ty + vy)) return false;
+  if (!turnLands(state, p)) return false;
 
   const back = tileCentre(toTile(along));
   const nx = horizontal ? back : p.x, ny = horizontal ? p.y : back;
@@ -428,9 +425,21 @@ function cornerPivot(state, p, horizontal) {
   if (blocked(state, p, nx, ny)) return false;
 
   p.x = nx; p.y = ny;
-  p.dir = want;
+  p.dir = p.turnWant;
   clearTurn(p);
   return true;
+}
+
+/**
+ * Could the buffered turn actually be spent at this tile's junction?
+ *
+ * The nearest junction on your lane is always the centre of the tile you are standing in, so this
+ * is the same question `spendTurn` will ask when you get there - asked before setting off, which
+ * is what stops the pirate setting off at all for a turn that is going to be refused.
+ */
+function turnLands(state, p) {
+  const [vx, vy] = DIR_VEC[p.turnWant] ?? DIR_VEC[DIR_D];
+  return canStand(state, p, toTile(p.x) + vx, toTile(p.y) + vy);
 }
 
 /** The tile immediately ahead along the current facing, as [tx, ty]. */
@@ -830,8 +839,23 @@ export function step(state, p, mask) {
      * going, and spends the turn at the junction they are already heading for.
      */
     if (wantsTurn(p) && !atJunction(p) && !canStand(state, p, ...aheadTile(p))) {
+      /* A turn that cannot land is DROPPED, and this is the flip people saw.
+       *
+       * Hold two keys into a corner where both ways are shut - down into the floor of the map
+       * while also pressing right into a wall - and every tick did this: the cross press became a
+       * turn request, the request could not be spent flush, so the pirate was turned round to walk
+       * back to the junction; the next tick the along-lane press turned them round again; the
+       * tick after that, back. Facing opposite ways at fifteen hertz, and bouncing 48 units up and
+       * down with it, for as long as the keys were held. The request was re-stamped every tick, so
+       * it could never expire its way out either.
+       *
+       * Asking whether the turn will land before setting off ends it: if the tile it points at is
+       * shut there is nothing at that junction worth walking to, so the request goes and the
+       * pirate keeps facing the way they are actually travelling.
+       */
+      if (!turnLands(state, p)) clearTurn(p);
       // Pivot into the corner if we can, and only walk back to the junction if we cannot.
-      if (cornerPivot(state, p, horizontal)) pivoted = true;
+      else if (cornerPivot(state, p, horizontal)) pivoted = true;
       else faceNearestJunction(p, horizontal);
     }
   } else if (!coasting) {
@@ -883,7 +907,11 @@ export function step(state, p, mask) {
        * The NEAREST junction, which may be behind them - unless they are flush against a wall,
        * in which case the pivot takes the corner here and now rather than walking back to it.
        */
-      if (cornerPivot(state, p, horizontal)) pivoted = true;
+      /* Same rule as above: a turn with a wall behind it is not worth walking to a junction for.
+       * Face what was pressed and drop it, which is exactly what spending it at the junction would
+       * have done on arrival - see the refusal a few lines up. */
+      if (!turnLands(state, p)) { p.dir = p.turnWant; clearTurn(p); }
+      else if (cornerPivot(state, p, horizontal)) pivoted = true;
       else faceNearestJunction(p, horizontal);
     }
   }
