@@ -215,23 +215,26 @@ export const FIRE_LETHAL_NUM = 2, FIRE_LETHAL_DEN = 3;
 export const FIRE_LETHAL_TICKS = Math.round((FIRE_TICKS * FIRE_LETHAL_NUM) / FIRE_LETHAL_DEN);
 export const MAX_BOMBS = 16;        // hard ceiling on bombs alive anywhere, a safety valve
 
-/* What one player can have out at once, and how far one reaches. Both five.
+/* What one player can have out at once, and how far one reaches. Eight and five.
  *
- * Separate from MAX_BOMBS, the safety valve, and much lower: sixteen bombs in one pair of hands
- * is not a loadout, it is a carpet, and a map where every tile is about to explode has no
- * decisions left in it. The HUD shows both caps so the ceiling is visible rather than a surprise
- * when a pickup stops doing anything.
+ * Eight bombs is deliberate, and spam is the point: a flurry is meant to be a thing you can
+ * actually throw. Nothing else was needed to make it spammable - placement is one bomb per key
+ * PRESS with no cooldown (see place()), so the cap was the only thing ever limiting a flurry.
  *
- * Down from eight and six. Eight bombs was most of a corridor at once and a radius of six was
- * most of a room, so a fully kitted player did not have to aim - the two of them together cover
- * so much floor that position stopped being the thing the game is about. Five and five still feel
- * like a full loadout and still leave somewhere to stand.
+ * It was briefly five, on the argument that eight bombs is most of a corridor at once and leaves
+ * a kitted player with nothing to aim at. That argument is answered by the RADIUS cap rather than
+ * by the bomb count: five bombs of reach five cover far more floor than eight of reach five, and
+ * it is reach, not count, that decides whether position still matters. So the count goes up and
+ * the radius stays where it is - a player with eight bombs still has to place them somewhere.
  *
- * A powder keg is deliberately above the cap (POWDER_RADIUS), which is how the renderer and the
- * sound both identify one without a flag on the wire - so this number dropping widens that gap
- * rather than closing it.
+ * MAX_BOMBS above is NOT a second cap on this. It is declared and never read by anything; do not
+ * mistake it for a live safety valve that needs raising alongside this number.
+ *
+ * A powder keg is deliberately above the radius cap (POWDER_RADIUS), which is how the renderer
+ * and the sound both identify one without a flag on the wire. MAX_RADIUS not moving is what keeps
+ * that gap intact, and test/bombs.test.js asserts it.
  */
-export const MAX_BOMBS_CARRIED = 5;
+export const MAX_BOMBS_CARRIED = 8;
 export const MAX_RADIUS = 5;
 export const START_BOMBS = 1;
 export const START_RADIUS = 1;

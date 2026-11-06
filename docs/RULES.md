@@ -143,7 +143,7 @@ simulation, the client's prediction, the click sound, and the bots.
 | Fuse | **72 ticks (2.4 s)** **(TUNE)** |
 | Fuse under Fast Detonation | **36 ticks (1.2 s)** |
 | Start bombs | 1 |
-| Max bombs carried | **5** (16 live bombs globally is the server safety ceiling) |
+| Max bombs carried | **8** (spammable: one bomb per key press, no cooldown) |
 | Start fire radius | 1 |
 | Max fire radius | **5** (9 with Blue fire - *not in v1*) |
 
@@ -269,10 +269,12 @@ letting a capped player farm points or refresh an active effect.
 them is a weight change and one effect function: Kick, Jelly, Detonator, Bat, Jetpack, Nuclear
 charge, Blue fire, Heart, Key.
 
-**Caps.** Bombs carried and blast radius both cap at **5**. They were 8 and 6, and together they
-covered so much floor that a fully kitted player did not have to aim - position stopped being the
-thing the game is about. A powder keg stays deliberately above the cap at radius 7, which is how
-the renderer and the sound identify one without a flag on the wire.
+**Caps.** Bombs carried caps at **8**, blast radius at **5**. The count is high on purpose - a
+flurry is meant to be something you can actually throw, and placement is one bomb per key press
+with no cooldown, so eight is eight. What keeps position mattering is the RADIUS cap, not the bomb
+count: it is reach, not how many you are holding, that decides whether there is anywhere left to
+stand. A powder keg stays deliberately above the radius cap at 7, which is how the renderer and
+the sound identify one without a flag on the wire.
 
 ---
 
@@ -423,7 +425,7 @@ the **16-second** between-round intermission, spend the listed cost to queue a b
 
 | Bundle | Cost | Grant | Maximum queued |
 |---|---:|---|---:|
-| Bombs | 1 gold | +2 max bombs | 4 (5 total including your starting bomb) |
+| Bombs | 1 gold | +2 max bombs | 7 (8 total including your starting bomb) |
 | Fire | 1 gold | +1 blast radius | 4 |
 | Speed | 1 gold | +1 speed level | 3 |
 | Shield | 2 gold | +1 shield | 2 |

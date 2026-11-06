@@ -31,7 +31,10 @@ test('shop queue normalization returns a fresh, capped, integer-only queue', () 
   };
   const queue = normaliseShopQueue(source);
 
-  assert.deepEqual(queue, { bombs: 4, fire: 4, speed: 3, shield: 2, stim: 3 });
+  // Derived from the catalog, not written out: these numbers are the caps, and a literal here
+  // silently stops testing clamping the moment a cap moves.
+  assert.deepEqual(queue,
+    { bombs: SHOP_ITEMS.bombs.cap, fire: 4, speed: 3, shield: 2, stim: 3 });
   assert.notEqual(queue, source);
   assert.deepEqual(source, {
     bombs: 9, fire: 4, speed: 9, shield: 2, stim: 3, extra: 99, negative: -1,
@@ -63,5 +66,15 @@ test('shop bundle additions reject unknown keys and never partially exceed a cap
   assert.equal(addShopBundle({ speed: 3 }, 'speed'), null);
   assert.deepEqual(addShopBundle({ bombs: 2 }, 'bombs'),
     { bombs: 4, fire: 0, speed: 0, shield: 0, stim: 0 });
-  assert.equal(addShopBundle({ bombs: 4 }, 'bombs'), null);
+
+  /* The "never PARTIALLY exceed" half of this test's name, against the bombs cap specifically,
+   * because bombs is the one item whose bundle (2) does not divide its cap - so the last bundle
+   * can overshoot rather than land on it. A bundle that would overshoot is refused outright; it
+   * does not top up to the cap and keep the change. */
+  const bombCap = SHOP_ITEMS.bombs.cap, bundle = SHOP_ITEMS.bombs.bundle;
+  assert.deepEqual(addShopBundle({ bombs: bombCap - bundle }, 'bombs'),
+    { bombs: bombCap, fire: 0, speed: 0, shield: 0, stim: 0 }, 'a bundle that exactly fills was refused');
+  assert.equal(addShopBundle({ bombs: bombCap - bundle + 1 }, 'bombs'), null,
+    'a bundle that would overshoot the cap was partially applied');
+  assert.equal(addShopBundle({ bombs: bombCap }, 'bombs'), null);
 });

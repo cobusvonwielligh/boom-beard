@@ -11,6 +11,7 @@ import { drop, maybeDrop } from '../shared/sim/perks.js';
 import {
   BLOCK, BLOCK_HP, IN_BOMB, IN_RIGHT, FUSE_TICKS, FUSE_TICKS_FAST, STATUS, PERK, MAX_RADIUS, SCORE,
   PERK_WEIGHTS, NON_GOLD_DROP_KEEP_CHANCE, FIRE_LETHAL_TICKS, FIRE_TICKS, DIR_R, DIR_U, DIR_L, DIR_D,
+  MAX_BOMBS_CARRIED, POWDER_RADIUS,
 } from '../shared/constants.js';
 
 function room(w = 15, h = 15) {
@@ -546,4 +547,46 @@ test('bombs land on the tile you are facing', async t => {
     tap(st, p);
     assert.equal(st.bombs.length, 2, 'placed a third bomb on an occupied tile');
   });
+});
+
+/* Eight in a pair of hands, and spammable.
+ *
+ * Spam needs no new mechanism: placement is edge-triggered (one bomb per PRESS, not per tick the
+ * key is down) and has no cooldown, so the only thing that ever limited a flurry was the cap.
+ * These tests pin the cap, the flurry, and the one invariant the cap must not break.
+ */
+test('a player can hold eight bombs', () => {
+  assert.equal(MAX_BOMBS_CARRIED, 8);
+});
+
+test('eight bombs go down back to back, and the ninth is refused', () => {
+  const st = room(24, 5);
+  const p = immortal(spawn(st, 0, 2, 2));
+  p.bombs = MAX_BOMBS_CARRIED;
+
+  /* No ticks at all between presses, which is the strictest reading of "spammable": the only
+   * thing standing between a press and a bomb is the key edge and the cap. Driving it with
+   * `tick` instead would spend ten ticks per tile on travel, and eight tiles of that outlives
+   * FUSE_TICKS - the first bomb would detonate mid-flurry and the test would be measuring the
+   * fuse. The player is moved by hand and faces up, so each bomb lands on its own free tile.
+   */
+  let placed = 0;
+  for (let n = 0; n < MAX_BOMBS_CARRIED + 2; n++) {
+    p.x = tileCentre(2 + n);
+    p.dir = DIR_U;
+    const before = st.bombs.length;
+    tap(st, p);
+    if (st.bombs.length > before) placed++;
+  }
+  assert.equal(placed, MAX_BOMBS_CARRIED,
+    `laid ${placed} bombs with a cap of ${MAX_BOMBS_CARRIED}`);
+  assert.equal(st.bombs.length, MAX_BOMBS_CARRIED, 'a bomb went off or vanished mid-flurry');
+});
+
+/* A powder keg is identified by having a radius ABOVE the player caps, not by a flag on the wire -
+ * the renderer and the sound both lean on that. Raising the bomb cap must not close the gap, which
+ * is why this asserts against the radius cap it does not touch. */
+test('a powder keg still out-reaches anything a player can carry', () => {
+  assert.ok(POWDER_RADIUS > MAX_RADIUS,
+    `a keg reaches ${POWDER_RADIUS} and a player reaches ${MAX_RADIUS}`);
 });

@@ -5,8 +5,9 @@ import os from 'node:os';
 import path from 'node:path';
 import {
   MAX_BOMBS_CARRIED, MAX_RADIUS, MAX_SHIELDS, MAX_SKATES, MAX_STAMINA_LEVELS,
-  ROUND_INTERMISSION_MS, START_RADIUS, TICK_HZ, staminaMaxFor,
+  ROUND_INTERMISSION_MS, START_BOMBS, START_RADIUS, TICK_HZ, staminaMaxFor,
 } from '../shared/constants.js';
+import { SHOP_ITEMS } from '../shared/shop.js';
 import { createLeaderboard, careerKey } from '../server/leaderboard.js';
 import { createRoom } from '../server/room.js';
 
@@ -117,7 +118,9 @@ test('room-authoritative gold shop', async t => {
     room.requestRespawn(seat);
     for (let i = 0; i <= RESPAWN_COUNTDOWN_TICKS; i++) room.tick();
     assert.equal(p.alive, true);
-    assert.equal(p.bombs, MAX_BOMBS_CARRIED - 2);
+    // One bombs bundle on top of the starting bomb. Was written as `MAX_BOMBS_CARRIED - 2`,
+    // which only equalled that while the cap happened to be five.
+    assert.equal(p.bombs, START_BOMBS + SHOP_ITEMS.bombs.bundle);
     assert.equal(p.radius, START_RADIUS + 1);
     assert.equal(p.speed, 1);
     assert.equal(p.shields, 1);
@@ -168,7 +171,10 @@ test('room-authoritative gold shop', async t => {
 
     room.restartRound();
     const loaded = room.state.players[seat];
-    assert.equal(loaded.bombs, MAX_BOMBS_CARRIED);
+    // Two bombs bundles on top of the starting bomb - not "the cap", which it only reached
+    // while the cap was five.
+    const boughtBombs = START_BOMBS + SHOP_ITEMS.bombs.bundle * 2;
+    assert.equal(loaded.bombs, boughtBombs);
     assert.equal(loaded.speed, 1);
     assert.equal(loaded.shields, 1);
     assert.equal(loaded.staminaLevel, 2);
@@ -177,7 +183,7 @@ test('room-authoritative gold shop', async t => {
     const welcome = messages.findLast(m => m.t === 'welcome');
     const wirePlayer = welcome.players.find(player => player.i === seat);
     assert.deepEqual([wirePlayer.b, wirePlayer.f, wirePlayer.sp, wirePlayer.sh],
-      [MAX_BOMBS_CARRIED, START_RADIUS + 1, 1, 1]);
+      [boughtBombs, START_RADIUS + 1, 1, 1]);
     assert.deepEqual(leaderboard.economy(careerKey('human-id', 'ann')).pending,
       { bombs: 0, fire: 0, speed: 0, shield: 0, stim: 0 });
 
