@@ -78,13 +78,18 @@ export const MAX_PLAYERS = 16;
 
 // ─── Movement ─────────────────────────────────────────────────────────────────
 
-// Index = skate count. The BASE is twenty percent slower than the first pass across the board:
-// at the old pace a full-speed player crossed a tile in under five ticks, which is faster than
-// the eye can plan a turn in and made corners feel like luck rather than judgement.
-//
-// Keep base pace; raise the prior boost bonus by 10% at levels 1-2 and 20% at max.
-// The integer progression is [27, 33, 38, 44] and caps at three levels.
-export const SPEED_UNITS_PER_TICK = [27, 33, 38, 44];
+/* Index = skate count.
+ *
+ * Ten percent faster across the board: [27, 33, 38, 44] became [30, 36, 42, 48]. The whole curve
+ * moved, so the shape of the boost progression is unchanged and only the pace is.
+ *
+ * Rails are what made the room for it. Under free movement the limit was how fast a corner could
+ * be judged - at speed you arrived at a junction already past the line you needed and the turn
+ * was luck - so pace had to be held back to keep corners fair. A queued turn removes that
+ * entirely: the corner is taken for you at the junction, from anywhere in the tile, so going
+ * faster no longer costs accuracy. A tile is 8.5 ticks at base pace now, down from 9.5.
+ */
+export const SPEED_UNITS_PER_TICK = [30, 36, 42, 48];
 export const MAX_SKATES = SPEED_UNITS_PER_TICK.length - 1; // 3
 export const SLOWDOWN_NUM = 1, SLOWDOWN_DEN = 2; // speed * 1/2, integer division
 
@@ -273,7 +278,17 @@ export const MAX_BOMBS = 16;        // hard ceiling on bombs alive anywhere, a s
  */
 export const MAX_BOMBS_CARRIED = 8;
 export const MAX_RADIUS = 5;
-export const START_BOMBS = 1;
+/* Two, not one.
+ *
+ * One bomb is a tutorial: with a single fuse out you cannot break a wall and threaten anybody in
+ * the same breath, so the opening of every round was spent farming crates in silence. Two is the
+ * smallest number that lets you commit one and still answer with the other, which is where the
+ * game actually starts. The carry cap is 8, so this is a head start rather than a ceiling.
+ *
+ * `scatterOnDeath` drops the bombs you collected ABOVE this number, so raising it also means the
+ * two you always have are never scattered - you respawn able to play rather than able to farm.
+ */
+export const START_BOMBS = 2;
 export const START_RADIUS = 1;
 export const CHAIN_CAP_PER_TICK = 64; // safety valve, see docs/RULES.md §3
 
@@ -348,7 +363,13 @@ export const BLOCK_DESTRUCTIBLE = b => BLOCK_HP[b] > 0;
 export const BLOCK_WALKABLE = (b, reduced) =>
   b === BLOCK.FLOOR || b === BLOCK.SHRUB_WALK || (reduced && b === BLOCK.COLUMN);
 
-export const REGEN_EVERY_TICKS = 20 * TICK_HZ; // 600
+/* How often walls grow back. Fifteen percent faster: every 17 s, down from 20.
+ *
+ * The PERIOD, not the amount - the two scalings in `regenerate` decide how many walls each cycle
+ * places, and this decides how often it asks. Shortening the period tightens the map everywhere
+ * evenly, including early, where the emptiness scaling still has nothing to react to.
+ */
+export const REGEN_EVERY_TICKS = 17 * TICK_HZ; // 510
 export const REGEN_PER_CYCLE = 3;
 export const REGEN_CLEAR_RADIUS_TILES = 4;
 
@@ -594,6 +615,18 @@ export const PERK = {
   GOLD: 17,
    // A rare, temporary ghost state. It is not a permanent stat or a shop upgrade.
    INVISIBLE: 18,
+  /* A pocket watch: every bomb you place for the next twenty seconds has half a fuse.
+   *
+   * Temporary and timed, like the Rum and the Veil, rather than a stat you keep - it is a window
+   * you have to spend, not a loadout you accumulate. It grants STATUS.FAST_DET, which the bomb
+   * code already honoured (see FUSE_TICKS_FAST): the mechanic was built and had nothing that
+   * handed it out.
+   *
+   * Not PERK.DETONATOR, which stays reserved. A detonator is remote detonation - you choose the
+   * moment - and this is the opposite bargain: the fuse is shorter whether that suits you or
+   * not, which is what makes it double-edged rather than simply better.
+   */
+  CLOCK: 19,
 };
 
 /* Gold coins. 2% of drops and never more than five a round.
@@ -619,7 +652,7 @@ export const PERK_WEIGHTS = {
   [PERK.GOLD]: 9,
   /* The two special status drops share a rare weight: 11 of 422 non-gold rolls each. */
   [PERK.BOMB]: 108, [PERK.FIRE]: 100, [PERK.SKATE]: 72, [PERK.SHIELD]: 48,
-  [PERK.STAMINA]: 72, [PERK.RUM]: 11, [PERK.INVISIBLE]: 11,
+  [PERK.STAMINA]: 72, [PERK.RUM]: 11, [PERK.INVISIBLE]: 11, [PERK.CLOCK]: 11,
   [PERK.KICK]: 0, [PERK.JELLY]: 0, [PERK.DETONATOR]: 0, [PERK.BAT]: 0, [PERK.JETPACK]: 0,
   [PERK.NUKE]: 0, [PERK.BLUE_FIRE]: 0, [PERK.HEART]: 0, [PERK.KEY]: 0,
 };
@@ -744,7 +777,8 @@ export const STATUS_TICKS = {
   [STATUS.INVISIBLE]: 600,     // 20 s: 25% longer than its former 16 s duration
   [STATUS.CHANGELING]: 300,
   [STATUS.REDUCTION]: 450,
-  [STATUS.FAST_DET]: 300,
+  // Twenty seconds, matching the Veil. Was 10 s, from before anything granted it.
+  [STATUS.FAST_DET]: 600,
   // 389 ticks, just under 13 s: an 8% extension of the former 360-tick duration.
   [STATUS.DRUNK]: 389,         // 13 s: 8% longer than its former 12 s duration
   // 45 ticks, a second and a half. Short on purpose: it is there to buy the slider the doorway,

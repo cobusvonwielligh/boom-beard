@@ -127,6 +127,20 @@ function apply(state, p, type) {
       applyStatus(state, p, STATUS.INVISIBLE, STATUS_TICKS[STATUS.INVISIBLE]);
       return true;
 
+    /* The watch. Every bomb you place for the next twenty seconds has half a fuse.
+     *
+     * Double-edged on purpose, which is what earns it a place beside the Rum rather than beside
+     * the Fire. A short fuse is pressure you can apply - a bomb nobody has time to walk out of -
+     * and it is pressure you are standing next to. The escape you were going to make is now half
+     * as long, and you did not get to choose which bombs it applies to.
+     *
+     * Like the Rum, a live effect is not a fresh pickup: leaving it on the floor stops somebody
+     * standing on a watch and refreshing the window indefinitely. */
+    case PERK.CLOCK:
+      if (p.status & STATUS.FAST_DET) return false;
+      applyStatus(state, p, STATUS.FAST_DET, STATUS_TICKS[STATUS.FAST_DET]);
+      return true;
+
     /* Gold changes nothing. That is the design, not an omission.
      *
      * Every other perk makes you better at the round you are in, which means every other perk

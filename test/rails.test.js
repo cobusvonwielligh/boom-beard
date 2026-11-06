@@ -24,6 +24,7 @@ import { step, speedOf, blocked } from '../shared/sim/movement.js';
 import { tick } from '../shared/sim/round.js';
 import { MAPS } from '../shared/maps.js';
 import { createRoom } from '../server/room.js';
+import { bombTile } from '../shared/sim/bombs.js';
 
 const HALF = UNITS_PER_TILE >> 1;
 const DIRS = [DIR_R, DIR_U, DIR_L, DIR_D];
@@ -911,4 +912,109 @@ test('rails: the shared simulation never reaches for Math.random', async () => {
     if (/Math\.random/.test(code(await readFile(new URL(f, dir), 'utf8')))) offenders.push(f);
   }
   assert.deepEqual(offenders, [], 'these would desync the client from the server');
+});
+
+/* Two bugs reported from live play, both about being pressed up against something.
+ *
+ * They look unrelated and share a cause: the pirate ends up part-way into a tile they may not
+ * enter, and the machinery that is supposed to resolve that argues with itself instead.
+ */
+test('rails: pressed against things', async t => {
+  /* "holding S next to a block jiggles."
+   *
+   * A turn that cannot be taken must not make the pirate oscillate around the junction. Holding
+   * one key across the lane, with the way it points walled off, used to: the pirate glided to
+   * the junction, the turn was refused there WITHOUT being dropped, travel carried on through
+   * the junction, and the next tick turned them round to come back for it.
+   */
+  await t.test('holding a direction into a wall does not jiggle', () => {
+    for (const [label, mask, wall] of [
+      ['down', IN_DOWN, [7, 8]],
+      ['up', IN_UP, [7, 6]],
+      ['left', IN_LEFT, [6, 7]],
+      ['right', IN_RIGHT, [8, 7]],
+    ]) {
+      const st = room(15, 15);
+      setTile(st.map, wall[0], wall[1], BLOCK.SOFT, 1);
+      const p = spawn(st, 7, 7, { dir: DIR_R });
+
+      // Settle, then watch: once at rest, nothing may move at all while the key is held.
+      for (let n = 0; n < 40; n++) { step(st, p, mask); st.tick++; }
+      const at = `${p.x},${p.y}`;
+      for (let n = 0; n < 60; n++) {
+        step(st, p, mask);
+        st.tick++;
+        assert.equal(`${p.x},${p.y}`, at,
+          `${label}: jiggled to ${p.x},${p.y} from ${at} on tick ${n}`);
+      }
+    }
+  });
+
+  /* "I got stuck in a bomb I had just placed, having clipped a little."
+   *
+   * Placement is AIMED at the tile in front. Part-way through a tile the hitbox already overlaps
+   * that tile, so a bomb dropped there lands partly underneath the pirate - and a bomb is solid
+   * to anyone whose 5/8 box is not in it, which from there it is not. Every candidate move is
+   * then blocked and the gentle unstick shoves them sideways off their lane, where the lane
+   * correction pulls them back in. That is the stuck.
+   */
+  await t.test('a bomb is never aimed at a tile the pirate is already clipping', () => {
+    const st = room(15, 15);
+    const p = spawn(st, 5, 7, { dir: DIR_R });
+    // Walk forward until the hitbox is clipping the next tile but the centre has not left this one.
+    let clipped = false;
+    for (let n = 0; n < 20 && !clipped; n++) {
+      step(st, p, IN_RIGHT);
+      st.tick++;
+      // The trap window exactly: the full box reaches tile 6, the five-eighths box does not.
+      const full = HITBOX_UNITS >> 1, grace = (full * 5) >> 3;
+      clipped = ((p.x + full - 1) >> 8) === 6 && ((p.x + grace - 1) >> 8) === 5;
+    }
+    assert.ok(clipped, 'never reached the window where a bomb would be solid and underneath us');
+
+    const at = bombTile(st, p);
+    assert.deepEqual({ tx: at.tx, ty: at.ty }, { tx: 5, ty: 7 },
+      'the bomb was aimed at a tile the pirate is already inside');
+  });
+
+  await t.test('placing a bomb while clipping never traps the placer', () => {
+    const st = room(15, 15);
+    const p = spawn(st, 5, 7, { dir: DIR_R });
+    for (let n = 0; n < 20; n++) {
+      const full = HITBOX_UNITS >> 1, grace = (full * 5) >> 3;
+      if (((p.x + full - 1) >> 8) === 6 && ((p.x + grace - 1) >> 8) === 5) break;
+      step(st, p, IN_RIGHT);
+      st.tick++;
+    }
+    // Place, then try to walk away. Backwards is always available: it is where we came from.
+    tick(st, [IN_RIGHT | IN_BOMB]);
+    assert.equal(st.bombs.length, 1, 'no bomb was placed');
+    const from = p.x;
+    for (let n = 0; n < 40; n++) tick(st, [IN_LEFT]);
+    assert.ok(p.x < from - UNITS_PER_TILE,
+      `trapped by their own bomb: moved only ${from - p.x} units in 40 ticks`);
+    assert.ok(!blocked(st, p, p.x, p.y), 'left standing inside the bomb');
+  });
+});
+
+/* The drawn position must settle onto the SIMULATED one, never onto the tile centre.
+ *
+ * Reported as "holding a key into a block jiggles". The simulation is rock steady there - the
+ * tests above prove a pirate pressed against a wall does not move a unit - so the oscillation
+ * was in the renderer: `settleToLane` in client/world.js hauled an illegal drawn point back to
+ * the centre of its tile, which on rails is 48 units behind where the pirate actually is when
+ * flush against a wall. Interpolation pushed forward, the clamp yanked back, every frame.
+ *
+ * Asserted against the source because world.js imports through the browser's absolute
+ * `/shared/...` specifiers and Node cannot resolve them.
+ */
+test('rails: the drawn position settles onto the simulated one, not the tile centre', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const src = await readFile(new URL('../public/client/world.js', import.meta.url), 'utf8');
+  const fn = src.match(/function settleToLane\(p\) \{[\s\S]*?\n  \}/)?.[0];
+  assert.ok(fn, 'settleToLane is no longer recognisable - this test needs updating with it');
+  assert.doesNotMatch(fn, /tileCentre/,
+    'the drawn position is being pulled to the tile centre, which on rails is not where the pirate is');
+  assert.match(fn, /const cx = p\.x, cy = p\.y;/,
+    'the drawn position is not easing toward the simulated position');
 });

@@ -1366,6 +1366,7 @@ const PERK_SKIN = {
   16: { dark: '#3d2415', mid: '#64402a', rim: '#d99a55' },  // rum    - bottle brown
   17: { dark: '#4a3608', mid: '#7d5c0f', rim: '#f6e7a9' },  // gold   - the plinth is treasure
   18: { dark: '#16263a', mid: '#2c4864', rim: '#bfe8ff' },  // veil   - spectral blue
+  19: { dark: '#3a2a08', mid: '#6b4e12', rim: '#d7a53f' },  // watch  - brass
 };
 
 export const PERK_ART = {
@@ -1569,6 +1570,75 @@ export const PERK_ART = {
     c.moveTo(8, 18.5); c.lineTo(24, 18.5);
     c.stroke();
     c.setLineDash([]);
+  },
+
+  /* The watch: half a fuse for twenty seconds.
+   *
+   * A pocket watch rather than a clock face, because a plain circle with hands on it is a coin
+   * at a third of this size and the board already has a coin. The ring, the stem and the bow
+   * give it a silhouette that survives the zoom floor, which is the only channel that still
+   * works when the hue and the detail have both gone.
+   *
+   * The hands read five-to-twelve - nearly up - which is the one position that says "about to
+   * go off" rather than "it is half past". Brass and off-white, warm against the cold blues of
+   * the Veil and clear of the Rum's bottle green.
+   */
+  19: c => {
+    const BRASS = '#d7a53f', BRASS_DARK = '#7d5a17', FACE = '#f4ecd6';
+
+    // Bow and stem, on top, drawn first so the case overlaps their base.
+    c.strokeStyle = BRASS_DARK;
+    c.lineWidth = 2.2;
+    c.beginPath();
+    c.arc(16, 3.6, 2.4, Math.PI * 0.15, Math.PI * 0.85, true);
+    c.stroke();
+    c.fillStyle = BRASS;
+    c.fillRect(14.2, 5.2, 3.6, 2.6);
+    c.strokeStyle = BRASS_DARK;
+    c.lineWidth = 1;
+    c.strokeRect(14.2, 5.2, 3.6, 2.6);
+
+    // The case.
+    c.beginPath();
+    c.arc(16, 18, 10.5, 0, Math.PI * 2);
+    c.fillStyle = BRASS;
+    c.fill();
+    c.strokeStyle = BRASS_DARK;
+    c.lineWidth = 1.6;
+    c.stroke();
+
+    // The face, inset so a rim of brass shows all the way round it.
+    c.beginPath();
+    c.arc(16, 18, 7.6, 0, Math.PI * 2);
+    c.fillStyle = FACE;
+    c.fill();
+    c.strokeStyle = BRASS_DARK;
+    c.lineWidth = 0.9;
+    c.stroke();
+
+    // Four ticks at the quarters. Twelve would be mud at this size.
+    c.strokeStyle = '#8a7a56';
+    c.lineWidth = 1.1;
+    for (const [x1, y1, x2, y2] of [
+      [16, 11.4, 16, 13.2], [16, 22.8, 16, 24.6],
+      [9.4, 18, 11.2, 18], [20.8, 18, 22.6, 18],
+    ]) {
+      c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
+    }
+
+    // Five to twelve: nearly up, which reads as "about to go off".
+    c.strokeStyle = '#2b2419';
+    c.lineWidth = 1.7;
+    c.lineCap = 'round';
+    c.beginPath(); c.moveTo(16, 18); c.lineTo(13.4, 12.4); c.stroke();   // minute hand
+    c.lineWidth = 1.5;
+    c.beginPath(); c.moveTo(16, 18); c.lineTo(19.2, 20.4); c.stroke();   // hour hand
+    c.lineCap = 'butt';
+
+    c.beginPath();
+    c.arc(16, 18, 1.1, 0, Math.PI * 2);
+    c.fillStyle = BRASS_DARK;
+    c.fill();
   },
 };
 

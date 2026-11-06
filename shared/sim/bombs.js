@@ -2,7 +2,7 @@
 
 import {
   FUSE_TICKS, FUSE_TICKS_FAST, FIRE_TICKS, CHAIN_CAP_PER_TICK, IN_BOMB, STATUS, MAX_RADIUS,
-  BLOCK, POWDER_RADIUS, DIR_R, DIR_U, DIR_L, DIR_D, HITBOX_UNITS,
+  BLOCK, POWDER_RADIUS, DIR_R, DIR_U, DIR_L, DIR_D, HITBOX_UNITS, HITBOX_REDUCED_UNITS,
 } from '../constants.js';
 import { has, streakActive, toTile, tileAt } from './state.js';
 import { spread } from './fire.js';
@@ -51,8 +51,30 @@ export function bombTile(state, p) {
    * Only the AIMED tile is protected. Underfoot is not, and must not be: a perk you are standing
    * on is one you would already have collected if you could, so it is either capped or not yours
    * to take, and refusing both tiles would leave you unable to bomb at all. */
+  /* And never where the bomb would be solid to the placer while the placer is inside it.
+   *
+   * Reported as "I got stuck in a bomb I had just placed, having clipped a little", and that is
+   * exactly the geometry. A bomb is solid to anyone whose FIVE-EIGHTHS box is not in its tile
+   * (see bombSolid), while "inside it" is the FULL box. Between those two widths there is a
+   * 29-unit window - offsets 177 to 205 of a tile - where the placer's full box reaches the
+   * facing tile but their five-eighths box does not. A bomb dropped there is solid and the
+   * placer is standing in it: every move is refused, the gentle unstick shoves them sideways off
+   * their lane, and the lane correction pulls them straight back in. Stuck, in a bomb of their
+   * own making. Walking through that window is routine, so this was easy to hit.
+   *
+   * ONLY that window. Deeper into the tile the five-eighths box reaches too, the bomb is not
+   * solid to them, and they can simply walk off it - so the aim stays on the facing tile, which
+   * is what keeps the target from sliding across a boundary as you walk.
+   */
+  const full = (has(p, STATUS.REDUCTION) ? HITBOX_REDUCED_UNITS : HITBOX_UNITS) >> 1;
+  const grace = (full * 5) >> 3;
+  const covers = h => ((p.x - h) >> 8) <= fx && ((p.x + h - 1) >> 8) >= fx
+    && ((p.y - h) >> 8) <= fy && ((p.y + h - 1) >> 8) >= fy;
+  const wouldTrap = covers(full) && !covers(grace);
+
   const free = tileAt(state.map, fx, fy) === BLOCK.FLOOR && bombable(state, fx, fy)
-    && !state.perks.some(k => k.tx === fx && k.ty === fy);
+    && !state.perks.some(k => k.tx === fx && k.ty === fy)
+    && !wouldTrap;
   return free ? { tx: fx, ty: fy } : { tx, ty };
 }
 

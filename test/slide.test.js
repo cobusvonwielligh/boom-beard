@@ -81,9 +81,15 @@ test('boosted slide distance follows the revised maximum speed bonus', () => {
   const unboosted = slideDistance(0);
   const fullyBoosted = slideDistance(MAX_SKATES);
 
-  assert.equal(unboosted, 813, 'the base-speed slide was unintentionally changed');
+  /* 916 units, up from 813: the slide is launched from walking pace, so the ten percent the legs
+   * gained it gained too (and a little more, because the launch is an integer multiple of a pace
+   * that no longer rounds the same way). Pinned as an absolute rather than derived, deliberately -
+   * the whole point of this test is to notice when a speed change moves the slide with it. */
+  assert.equal(unboosted, 916, 'the base-speed slide changed by something other than the pace');
+  // A window, not a point: the launch shaves a tenth off the boot bonus, so the boosted figure
+  // moves by a little more than the flat ten percent the legs gained.
   assert.ok(
-    fullyBoosted >= 6 * UNITS_PER_TILE && fullyBoosted <= 6.2 * UNITS_PER_TILE,
+    fullyBoosted >= 6.6 * UNITS_PER_TILE && fullyBoosted <= 6.9 * UNITS_PER_TILE,
     `a fully boosted slide covered ${(fullyBoosted / UNITS_PER_TILE).toFixed(2)} tiles`,
   );
 });

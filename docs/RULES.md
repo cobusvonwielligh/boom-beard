@@ -41,10 +41,10 @@ read is worse than a map you cannot see all of.
 
 | Property | Value |
 |---|---|
-| Base speed | **27 units/tick** ≈ 3.2 tiles/s |
-| Speed by boosts (0–3) | **27, 33, 38, 44 units/tick** |
+| Base speed | **30 units/tick** ≈ 3.5 tiles/s |
+| Speed by boosts (0–3) | **30, 36, 42, 48 units/tick** |
 | Boost bonus | **10% higher** at levels 1–2; max level adds another 10%; base pace unchanged |
-| Max speed boosts | **3** → 44 units/tick ≈ 5.2 tiles/s |
+| Max speed boosts | **3** → 48 units/tick ≈ 5.6 tiles/s |
 | Slowdown status | speed × 0.5, rounded down |
 | Exhausted | speed × 0.5, rounded down - see §9 |
 | Movement hitbox | 160 × 160 units (20 × 20 px), centred |
@@ -174,6 +174,7 @@ simulation, the client's prediction, the click sound, and the bots.
 | Fuse | **72 ticks (2.4 s)** **(TUNE)** |
 | Fuse under Fast Detonation | **36 ticks (1.2 s)** |
 | Start bombs | 1 |
+| Starting bombs | **2** - enough to commit one and still answer with the other |
 | Max bombs carried | **8** (spammable: one bomb per key press, no cooldown) |
 | Start fire radius | 1 |
 | Max fire radius | **5** (9 with Blue fire - *not in v1*) |
@@ -247,7 +248,7 @@ One point of blast damage per fire event. A reinforced block therefore needs six
 A damaged block shows its damage state visually (see [ART-AUDIO.md](ART-AUDIO.md)).
 
 **Brick regeneration.** Game of Bombs rematerialises walls as the round runs. We do the same,
-cheaply: every **20 s**, pick some empty floor tiles that have no player, bomb, fire or perk
+cheaply: every **17 s**, pick some empty floor tiles that have no player, bomb, fire or perk
 within **4 tiles** and turn them into soft walls. Never regenerate inside a spawn ring, and never
 at all once walls already cover more than **55 %** of the non-iron map.
 
@@ -281,6 +282,7 @@ Drop weights, applied after the drop roll:
 | Speed | 72 | 17.5 % | +1 speed step | 3 |
 | Shield | 48 | 11.7 % | Each absorbs one blast before your health does; a blue ring per shield on your pirate. Two blasts on the same tick cost two; one arriving inside the 0.6 s grace after a hit costs nothing (§6) | 2 held |
 | Rum | 11 | 2.6 % | Blast arms stop killing you for about 13 s; you walk drunk | - |
+| Watch | every bomb you place for **20 s** has **half a fuse** (36 ticks, not 72). Temporary and timed like the Rum; a live one stays on the floor rather than renewing itself. Double-edged: the pressure you apply is pressure you are standing next to |
 
 The weights live in `PERK_WEIGHTS` in `shared/constants.js`; this table is a copy of them.
 

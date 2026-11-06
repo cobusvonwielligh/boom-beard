@@ -39,8 +39,9 @@ test('movement', async t => {
   });
 
   await t.test('roller-skates stack up to the cap and no further', () => {
-    assert.deepEqual(SPEED_UNITS_PER_TICK, [27, 33, 38, 44],
-      'base pace stays fixed; boost bonuses rise 10%, with 10% extra at max');
+    // Ten percent faster across the board; the shape of the progression is unchanged.
+    assert.deepEqual(SPEED_UNITS_PER_TICK, [30, 36, 42, 48],
+      'the whole speed curve moved; see the note on SPEED_UNITS_PER_TICK');
     assert.equal(MAX_SKATES, 3);
     const p = createPlayer(0, 'p');
     const seen = [];

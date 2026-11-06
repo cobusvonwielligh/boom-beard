@@ -113,6 +113,9 @@ test('bombs in the round loop', async t => {
   await t.test('placing respects the bomb cap and one-per-tile', () => {
     const st = room();
     const p = spawn(st, 0, 3, 3);
+    // Pinned to ONE here rather than to START_BOMBS: this is a test about the cap being obeyed
+    // and a tile taking one bomb, so it sets the cap it wants instead of inheriting the loadout.
+    p.bombs = 1;
     tap(st, p);
     tap(st, p);
     assert.equal(st.bombs.length, 1, 'cap of one, and only one per tile');

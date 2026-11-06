@@ -17,6 +17,7 @@ import {
   HITBOX_UNITS, TICK_HZ, PERK_EXPIRE_TICKS, PERK_FADE_TICKS,
   GOLD_MAX_PER_ROUND, NON_GOLD_DROP_KEEP_CHANCE, SCORE,
   MAX_BOMBS_CARRIED, STATUS, STATUS_TICKS, DIR_R, IN_RIGHT, IN_BOMB, START_BOMBS,
+  FUSE_TICKS, FUSE_TICKS_FAST,
 } from '../shared/constants.js';
 import { MAPS, buildMap, cellType } from '../shared/maps.js';
 import { PERK_WEIGHTS, BLOCK } from '../shared/constants.js';
@@ -412,4 +413,44 @@ test('walking onto a perk always collects it, on every map', () => {
     }
   }
   assert.ok(tries > 100, `the sweep only found ${tries} cases to try`);
+});
+
+/* The Watch: half a fuse for twenty seconds.
+ *
+ * The mechanic was already built - `place()` has honoured STATUS.FAST_DET since before anything
+ * granted it - so this is a perk that turns an existing rule on, and the tests are about the
+ * perk, not the fuse.
+ */
+test('the watch halves your fuse for twenty seconds', () => {
+  const s = fresh();
+  const p = createPlayer(0, 'p');
+  p.alive = true;
+  p.x = tileCentre(3); p.y = tileCentre(3);
+  s.players[0] = p;
+  s.perks.length = 0;
+  drop(s, 3, 3, PERK.CLOCK);
+  collect(s);
+
+  assert.equal(s.perks.length, 0, 'the watch was not picked up');
+  assert.ok(p.status & STATUS.FAST_DET, 'the watch granted nothing');
+  assert.equal(p.statusUntil[STATUS.FAST_DET], s.tick + 20 * TICK_HZ, 'not twenty seconds');
+  assert.equal(FUSE_TICKS_FAST * 2, FUSE_TICKS, 'the fast fuse is not half the normal one');
+});
+
+test('a live watch cannot be picked up again to extend itself', () => {
+  // The same rule as the rum: a timed effect you are already under is not a fresh pickup, so it
+  // stays on the floor rather than letting somebody stand on it and renew indefinitely.
+  const s = fresh();
+  const p = createPlayer(0, 'p');
+  p.alive = true;
+  p.x = tileCentre(3); p.y = tileCentre(3);
+  p.status = STATUS.FAST_DET;
+  p.statusUntil[STATUS.FAST_DET] = s.tick + 100;
+  s.players[0] = p;
+  s.perks.length = 0;
+  drop(s, 3, 3, PERK.CLOCK);
+  collect(s);
+
+  assert.equal(s.perks.length, 1, 'a live watch disappeared');
+  assert.equal(p.statusUntil[STATUS.FAST_DET], s.tick + 100, 'a live watch refreshed itself');
 });

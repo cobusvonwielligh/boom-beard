@@ -273,19 +273,23 @@ export function createWorld() {
   /**
    * Keep a drawn player out of the walls.
    *
-   * The useful observation is that the *tile* a player is in is the whole truth as far as the
-   * rules go - fire, pickups and contagion all resolve per tile - and the sub-tile offset is
-   * purely presentation. So when smoothing or interpolation puts the drawn point somewhere
-   * illegal, the tile index is still trustworthy and we can fall back to it: pull the offending
-   * axis onto the centre line of the tile the simulation says they occupy.
+   * When smoothing or interpolation puts the drawn point somewhere illegal, ease it back toward
+   * the SIMULATED position, which is authoritative and by construction always legal.
    *
-   * Movement is axis-locked and auto-centring, so in a corridor that centre line is where they
-   * really are to within a few units. You get the fine movement everywhere it is legal, and a
-   * silent snap to the lane exactly where it is not. No more walking through corners.
+   * It used to ease toward the TILE CENTRE instead, on the reasoning that the tile index is the
+   * whole truth and the sub-tile offset is presentation. Under free movement that was nearly
+   * true, because auto-centring meant a player in a corridor really was within a few units of
+   * the centre line. Rails broke it: a pirate pressed against a wall comes to rest FLUSH, 48
+   * units past the centre of their tile, so the moment interpolation nudged the drawn point a
+   * unit past the limit this hauled it 48 units backwards - and the next frame's interpolation
+   * pulled it forward again. That is the jiggle people saw holding a direction into a block.
+   *
+   * Easing toward `p.x`/`p.y` cannot oscillate, because the target is exactly where the
+   * interpolation is already heading.
    */
   function settleToLane(p) {
     if (!w.map || !blocked(w, p, p.rx, p.ry)) return;
-    const cx = tileCentre(p.x >> 8), cy = tileCentre(p.y >> 8);
+    const cx = p.x, cy = p.y;
     // Slide onto the lane rather than jumping onto it. A hard assignment here is a visible
     // flick - the drawn position is usually only a few units inside the wall, and moving a few
     // units a frame hides the correction completely. A floor of 4 units makes it terminate.

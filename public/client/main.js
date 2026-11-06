@@ -95,6 +95,7 @@ const PERK_LABEL = {
   16: { text: 'RUM', colour: '#d99a55' },
   17: { text: 'GOLD!', colour: '#f6e7a9' },
   18: { text: 'INVISIBLE', colour: '#bfe8ff' },
+  19: { text: 'FAST FUSE', colour: '#d7a53f' },
 };
 
 // The mascot is an image now, ringed by the same moving gradient as the panels. The hand-drawn
