@@ -23,10 +23,6 @@ export function createState(mapDef, seed = mapDef.seed) {
     // Melted ice: { tx, ty, at, until }. Not a tile type - the map stays the map, and a puddle is
     // just somewhere slow and slippery for a few seconds. See melt() in sim/blocks.js.
     puddles: [],
-    /* Bombs a slide kicked off the board, as { owner, until }. They are gone from the board but
-     * still cost their owner a slot until the fuse they were carrying would have ended - see
-     * KICK_FLIGHT_TICKS and `kick` in sim/bombs.js. */
-    kicked: [],
     nextBombId: 1,
     nextPerkId: 1,
     // Gold coins dropped so far this round. See GOLD_MAX_PER_ROUND - counted on the drop, so a

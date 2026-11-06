@@ -106,22 +106,27 @@ fuse ends.
 
 Three rules make it a decision rather than free speed:
 
-**It kicks bombs off the board.** Slide into a bomb and it is gone: it never explodes, it never
-hurts anybody, and nothing can chain it. This is the game's one defensive verb - a bomb you cannot
-outrun is a bomb you can remove, if you have the stamina and the nerve.
+**It kicks bombs.** Game of Bombs rules. Slide into a bomb and it goes **skating across the
+floor** in the direction you were going, keeping its fuse the whole way, until it meets something.
 
 | | |
 |---|---|
-| Who can kick | anyone mid-slide. Your own bombs count; so does a death bomb |
+| Who can kick | anyone mid-slide. Your own bombs count, and so does one already skating |
 | Walking into one | does nothing. A slide, and only a slide |
-| The owner's slot | **stays spent** until the original fuse would have ended |
+| Speed | a tile every **6 ticks**, about 5.2 tiles/s - faster than you can walk away from it |
+| It stops at | a wall, the sea, the map edge, another bomb, standing water, or **a person** |
+| Then | it sits there still ticking, and whoever it stopped against can **kick it back** |
+| The fuse | runs normally throughout. A kicked bomb can go off mid-slide, and chains normally |
 | Reward | none. No score, no kill, no stat |
-| The tile | clears at once, so the slide carries on through rather than stopping on it |
 
-The slot is the whole balance of it. Handing it straight back would make being kicked *better*
-than being left alone; keeping it spent means a kick denies the blast without rearming the bomber,
-so it is a save rather than a reset. Nothing is solid to a slide, which is what lets the slide
-reach the bomb in the first place.
+Stopping against a person is what makes it a weapon rather than a tidy-up: a kicked bomb is
+something you aim, and the answer to it is to kick it back. Nothing is solid to a slide, which is
+what lets the slide reach the bomb in the first place, and the **kicker** is never an obstacle to
+their own kick - a slide launches at three times walking pace, so they are ahead of it for the
+first few tiles.
+
+No bookkeeping about the owner's bomb slot: the bomb is still on the board, so it still counts
+against them by the ordinary rule.
 
 **It owns the tick, and its lane.** While one runs, the keys do nothing - no steering, no braking,
 no cutting it short - and it travels strictly along the lane it was launched down. A slide you

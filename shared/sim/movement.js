@@ -247,12 +247,21 @@ function bombSolid(state, p, tx, ty) {
      * clear of it, so there is nothing left to push out and the unstick never fires at all.
      * The rule stays observable from the bomb record alone, so both machines still agree.
      */
-    // Five eighths of the box, not all of it. At the full width the bomb only turned solid once
-    // you were completely clear, so there was never anything to push and stepping off one had no
-    // weight to it at all. Five eighths firms it up a few units early - a nudge you can feel -
-    // and is a touch later than the three quarters it was, which was catching people who were
-    // still standing on the thing they had just placed.
-    const half = (halfBox(p) * 5) >> 3;
+    /* The FULL box, not five eighths of it.
+     *
+     * It was five eighths, to firm a bomb up a few units early so stepping off one had some
+     * weight to it. That gap is a trap: between the five-eighths box and the full box there is a
+     * 29-unit band where a bomb is solid to you AND you are standing inside it. Place a bomb
+     * while clipping the next tile - which walking through it does routinely - and every
+     * candidate move is refused, the gentle unstick shoves you sideways off your lane, and the
+     * lane correction pulls you straight back in. Reported as "I got stuck in a bomb I had just
+     * placed, having clipped a little", and that is exactly it.
+     *
+     * At the full width the bomb turns solid exactly when you are clear of it, so there is never
+     * anything to push out and the trap cannot exist. The cost is the few units of early
+     * firmness, which is a feel detail; being stuck is not.
+     */
+    const half = halfBox(p);
     const overlaps = ((p.x - half) >> 8) <= tx && ((p.x + half - 1) >> 8) >= tx
                   && ((p.y - half) >> 8) <= ty && ((p.y + half - 1) >> 8) >= ty;
     return !overlaps;

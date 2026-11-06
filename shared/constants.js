@@ -292,22 +292,24 @@ export const START_BOMBS = 2;
 export const START_RADIUS = 1;
 export const CHAIN_CAP_PER_TICK = 64; // safety valve, see docs/RULES.md §3
 
-/* Kicking a bomb off the board. See `kick` in sim/bombs.js.
+/* Kicking a bomb. See `kick` and `slideBombs` in sim/bombs.js.
  *
- * Sliding into a bomb removes it from the game: it never explodes and it never hurts anybody.
- * The slide stops being purely offensive and becomes the game's one defensive verb - a bomb you
- * cannot outrun is a bomb you can take off the board, if you have the stamina and the nerve.
+ * Game of Bombs rules, which is the genre's: sliding into a bomb SENDS IT SKATING across the
+ * floor in the direction you were going. It keeps its fuse the whole way and stops the moment it
+ * meets anything - a wall, the sea, another bomb, or a person. Then it sits there, still ticking,
+ * and whoever it stopped against can kick it straight back.
  *
- * The owner does NOT get the slot back on the kick. It frees at the tick the original fuse would
- * have ended, which is the asymmetry the whole mechanic rests on: a kick denies the blast without
- * instantly rearming the bomber, so it is a save rather than a free reset for both of them. That
- * is why a kicked bomb is remembered at all (`state.kicked`) rather than simply deleted.
+ * This replaces a first version that removed the bomb from the game entirely. That was simpler
+ * and strictly defensive; this is the real mechanic, and it is better because it has
+ * COUNTERPLAY - a kicked bomb is a thrown weapon the target can throw back, rather than a save
+ * with no answer. It also means a kick no longer needs any bookkeeping about the owner's bomb
+ * slot: the bomb is still on the board, so the slot is still spent, by the ordinary rule.
  *
- * KICK_FLIGHT_TICKS is for the CLIENT only - how long the bomb is drawn arcing off the map. The
- * simulation is finished with it on the tick it is kicked, because a bomb that is still in the
- * list for the animation's benefit is a bomb that can still be chained.
+ * Six ticks a tile is about 5.2 tiles a second - a shade faster than a pirate at base pace
+ * (8.5 ticks a tile), so a bomb kicked at you is a thing you have to get out of the way of
+ * rather than something you can casually outwalk.
  */
-export const KICK_FLIGHT_TICKS = 15;      // half a second of arc, drawn, not simulated
+export const KICK_TILE_TICKS = 6;
 
 /* A parting shot. One death in ten leaves a live bomb on the tile where it happened.
  *
@@ -572,7 +574,9 @@ export const PUDDLE_SLIDE_TICKS = 8;
  *               good as limping, which is what makes stopping a decision.
  */
 export const STAMINA_MAX = 6900;
-export const STAMINA_DRAIN_PER_TICK = 17;
+// 11, down from 17: a third less drain, so a bar lasts half again as long and sliding is a tool
+// you reach for rather than a budget you nurse.
+export const STAMINA_DRAIN_PER_TICK = 11;
 export const STAMINA_REGEN_MOVING = 28;            // only while exhausted; see movement.js
 export const STAMINA_REGEN_IDLE = 53;
 export const STAMINA_RECOVER_UNITS = Math.round(STAMINA_MAX / 3);

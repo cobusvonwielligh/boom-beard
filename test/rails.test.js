@@ -958,23 +958,40 @@ test('rails: pressed against things', async t => {
    * then blocked and the gentle unstick shoves them sideways off their lane, where the lane
    * correction pulls them back in. That is the stuck.
    */
-  await t.test('a bomb is never aimed at a tile the pirate is already clipping', () => {
+  /* A bomb is solid to you only once you are COMPLETELY clear of it.
+   *
+   * The grace used to be five eighths of the hitbox, to firm a bomb up a few units early so
+   * stepping off one had some weight. Between that and the full box lies a 29-unit band where a
+   * bomb is solid to you and you are standing in it - and placement is aimed at the tile in
+   * front, which walking through a tile puts you partly inside. Place there and every move is
+   * refused: the trap behind "I got stuck in a bomb I had just placed, having clipped a little".
+   *
+   * Fixed here rather than in the aim, which was the first attempt: making the aim depend on
+   * where in the tile you stand makes the SIGHT flip between the facing tile and underfoot once
+   * per tile, which is far more visible than the bug it fixes.
+   */
+  await t.test('a bomb is never solid to somebody whose hitbox is still inside it', () => {
     const st = room(15, 15);
     const p = spawn(st, 5, 7, { dir: DIR_R });
-    // Walk forward until the hitbox is clipping the next tile but the centre has not left this one.
-    let clipped = false;
-    for (let n = 0; n < 20 && !clipped; n++) {
-      step(st, p, IN_RIGHT);
-      st.tick++;
-      // The trap window exactly: the full box reaches tile 6, the five-eighths box does not.
-      const full = HITBOX_UNITS >> 1, grace = (full * 5) >> 3;
-      clipped = ((p.x + full - 1) >> 8) === 6 && ((p.x + grace - 1) >> 8) === 5;
-    }
-    assert.ok(clipped, 'never reached the window where a bomb would be solid and underneath us');
+    const half = HITBOX_UNITS >> 1;
 
-    const at = bombTile(st, p);
-    assert.deepEqual({ tx: at.tx, ty: at.ty }, { tx: 5, ty: 7 },
-      'the bomb was aimed at a tile the pirate is already inside');
+    // Every position from the tile centre to flush against the next tile.
+    for (let off = 0; off <= 100; off += 4) {
+      const q = spawn(st, 5, 7, { seat: 1, dir: DIR_R });
+      q.x = tileCentre(5) + off;
+      st.bombs.length = 0;
+      // A bomb on the tile the hitbox reaches into.
+      const tx = (q.x + half - 1) >> 8;
+      st.bombs.push({
+        id: 1, tx, ty: 7, o: 9, owner: 9, r: 1, radius: 1, at: 1e9, fuseTicks: 72,
+      });
+      const covered = ((q.x - half) >> 8) <= tx && ((q.x + half - 1) >> 8) >= tx;
+      if (!covered) continue;
+      assert.ok(!blocked(st, q, q.x, q.y),
+        `at offset ${off} the pirate is inside a bomb on tile ${tx} that is solid to them`);
+    }
+    st.players[1] = null;
+    assert.ok(p);
   });
 
   await t.test('placing a bomb while clipping never traps the placer', () => {

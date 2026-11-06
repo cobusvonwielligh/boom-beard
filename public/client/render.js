@@ -10,7 +10,7 @@ import {
   SPAWN_POP_TICKS, SPAWN_POP_SCALE,
   MIN_ZOOM, MAX_ZOOM,
   PERK_FADE_TICKS, STAMINA_SHOW_AT, STAMINA_LOW_AT, staminaMaxFor,
-  PUDDLE_FADE_TICKS, TICK_MS, TICK_HZ,
+  PUDDLE_FADE_TICKS, TICK_MS, TICK_HZ, KICK_TILE_TICKS,
   BLOCK_WALKABLE, MAX_SHIELDS, seatSlot,
 } from '/shared/constants.js';
 import { cellType, cellHp } from '/shared/maps.js';
@@ -358,7 +358,6 @@ export function createRenderer(canvas, world) {
   const invalidateAll = () => {
     chunks = new Map(); shore = null; splashes.length = 0;
     pools.clear(); ripples.length = 0; wisps.length = 0; shards.length = 0; pops.length = 0; poolFor = null;
-    kicks.length = 0;
     glow.length = 0; eqFor = null; eqLen.fill(0); smokes.length = 0;
     rockSprites = null;
     rockSpritesFor = null;
@@ -3254,71 +3253,6 @@ export function createRenderer(canvas, world) {
     ctx.globalAlpha = 1;
   }
 
-/* A bomb kicked off the board: it tumbles away in the direction of the slide and is gone.
-   *
-   * Entirely cosmetic. The simulation removed the bomb on the tick it was kicked - a bomb still
-   * in the list for the animation's benefit is a bomb that can still be chained - so this is a
-   * free-flying sprite with no rules attached, and it may be dropped on a slow frame without
-   * anybody being able to tell.
-   *
-   * Driven by the authoritative `kick` event only; the client never predicts a kick, so the bomb
-   * leaves at the same moment on every screen watching it.
-   */
-  const kicks = [];
-  const KICK_SPAN = 0.5;                       // seconds; see KICK_FLIGHT_TICKS
-
-  function addKick(tx, ty, dir) {
-    const d = [[1, 0], [0, -1], [-1, 0], [0, 1]][dir] ?? [1, 0];
-    kicks.push({
-      x: tx * TILE_PX + TILE_PX / 2,
-      y: ty * TILE_PX + TILE_PX / 2,
-      // Fast along the kick, with a little lift: a punted barrel, not a thrown one.
-      vx: d[0] * 640, vy: d[1] * 640 - 190,
-      rot: 0, vr: (d[0] || d[1]) * 13,
-      life: 1,
-    });
-    if (kicks.length > 12) kicks.shift();
-  }
-
-  function drawKicks(ox, oy, dtMs) {
-    if (!kicks.length) return;
-    const dt = Math.min(0.05, dtMs / 1000);
-    ctx.save();
-    ctx.translate(ox, oy);
-    for (let i = kicks.length - 1; i >= 0; i--) {
-      const k = kicks[i];
-      k.life -= dt / KICK_SPAN;
-      if (k.life <= 0) { kicks.splice(i, 1); continue; }
-      k.vy += 900 * dt;                        // gravity, so it arcs rather than flying straight
-      k.x += k.vx * dt; k.y += k.vy * dt;
-      k.rot += k.vr * dt;
-
-      // Shrinking as it goes, which reads as "away" without needing a shadow or a scale trick.
-      const r = TILE_PX * 0.3 * (0.55 + k.life * 0.45);
-      ctx.globalAlpha = Math.min(1, k.life * 1.8);
-      ctx.save();
-      ctx.translate(k.x, k.y);
-      ctx.rotate(k.rot);
-      ctx.beginPath();
-      ctx.arc(0, 0, r, 0, Math.PI * 2);
-      ctx.fillStyle = '#20242c';
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-      ctx.lineWidth = 1.1;
-      ctx.stroke();
-      // The fuse, still lit, going nowhere.
-      ctx.beginPath();
-      ctx.moveTo(r * 0.5, -r * 0.6);
-      ctx.lineTo(r * 1.1, -r * 1.3);
-      ctx.strokeStyle = '#d9a441';
-      ctx.lineWidth = 1.4;
-      ctx.stroke();
-      ctx.restore();
-    }
-    ctx.restore();
-    ctx.globalAlpha = 1;
-  }
-
   /** Ice breaking: a flash, a ring of meltwater pushing out, and shards thrown off it. */
   function addMelt(tx, ty) {
     const x = tx * TILE_PX + TILE_PX / 2, y = ty * TILE_PX + TILE_PX / 2;
@@ -3921,8 +3855,6 @@ export function createRenderer(canvas, world) {
     drawSplashes(ox, oy, dtMs);
     // On the floor, under the perks, bombs and everybody standing in it.
     drawPuddles(ox, oy, dtMs);
-    // And a kicked bomb tumbling away over the top of all of it.
-    drawKicks(ox, oy, dtMs);
 
     /* In and out, both quick.
      *
@@ -4052,7 +3984,25 @@ export function createRenderer(canvas, world) {
       if (!bombSeen.has(b.id)) bombSeen.set(b.id, bombNow);
       const pop = Math.min(1, (bombNow - bombSeen.get(b.id)) / BOMB_POP_MS);
       ctx.save();
-      ctx.translate(ox + b.tx * TILE_PX, oy + b.ty * TILE_PX);
+      /* A kicked bomb is SKATING, so draw it between tiles.
+       *
+       * The simulation only ever puts a bomb on a tile - every rule that touches one, from the
+       * blast shape to chains to solidity, is written against tx/ty - and it hops a whole tile
+       * every KICK_TILE_TICKS. Drawn raw that is a bomb teleporting five times a second. The
+       * wire carries `kickAt`, the tick of the NEXT hop, so the fraction of the way through the
+       * current hop is known exactly and the bomb can be drawn sliding back from where it is
+       * toward where it came from.
+       *
+       * Reads the client's own interpolated clock, like everything else drawn here, so it stays
+       * smooth between snapshots rather than stepping once per snapshot.
+       */
+      let bx = b.tx, by = b.ty;
+      if (b.kickDir !== undefined && b.kickDir >= 0 && b.kickAt > 0) {
+        const left = Math.max(0, Math.min(1, (b.kickAt - (world.tickF ?? world.tick)) / KICK_TILE_TICKS));
+        const step = [[1, 0], [0, -1], [-1, 0], [0, 1]][b.kickDir];
+        if (step) { bx -= step[0] * left; by -= step[1] * left; }
+      }
+      ctx.translate(ox + bx * TILE_PX, oy + by * TILE_PX);
       if (pop < 1) {
         // Lands wide and settles: a bomb is a heavy thing set down, not a thing that grew.
         const squash = 1 + Math.sin(pop * Math.PI) * 0.18;
@@ -5514,7 +5464,20 @@ export function createRenderer(canvas, world) {
      *   - a jump of more than two tiles, which is a respawn, a map change or a camera cut, and
      *     a bracket sailing across the whole board is a bug with an animation on it.
      */
-    const AIM_TAU_MS = 52, AIM_SNAP_TILES = 2;
+    /* 86 ms, up from 52, and the snap window widened to three tiles.
+     *
+     * The bracket's target is a TILE INDEX, so it does not move smoothly - it jumps a whole tile
+     * the instant your centre crosses a boundary, and on rails at 30 units a tick that is every
+     * eight and a half ticks. At a 52 ms constant the glide had barely finished before the next
+     * jump arrived, which reads as jitter rather than as motion; a longer constant turns a chain
+     * of jumps into one continuous slide. Still well under the time it takes to decide to press
+     * the key, which is the ceiling - a bracket that lags your intent is worse than one that
+     * twitches.
+     *
+     * The snap window went to three tiles with it: at a longer tau the bracket is further behind
+     * during fast movement, and a two-tile window started cutting in mid-glide and snapping, which
+     * is the very jump this is smoothing out. */
+    const AIM_TAU_MS = 86, AIM_SNAP_TILES = 3;
     if (!aimSeen || Math.abs(tx - aimTx) > AIM_SNAP_TILES || Math.abs(ty - aimTy) > AIM_SNAP_TILES) {
       aimTx = tx; aimTy = ty; aimSeen = true;
     } else {
@@ -5534,7 +5497,12 @@ export function createRenderer(canvas, world) {
     // Brighter while it is moving, so the glide reads as intent rather than as lag, and the
     // resting pulse is what you see the other 99% of the time. Multiplied by the fade, so the
     // whole bracket arrives together rather than one layer at a time.
-    const pulse = Math.min(1, 0.55 + 0.25 * Math.sin(world.tick / 7) + travel * 0.45) * aimIn;
+    /* The resting pulse reads the FRACTIONAL clock, not `world.tick`.
+     *
+     * `world.tick` only advances when a snapshot lands, fifteen times a second, so a sine driven
+     * by it is a staircase: the brightness stepped twice a frame at 60 Hz and that stutter was a
+     * good part of what read as a jittery crosshair. */
+    const pulse = Math.min(1, 0.55 + 0.25 * Math.sin((world.tickF ?? world.tick) / 7) + travel * 0.45) * aimIn;
     // The arms pull IN as it travels and spring back out when it lands - the same trick a
     // camera reticle uses, and it is what makes a 50 ms move feel deliberate.
     const arm = TILE_PX * (0.3 - 0.1 * travel), inset = 3 + travel * 2;
@@ -6023,8 +5991,6 @@ export function createRenderer(canvas, world) {
       floaters.push({ x, y, text, colour, life: 1 });
       if (floaters.length > 24) floaters.shift();
     },
-    /** A bomb a slide kicked off the board, tumbling away. Cosmetic; see `kicks`. */
-    addKick(tx, ty, dir) { addKick(tx, ty, dir); },
     /** @param amount 0..1. Clamped and saturating: ten bombs at once must not throw the camera off. */
     addShake(amount) { shake = Math.min(1, shake + Math.max(0, amount)); },
     addFlash(amount, colour = '255,255,255') { flash = Math.min(1, flash + amount); flashColour = colour; },

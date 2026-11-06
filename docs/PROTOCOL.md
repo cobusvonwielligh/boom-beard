@@ -256,12 +256,13 @@ Events are things that happen at an instant and must not be missed. Each has `e`
 { "e": "kick",     "tick": 10482, "id": 812, "x": 10, "y": 7, "by": 3, "d": 0, "r": 2 }
 ```
 
-`kick`: a slide took a bomb off the board. `x`,`y` are the TILE it was on, `by` the seat that
-kicked it, `d` the slide's direction. The bomb is gone from the simulation on this tick - it
-cannot explode, chain, or block anybody - so a client must drop it from its own bomb list AND
-mark it burst, or a snapshot already in flight will re-add it and the local fuse loop will light
-it for a blast the server is never going to send. The flight is drawn, not simulated; a client
-that misses the event sees the bomb vanish from the next snapshot and loses only the flourish.
+`kick`: a slide sent a bomb skating. `x`,`y` are the TILE it was on when kicked, `by` the seat
+that kicked it, `d` the direction. The bomb STAYS on the board and keeps its fuse - it can still
+explode, chain and block - so a client does nothing to its bomb list here; the event is a cue for
+sound only. The bomb then arrives in each snapshot with `kickDir` (the way it is going, or -1 at
+rest) and `kickAt` (the tick of its next tile hop), which is what lets a client draw it sliding
+between tiles rather than teleporting one tile every six ticks. A client that misses the event
+loses only the sound.
 
 `gullhit`: a gull dived into live fire. `x`,`y` in units where it was hit, `by` whose fire it
 was (-1 for nobody's), `cx`,`cy` the tile its gold coin landed on (absent if there was no bare

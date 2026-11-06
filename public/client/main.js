@@ -582,16 +582,13 @@ const net = createNet({
           if (e.o !== world.you) sfx.play('place', e.x, e.y, { theirs: true });
           break;
 
-        /* A slide punted a bomb off the board. Authoritative only - the client never predicts a
-         * kick, so it leaves at the same moment on every screen watching it. The simulation is
-         * already finished with the bomb; this is the flourish. */
-        case 'kick': {
-          world.removeBomb?.(e.id);
-          renderer?.addKick(e.x, e.y, e.d);
+        /* A slide sent a bomb skating. It is still on the board and still ticking - the next
+         * snapshot carries it with its new tile and its kick clock, and the renderer draws it
+         * sliding between tiles from those. Nothing to do here but make a noise about it. */
+        case 'kick':
           sfx.play('melt', e.x, e.y, { theirs: e.by !== world.you });
-          if (e.by === world.you) renderer?.addShake(0.18);
+          if (e.by === world.you) renderer?.addShake(0.12);
           break;
-        }
 
         case 'boom': {
           // Authoritative detonation. Usually we already burst it locally off its own fuse; this

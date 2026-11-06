@@ -12,7 +12,7 @@ import {
 } from '../constants.js';
 import { expireStatuses, has, toTile, recordStreakKill, resetStreak } from './state.js';
 import { stepAll } from './movement.js';
-import { place, detonate, expireFires, bombable, kick, expireKicked } from './bombs.js';
+import { place, detonate, expireFires, bombable, kick, slideBombs } from './bombs.js';
 import { randInt } from '../util/rng.js';
 import { collect, scatterOnDeath } from './perks.js';
 import { regenerate, expirePuddles } from './blocks.js';
@@ -38,6 +38,14 @@ export function tick(state, inputs, { onRespawn } = {}) {
    * same tick" a definite answer rather than a race: the bomb either is not down yet and is
    * placed normally, or it is down and is kicked. */
   kick(state);
+
+  /* 2d. and bombs already skating carry on, a tile at a time.
+   *
+   * After the kick, so a bomb kicked this tick starts its clock here rather than moving on the
+   * tick it was touched. Before placement and before `detonate`, so a bomb that arrives on a
+   * tile this tick is on that tile for every rule that runs afterwards - the blast it makes, the
+   * chain it joins, and whether somebody may place a bomb where it now sits. */
+  slideBombs(state);
 
   // 3. bombs placed, ascending seat so a tie on one tile is resolved the same way everywhere
   for (let i = 0; i < state.players.length; i++) {
@@ -72,8 +80,6 @@ export function tick(state, inputs, { onRespawn } = {}) {
   }
   expireFires(state);
   expirePuddles(state);
-  // Kicked bombs whose fuses have run out: their owners get the slot back now, and not before.
-  expireKicked(state);
 
   state.tick++;
 }

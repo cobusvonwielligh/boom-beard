@@ -3,6 +3,7 @@
 import {
   FUSE_TICKS, FUSE_TICKS_FAST, FIRE_TICKS, CHAIN_CAP_PER_TICK, IN_BOMB, STATUS, MAX_RADIUS,
   BLOCK, POWDER_RADIUS, DIR_R, DIR_U, DIR_L, DIR_D, HITBOX_UNITS, HITBOX_REDUCED_UNITS,
+  KICK_TILE_TICKS, DIR_NONE,
 } from '../constants.js';
 import { has, streakActive, toTile, tileAt } from './state.js';
 import { spread } from './fire.js';
@@ -51,30 +52,19 @@ export function bombTile(state, p) {
    * Only the AIMED tile is protected. Underfoot is not, and must not be: a perk you are standing
    * on is one you would already have collected if you could, so it is either capped or not yours
    * to take, and refusing both tiles would leave you unable to bomb at all. */
-  /* And never where the bomb would be solid to the placer while the placer is inside it.
+  /* NOTE: no rule here about the placer's own hitbox, deliberately.
    *
-   * Reported as "I got stuck in a bomb I had just placed, having clipped a little", and that is
-   * exactly the geometry. A bomb is solid to anyone whose FIVE-EIGHTHS box is not in its tile
-   * (see bombSolid), while "inside it" is the FULL box. Between those two widths there is a
-   * 29-unit window - offsets 177 to 205 of a tile - where the placer's full box reaches the
-   * facing tile but their five-eighths box does not. A bomb dropped there is solid and the
-   * placer is standing in it: every move is refused, the gentle unstick shoves them sideways off
-   * their lane, and the lane correction pulls them straight back in. Stuck, in a bomb of their
-   * own making. Walking through that window is routine, so this was easy to hit.
+   * There was one for an afternoon, to fix "I got stuck in a bomb I had just placed", and it was
+   * the wrong place to fix it. Making the aim depend on where in the tile you are standing makes
+   * the SIGHT flip between the facing tile and underfoot as you walk through a 29-unit window -
+   * the bracket jumps back onto you and out again, once per tile, which is far more visible than
+   * the bug it was fixing. The aim is a function of the tile you are IN, and nothing else; see
+   * the test of that name in test/bombs.test.js.
    *
-   * ONLY that window. Deeper into the tile the five-eighths box reaches too, the bomb is not
-   * solid to them, and they can simply walk off it - so the aim stays on the facing tile, which
-   * is what keeps the target from sliding across a boundary as you walk.
+   * The trap itself is now fixed where it actually lived: bombSolid's grace, in sim/movement.js.
    */
-  const full = (has(p, STATUS.REDUCTION) ? HITBOX_REDUCED_UNITS : HITBOX_UNITS) >> 1;
-  const grace = (full * 5) >> 3;
-  const covers = h => ((p.x - h) >> 8) <= fx && ((p.x + h - 1) >> 8) >= fx
-    && ((p.y - h) >> 8) <= fy && ((p.y + h - 1) >> 8) >= fy;
-  const wouldTrap = covers(full) && !covers(grace);
-
   const free = tileAt(state.map, fx, fy) === BLOCK.FLOOR && bombable(state, fx, fy)
-    && !state.perks.some(k => k.tx === fx && k.ty === fy)
-    && !wouldTrap;
+    && !state.perks.some(k => k.tx === fx && k.ty === fy);
   return free ? { tx: fx, ty: fy } : { tx, ty };
 }
 
@@ -107,12 +97,10 @@ export function placeable(state, p) {
   const at = bombTile(state, p);
   if (!bombable(state, at.tx, at.ty)) return null;
 
-  /* Bombs still counting against this player: the ones on the board, plus the ones somebody
-   * kicked off it whose fuses have not run out yet. See KICK_FLIGHT_TICKS for why a kicked bomb
-   * keeps costing its owner a slot - a kick that handed the slot straight back would make being
-   * kicked better than being left alone. */
-  const live = state.bombs.reduce((n, b) => n + ((b.owner ?? b.o) === p.i ? 1 : 0), 0)
-    + (state.kicked?.reduce((n, k) => n + (k.owner === p.i ? 1 : 0), 0) ?? 0);
+  // A kicked bomb is still on the board, so it still counts against its owner by the ordinary
+  // rule. No special case: that is one of the things the sliding kick is better than the version
+  // that removed the bomb, which needed its own bookkeeping to stay fair.
+  const live = state.bombs.reduce((n, b) => n + ((b.owner ?? b.o) === p.i ? 1 : 0), 0);
   if (live >= p.bombs) return null;
   return at;
 }
@@ -152,24 +140,19 @@ export function place(state, p, mask) {
 }
 
 /**
- * A bomb a slide reached is taken off the board.
+ * A bomb a slide reached is kicked skating across the floor.
  *
- * Runs in the tick beside `daze`, for the same reason and at the same moment: while the overlap
- * that proves it still exists, and BEFORE bombs are placed. The ordering is what makes "placed
- * and kicked on the same tick" have an answer - the bomb either is not down yet and is placed
- * normally, or it is down and is kicked. There is no half state.
+ * Game of Bombs rules. The bomb is NOT removed: it keeps its fuse, slides in the direction the
+ * slide was going, and stops at the first thing it meets - see `slideBombs`. Whoever it stops
+ * against can kick it straight back, which is the whole point. A kicked bomb is a thrown weapon
+ * with an answer to it, not a save with none.
  *
- * What a kick does and does not do:
- *   - removes the bomb, so it cannot detonate, cannot be chained, and is no longer solid. The
- *     tile clearing immediately is what lets the slide carry on through rather than stopping on
- *     the square it has just cleared.
- *   - remembers the owner and the fuse in `state.kicked`, so the slot stays spent until the fuse
- *     would have run out. See KICK_FLIGHT_TICKS.
- *   - pays nobody. No score, no kill, no stat. A kick is its own reward, and a scoring line
- *     would turn a defensive move into a farm.
+ * Runs beside `daze` in the tick, for the same reason and at the same moment: while the overlap
+ * that proves it still exists, and BEFORE bombs are placed, so "placed and kicked on the same
+ * tick" has a definite answer rather than a race.
  *
- * No ownership rule: your own bombs are kickable too. A slide is a slide, and "except your own"
- * is a rule to memorise in exchange for nothing.
+ * No ownership rule: your own bombs are kickable too, and so is one already skating - catching a
+ * moving bomb and sending it back the other way is exactly the trick this mechanic is for.
  */
 export function kick(state) {
   const players = state.players;
@@ -182,24 +165,82 @@ export function kick(state) {
     const x0 = (p.x - half) >> 8, x1 = (p.x + half - 1) >> 8;
     const y0 = (p.y - half) >> 8, y1 = (p.y + half - 1) >> 8;
 
-    for (let k = state.bombs.length - 1; k >= 0; k--) {
-      const b = state.bombs[k];
+    for (const b of state.bombs) {
       if (b.tx < x0 || b.tx > x1 || b.ty < y0 || b.ty > y1) continue;
+      // Already going this way: do not restart the step clock, or a slider riding alongside a
+      // bomb would hold it at the start of a tile and it would never arrive anywhere.
+      if (b.kickDir === p.slideDir) continue;
 
-      state.bombs.splice(k, 1);
-      (state.kicked ??= []).push({ owner: b.owner ?? b.o, until: b.at });
+      b.kickDir = p.slideDir;
+      b.kickAt = state.tick + KICK_TILE_TICKS;
+      b.kickBy = p.i;
       state.events.push({
-        e: 'kick', tick: state.tick, id: b.id, x: b.tx, y: b.ty,
-        by: p.i, d: p.slideDir, r: b.radius ?? b.r,
+        e: 'kick', tick: state.tick, id: b.id, x: b.tx, y: b.ty, by: p.i, d: p.slideDir,
       });
     }
   }
 }
 
-/** Forget kicked bombs whose fuses have run out, handing their owners the slot back. */
-export function expireKicked(state) {
-  if (!state.kicked?.length) return;
-  state.kicked = state.kicked.filter(k => k.until > state.tick);
+/** Where a kicked bomb would go next, as [tx, ty]. */
+const KICK_STEP = {
+  [DIR_R]: [1, 0], [DIR_U]: [0, -1], [DIR_L]: [-1, 0], [DIR_D]: [0, 1],
+};
+
+/**
+ * Advance every skating bomb by one tile when its step is due, and stop the ones that meet
+ * something.
+ *
+ * A bomb stops at a wall, the sea, the map edge, another bomb, standing water, or a PERSON. The
+ * last of those is what makes it a weapon you can return: it comes to rest against whoever it
+ * caught, still ticking, and they can kick it back the way it came.
+ *
+ * A SLIDING player is not an obstacle, deliberately and for the same reason bombs are not solid
+ * to them: they are passing through. Without that exception the kicker themselves would usually
+ * stop the bomb dead - a slide launches at three times walking pace, so the kicker is ahead of
+ * their own kick for the first few tiles of it.
+ *
+ * Tile by tile rather than in sub-tile units, because every rule that touches a bomb - blast
+ * shape, chains, solidity, placement - is written against `tx`/`ty`, and a bomb that is half way
+ * between two tiles would need all of them to have an opinion about which one it is in. The
+ * client draws the motion smoothly from `kickAt`; the simulation only ever sees it on a tile.
+ */
+export function slideBombs(state) {
+  for (const b of state.bombs) {
+    if (b.kickDir === undefined || b.kickDir === DIR_NONE) continue;
+    if (state.tick < b.kickAt) continue;
+
+    const step = KICK_STEP[b.kickDir];
+    if (!step) { b.kickDir = DIR_NONE; continue; }
+    const nx = b.tx + step[0], ny = b.ty + step[1];
+
+    if (!bombCanSlideInto(state, nx, ny, b.kickBy)) { b.kickDir = DIR_NONE; continue; }
+
+    b.tx = nx; b.ty = ny;
+    b.kickAt = state.tick + KICK_TILE_TICKS;
+  }
+}
+
+/**
+ * Is this tile somewhere a skating bomb may come to rest?
+ *
+ * `kickedBy` is the seat that kicked it, who is never an obstacle to their own kick. A slide
+ * launches at three times walking pace, so the kicker passes straight THROUGH the bomb and is
+ * usually ahead of it for the first few tiles - without this exception they would stop their own
+ * kick dead the moment their slide ran out, which is both baffling to play and not what the
+ * mechanic is for. Anybody else stops it, and so does the kicker's own bomb on the way back if
+ * somebody returns it.
+ */
+function bombCanSlideInto(state, tx, ty, kickedBy) {
+  if (tileAt(state.map, tx, ty) !== BLOCK.FLOOR) return false;
+  if (bombAt(state, tx, ty)) return false;
+  if (puddleAt(state, tx, ty)) return false;        // a fuse does not survive the water
+  for (const p of state.players) {
+    if (!p || !p.alive) continue;
+    if (p.i === kickedBy) continue;                 // never blocked by whoever kicked it
+    if (p.slideV > 0) continue;                     // mid-slide: passing through, not an obstacle
+    if (toTile(p.x) === tx && toTile(p.y) === ty) return false;
+  }
+  return true;
 }
 
 /**

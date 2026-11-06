@@ -117,19 +117,6 @@ export function createWorld() {
    * client computes the identical blast at the identical tick without being told. Nobody ever
    * dies to a blast that had not appeared on their screen. docs/NETCODE.md §1a.
    */
-  /* A bomb kicked off the board. It never bursts, so it is simply forgotten.
-   *
-   * Marked as burst as well as removed, which is the part that matters: the local fuse loop
-   * bursts anything whose tick has arrived, and a snapshot that still carried this bomb - one
-   * already in flight when the kick event landed - would otherwise light it locally for a blast
-   * the server will never send.
-   */
-  w.removeBomb = id => {
-    w.burst.add(id);
-    const at = w.bombs.findIndex(b => b.id === id);
-    if (at >= 0) w.bombs.splice(at, 1);
-  };
-
   w.burstBomb = (bomb, ignitionTick = w.tick) => {
     if (!bomb || w.burst.has(bomb.id) || !w.map) return;
     w.burst.add(bomb.id);
@@ -314,6 +301,12 @@ export function createWorld() {
   /** Called every frame: advance rendered positions and sample tracers. */
   w.interpolate = (serverTickNow, dtMs = 16) => {
     const renderTick = serverTickNow - INTERP_DELAY_TICKS;
+    /* The fractional clock everything drawn should read.
+     *
+     * `w.tick` only moves when a snapshot lands, fifteen times a second, so anything drawn from
+     * it steps rather than moves. A skating bomb hops a whole tile every few ticks and is the
+     * first thing where that is obvious; see the kick interpolation in render.js. */
+    w.tickF = renderTick;
     for (const p of w.players) {
       if (!p) continue;
 
