@@ -761,8 +761,17 @@ export function step(state, p, mask) {
        * right into a wall" from "running right down a corridor while holding up" - the second
        * must keep running, not stop and stare at the ceiling.
        */
+      /* Read the direction BEFORE asking, because asking can clear it.
+       *
+       * `spendTurn` drops the request on a drunk fumble, so `p.turnWant` is already DIR_NONE by
+       * the time it returns false - and assigning that to `p.dir` left a pirate facing -1, which
+       * is not a direction. Nothing crashed; `DIR_VEC[-1]` simply fell back to DIR_D and the
+       * pirate quietly walked the wrong way for a tick. Found by the whole-game soak, which is
+       * the only test shaped to notice.
+       */
+      const want = p.turnWant;
       if (!spendTurn(state, p)) {
-        p.dir = p.turnWant;
+        if (want !== DIR_NONE) p.dir = want;
         clearTurn(p);
       }
     } else if (wantsTurn(p)) {

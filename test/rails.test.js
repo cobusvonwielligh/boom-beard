@@ -23,6 +23,7 @@ import {
 import { step, speedOf, blocked } from '../shared/sim/movement.js';
 import { tick } from '../shared/sim/round.js';
 import { MAPS } from '../shared/maps.js';
+import { createRoom } from '../server/room.js';
 
 const HALF = UNITS_PER_TILE >> 1;
 const DIRS = [DIR_R, DIR_U, DIR_L, DIR_D];
@@ -718,6 +719,27 @@ test('rails: slides, water and rum', async t => {
     }
   });
 
+  /* A fumbled turn must still leave the pirate facing a real direction.
+   *
+   * `spendTurn` clears the request when rum fumbles it, so code that read `p.turnWant` after
+   * calling it got DIR_NONE and assigned -1 to `p.dir`. Nothing threw - DIR_VEC[-1] falls back
+   * to DIR_D - the pirate just walked the wrong way for a tick, occasionally, only while drunk.
+   */
+  await t.test('a fumbled turn never leaves the pirate facing nowhere', () => {
+    const st = room(21, 21);
+    const p = spawn(st, 10, 10, { speed: 1 });
+    applyStatus(st, p, STATUS.DRUNK, 1e6);
+    let seed = 5150;
+    for (let n = 0; n < 2000; n++) {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      step(st, p, (seed >>> 9) & (IN_RIGHT | IN_UP | IN_LEFT | IN_DOWN));
+      st.tick++;
+      assert.ok(DIRS.includes(p.dir), `tick ${n}: facing ${p.dir}, which is not a direction`);
+      assert.ok(p.turnWant === DIR_NONE || DIRS.includes(p.turnWant),
+        `tick ${n}: turnWant is ${p.turnWant}`);
+    }
+  });
+
   await t.test('rum still costs something: some turns are fumbled', () => {
     // A long corridor with openings above at every other column, so a sober pirate turns at the
     // first one every time and a drunk one sometimes does not.
@@ -794,4 +816,99 @@ test('rails: the seatbelt still works', async t => {
     assert.equal(p.x, tileCentre(8) - HALF - half, `did not come to rest flush against the bomb`);
     assert.ok(!blocked(st, p, p.x, p.y), 'ended up inside the bomb');
   });
+});
+
+/* The soak.
+ *
+ * Everything above tests movement in isolation, on hand-built rooms, with the pieces that touch
+ * it stubbed or absent. This runs the WHOLE GAME - every map, a full room of bots, real bombs,
+ * real fire, real perks, real wall regrowth, real gulls - and checks the rail invariants on every
+ * player on every tick of it.
+ *
+ * It exists because the rail work turned up four bugs that no targeted test caught, and every one
+ * of them needed two systems interacting: a flush stop that let the next tick walk into the wall,
+ * a lane snap that only fired after an unstick, a turn that could skip the junction it was
+ * waiting for, and a sentinel that collided with DIR_R so right turns silently never happened.
+ * Isolated tests are the wrong shape for that class of bug.
+ */
+test('rails: a full room survives a long soak on every map', () => {
+  for (const [mi, map] of MAPS.entries()) {
+    const room = createRoom({ countIn: 0, onBroadcast: () => {} });
+    try {
+      room.setMap(mi);
+      room.setBots(12);
+
+      let seed = 90210 + mi;
+      const nextMask = () => {
+        seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+        return (seed >>> 7) & (IN_RIGHT | IN_UP | IN_LEFT | IN_DOWN | IN_BOMB | IN_SLIDE);
+      };
+
+      for (let n = 0; n < 2500; n++) {
+        // A couple of seats driven by noise on top of the bots, so the stream includes masks no
+        // bot would ever produce - opposing keys, a slide into a wall, a bomb mid-turn.
+        for (const seat of [0, 1]) room.input(seat, room.state.tick, nextMask());
+        room.tick();
+
+        for (const p of room.state.players) {
+          if (!p || !p.alive) continue;
+          assert.ok(DIRS.includes(p.dir),
+            `map${mi} tick ${n}: seat ${p.i} faces ${p.dir}`);
+          /* The invariant, with ONE exception that is the seatbelt doing its job: a player a wall
+           * has regrown on top of is briefly off both lanes while `unstick` eases them out. That
+           * is the definition of being stuck, not a rail failure - what matters is that it ends. */
+          if (blocked(room.state, p, p.x, p.y, false)) continue;
+          assertOnRail(p, `map${mi} tick ${n}: seat ${p.i}`);
+        }
+      }
+
+      // And nobody is left permanently entombed at the end of it.
+      for (let n = 0; n < 200; n++) room.tick();
+      for (const p of room.state.players) {
+        if (!p || !p.alive) continue;
+        assert.ok(!blocked(room.state, p, p.x, p.y, false),
+          `map${mi}: seat ${p.i} is still stuck in a wall after 200 quiet ticks`);
+      }
+    } finally {
+      room.stop();
+    }
+  }
+});
+
+/* Two identical rooms, driven identically, must stay bit-identical.
+ *
+ * The client runs this same simulation to predict its own movement, so anything that reaches a
+ * different answer from the same inputs is a desync by definition. The targeted desync test above
+ * compares `step` against `round.tick` on a bare room; this compares two WHOLE rooms, hashed, so
+ * it also covers the bombs, the fire, the perks and the regrowth that the rails now share ticks
+ * with. A stray `Math.random` anywhere in `shared/sim` fails here and nowhere else.
+ */
+/* Nothing under shared/sim may reach for Math.random.
+ *
+ * The client runs this exact code to predict its own movement, so an unseeded roll anywhere in it
+ * reaches a different answer on the two machines - which is a desync by construction. The rails
+ * added new branches that take decisions (the turn buffer, the drunk fumble), so this is worth
+ * stating as a rule rather than as a habit.
+ *
+ * A whole-room hash comparison was tried instead and cannot work: `room.js` picks respawn
+ * positions with Math.random on purpose - the server decides them and ships them in a snapshot -
+ * and `buildMap` knocks lattice pillars out from a clock seed, also on purpose. Neither is a
+ * desync, because neither is ever recomputed by a client. The line that matters is the one around
+ * `shared/sim`, and that is what this guards.
+ */
+test('rails: the shared simulation never reaches for Math.random', async () => {
+  const { readdir, readFile } = await import('node:fs/promises');
+  const dir = new URL('../shared/sim/', import.meta.url);
+  const files = (await readdir(dir)).filter(f => f.endsWith('.js'));
+  assert.ok(files.length >= 8, `only found ${files.length} files under shared/sim`);
+
+  // Comments are stripped first: state.js says "the sim never calls Math.random()", and a test
+  // that fails on its own documentation is a test nobody will trust twice.
+  const code = src => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+
+  const offenders = [];
+  for (const f of files) {
+    if (/Math\.random/.test(code(await readFile(new URL(f, dir), 'utf8')))) offenders.push(f);
+  }
+  assert.deepEqual(offenders, [], 'these would desync the client from the server');
 });
