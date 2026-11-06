@@ -360,7 +360,13 @@ Fire hurts you unless you are Invulnerable. **Two hits kill.**
   saved reconnect loadout. Once the seat reservation expires, joining again is a fresh start.
 - **Kill streaks** continue when you get another kill within **11 seconds**; dying or letting that
   window expire ends the run. Streak text cycles through RGB colours while active.
-- On death you drop **up to 3 perks** on nearby free tiles, so a good kill is rewarded.
+- On death you drop **up to 3 perks** on nearby free tiles, so a good kill is rewarded. Never
+  onto a tile holding a bomb - a bomb makes its tile solid, so a perk under one is unreachable
+  until the fuse runs out.
+- **One death in ten leaves a live bomb** on the tile where it happened, with the normal fuse and
+  the radius you died with. It belongs to **you**: a kill it gets is credited to you, posthumously.
+  It costs you no bomb slot. Walking over a fresh corpse for the perks is a decision now. Refused
+  if that tile already holds a bomb or is standing water.
 - After a **5-second** death cooldown, press **SPACE** to start a **3-second 3-2-1**
   countdown. First spawn skips the death cooldown. Respawns have **90 ticks (3 s)**
   Invulnerability.

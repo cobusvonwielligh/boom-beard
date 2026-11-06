@@ -239,6 +239,18 @@ export const MAX_RADIUS = 5;
 export const START_BOMBS = 1;
 export const START_RADIUS = 1;
 export const CHAIN_CAP_PER_TICK = 64; // safety valve, see docs/RULES.md §3
+
+/* A parting shot. One death in ten leaves a live bomb on the tile where it happened.
+ *
+ * Owned by the player who died, so a kill it gets is credited to them: dying is the one moment in
+ * the game you have no agency at all, and a one-in-ten chance of taking somebody with you is a
+ * reason to look at a fresh corpse with suspicion rather than walking over it for the perks.
+ *
+ * It costs the dead player no bomb slot - `placeable` counts live bombs by owner, and a dead
+ * player is not placing anything, so there is nothing to account for. Rolled from `state.next`
+ * like every other chance in the simulation; `Math.random` here would desync.
+ */
+export const DEATH_BOMB_ONE_IN = 10;
 export const SHRUB_RADIUS_PENALTY = 1;
 
 // ─── Blocks ───────────────────────────────────────────────────────────────────

@@ -215,6 +215,10 @@ export function scatterOnDeath(state, p) {
         const x = tx + dx, y = ty + dy;
         if (tileAt(state.map, x, y) !== BLOCK.FLOOR) continue;
         if (state.perks.some(k => k.tx === x && k.ty === y)) continue;
+        // Nor under a bomb, which makes its tile solid and so puts the perk behind a wall for the
+        // whole fuse. The commonest case is the death bomb this corpse may have just left on its
+        // own tile; see deathBomb in round.js and bombTile in bombs.js for the same rule.
+        if (state.bombs.some(b => b.tx === x && b.ty === y)) continue;
         drop(state, x, y, carried.pop());
         placed++;
       }

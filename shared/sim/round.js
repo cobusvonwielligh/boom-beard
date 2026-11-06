@@ -8,11 +8,12 @@ import {
   IN_BOMB, SCORE, STATUS, HITBOX_UNITS,
   HITBOX_REDUCED_UNITS, START_BOMBS, START_RADIUS, RESPAWN_DELAY_TICKS,
   FIRE_TICKS, FIRE_LETHAL_TICKS, SHIELD_GRACE_TICKS, MAX_HP, STAMINA_MAX,
-  HITBOX_FIRE_NUM, HITBOX_FIRE_DEN,
+  HITBOX_FIRE_NUM, HITBOX_FIRE_DEN, FUSE_TICKS, MAX_RADIUS, DEATH_BOMB_ONE_IN,
 } from '../constants.js';
 import { expireStatuses, has, toTile, recordStreakKill, resetStreak } from './state.js';
 import { stepAll } from './movement.js';
-import { place, detonate, expireFires } from './bombs.js';
+import { place, detonate, expireFires, bombable } from './bombs.js';
+import { randInt } from '../util/rng.js';
 import { collect, scatterOnDeath } from './perks.js';
 import { regenerate, expirePuddles } from './blocks.js';
 import { burns } from './fire.js';
@@ -165,6 +166,15 @@ function killInFire(state) {
     const killer = fatal.owner;
     p.hitBy = [];
 
+    /* A parting shot, one death in ten. See DEATH_BOMB_ONE_IN.
+     *
+     * BEFORE the loadout is reset below, because the bomb carries the radius they died with - it
+     * is their bomb. And before `scatterOnDeath`, so the scatter can see it and skip its tile: a
+     * bomb makes its tile solid, so a perk dropped underneath one is unreachable for the whole
+     * fuse, which is the same defect `bombTile` was fixed for.
+     */
+    deathBomb(state, p);
+
     scatterOnDeath(state, p);
 
     p.alive = false;
@@ -198,4 +208,37 @@ function killInFire(state) {
       streak: state.players[killer]?.streakCount ?? 0,
     });
   }
+}
+
+/**
+ * One death in ten: a live bomb on the tile where it happened, owned by the player who died.
+ *
+ * Refused on a tile that cannot take a bomb - one already there, or standing water - exactly as a
+ * placed bomb would be, by asking `bombable` rather than by keeping a second copy of the rule.
+ * A refused roll is simply no bomb this time; it does not re-roll or look for a neighbouring tile,
+ * because "where you died" is the whole idea and anywhere else is just a bomb appearing.
+ *
+ * Emits the same `bomb` event a placed one does, so every client draws and predicts it with the
+ * code it already has and nothing new goes on the wire.
+ */
+function deathBomb(state, p) {
+  if (randInt(state.next, DEATH_BOMB_ONE_IN) !== 0) return;
+  const tx = toTile(p.x), ty = toTile(p.y);
+  if (!bombable(state, tx, ty)) return;
+
+  const radius = Math.min(p.radius, MAX_RADIUS);
+  const bomb = {
+    id: state.nextBombId++,
+    tx, ty,
+    o: p.i, owner: p.i,
+    r: radius, radius,
+    at: state.tick + FUSE_TICKS,
+    fuseTicks: FUSE_TICKS,
+    // Never streak-powered: a streak is a run of kills you are on, and this one ended it.
+    streakPowered: false,
+  };
+  state.bombs.push(bomb);
+  state.events.push({
+    e: 'bomb', tick: state.tick, id: bomb.id, x: tx, y: ty, o: p.i, r: radius, at: bomb.at,
+  });
 }
