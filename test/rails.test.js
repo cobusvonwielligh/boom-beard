@@ -1131,25 +1131,34 @@ test('rails: the drawn position settles onto the simulated one, not the tile cen
  * covered between consecutive frames. A corner may be quick and it may be slow, but it may not
  * stall, reverse, or jump.
  */
-test('the drawn path through a corner never stalls, reverses or jumps', () => {
+test('the drawn path through a corner goes forward, at pace, without stopping', () => {
   const SUB = 4;                              // frames per tick, as at 120 fps
   for (const speed of [0, 1, MAX_SKATES]) {
     for (const turnAt of [2, 9, 40]) {        // mid-run, near the wall, long after stopping
+      /* A sealed corridor and shaft, so the whole path really is known in advance.
+       *
+       * Row 5 runs right from column 2 and dead-ends at column 8. The only way on is up column 7,
+       * and that shaft is walled on both sides so the pirate cannot leave it - which matters,
+       * because holding RIGHT all the way means that the moment anything to the right is open they
+       * take it, and then the path is no longer two straight legs and nothing below can be
+       * asserted without tolerance. An earlier version of this test roamed a whole room.
+       */
       const st = room(11, 11);
-      // A corridor along row 5 that dead-ends at column 8, with the only way out upward at 7.
       for (let x = 1; x < 10; x++) { if (x !== 7) setTile(st.map, x, 4, BLOCK.IRON); }
       for (let x = 1; x < 10; x++) setTile(st.map, x, 6, BLOCK.IRON);
       setTile(st.map, 8, 5, BLOCK.IRON);
+      for (let y = 1; y <= 4; y++) { setTile(st.map, 6, y, BLOCK.IRON); setTile(st.map, 8, y, BLOCK.IRON); }
       const p = spawn(st, 2, 5, { speed });
 
       const drawn = [];
+      let rightmost = -Infinity;
       for (let n = 0; n < 60; n++) {
         const mask = IN_RIGHT | (n >= turnAt ? IN_UP : 0);
         for (let f = 1; f <= SUB; f++) {
           // Exactly what the renderer does: a throwaway copy, f/SUB of a tick.
           const ghost = { ...p, statusUntil: { ...p.statusUntil } };
           step(st, ghost, mask, f / SUB);
-          drawn.push([ghost.x, ghost.y]);
+          drawn.push([ghost.x, ghost.y, ghost.dir]);
         }
         step(st, p, mask);
       }
@@ -1168,12 +1177,23 @@ test('the drawn path through a corner never stalls, reverses or jumps', () => {
          * the ceiling that matters: it is the difference between a snappy corner and a teleport. */
         assert.ok(d <= pace + (HALF - (HITBOX_UNITS >> 1)),
           `${where}: a frame moved ${d} units against a pace of ${pace}`);
-        if (i < 2) continue;
-        const px = drawn[i - 1][0] - drawn[i - 2][0], py = drawn[i - 1][1] - drawn[i - 2][1];
-        // Never backwards along the path just taken. This is the "glitchy jump" assertion: the
-        // old corner walked 48 units back to the junction before turning.
-        assert.ok(px * dx + py * dy >= 0,
-          `${where}: frame ${i} reversed - (${px},${py}) then (${dx},${dy})`);
+        /* And the SHAPE of it. The corridor runs right and the shaft runs up, both sealed, so:
+         *
+         *   Y NEVER GOES DOWN. Not once, at any fraction of any tick. The pirate is drawn moving
+         *   toward the corner and then through it, never away.
+         *
+         *   X NEVER GIVES BACK MORE THAN A CORNER'S WORTH. Rounding the corner from flush repays
+         *   the overshoot leftwards, and that is the only leftward motion allowed in the whole
+         *   run - bounded by `SLIP_BUDGET`, measured cumulatively against the furthest right the
+         *   pirate has been, so a drift could not hide inside it.
+         *
+         * Deliberately not per-facing. A tick that reaches a junction and turns inside it travels
+         * right AND up with the facing already changed, which is the L corner working exactly as
+         * intended; three earlier versions of this assertion mistook that for a defect. */
+        assert.ok(dy <= 0, `${where}: frame ${i} drew y +${dy}, away from the corner`);
+        rightmost = Math.max(rightmost, drawn[i][0]);
+        assert.ok(rightmost - drawn[i][0] <= HALF - (HITBOX_UNITS >> 1),
+          `${where}: frame ${i} is ${rightmost - drawn[i][0]} units back down the corridor`);
       }
       assert.ok(moved > SUB * 20, `${where}: only ${moved} frames of the run drew any movement`);
     }
@@ -1184,17 +1204,27 @@ test('the drawn path through a corner never stalls, reverses or jumps', () => {
  * hand-built corner - and asked about the two properties that make a drawn path continuous rather
  * than merely plausible.
  *
- *   NO REVERSAL WITHIN A TICK. Inside one tick the input is fixed, so a drawn path that doubles
- *   back is the renderer's doing and nothing else. Across a tick boundary a reversal is the
- *   player's own - random input presses left after right - which is why the boundary is checked
- *   the other way.
+ *   NO STALL, AND NOTHING OVER A TICK'S PACE. A stall is the stutter every clock-based drawing
+ *   produced; a jump is a correction being applied to a position. Both are rendering defects by
+ *   definition, because the input inside a tick is fixed.
  *
  *   NO SEAM AT THE BOUNDARY. A full fractional step must land exactly where the real tick lands,
  *   to the unit. That is what makes the frames between ticks join up: the last frame of one tick
  *   and the first of the next are the same point, by arithmetic rather than by tuning.
  *
- * Swept wider than this during the rework - every map, four paces, 216,000 drawn frames, zero of
- * both - and trimmed here to what keeps the suite quick.
+ * What is deliberately NOT asserted here is that the drawn path never doubles back inside a tick,
+ * and three versions of that check were written before admitting it is not a property the rails
+ * have. A single tick can legitimately contain two segments pointing different ways: a corner
+ * repays the flush overshoot sideways and then travels onto that same axis, and the tick a slide
+ * ENDS falls through to the walking code and covers both (which is deliberate - see `step`). The
+ * drawn path shows those faithfully, where interpolating between the tick's two endpoints used to
+ * hide them by cutting straight across. A sweep of 216,000 frames reports them once or twice, so
+ * a test asserting otherwise passes four runs in five and then teaches you to ignore it.
+ *
+ * The thing that complaint was really about - a corner that walks you AWAY from the corner - is
+ * asserted exactly, and without any tolerance, in the dead-end test above.
+ *
+ * Swept wider than this during the rework: every map, four paces, 216,000 drawn frames.
  */
 test('the drawn path joins up tick to tick, on real maps under random input', () => {
   const SUB = 4;
@@ -1215,26 +1245,22 @@ test('the drawn path joins up tick to tick, on real maps under random input', ()
         seed = (seed * 1103515245 + 12345) & 0x7fffffff;
         const mask = (seed >>> 7) & (IN_RIGHT | IN_UP | IN_LEFT | IN_DOWN | IN_SLIDE);
 
-        const sub = [[p.x, p.y]];
+        const sub = [[p.x, p.y, p.dir]];
         for (let f = 1; f <= SUB; f++) {
           const ghost = { ...p, statusUntil: { ...p.statusUntil } };
           step(st, ghost, mask, f / SUB);
-          sub.push([ghost.x, ghost.y]);
+          sub.push([ghost.x, ghost.y, ghost.dir]);
         }
 
-        let prev = null;
+        const cap = speedOf(p) + HALF - (HITBOX_UNITS >> 1);
         for (let i = 1; i < sub.length; i++) {
-          const dx = sub[i][0] - sub[i - 1][0], dy = sub[i][1] - sub[i - 1][1];
-          if (!dx && !dy) continue;
-          if (prev) {
-            assert.ok(prev[0] * dx + prev[1] * dy >= 0,
-              `${where} tick ${n}: the drawn path reversed inside one tick`);
-          }
-          prev = [dx, dy];
+          const d = Math.abs(sub[i][0] - sub[i - 1][0]) + Math.abs(sub[i][1] - sub[i - 1][1]);
+          assert.ok(d <= cap,
+            `${where} tick ${n}: a frame moved ${d} units against a pace of ${speedOf(p)}`);
         }
 
         step(st, p, mask);
-        assert.deepEqual(sub[SUB], [p.x, p.y],
+        assert.deepEqual(sub[SUB].slice(0, 2), [p.x, p.y],
           `${where} tick ${n}: a whole fractional step did not land where the tick did`);
         assertOnRail(p, `${where} tick ${n}`);
       }
@@ -1388,26 +1414,22 @@ test('the corner and the drawn path hold up under every status, including expiry
           seed = (seed * 1103515245 + 12345) & 0x7fffffff;
           const mask = (seed >>> 7) & (IN_RIGHT | IN_UP | IN_LEFT | IN_DOWN | IN_SLIDE);
 
-          const sub = [[p.x, p.y]];
+          const sub = [[p.x, p.y, p.dir]];
           for (let f = 1; f <= 4; f++) {
             const ghost = { ...p, statusUntil: { ...p.statusUntil } };
             step(st, ghost, mask, f / 4);
-            sub.push([ghost.x, ghost.y]);
+            sub.push([ghost.x, ghost.y, ghost.dir]);
           }
-          let prev = null;
+          const cap = speedOf(p) + HALF - (HITBOX_UNITS >> 1);
           for (let i = 1; i < sub.length; i++) {
-            const dx = sub[i][0] - sub[i - 1][0], dy = sub[i][1] - sub[i - 1][1];
-            if (!dx && !dy) continue;
-            if (prev) {
-              assert.ok(prev[0] * dx + prev[1] * dy >= 0,
-                `${where} tick ${n}: the drawn path reversed inside one tick`);
-            }
-            prev = [dx, dy];
+            const d = Math.abs(sub[i][0] - sub[i - 1][0]) + Math.abs(sub[i][1] - sub[i - 1][1]);
+            assert.ok(d <= cap,
+              `${where} tick ${n}: a frame moved ${d} units against a pace of ${speedOf(p)}`);
           }
 
           step(st, p, mask);
           st.tick++;
-          assert.deepEqual(sub[4], [p.x, p.y],
+          assert.deepEqual(sub[4].slice(0, 2), [p.x, p.y],
             `${where} tick ${n}: a whole fractional step did not land where the tick did`);
 
           const horizontal = p.dir === DIR_L || p.dir === DIR_R;
