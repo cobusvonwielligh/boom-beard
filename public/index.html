@@ -1048,6 +1048,31 @@
               </button>
             </div>
           </dialog>
+          <!-- Escape used to leave the round outright. It is the key that closes everything else
+           on the page, so a tap of it is a reflex - and the one thing in the game a reflex must
+           not be able to do is abandon a round you cannot rejoin in the same shape. The round
+           keeps running behind this, which the copy says plainly: a browser arena cannot pause
+           for one player, and a modal that pretended otherwise would get people killed while
+           they read it. -->
+          <dialog
+            id="leaveDialog"
+            class="regionDialog leaveDialog"
+            aria-labelledby="leaveDialogHeading"
+          >
+            <h2 class="regionHeading" id="leaveDialogHeading">Leave the game?</h2>
+            <p class="leaveDialogBody">
+              The round carries on without you, and your seat is held only for a
+              short while.
+            </p>
+            <div class="regionDialogActions">
+              <button id="leaveConfirm" class="goldAction" type="button">
+                leave
+              </button>
+              <button id="leaveCancel" class="ghost" type="button">
+                keep playing
+              </button>
+            </div>
+          </dialog>
           <div class="keys">
             <h2>Controls</h2>
             <dl>
@@ -1083,7 +1108,7 @@
               <dd>Scores</dd>
 
               <dt><kbd class="wide">Esc</kbd></dt>
-              <dd>Leave</dd>
+              <dd>Close / leave</dd>
 
               <dt><code>/logout</code></dt>
               <dd>Sign out</dd>

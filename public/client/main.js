@@ -2918,10 +2918,36 @@ for (const b of document.querySelectorAll('#boardTabs .bt')) {
   };
 }
 
+/* Asking before leaving, rather than leaving.
+ *
+ * Escape is the page's universal "close this", so a tap of it is muscle memory - and it was
+ * wired straight to abandoning a live round, which is the one action here that cannot be undone:
+ * the seat is only held briefly and the loadout does not come back.
+ *
+ * The game is NOT paused while this is up, and the copy says so. Sixteen people are still
+ * playing; stopping the world for one of them is not on offer, and a modal that implied it was
+ * would get somebody killed while they read it.
+ */
+function askToLeave() {
+  const dialog = $('leaveDialog');
+  if (!dialog || dialog.open) return;
+  dialog.showModal();
+  // The default focus would land on `leave`, which is the destructive one. Put it on the way out.
+  $('leaveCancel')?.focus();
+}
+
+const closeLeaveDialog = () => {
+  const dialog = $('leaveDialog');
+  if (dialog?.open) dialog.close();
+};
+
 const onEscape = tapEscape(() => {
   if (chatHasFocus()) { $('chatInput').blur(); music.duck(false); }
+  // Symmetric, and first: Escape has to dismiss the thing Escape just opened, or the dialog it
+  // raises is a trap for the same reflex that raised it.
+  else if ($('leaveDialog')?.open) closeLeaveDialog();
   else if (scoresOpen) { scoresOpen = false; $('scores').classList.remove('on'); }
-  else if (running) leave();                 // there has to be a way out of the game
+  else if (running) askToLeave();            // there has to be a way out of the game
 });
 
 // The one place a respawn is actually asked for. Both the button and the spacebar come through
@@ -2946,7 +2972,13 @@ addEventListener('keydown', e => {
   }
 });
 
-$('leave').onclick = createTap()(leave);
+// The HUD button goes through the same confirmation Escape does. A deliberate click is a weaker
+// argument for skipping it than it looks: the button sits in the HUD, inches from the scoreboard.
+$('leave').onclick = createTap()(askToLeave);
+$('leaveConfirm').onclick = createTap()(() => { closeLeaveDialog(); leave(); });
+$('leaveCancel').onclick = createTap()(closeLeaveDialog);
+// A dialog dismissed by the browser's own Escape handling, rather than by ours, must not leave.
+$('leaveDialog').addEventListener('cancel', e => { e.preventDefault(); closeLeaveDialog(); });
 $('respawn').onclick = askRespawn;
 for (const button of document.querySelectorAll('[data-shop-item]')) {
   button.addEventListener('click', () => {

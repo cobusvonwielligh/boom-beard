@@ -594,7 +594,7 @@ Exactly Game of Bombs', minus what we did not build.
 | ENTER | Toggle chat / send |
 | TAB | Scoreboard |
 | P | Fullscreen |
-| ESC | Close overlays |
+| ESC | Close overlays; with nothing open, ask to leave the game (the round does not pause) |
 | Hold SHIFT + direction, then release the direction | Emote |
 | SHIFT / L | *reserved* - detonate radio bomb |
 | I | *reserved* - safe-house |

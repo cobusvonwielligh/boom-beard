@@ -5763,3 +5763,20 @@ kbd.wide {
     padding-top: 7px;
   }
 }
+
+/* The leave confirmation. Borrows .regionDialog's frame wholesale - it is the only other modal
+   on the page and a second visual language for one yes/no question would be noise. */
+.leaveDialog {
+  width: min(360px, calc(100vw - 24px));
+  text-align: center;
+}
+.leaveDialogBody {
+  margin: 0;
+  color: var(--dim);
+  font-size: 13px;
+  line-height: 1.5;
+}
+#leaveConfirm {
+  margin-right: 0;
+  padding-inline: 16px;
+}
