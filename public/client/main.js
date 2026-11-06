@@ -623,6 +623,11 @@ const net = createNet({
           if (e.by >= 0 && world.players[e.by]) {
             const spoils = e.coins ? ` · ${e.coins} gold` : e.cx !== undefined ? ' · it dropped gold' : '';
             killFeed(`${nameOf(e.by)} downed a gull${spoils}`, { youKilled: e.by === world.you });
+          } else if (e.salvaged !== undefined && world.players[e.salvaged]) {
+            // A keg downed it and there was nowhere for the coin to land, so it was salvaged to
+            // the nearest person. Nobody gets credit for the shot, because nobody took one.
+            killFeed(`a gull's gold fell to ${nameOf(e.salvaged)} · ${e.coins} gold`,
+              { youKilled: e.salvaged === world.you });
           }
           break;
         }
@@ -731,9 +736,18 @@ const net = createNet({
         }
 
         case 'gullkill': {
+          const reward = e.coins ? ` Â· +${e.coins} gold` : '';
+          /* `already` means the birds arrived to find their target already dead. They still pay -
+           * the nine coins are for having been picked, and the room watched them get picked - but
+           * none of the death theatrics may fire a second time on somebody who is lying on the
+           * floor watching a respawn counter. Just the feed line and the coins. */
+          if (e.already) {
+            killFeed(`the gulls came for ${nameOf(e.i)} anyway${reward}`,
+              { youDied: e.i === world.you });
+            break;
+          }
           renderer?.addDeathDust(e.i, e.x, e.y);
           sfx.playAtUnits('gullmug', e.x, e.y, { theirs: e.i !== world.you });
-          const reward = e.coins ? ` Â· +${e.coins} gold` : '';
           killFeed(`${nameOf(e.i)} was claimed by the gull raid${reward}`, { youDied: e.i === world.you });
           if (e.i === world.you) {
             renderer?.alertRim(1);

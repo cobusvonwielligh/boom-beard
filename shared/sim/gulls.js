@@ -150,32 +150,47 @@ function launchRaid(state, p) {
 function strikeRaid(state) {
   const p = state.players[state.raidSeat];
   state.raidStrike = 0;
-  // Already dead when the birds got there: they still get the credit for the round's bad luck,
-  // because the room watched them commit to it. Nothing else happens.
-  const alive = !!p?.alive;
-  if (p) {
-    p.gulled = true;
-    state.gulled = p.i;
-  }
-  if (!p || !alive) return;
+  if (!p) return;
 
-  scatterOnDeath(state, p);
-  p.alive = false;
-  p.deaths++;
-  p.hitBy = [];
-  p.shieldGrace = 0;
-  p.bombs = START_BOMBS;
-  p.radius = START_RADIUS;
-  p.speed = 0;
-  p.shields = 0;                     // a shield is for bombs; this is a bird
-  p.status = 0;
-  p.statusUntil = {};
+  const alive = !!p.alive;
+  p.gulled = true;
+  state.gulled = p.i;
+
+  /* The nine coins are for having been CHOSEN, not for being alive at impact.
+   *
+   * This used to return here without paying when the target had died in the second or two
+   * between the launch and the crossing - and the launch is BROADCAST, so the whole room watched
+   * the birds commit to them and then saw them get nothing. The consolation is the entire point
+   * of a death you are not allowed to dodge; a coin flip on whether it arrives makes it a second
+   * piece of bad luck on top of the first.
+   */
   p.coins = (p.coins || 0) + GULL_RAID_COINS;
   p.score += SCORE.GOLD * GULL_RAID_COINS;
-  p.respawnAt = state.tick + RESPAWN_DELAY_TICKS;
+
+  // Everything below is a death, and a player who is already dead must not be killed again -
+  // in particular `respawnAt` must not be pushed out, which would extend a countdown already
+  // running and make dying first strictly worse than being alive for it.
+  if (alive) {
+    scatterOnDeath(state, p);
+    p.alive = false;
+    p.deaths++;
+    p.hitBy = [];
+    p.shieldGrace = 0;
+    p.bombs = START_BOMBS;
+    p.radius = START_RADIUS;
+    p.speed = 0;
+    p.shields = 0;                     // a shield is for bombs; this is a bird
+    p.status = 0;
+    p.statusUntil = {};
+    p.respawnAt = state.tick + RESPAWN_DELAY_TICKS;
+  }
+
   state.events.push({
     e: 'gullkill', tick: state.tick, i: p.i, x: Math.round(p.x), y: Math.round(p.y),
     coins: GULL_RAID_COINS,
+    // `already` tells the client to pay out without replaying a death on somebody who is lying
+    // on the floor watching their respawn counter.
+    ...(alive ? null : { already: 1 }),
   });
 }
 
@@ -193,6 +208,22 @@ function landing(state, tx, ty) {
     }
   }
   return null;
+}
+
+/* The nearest living person to a point, for a coin that has nowhere to land.
+ *
+ * People only. Gold is a human prize - `collect` already refuses it to bots, and a salvage route
+ * that handed it to one would be the only way a bot could ever end up holding a coin.
+ */
+function nearestLiving(state, x, y) {
+  let best = null, bestD = Infinity;
+  for (const p of state.players) {
+    if (!p || !p.alive || p.isBot) continue;
+    const dx = p.x - x, dy = p.y - y;
+    const d = dx * dx + dy * dy;
+    if (d < bestD) { bestD = d; best = p; }
+  }
+  return best;
 }
 
 /**
@@ -263,23 +294,42 @@ export function gulls(state) {
      * than a coin on the floor. The XP is still one coin's worth; the coins are the trophy, the
      * score is for the shot.
      *
-     * A keg has no owner, so that case keeps the old behaviour and leaves a coin on the ground
-     * rather than quietly paying nobody.
+     * A keg has no owner, so that case leaves a coin on the ground rather than quietly paying
+     * nobody - and there is a THIRD case behind it that used to pay nobody after all. `landing`
+     * searches rings 0-3 and returns null when every tile in them is wall, sea, or already
+     * holding a perk. On a null the old code dropped nothing and paid nothing: the gull died for
+     * free, which is the reported "the gold sometimes does not drop".
+     *
+     * So the fallbacks are now exhaustive. Nearby floor first, because a coin landing where the
+     * bird fell is the readable outcome and the one the design wants. Failing that it is salvaged
+     * to the nearest living person, which is worth more than the tidiness of refusing. Only a
+     * board with no living people on it forfeits, and that is a board with nobody to pay.
      */
     const by = fire.owner ?? -1;
     const killer = by >= 0 ? state.players[by] : null;
     let spot = null;
+    let salvaged = null;
     if (killer) {
       killer.coins = (killer.coins || 0) + GULL_COINS;
       killer.score += SCORE.GOLD;
     } else {
       spot = landing(state, tx, ty);
       if (spot) drop(state, spot.tx, spot.ty, PERK.GOLD, false);
+      else {
+        salvaged = nearestLiving(state, at.x, at.y);
+        if (salvaged) {
+          salvaged.coins = (salvaged.coins || 0) + GULL_COINS;
+          salvaged.score += SCORE.GOLD;
+        }
+      }
     }
     state.events.push({
       e: 'gullhit', tick: state.tick, id: g.id, x, y, by,
       ...(killer ? { coins: GULL_COINS } : null),
       ...(spot ? { cx: spot.tx, cy: spot.ty } : null),
+      // Not `by`: nobody downed this one, so the feed must not credit the shot to the person the
+      // coin happened to fall to.
+      ...(salvaged ? { salvaged: salvaged.i, coins: GULL_COINS } : null),
     });
   }
 }

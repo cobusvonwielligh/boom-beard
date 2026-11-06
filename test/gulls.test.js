@@ -296,3 +296,92 @@ test('a host removing bots by hand is not overruled until the room has emptied',
     assert.equal(r.botCount(), AUTO_BOTS_MIN);
   } finally { r.stop(); }
 });
+
+// ─── a gull's gold never vanishes ─────────────────────────────────────────────
+//
+// Two separate paths could swallow a payout, and both were reported as "the gold sometimes does
+// not drop". They are different bugs with the same symptom.
+
+/* The raid pays for having been CHOSEN, not for being alive when the birds arrive.
+ *
+ * `strikeRaid` marked the target as gulled and then returned early without paying if they had
+ * already died in the second or two between the launch and the crossing. The whole room watched
+ * the birds commit to them - the warning event is broadcast at launch - and then they got nothing.
+ */
+test('the raid pays its nine coins even if the target died before the crossing', () => {
+  const s = fresh();
+  s.roundTicks = 60 * 30;
+  const p = createPlayer(1, 'cobus');
+  p.alive = true;
+  p.x = tileCentre(3); p.y = tileCentre(3);
+  s.players[1] = p;
+
+  // Run until the birds are launched, then kill the target before the crossing lands.
+  let launched = 0;
+  for (s.tick = 0; s.tick < s.roundTicks && !launched; s.tick++) {
+    s.events.length = 0;
+    gulls(s);
+    if (s.events.some(e => e.e === 'gullraid')) launched = s.raidStrike;
+  }
+  assert.ok(launched > 0, 'the raid never launched');
+  p.alive = false;
+
+  const before = p.coins || 0;
+  for (; s.tick <= launched; s.tick++) {
+    s.events.length = 0;
+    gulls(s);
+  }
+  assert.equal((p.coins || 0) - before, GULL_RAID_COINS,
+    'a player the gulls had already committed to was paid nothing because they died first');
+  assert.equal(p.gulled, true, 'the round should still record who the gulls took');
+});
+
+/* A downed gull's coin must reach somebody or something.
+ *
+ * With no living owner for the fire - a powder keg has none, and a player who left is gone - the
+ * payout fell back to dropping a coin on the floor via `landing()`, which searches rings 0-3 and
+ * returns null if every tile in them is wall, sea, or already holding a perk. On a null, nothing
+ * was dropped and nothing was paid: the gull died for free.
+ */
+test('a downed gull with no living owner and nowhere to land still pays somebody', () => {
+  const s = withGull();
+  const g = s.gulls[0];
+  const shot = lowOverFloor(s, g);
+  s.tick = shot.t;
+
+  // Somebody alive to be paid, parked far away so they are not the reason a tile is busy.
+  const bystander = createPlayer(4, 'bystander');
+  bystander.alive = true;
+  bystander.x = tileCentre(1); bystander.y = tileCentre(1);
+  s.players[4] = bystander;
+
+  // Carpet every tile within four rings of the impact with perks, so landing() finds nowhere.
+  let id = 9000;
+  for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
+    s.perks.push({ id: id++, tx: shot.tx + dx, ty: shot.ty + dy, type: PERK.FIRE, until: 1e9 });
+  }
+  const perksBefore = s.perks.length;
+  // A keg's fire: owner null, so there is no shooter to pay.
+  s.fires = [{ tx: shot.tx, ty: shot.ty, kind: 'arm', rot: 0, until: s.tick + FIRE_TICKS, owner: null }];
+  s.events.length = 0;
+  gulls(s);
+
+  assert.equal(s.gulls.length, 0, 'the gull was not shot down at all');
+  const paid = (bystander.coins || 0) > 0;
+  const dropped = s.perks.length > perksBefore;
+  assert.ok(paid || dropped, 'the gull died and its coin went nowhere');
+});
+
+test('a downed gull with nobody alive anywhere does not throw', () => {
+  const s = withGull();
+  const g = s.gulls[0];
+  const shot = lowOverFloor(s, g);
+  s.tick = shot.t;
+  let id = 9000;
+  for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
+    s.perks.push({ id: id++, tx: shot.tx + dx, ty: shot.ty + dy, type: PERK.FIRE, until: 1e9 });
+  }
+  s.fires = [{ tx: shot.tx, ty: shot.ty, kind: 'arm', rot: 0, until: s.tick + FIRE_TICKS, owner: null }];
+  assert.doesNotThrow(() => gulls(s));
+  assert.equal(s.gulls.length, 0, 'the gull survived its own blast');
+});

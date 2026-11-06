@@ -542,7 +542,7 @@ island, entering and leaving well outside the board at about three tiles a secon
 |---|---|
 | Catchable | whenever lethal fire reaches the tile below it; altitude is visual depth, not armour |
 | Hit by | fire in its lethal window on the tile under it, exactly what kills a player |
-| Reward | **three gold coins**, credited directly to the fire's owner; no-owner keg fire drops one on nearby floor |
+| Reward | **three gold coins**, credited directly to the fire's owner; no-owner keg fire drops one on nearby floor, or salvages it to the nearest living person if there is nowhere to drop it |
 | Credit | the kill feed names whoever's fire it was; earned coins do not count against the round's five random drops |
 
 It is meant to reward planning: the bird is moving, a fuse takes 2.4 seconds, and over water there
@@ -553,6 +553,15 @@ them changed no drop or regrowth roll.
 Once per round, a pair of raid gulls crosses a real player at **70–90%** of the round and kills
 them regardless of shields. Anyone who joined at or after **30% elapsed** is not eligible, so a
 player arriving during the final 70% cannot be chosen.
+
+The target is paid **nine gold** for having been chosen, and that is paid whether or not they are
+still alive when the birds arrive: the launch is broadcast, so the room watches the gulls commit
+to somebody, and dying in the second before the crossing must not cost them the consolation as
+well. A target who was already dead is not killed a second time - no death animation, no reset
+respawn counter, just the coins and a line in the feed.
+
+**A gull's gold is never lost.** Every payout path ends somewhere: the shooter's hand, nearby
+floor, or the nearest living person. Only a board with no living people on it forfeits a coin.
 
 ---
 
