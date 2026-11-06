@@ -286,6 +286,25 @@ export const REGEN_EVERY_TICKS = 20 * TICK_HZ; // 600
 export const REGEN_PER_CYCLE = 3;
 export const REGEN_CLEAR_RADIUS_TILES = 4;
 
+/* How much the regrowth rate rises over the course of a round, independently of the map's fill.
+ *
+ * There are two reasons for a wall to grow back and they answer different questions. The fill
+ * scaling in `regenerate` answers "is there cover left" - and it can only answer it AFTER the
+ * cover is gone, because bareness is its input. These answer "should this round be tightening",
+ * off the clock, which is knowable from the first tick.
+ *
+ * It matters now because the round is six minutes rather than ten: by the time the fill term has
+ * noticed an arena has been chewed open, the round is nearly over, so the cover it grants arrives
+ * for a fight that has already finished. Doubling by the final minute is felt without being
+ * chaotic, and the two terms multiply - a late round on a bare map tightens hard, a late round on
+ * a map that is still mostly walls stays capped by REGEN_MAX_FILL and barely changes.
+ *
+ * Interpolated linearly across `state.tick / state.roundTicks`. A state with no `roundTicks` -
+ * a bot bench, most tests - reads as the start of the round and is therefore unscaled.
+ */
+export const REGEN_PROGRESS_AT_START = 1;
+export const REGEN_PROGRESS_AT_END = 2;
+
 /* Powder kegs.
  *
  * A capped number in a round, and at least one guaranteed - a map event you can plan around is

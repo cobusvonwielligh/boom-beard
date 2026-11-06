@@ -2,6 +2,7 @@
 
 import {
   BLOCK, BLOCK_HP, BLOCK_DESTRUCTIBLE, BLOCK_WALKABLE, REGEN_EVERY_TICKS, REGEN_PER_CYCLE,
+  REGEN_PROGRESS_AT_START, REGEN_PROGRESS_AT_END,
   REGEN_CLEAR_RADIUS_TILES, REGEN_MAX_FILL, SCORE,
   POWDER_MAX_PER_ROUND, POWDER_CHANCE_PER_CYCLE, POWDER_GUARANTEE_TICK,
   ICE_CHANCE, PUDDLE_TICKS,
@@ -117,7 +118,22 @@ export function regenerate(state) {
   // times the base rate once the place is a field. `fill` is walls over non-iron tiles, so
   // emptiness is simply its complement.
   const bare = 1 - fill;
-  const want = Math.max(1, Math.round(REGEN_PER_CYCLE * (0.4 + 2.6 * Math.max(0, bare - 0.45))));
+
+  /* ...and on how far into the round it is. See REGEN_PROGRESS_AT_START.
+   *
+   * A second, independent term, multiplied in rather than added: emptiness answers "is there
+   * cover left", progress answers "should this round be tightening". The first can only react
+   * once the map is already bare, which a six-minute round does not leave time for.
+   *
+   * `roundTicks` is filled in by the room and is 0 on a bot bench or in most tests, which reads
+   * as the start of the round - unscaled, and never a divide by zero.
+   */
+  const progress = state.roundTicks > 0 ? Math.min(1, state.tick / state.roundTicks) : 0;
+  const urgency = REGEN_PROGRESS_AT_START
+    + (REGEN_PROGRESS_AT_END - REGEN_PROGRESS_AT_START) * progress;
+
+  const want = Math.max(1, Math.round(
+    REGEN_PER_CYCLE * (0.4 + 2.6 * Math.max(0, bare - 0.45)) * urgency));
 
   // A quiet floor tile, or null if this cycle could not find one. Shared by the walls and the
   // kegs so neither can land on top of a player, a bomb, a fire, a perk or a spawn.

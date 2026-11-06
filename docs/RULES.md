@@ -216,8 +216,18 @@ One point of blast damage per fire event. A reinforced block therefore needs six
 A damaged block shows its damage state visually (see [ART-AUDIO.md](ART-AUDIO.md)).
 
 **Brick regeneration.** Game of Bombs rematerialises walls as the round runs. We do the same,
-cheaply: every **20 s**, pick up to **3** empty floor tiles that have no player, bomb, fire or
-perk within **4 tiles** and turn them into soft walls. Never regenerate inside a spawn ring.
+cheaply: every **20 s**, pick some empty floor tiles that have no player, bomb, fire or perk
+within **4 tiles** and turn them into soft walls. Never regenerate inside a spawn ring, and never
+at all once walls already cover more than **55 %** of the non-iron map.
+
+How many is *two* multiplied scalings of a base of 3, and they answer different questions:
+
+- **Emptiness** - up to about three times the base rate once the map is a field, nothing much
+  while there is still cover. This one can only react after the cover is already gone.
+- **Round progress** - a straight ramp from **1x** at the first tick to **2x** at the whistle, so
+  the back half of a round closes up faster than the front half even at the same wall fill. Known
+  from the first tick, which is the point: in a six-minute round the emptiness term notices an
+  arena has been chewed open at about the time the round ends.
 
 ---
 
