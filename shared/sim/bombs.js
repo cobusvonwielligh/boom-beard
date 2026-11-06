@@ -213,21 +213,21 @@ const KICK_STEP = {
 };
 
 /**
- * Book the next hop: `kickFrom` is now, `kickAt` is when it lands.
+ * Book the next hop: `kickAt` is the tick it lands on.
  *
  * A tile takes KICK_TILE_NUM/KICK_TILE_DEN ticks - 2.6 - and a tick is an integer, so each hop
  * takes a whole number of them and the leftover fifths ride along in `kickOwe` to be spent on a
  * later one. Five hops come to exactly thirteen ticks; no hop is ever shorter than one tick.
  *
- * Both ends of the hop are on the bomb, and both are on the wire, because the CLIENT draws the
- * motion and cannot otherwise know how long this particular hop is meant to take - they are 3, 3,
- * 2, 3, 2 and a renderer assuming an average would jerk at the end of every short one.
+ * It used to record `kickFrom` as well, for a client that drew the hop by interpolating between
+ * its two ends. Nothing reads it any more - the drawing dead-reckons at the kick's own pace and
+ * uses the tile only as a leash, which is the only version of it that turned out to be smooth, so
+ * the field was weight on every bomb in every snapshot for nothing. See client/render.js.
  */
 function scheduleHop(state, b) {
   b.kickOwe = (b.kickOwe ?? 0) + KICK_TILE_NUM;
   const ticks = Math.max(1, (b.kickOwe / KICK_TILE_DEN) | 0);
   b.kickOwe -= ticks * KICK_TILE_DEN;
-  b.kickFrom = state.tick;
   b.kickAt = state.tick + ticks;
 }
 

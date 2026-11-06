@@ -318,9 +318,10 @@ export const CHAIN_CAP_PER_TICK = 64; // safety valve, see docs/RULES.md §3
  * game where the same arithmetic has to come out identically on two machines. Carrying the
  * remainder costs one small integer on the bomb and is exact.
  *
- * Every hop therefore has its own length, which the renderer must read rather than assume: see
- * `kickFrom` in sim/bombs.js. A constant there would draw a 2-tick hop as though it had 2.6 to
- * run and jerk back into place at the end of every one.
+ * Every hop therefore has its own length - 3, 3, 2, 3, 2 - which is one of the reasons the client
+ * does not draw the motion from the hop schedule at all. It dead-reckons at this pace and treats
+ * the bomb's tile as a leash; three attempts at deriving the drawn position from (tile, clock)
+ * stepped, because the tile arrives in bursts and the clock does not. See client/render.js.
  *
  * KICK_MAX_TILES is the range. Eight tiles, then it stops wherever it got to and sits there
  * ticking. Unbounded travel made a kick a way to post a bomb to the far side of the map, which is

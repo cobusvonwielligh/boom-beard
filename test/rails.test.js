@@ -1237,3 +1237,69 @@ test('the drawn path joins up tick to tick, on real maps under random input', ()
     }
   }
 });
+
+/* The renderer may not touch the simulation. Ever.
+ *
+ * Your own pirate is drawn by running `step` with a fractional pace on a throwaway copy, once a
+ * frame - so the visual layer now calls the authoritative movement function dozens of times a
+ * second. That is only safe while it cannot write anything back, and "cannot" has to be a fact
+ * rather than an intention: `step` pushes events, and a shallow copy of a player shares every
+ * object on it.
+ *
+ * So: the same room, the same inputs, with and without the renderer's ghost steps, compared by
+ * full state hash every tick. Eight players, slides and bombs in the input stream, so the ghost
+ * is launching slides and the sim is dropping bombs and burning walls underneath it.
+ *
+ * One board for both runs, because a map's lattice gaps are clock-seeded on purpose (see maps.js)
+ * and two fresh `createState` calls are legitimately different boards. The SPAWNS have to come
+ * from that board too - regrowth refuses to grow a wall onto a spawn or its neighbours, so spawns
+ * from a different board change which tiles come back and the comparison fails for reasons that
+ * have nothing to do with the renderer. Found the hard way, intermittently, on one map in five.
+ *
+ * That same non-determinism is why test/bots.test.js measures a different number every run.
+ */
+test('the renderer cannot perturb the simulation', () => {
+  const board = createState(MAPS[0]);
+  const cells = Array.from(board.map.cells);
+  const spawns = board.map.spawns.map(q => [...q]);
+  const build = () => {
+    const st = createState(MAPS[0]);
+    for (let i = 0; i < cells.length; i++) st.map.cells[i] = cells[i];
+    st.map.spawns = spawns.map(q => [...q]);
+    const spots = [];
+    for (let ty = 1; ty < st.map.h - 1 && spots.length < 8; ty++) {
+      for (let tx = 1; tx < st.map.w - 1 && spots.length < 8; tx++) {
+        if (tileAt(st.map, tx, ty) === BLOCK.FLOOR) spots.push([tx, ty]);
+      }
+    }
+    spots.forEach(([tx, ty], i) => spawn(st, tx, ty, { seat: i, speed: i % 4 }));
+    return st;
+  };
+
+  const run = withGhosts => {
+    const st = build();
+    const out = [];
+    let seed = 2024;
+    for (let n = 0; n < 500; n++) {
+      const masks = [];
+      for (let i = 0; i < 8; i++) {
+        seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+        masks[i] = (seed >>> 7) & (IN_RIGHT | IN_UP | IN_LEFT | IN_DOWN | IN_SLIDE | IN_BOMB);
+      }
+      if (withGhosts) {
+        for (const p of st.players) {
+          if (!p || !p.alive) continue;
+          for (let f = 1; f <= 4; f++) {
+            const ghost = { ...p, statusUntil: { ...p.statusUntil } };
+            step(st, ghost, masks[p.i], f / 4);
+          }
+        }
+      }
+      tick(st, masks);
+      out.push(hashState(st));
+    }
+    return out.join('|');
+  };
+
+  assert.equal(run(true), run(false), 'the renderer changed the simulation');
+});

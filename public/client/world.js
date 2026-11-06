@@ -399,7 +399,16 @@ export function createWorld() {
          * On a throwaway copy, always. Nothing here may touch the authoritative prediction - this
          * is a question about the future, asked once a frame and thrown away.
          */
-        const ghost = { ...p };
+        /* A shallow copy plus the one nested field the movement path reads.
+         *
+         * `step` writes nothing but primitives on the player, so `{...p}` is enough today - but a
+         * shallow copy shares every object, and a future line in movement that wrote through
+         * `statusUntil` would be the renderer silently editing the authoritative player once a
+         * frame. That is a bug nobody would find from the symptom, so it is closed here rather
+         * than relied upon. Verified by test: the simulation hashes identically with and without
+         * this running.
+         */
+        const ghost = { ...p, statusUntil: { ...p.statusUntil } };
         step(w, ghost, liveMask, frac);
         // A whole tile in one tick means a respawn or an unstick teleport, not a walk.
         if (Math.abs(ghost.x - p.x) > 256 || Math.abs(ghost.y - p.y) > 256) teleport(p);
