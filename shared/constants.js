@@ -12,7 +12,7 @@ export const TICK_HZ = 30;
 export const TICK_MS = 1000 / TICK_HZ;
 export const SNAP_EVERY_TICKS = 2; // → 15 Hz snapshots
 
-export const ROUND_TICKS = 10 * 60 * TICK_HZ; // 18000
+export const ROUND_TICKS = 6 * 60 * TICK_HZ; // 10800
 
 // What /roundtime will accept, in minutes. The floor is a tenth of a minute - six seconds - which
 // is short enough to be useless for a real round and exactly right for testing the round-end
@@ -285,24 +285,29 @@ export const REGEN_CLEAR_RADIUS_TILES = 4;
 
 /* Powder kegs.
  *
- * At most six in a round, and at least one guaranteed - a map event you can plan around is worth
- * far more than a random one you might never see. Six over ten minutes is roughly one every
- * ninety seconds, which is often enough to be part of the map rather than a rumour. Placement rides on the existing regrowth cycle
- * (every 20 s) because that function already knows which tiles are quiet: dropping a keg next to
- * a player would be a free kill nobody could read coming.
+ * A capped number in a round, and at least one guaranteed - a map event you can plan around is
+ * worth far more than a random one you might never see. Placement rides on the existing regrowth
+ * cycle (every 20 s) because that function already knows which tiles are quiet: dropping a keg
+ * next to a player would be a free kill nobody could read coming.
  *
  * The blast is a bomb with a much larger radius, detonating on the tick the keg breaks. Nothing
  * special in the blast code - a keg IS a bomb, which is why it chains through other kegs, bombs
  * and walls exactly the way you would expect.
  */
-// Twelve a round, up from six, and the per-cycle chance doubles with it - the cap alone would
-// only have meant the same six kegs with room for more that never arrived. One every forty-five
-// seconds or so: enough that a keg is terrain you plan around rather than an event you remember.
+// Twelve a round, and the per-cycle chance is set high to match - the cap alone would only have
+// meant the same six kegs with room for more that never arrived. Over a six-minute round that is
+// a keg every thirty seconds or so: terrain you plan around rather than an event you remember.
 export const POWDER_MAX_PER_ROUND = 12;
 export const POWDER_RADIUS = 7;
 export const POWDER_CHANCE_PER_CYCLE = 0.72;
-// Six minutes in, the first one stops being optional. A round must never pass without one.
-export const POWDER_GUARANTEE_TICK = Math.round(0.6 * 10 * 60 * TICK_HZ);
+/* Three fifths of the way in, the first one stops being optional. A round must never pass
+ * without one.
+ *
+ * A FRACTION of the round, not a wall-clock time. It was `0.6 * 10 * 60 * TICK_HZ` - six minutes,
+ * written out, from when a round was ten. Shortening the round to six left the guarantee landing
+ * on the final tick, so a round could and did end with the roll still never having been forced.
+ * Expressed against ROUND_TICKS it survives the next change to the round length too. */
+export const POWDER_GUARANTEE_TICK = Math.round(0.6 * ROUND_TICKS);
 
 /* Ice, and the puddle it leaves.
  *
