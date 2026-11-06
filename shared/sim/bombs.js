@@ -40,7 +40,19 @@ export function bombTile(state, p) {
   const fx = tx + d.dx, fy = ty + d.dy;
   // A puddle in front is not free either: the fallback then tries underfoot, which place()
   // refuses in turn if you are standing in the water yourself.
-  const free = tileAt(state.map, fx, fy) === BLOCK.FLOOR && bombable(state, fx, fy);
+  /* And neither is a perk, which is this rule's one genuinely surprising consequence.
+   *
+   * The facing tile is also the tile you are WALKING ONTO, so aiming at it means a player who
+   * walks at a perk and bombs the wall behind it buries the perk under their own bomb. A bomb
+   * makes its tile solid, so the perk is then behind a wall for the whole fuse: the pickup
+   * visibly does nothing while the HUD shows room to spare. That was reported as the pickup
+   * being broken, and `collect()` had nothing to do with it.
+   *
+   * Only the AIMED tile is protected. Underfoot is not, and must not be: a perk you are standing
+   * on is one you would already have collected if you could, so it is either capped or not yours
+   * to take, and refusing both tiles would leave you unable to bomb at all. */
+  const free = tileAt(state.map, fx, fy) === BLOCK.FLOOR && bombable(state, fx, fy)
+    && !state.perks.some(k => k.tx === fx && k.ty === fy);
   return free ? { tx: fx, ty: fy } : { tx, ty };
 }
 

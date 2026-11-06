@@ -8,13 +8,15 @@ import assert from 'node:assert/strict';
 import { tick as stepRound } from '../shared/sim/round.js';
 import { createState } from '../shared/sim/state.js';
 import { dropChance, perkTarget, collect, drop, maybeDrop } from '../shared/sim/perks.js';
-import { tileCentre, createPlayer } from '../shared/sim/state.js';
+import { tileCentre, createPlayer, setTile, walkable } from '../shared/sim/state.js';
+import { step } from '../shared/sim/movement.js';
+import { bombTile } from '../shared/sim/bombs.js';
 import * as perks from '../shared/sim/perks.js';
 import {
   PERK, PERK_DROP_CHANCE_SOFT, PERK_GLUT_FLOOR, PERK_SCARCE_BOOST, PERK_TARGET_MIN,
   HITBOX_UNITS, TICK_HZ, PERK_EXPIRE_TICKS, PERK_FADE_TICKS,
   GOLD_MAX_PER_ROUND, NON_GOLD_DROP_KEEP_CHANCE, SCORE,
-  MAX_BOMBS_CARRIED, STATUS, STATUS_TICKS,
+  MAX_BOMBS_CARRIED, STATUS, STATUS_TICKS, DIR_R, IN_RIGHT, IN_BOMB, START_BOMBS,
 } from '../shared/constants.js';
 import { MAPS, buildMap, cellType } from '../shared/maps.js';
 import { PERK_WEIGHTS, BLOCK } from '../shared/constants.js';
@@ -321,4 +323,93 @@ test('active rum cannot be collected again to refresh its duration', () => {
   assert.equal(s.perks.length, 1, 'active rum disappeared');
   assert.equal(p.statusUntil[STATUS.DRUNK], s.tick + STATUS_TICKS[STATUS.DRUNK] - 20,
     'active rum refreshed its duration');
+});
+
+/* A perk you are walking at must not be buried by your own bomb.
+ *
+ * This is the reported "the droppable sometimes does not pick up even though I have room" bug, and
+ * the cause is the interaction of two rules that are each correct on their own. `bombTile` aims
+ * your bomb at the tile IN FRONT of you rather than the one underfoot, which is the whole reason
+ * walls can be broken by somebody looking at them - and the tile in front of you is also exactly
+ * the tile you are walking onto. So: walk at a Bomb perk, press the key to break the wall past it,
+ * and your own bomb lands on the perk. A bomb makes its tile solid, so the perk is now behind a
+ * wall you cannot enter, and it stays there until the fuse runs out - two and a half seconds of
+ * the pickup visibly not working while the HUD shows room to spare.
+ *
+ * `collect()` itself is innocent, which is why the fix is here and not there: a sweep of 331
+ * walk-onto-a-perk cases across all five maps collects every one, and wall regrowth already
+ * refuses to grow on a perk.
+ *
+ * The fallback this relies on already exists for puddles, and does the right thing: a facing tile
+ * that cannot take a bomb sends the bomb underfoot instead. */
+test('a bomb is never aimed at the tile a perk is lying on', () => {
+  const s = fresh();
+  const p = createPlayer(0, 'p');
+  p.alive = true;
+  p.x = tileCentre(3); p.y = tileCentre(3);
+  p.dir = DIR_R;
+  s.players[0] = p;
+  for (const tx of [3, 4]) setTile(s.map, tx, 3, BLOCK.FLOOR);
+  s.perks.length = 0;
+  drop(s, 4, 3, PERK.BOMB);
+
+  const at = bombTile(s, p);
+  assert.deepEqual({ tx: at.tx, ty: at.ty }, { tx: 3, ty: 3 },
+    'the bomb was aimed at the perk tile instead of falling back underfoot');
+});
+
+test('a perk in front of you survives you bombing the wall past it', () => {
+  const s = fresh();
+  const p = createPlayer(0, 'p');
+  p.alive = true;
+  p.x = tileCentre(3); p.y = tileCentre(3);
+  s.players[0] = p;
+  for (const tx of [3, 4, 5]) setTile(s.map, tx, 3, BLOCK.FLOOR);
+  s.perks.length = 0;
+  drop(s, 4, 3, PERK.BOMB);
+
+  // Walk right with the bomb key held: the press lands on tick one, then keep walking onto it.
+  stepRound(s, [IN_RIGHT | IN_BOMB]);
+  for (let n = 0; n < 40 && p.bombs === START_BOMBS; n++) stepRound(s, [IN_RIGHT]);
+
+  assert.equal(p.bombs, START_BOMBS + 1, 'the perk was buried by the player’s own bomb');
+});
+
+/* The other half of the same investigation: `collect()` is not the bug.
+ *
+ * Worth a test rather than only a commit message, because the next person to be told "the pickup
+ * sometimes does not work" will suspect this function first, exactly as we did. A sweep of every
+ * walkable tile with a walkable neighbour, on every map, walking onto a perk one tile away:
+ * every single one is collected. If that ever stops being true, the suspicion is warranted and
+ * this test says so.
+ */
+test('walking onto a perk always collects it, on every map', () => {
+  let tries = 0;
+  for (const map of MAPS) {
+    const probe = createState(map, 7);
+    for (let ty = 1; ty < probe.map.h - 1; ty++) {
+      for (let tx = 1; tx < probe.map.w - 2; tx++) {
+        const s = createState(map, 7);
+        // Built per case, because the lattice gaps are deliberately clock-seeded (see buildMap):
+        // the geometry a guard reads has to be the geometry the walk runs on.
+        if (!walkable(s.map, tx, ty) || !walkable(s.map, tx + 1, ty)) continue;
+        const p = createPlayer(0, 'p');
+        p.alive = true;
+        p.x = tileCentre(tx); p.y = tileCentre(ty);
+        s.players[0] = p;
+        s.perks.length = 0;
+        drop(s, tx + 1, ty, PERK.BOMB);
+        tries++;
+
+        let got = false;
+        for (let n = 0; n < 60 && !got; n++) {
+          step(s, p, IN_RIGHT);
+          collect(s);
+          got = p.bombs > START_BOMBS;
+        }
+        assert.ok(got, `walked from ${tx},${ty} onto a perk at ${tx + 1},${ty} and never took it`);
+      }
+    }
+  }
+  assert.ok(tries > 100, `the sweep only found ${tries} cases to try`);
 });
