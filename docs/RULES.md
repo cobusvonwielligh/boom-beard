@@ -14,7 +14,7 @@ them in the first playtest. They all live in one file so that is a two-minute jo
 - Tile size: **32 px**. Grid-aligned blocks, free pixel movement for players.
 - Internal position unit: **1 tile = 256 units**, integers only. Never store a float position.
 - Simulation: **30 ticks/second**, fixed step. 1 tick = 33.333 ms.
-- Rounds last **10 minutes** = 18 000 ticks, then a 20-second scoreboard, then the next map.
+- Rounds last **6 minutes** = 10 800 ticks, then a 20-second scoreboard, then the next map.
   During the scoreboard the board is hidden and nothing on it moves; the card names the next map
   and a gold-to-green bar fills until it starts.
   The host can change the length live with `/roundtime N`, in tenths of a minute.
@@ -314,7 +314,7 @@ It exists because a round used to begin with sixteen people arriving on a map no
 seen, already live: the first second went on working out which pirate was yours and where the
 walls were, and anybody who already knew the map had a free head start.
 
-The round clock is pushed out by the same five seconds, so a ten-minute round is ten minutes of
+The round clock is pushed out by the same five seconds, so a six-minute round is six minutes of
 play. `count_in = 0` in config.ini starts rounds live, which is also what every room test uses.
 
 ---
@@ -349,7 +349,7 @@ Fire hurts you unless you are Invulnerable. **Two hits kill.**
 - **Kill streaks** continue when you get another kill within **11 seconds**; dying or letting that
   window expire ends the run. Streak text cycles through RGB colours while active.
 - On death you drop **up to 3 perks** on nearby free tiles, so a good kill is rewarded.
-- After an **11-second** death cooldown, press **SPACE** to start a **3-second 3-2-1**
+- After a **5-second** death cooldown, press **SPACE** to start a **3-second 3-2-1**
   countdown. First spawn skips the death cooldown. Respawns have **90 ticks (3 s)**
   Invulnerability.
 

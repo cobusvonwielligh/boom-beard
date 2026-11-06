@@ -22,7 +22,7 @@ your name, play.
 
 The success test is simple and social, not technical:
 
-> On a Friday, 10–12 of us open a link, pick names, and spend ten minutes blowing each other up
+> On a Friday, 10–12 of us open a link, pick names, and spend six minutes blowing each other up
 > without anyone saying "mine is lagging" or "how do I do the thing again".
 
 That second half matters. People who played Game of Bombs should not have to relearn anything.
@@ -126,7 +126,7 @@ These were chosen, not discovered. A builder may push back but should not quietl
 Agreed in planning:
 
 - **Core**: movement, slides, bombs, owner-coloured fire, destructible blocks, safe respawn,
-  ten-minute rounds, scoreboards and player dossiers, five maps.
+  six-minute rounds, scoreboards and player dossiers, five maps.
 - **Perks**: Bomb +1, Fire +1, Boots +1, Shield, Stim and Rum. Gift was removed.
 - **Statuses** (the contagious diseases): Invulnerability, Pacifism, Slowdown, Invisibility,
   Changeling, Reduction, Fast Detonation.

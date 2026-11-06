@@ -10,10 +10,20 @@ function room() {
   return createRoom({ countIn: 0, onBroadcast: () => {} });
 }
 
-test('death cooldown is 11 seconds and each countdown digit lasts one second', () => {
-  assert.equal(RESPAWN_DELAY_TICKS, 11 * TICK_HZ);
+test('death cooldown is 5 seconds and each countdown digit lasts one second', () => {
+  assert.equal(RESPAWN_DELAY_TICKS, 5 * TICK_HZ);
   assert.equal(RESPAWN_COUNTDOWN_TICKS, 3 * TICK_HZ);
   assert.equal(RESPAWN_COUNTDOWN_TICKS / 3, TICK_HZ);
+});
+
+/* The countdown is drawn over the TAIL of the wait, so it has to be strictly shorter than it.
+ *
+ * At eleven seconds this had eight seconds of slack and nobody had to think about it. At five it
+ * has two, which is little enough that the next tuning pass could cross them - and a countdown
+ * longer than the wait it counts down would start before the player was allowed to ask. */
+test('the countdown still fits inside the wait', () => {
+  assert.ok(RESPAWN_COUNTDOWN_TICKS < RESPAWN_DELAY_TICKS,
+    `a ${RESPAWN_COUNTDOWN_TICKS}-tick countdown does not fit in a ${RESPAWN_DELAY_TICKS}-tick wait`);
 });
 
 test('a respawn request counts down 3, 2, 1 before spawning', () => {

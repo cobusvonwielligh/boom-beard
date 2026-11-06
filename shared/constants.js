@@ -694,8 +694,14 @@ export const DRUNK_STAGGER_EVERY = 79;     // ticks between stumbles, prime so i
 export const DRUNK_STAGGER_TICKS = 4;      // how long one lasts
 
 /* The death-screen cooldown happens before SPACE is accepted. Once requested, a separate
- * countdown gives the player a clear 3, 2, 1 before the server places them. */
-export const RESPAWN_DELAY_TICKS = 11 * TICK_HZ;
+ * countdown gives the player a clear 3, 2, 1 before the server places them.
+ *
+ * Five seconds, down from eleven. Eleven was tuned against a ten-minute round, where sitting out
+ * a sixtieth of it was a real cost; in a six-minute round it is a thirty-sixth, and the thing that
+ * actually makes a death expensive is losing the loadout, not the wait. The three-second countdown
+ * now covers most of the wait rather than a quarter of it, which is why the two are tested against
+ * each other rather than only against themselves. */
+export const RESPAWN_DELAY_TICKS = 5 * TICK_HZ;
 export const RESPAWN_COUNTDOWN_TICKS = 3 * TICK_HZ;
 
 export const CONTAGIOUS = STATUS.PACIFISM | STATUS.SLOWDOWN |
