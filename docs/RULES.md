@@ -106,6 +106,23 @@ fuse ends.
 
 Three rules make it a decision rather than free speed:
 
+**It kicks bombs off the board.** Slide into a bomb and it is gone: it never explodes, it never
+hurts anybody, and nothing can chain it. This is the game's one defensive verb - a bomb you cannot
+outrun is a bomb you can remove, if you have the stamina and the nerve.
+
+| | |
+|---|---|
+| Who can kick | anyone mid-slide. Your own bombs count; so does a death bomb |
+| Walking into one | does nothing. A slide, and only a slide |
+| The owner's slot | **stays spent** until the original fuse would have ended |
+| Reward | none. No score, no kill, no stat |
+| The tile | clears at once, so the slide carries on through rather than stopping on it |
+
+The slot is the whole balance of it. Handing it straight back would make being kicked *better*
+than being left alone; keeping it spent means a kick denies the blast without rearming the bomber,
+so it is a save rather than a reset. Nothing is solid to a slide, which is what lets the slide
+reach the bomb in the first place.
+
 **It owns the tick, and its lane.** While one runs, the keys do nothing - no steering, no braking,
 no cutting it short - and it travels strictly along the lane it was launched down. A slide you
 could steer round a corner would be a better way to walk, which is the one thing it must not

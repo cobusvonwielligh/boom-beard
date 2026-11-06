@@ -12,7 +12,7 @@ import {
 } from '../constants.js';
 import { expireStatuses, has, toTile, recordStreakKill, resetStreak } from './state.js';
 import { stepAll } from './movement.js';
-import { place, detonate, expireFires, bombable } from './bombs.js';
+import { place, detonate, expireFires, bombable, kick, expireKicked } from './bombs.js';
 import { randInt } from '../util/rng.js';
 import { collect, scatterOnDeath } from './perks.js';
 import { regenerate, expirePuddles } from './blocks.js';
@@ -30,6 +30,14 @@ export function tick(state, inputs, { onRespawn } = {}) {
   // 2b. anybody a slide went through, while the overlap that proves it still exists. Before the
   // bombs, so a pirate knocked silly this tick cannot place one on the way down.
   daze(state);
+
+  /* 2c. and anything a slide went THROUGH rather than into: bombs are kicked off the board here.
+   *
+   * Beside the daze and for the same reason - the overlap that proves it is still true on this
+   * tick and gone on the next. Before placement, which is what gives "placed and kicked on the
+   * same tick" a definite answer rather than a race: the bomb either is not down yet and is
+   * placed normally, or it is down and is kicked. */
+  kick(state);
 
   // 3. bombs placed, ascending seat so a tie on one tile is resolved the same way everywhere
   for (let i = 0; i < state.players.length; i++) {
@@ -64,6 +72,8 @@ export function tick(state, inputs, { onRespawn } = {}) {
   }
   expireFires(state);
   expirePuddles(state);
+  // Kicked bombs whose fuses have run out: their owners get the slot back now, and not before.
+  expireKicked(state);
 
   state.tick++;
 }

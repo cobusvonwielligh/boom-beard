@@ -581,6 +581,17 @@ const net = createNet({
           if (e.o !== world.you) sfx.play('place', e.x, e.y, { theirs: true });
           break;
 
+        /* A slide punted a bomb off the board. Authoritative only - the client never predicts a
+         * kick, so it leaves at the same moment on every screen watching it. The simulation is
+         * already finished with the bomb; this is the flourish. */
+        case 'kick': {
+          world.removeBomb?.(e.id);
+          renderer?.addKick(e.x, e.y, e.d);
+          sfx.play('melt', e.x, e.y, { theirs: e.by !== world.you });
+          if (e.by === world.you) renderer?.addShake(0.18);
+          break;
+        }
+
         case 'boom': {
           // Authoritative detonation. Usually we already burst it locally off its own fuse; this
           // is what covers chain reactions, which go off early and without warning. `at` is

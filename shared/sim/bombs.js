@@ -2,7 +2,7 @@
 
 import {
   FUSE_TICKS, FUSE_TICKS_FAST, FIRE_TICKS, CHAIN_CAP_PER_TICK, IN_BOMB, STATUS, MAX_RADIUS,
-  BLOCK, POWDER_RADIUS, DIR_R, DIR_U, DIR_L, DIR_D,
+  BLOCK, POWDER_RADIUS, DIR_R, DIR_U, DIR_L, DIR_D, HITBOX_UNITS,
 } from '../constants.js';
 import { has, streakActive, toTile, tileAt } from './state.js';
 import { spread } from './fire.js';
@@ -85,7 +85,12 @@ export function placeable(state, p) {
   const at = bombTile(state, p);
   if (!bombable(state, at.tx, at.ty)) return null;
 
-  const live = state.bombs.reduce((n, b) => n + ((b.owner ?? b.o) === p.i ? 1 : 0), 0);
+  /* Bombs still counting against this player: the ones on the board, plus the ones somebody
+   * kicked off it whose fuses have not run out yet. See KICK_FLIGHT_TICKS for why a kicked bomb
+   * keeps costing its owner a slot - a kick that handed the slot straight back would make being
+   * kicked better than being left alone. */
+  const live = state.bombs.reduce((n, b) => n + ((b.owner ?? b.o) === p.i ? 1 : 0), 0)
+    + (state.kicked?.reduce((n, k) => n + (k.owner === p.i ? 1 : 0), 0) ?? 0);
   if (live >= p.bombs) return null;
   return at;
 }
@@ -122,6 +127,57 @@ export function place(state, p, mask) {
   };
   state.bombs.push(bomb);
   state.events.push({ e: 'bomb', tick: state.tick, id: bomb.id, x: tx, y: ty, o: p.i, r: bomb.radius, at: bomb.at });
+}
+
+/**
+ * A bomb a slide reached is taken off the board.
+ *
+ * Runs in the tick beside `daze`, for the same reason and at the same moment: while the overlap
+ * that proves it still exists, and BEFORE bombs are placed. The ordering is what makes "placed
+ * and kicked on the same tick" have an answer - the bomb either is not down yet and is placed
+ * normally, or it is down and is kicked. There is no half state.
+ *
+ * What a kick does and does not do:
+ *   - removes the bomb, so it cannot detonate, cannot be chained, and is no longer solid. The
+ *     tile clearing immediately is what lets the slide carry on through rather than stopping on
+ *     the square it has just cleared.
+ *   - remembers the owner and the fuse in `state.kicked`, so the slot stays spent until the fuse
+ *     would have run out. See KICK_FLIGHT_TICKS.
+ *   - pays nobody. No score, no kill, no stat. A kick is its own reward, and a scoring line
+ *     would turn a defensive move into a farm.
+ *
+ * No ownership rule: your own bombs are kickable too. A slide is a slide, and "except your own"
+ * is a rule to memorise in exchange for nothing.
+ */
+export function kick(state) {
+  const players = state.players;
+  for (let i = 0; i < players.length; i++) {
+    const p = players[i];
+    if (!p || !p.alive || !(p.slideV > 0)) continue;
+    if (!state.bombs.length) return;
+
+    const half = HITBOX_UNITS >> 1;
+    const x0 = (p.x - half) >> 8, x1 = (p.x + half - 1) >> 8;
+    const y0 = (p.y - half) >> 8, y1 = (p.y + half - 1) >> 8;
+
+    for (let k = state.bombs.length - 1; k >= 0; k--) {
+      const b = state.bombs[k];
+      if (b.tx < x0 || b.tx > x1 || b.ty < y0 || b.ty > y1) continue;
+
+      state.bombs.splice(k, 1);
+      (state.kicked ??= []).push({ owner: b.owner ?? b.o, until: b.at });
+      state.events.push({
+        e: 'kick', tick: state.tick, id: b.id, x: b.tx, y: b.ty,
+        by: p.i, d: p.slideDir, r: b.radius ?? b.r,
+      });
+    }
+  }
+}
+
+/** Forget kicked bombs whose fuses have run out, handing their owners the slot back. */
+export function expireKicked(state) {
+  if (!state.kicked?.length) return;
+  state.kicked = state.kicked.filter(k => k.until > state.tick);
 }
 
 /**

@@ -358,6 +358,7 @@ export function createRenderer(canvas, world) {
   const invalidateAll = () => {
     chunks = new Map(); shore = null; splashes.length = 0;
     pools.clear(); ripples.length = 0; wisps.length = 0; shards.length = 0; pops.length = 0; poolFor = null;
+    kicks.length = 0;
     glow.length = 0; eqFor = null; eqLen.fill(0); smokes.length = 0;
     rockSprites = null;
     rockSpritesFor = null;
@@ -3253,6 +3254,71 @@ export function createRenderer(canvas, world) {
     ctx.globalAlpha = 1;
   }
 
+/* A bomb kicked off the board: it tumbles away in the direction of the slide and is gone.
+   *
+   * Entirely cosmetic. The simulation removed the bomb on the tick it was kicked - a bomb still
+   * in the list for the animation's benefit is a bomb that can still be chained - so this is a
+   * free-flying sprite with no rules attached, and it may be dropped on a slow frame without
+   * anybody being able to tell.
+   *
+   * Driven by the authoritative `kick` event only; the client never predicts a kick, so the bomb
+   * leaves at the same moment on every screen watching it.
+   */
+  const kicks = [];
+  const KICK_SPAN = 0.5;                       // seconds; see KICK_FLIGHT_TICKS
+
+  function addKick(tx, ty, dir) {
+    const d = [[1, 0], [0, -1], [-1, 0], [0, 1]][dir] ?? [1, 0];
+    kicks.push({
+      x: tx * TILE_PX + TILE_PX / 2,
+      y: ty * TILE_PX + TILE_PX / 2,
+      // Fast along the kick, with a little lift: a punted barrel, not a thrown one.
+      vx: d[0] * 640, vy: d[1] * 640 - 190,
+      rot: 0, vr: (d[0] || d[1]) * 13,
+      life: 1,
+    });
+    if (kicks.length > 12) kicks.shift();
+  }
+
+  function drawKicks(ox, oy, dtMs) {
+    if (!kicks.length) return;
+    const dt = Math.min(0.05, dtMs / 1000);
+    ctx.save();
+    ctx.translate(ox, oy);
+    for (let i = kicks.length - 1; i >= 0; i--) {
+      const k = kicks[i];
+      k.life -= dt / KICK_SPAN;
+      if (k.life <= 0) { kicks.splice(i, 1); continue; }
+      k.vy += 900 * dt;                        // gravity, so it arcs rather than flying straight
+      k.x += k.vx * dt; k.y += k.vy * dt;
+      k.rot += k.vr * dt;
+
+      // Shrinking as it goes, which reads as "away" without needing a shadow or a scale trick.
+      const r = TILE_PX * 0.3 * (0.55 + k.life * 0.45);
+      ctx.globalAlpha = Math.min(1, k.life * 1.8);
+      ctx.save();
+      ctx.translate(k.x, k.y);
+      ctx.rotate(k.rot);
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.fillStyle = '#20242c';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+      ctx.lineWidth = 1.1;
+      ctx.stroke();
+      // The fuse, still lit, going nowhere.
+      ctx.beginPath();
+      ctx.moveTo(r * 0.5, -r * 0.6);
+      ctx.lineTo(r * 1.1, -r * 1.3);
+      ctx.strokeStyle = '#d9a441';
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  }
+
   /** Ice breaking: a flash, a ring of meltwater pushing out, and shards thrown off it. */
   function addMelt(tx, ty) {
     const x = tx * TILE_PX + TILE_PX / 2, y = ty * TILE_PX + TILE_PX / 2;
@@ -3855,6 +3921,8 @@ export function createRenderer(canvas, world) {
     drawSplashes(ox, oy, dtMs);
     // On the floor, under the perks, bombs and everybody standing in it.
     drawPuddles(ox, oy, dtMs);
+    // And a kicked bomb tumbling away over the top of all of it.
+    drawKicks(ox, oy, dtMs);
 
     /* In and out, both quick.
      *
@@ -5955,6 +6023,8 @@ export function createRenderer(canvas, world) {
       floaters.push({ x, y, text, colour, life: 1 });
       if (floaters.length > 24) floaters.shift();
     },
+    /** A bomb a slide kicked off the board, tumbling away. Cosmetic; see `kicks`. */
+    addKick(tx, ty, dir) { addKick(tx, ty, dir); },
     /** @param amount 0..1. Clamped and saturating: ten bombs at once must not throw the camera off. */
     addShake(amount) { shake = Math.min(1, shake + Math.max(0, amount)); },
     addFlash(amount, colour = '255,255,255') { flash = Math.min(1, flash + amount); flashColour = colour; },

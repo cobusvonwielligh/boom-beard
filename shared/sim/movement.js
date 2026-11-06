@@ -222,6 +222,17 @@ const halfBox = p => (has(p, STATUS.REDUCTION) ? HITBOX_REDUCED_UNITS : HITBOX_U
  */
 function bombSolid(state, p, tx, ty) {
   if (!state.bombs) return false;
+  /* Nothing is solid to a slide, because a slide kicks it. See `kick` in sim/bombs.js.
+   *
+   * Without this the mechanic cannot exist: a bomb is solid, so a slide aimed at one stops flush
+   * against it and never overlaps the tile the kick is detected on. The slide has to pass over
+   * the bomb for there to be a kick at all.
+   *
+   * Safe against skipping one: the hitbox is 160 units wide and the fastest slide covers 132 in
+   * a tick, so the box cannot step over a 256-unit tile without overlapping it on some tick, and
+   * `kick` runs every tick immediately after movement.
+   */
+  if (p.slideV > 0) return false;
   for (const b of state.bombs) {
     if (b.tx !== tx || b.ty !== ty) continue;
     /* Still touching it? Then it is not solid to you yet.

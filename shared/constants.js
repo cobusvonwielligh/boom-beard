@@ -293,6 +293,23 @@ export const START_BOMBS = 1;
 export const START_RADIUS = 1;
 export const CHAIN_CAP_PER_TICK = 64; // safety valve, see docs/RULES.md §3
 
+/* Kicking a bomb off the board. See `kick` in sim/bombs.js.
+ *
+ * Sliding into a bomb removes it from the game: it never explodes and it never hurts anybody.
+ * The slide stops being purely offensive and becomes the game's one defensive verb - a bomb you
+ * cannot outrun is a bomb you can take off the board, if you have the stamina and the nerve.
+ *
+ * The owner does NOT get the slot back on the kick. It frees at the tick the original fuse would
+ * have ended, which is the asymmetry the whole mechanic rests on: a kick denies the blast without
+ * instantly rearming the bomber, so it is a save rather than a free reset for both of them. That
+ * is why a kicked bomb is remembered at all (`state.kicked`) rather than simply deleted.
+ *
+ * KICK_FLIGHT_TICKS is for the CLIENT only - how long the bomb is drawn arcing off the map. The
+ * simulation is finished with it on the tick it is kicked, because a bomb that is still in the
+ * list for the animation's benefit is a bomb that can still be chained.
+ */
+export const KICK_FLIGHT_TICKS = 15;      // half a second of arc, drawn, not simulated
+
 /* A parting shot. One death in ten leaves a live bomb on the tile where it happened.
  *
  * Owned by the player who died, so a kill it gets is credited to them: dying is the one moment in

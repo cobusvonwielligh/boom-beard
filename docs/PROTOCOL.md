@@ -253,7 +253,15 @@ Events are things that happen at an instant and must not be missed. Each has `e`
 { "e": "join",     "tick": 10400, "i": 5, "name": "Francois", "c": 7, "rank": 2 }
 { "e": "leave",    "tick": 10900, "i": 5 }
 { "e": "gullhit",  "tick": 10480, "id": 2, "x": 3200, "y": 2100, "by": 3, "cx": 12, "cy": 8 }
+{ "e": "kick",     "tick": 10482, "id": 812, "x": 10, "y": 7, "by": 3, "d": 0, "r": 2 }
 ```
+
+`kick`: a slide took a bomb off the board. `x`,`y` are the TILE it was on, `by` the seat that
+kicked it, `d` the slide's direction. The bomb is gone from the simulation on this tick - it
+cannot explode, chain, or block anybody - so a client must drop it from its own bomb list AND
+mark it burst, or a snapshot already in flight will re-add it and the local fuse loop will light
+it for a blast the server is never going to send. The flight is drawn, not simulated; a client
+that misses the event sees the bomb vanish from the next snapshot and loses only the flourish.
 
 `gullhit`: a gull dived into live fire. `x`,`y` in units where it was hit, `by` whose fire it
 was (-1 for nobody's), `cx`,`cy` the tile its gold coin landed on (absent if there was no bare
