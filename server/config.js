@@ -12,6 +12,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AUTO_BOTS_MIN } from '../shared/constants.js';
+import { parseWindow } from './nightly-restart.js';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -59,6 +60,14 @@ export const config = {
   maxPlayers: num('MAX_PLAYERS', 'server', 'max_players', 16),
   // Target bot count. The US room also retains its complement while idle. 0 disables bots.
   minBots: num('MIN_BOTS', 'server', 'min_bots', defaultMinBots),
+
+  /* Restart the server overnight while nobody is playing. `23-2`, or blank to disable.
+   *
+   * The server's OWN LOCAL TIME, so the Johannesburg and US boxes each restart in their own
+   * night rather than one of them bouncing mid-afternoon. Blank by default, which is the correct
+   * setting for a laptop - the same reasoning as `deploy.token`. See server/nightly-restart.js.
+   */
+  nightlyRestart: parseWindow(pick('NIGHTLY_RESTART', 'server', 'nightly_restart', '')),
 
   // Shared secret for POST /deploy. Empty disables the endpoint entirely.
   deployToken: pick('DEPLOY_TOKEN', 'deploy', 'token', ''),

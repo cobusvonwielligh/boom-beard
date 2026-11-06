@@ -23,6 +23,7 @@ import { createAdminHttpHandler } from './admin-http.js';
 import { createGeography } from './geography.js';
 import { createRegionStatusHandler } from './region-status.js';
 import { createAuthPreflightHandler } from './auth-preflight.js';
+import { shouldRestartNow } from './nightly-restart.js';
 import {
   createAdminInstanceMetricsClient,
   createAdminInstanceMetricsHandler,
@@ -647,4 +648,37 @@ for (const sig of ['SIGTERM', 'SIGINT']) {
     wt?.stop();
     server.close(() => process.exit(0));
   });
+}
+
+/* The nightly restart. See server/nightly-restart.js for the rule and why it is a pure function.
+ *
+ * Asked once a minute and acted on by signalling OURSELVES with SIGTERM, which is deliberate:
+ * the handler above already banks the round in progress, awaits the leaderboard save and then
+ * exits, and the unit's `Restart=always` brings the new process up in about two seconds. Calling
+ * `process.exit` here instead would be a second way to stop the server, with none of that.
+ *
+ * `players` from room.stats() counts connected seats and includes bots, so humans is the
+ * difference. `reserved` - seats held for somebody who has dropped - is deliberately NOT counted:
+ * those players are already disconnected, and holding the box open all night for a seat nobody is
+ * sitting in is the exact thing this is for.
+ *
+ * Unref'd, so it never keeps the process alive on its own.
+ */
+if (config.nightlyRestart) {
+  const startedAt = Date.now();
+  const window = config.nightlyRestart;
+  console.log(`nightly restart armed for ${window.from}:00-${window.to}:00 local, while empty`);
+  setInterval(() => {
+    if (shuttingDown) return;
+    const { players = 0, bots = 0 } = hub.health();
+    const humans = players - bots;
+    if (!shouldRestartNow({
+      hour: new Date().getHours(),
+      humans,
+      uptimeMs: Date.now() - startedAt,
+      window,
+    })) return;
+    console.log('nightly restart - the room is empty, shutting down for a fresh start');
+    process.kill(process.pid, 'SIGTERM');
+  }, 60_000).unref();
 }

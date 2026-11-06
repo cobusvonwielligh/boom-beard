@@ -407,6 +407,27 @@ eye before a session; that is the whole monitoring story.
 **Restart / reboot.** `Restart=always` plus `systemctl enable`, so a crash recovers in two
 seconds and a reboot comes back unattended. On SIGTERM the server closes sockets cleanly.
 
+**Nightly restart.** `nightly_restart = 23-2` under `[server]` makes the process shut itself
+down overnight while the room is empty, so each day starts on a process that has not been up
+since the last deploy. Blank disables it, which is the default and the right setting for a
+laptop.
+
+- The hour range is in the **server's own local time**, so Johannesburg and the US each restart
+  in their own night rather than one of them bouncing mid-afternoon. The end hour is exclusive:
+  `23-2` is 23:00, 00:00 and 01:00.
+- It only fires with **zero human players** connected. Bots do not count, and neither do reserved
+  seats - those belong to somebody who has already disconnected.
+- It only fires after **an hour of uptime**, so a server crash-looping inside the window cannot
+  also restart-loop.
+- It shuts down by signalling itself `SIGTERM`, which is the same path a deploy uses: the round in
+  progress is banked and the leaderboard saved before exit, then `Restart=always` brings it back
+  in about two seconds. There is no second shutdown route.
+- On restart you will see `nightly restart armed for 23:00-2:00 local, while empty` in the log at
+  boot, and `nightly restart - the room is empty, shutting down for a fresh start` when it fires.
+
+Note what this does **not** fix: a client that feels heavy on a big screen is paying frame cost
+in the renderer, not in this process. See §11.
+
 **Backup.** Back up `accounts.json`, `leaderboard.json`, `shared-outbox.json`, and
 `shared-leaderboard.json` from both regions. ZA is authoritative for accounts and global
 career state. Keep US outbox files until every queued operation is acknowledged.
