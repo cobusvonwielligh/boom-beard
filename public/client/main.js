@@ -1444,9 +1444,14 @@ function frame(now) {
     syncCountIn();
     fuseTicks();
     world.updateFires();
-    // The accumulator's leftover IS how far through the current tick this frame is - the one
-    // number that lets your own pirate be drawn between ticks instead of chasing them.
-    world.interpolate(net.serverTickNow(), dt, Math.min(1, acc / step));
+    /* The accumulator's leftover is how far through the current tick this frame is, and the mask
+     * is what is held right now. Together they let the renderer ask the movement function for the
+     * position part-way through the tick in progress - the real one, not an interpolation.
+     *
+     * Deliberately WITHOUT the slide bit: `takeSlide` is one-shot and has already been consumed
+     * by the tick above, and handing it to the renderer's throwaway copy would launch a phantom
+     * slide on screen every frame. */
+    world.interpolate(net.serverTickNow(), dt, Math.min(1, acc / step), input.mask);
     renderer.frame(dt);
   }
 

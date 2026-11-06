@@ -105,8 +105,6 @@ export function createWorld() {
     if (!me) return;
     w.pending.push({ tick, mask });
     if (w.pending.length > 200) w.pending.shift();   // connection is gone; stop growing
-    // Where this tick STARTED, which is what the renderer interpolates from. See w.interpolate.
-    me.px = me.x; me.py = me.y;
     step(w, me, mask);
     // Deliberately does NOT touch rx/ry. The rendered position eases toward the simulated one in
     // interpolate(), which is what absorbs reconciliation corrections instead of showing them.
@@ -256,16 +254,17 @@ export function createWorld() {
 
     for (const inp of w.pending) step(w, me, inp.mask);
 
-    /* Carry the tick's starting point along with the correction.
+    /* Absorb the correction into a decaying offset rather than showing it.
      *
-     * The renderer draws you between `px,py` and `x,y`, so leaving `px` where it was would turn a
-     * correction into a frame of impossible velocity - and the replay above re-runs the pending
-     * inputs, which moved `px` once per input already. Shifting it by the same delta the
-     * correction applied keeps the drawn speed continuous: a reconcile changes where you are, not
-     * how fast you look like you are going.
+     * The drawn position is now a straight function of the simulated one, so a correction would
+     * appear in full on the next frame. Usually there is nothing to show - the client runs the
+     * same movement function on the same inputs, which is the entire point of the shared
+     * simulation - but packet loss and the server's input narrowing can still produce one. Holding
+     * the difference here and bleeding it off over about a tenth of a second (see interpolate)
+     * means a correction moves the pirate smoothly rather than cutting them to the new truth.
      */
-    me.px = (me.px ?? me.x) + (me.x - before.x);
-    me.py = (me.py ?? me.y) + (me.y - before.y);
+    me.ex = (me.ex ?? 0) + (before.x - me.x);
+    me.ey = (me.ey ?? 0) + (before.y - me.y);
 
     if (Math.abs(me.x - before.x) > 8 || Math.abs(me.y - before.y) > 8) w.lastCorrection = performance.now();
   }
@@ -344,6 +343,7 @@ export function createWorld() {
    */
   function teleport(p) {
     p.rx = p.x; p.ry = p.y;
+    p.ex = 0; p.ey = 0;
     p.trail.length = 0;
   }
 
@@ -351,9 +351,10 @@ export function createWorld() {
    * Called every frame: advance rendered positions and sample tracers.
    *
    * `frac` is how far through the CURRENT local tick this frame is, 0 to 1 - the leftover of the
-   * fixed-step accumulator in main.js. Your own pirate is drawn from it; see below.
+   * fixed-step accumulator in main.js. `liveMask` is the keys held right now. Your own pirate is
+   * drawn by running that fraction of a tick with those keys on a throwaway copy; see below.
    */
-  w.interpolate = (serverTickNow, dtMs = 16, frac = 1) => {
+  w.interpolate = (serverTickNow, dtMs = 16, frac = 1, liveMask = 0) => {
     const renderTick = serverTickNow - INTERP_DELAY_TICKS;
     /* The fractional clock everything drawn should read.
      *
@@ -363,29 +364,46 @@ export function createWorld() {
     w.tickF = renderTick;
     for (const p of w.players) {
       if (!p) continue;
+      // The reconciliation error, bleeding away. A tenth of a second: long enough to hide a
+      // correction, short enough that the drawn position is never meaningfully a lie.
+      if (p.ex || p.ey) {
+        const decay = Math.exp(-dtMs / 100);
+        p.ex = Math.abs(p.ex * decay) < 1 ? 0 : p.ex * decay;
+        p.ey = Math.abs(p.ey * decay) < 1 ? 0 : p.ey * decay;
+      }
 
       if (p.i === w.you) {
-        /* Your own pirate is drawn BETWEEN the last two simulated positions, by how far through
-         * the current tick we are. Not eased toward the current one.
+        /* Your own pirate is drawn by ASKING THE MOVEMENT FUNCTION where you are part-way through
+         * the tick in progress - not by interpolating between two finished ticks.
          *
-         * It was an exponential ease with an ~18 ms time constant, and that is the whole of "the
-         * movement is choppy, and worse with boots". The target is a staircase - prediction moves
-         * it once a tick, 30 times a second, in one jump of `speed` units - and easing toward a
-         * staircase reproduces the staircase in the velocity: at 60 fps the drawn pirate covered
-         * 59% of the step on the frame the tick landed and 24% on the frame after, so every
-         * second frame was two and a half times longer than its neighbour. The RATIO is fixed, so
-         * the faster the legs the bigger the wobble in pixels, which is why skates made it worse.
+         * Three versions of this were wrong in three ways, and both of the earlier ones were
+         * really the same mistake: guessing a path from its endpoints.
          *
-         * A lerp over the tick fraction has no such term: the frame-to-frame distance is the same
-         * every frame by construction, and the drawn position is exactly the simulated one at the
-         * instant the tick turns over. It also costs nothing in responsiveness - there is no lag
-         * term to tune, because the interpolation is between two positions we already have rather
-         * than a chase after one we do not.
+         *   An exponential ease toward the simulated position reproduced the 30 Hz staircase in
+         *   the velocity - 59% of the step on the frame a tick landed, 24% on the frame after.
+         *   That was "choppy, and worse with boots": the ratio is fixed, so faster legs meant a
+         *   bigger wobble in pixels.
+         *
+         *   A lerp between the last two simulated positions is uniform, but it is a full tick
+         *   behind by construction - 33 ms of mush on every key - and the straight line between
+         *   two ends of a corner tick is not the path that was taken. It cuts the corner, and
+         *   because a chord is shorter than its L the drawn speed DIPS through every corner.
+         *   Measured: 24 units a frame down to 18 for two frames, every time.
+         *
+         * `step` with a fractional pace has neither problem. It turns at the junction if that
+         * fraction of the pace reaches the junction and not otherwise, because it is the same code
+         * that will shortly do it for real - so the drawn path is the real path, including the
+         * diagonal out of a corner. And it runs FORWARD from the current position toward where the
+         * live input is taking you, so the picture is never behind the simulation.
+         *
+         * On a throwaway copy, always. Nothing here may touch the authoritative prediction - this
+         * is a question about the future, asked once a frame and thrown away.
          */
-        const ax = p.px ?? p.x, ay = p.py ?? p.y;
+        const ghost = { ...p };
+        step(w, ghost, liveMask, frac);
         // A whole tile in one tick means a respawn or an unstick teleport, not a walk.
-        if (Math.abs(p.x - ax) > 256 || Math.abs(p.y - ay) > 256) teleport(p);
-        else pathAt(p, ax, ay, p.x, p.y, frac);
+        if (Math.abs(ghost.x - p.x) > 256 || Math.abs(ghost.y - p.y) > 256) teleport(p);
+        else { p.rx = ghost.x + (p.ex ?? 0); p.ry = ghost.y + (p.ey ?? 0); }
       } else if (p.buf.length >= 2) {
         // The pair that BRACKETS the time being drawn, not the two newest - see pickPair. Taking
         // the newest two pinned every remote player to one snapshot until the next arrived, which

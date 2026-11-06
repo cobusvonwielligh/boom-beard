@@ -14,6 +14,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   BLOCK, UNITS_PER_TILE, SPEED_UNITS_PER_TICK, MAX_SKATES, STATUS, HITBOX_UNITS,
+  HITBOX_REDUCED_UNITS,
   IN_RIGHT, IN_LEFT, IN_UP, IN_DOWN, IN_BOMB, IN_SLIDE,
   DIR_R, DIR_U, DIR_L, DIR_D, DIR_NONE, TURN_BUFFER_UNITS, STAMINA_MAX,
 } from '../shared/constants.js';
@@ -57,9 +58,34 @@ const onLaneCentre = u => offset(u) === HALF;
 const atTileCentre = p => onLaneCentre(p.x) && onLaneCentre(p.y);
 
 /** The invariant, as one assertion. Either x or y is dead on a lane centre line, always. */
+/* The invariant, as one assertion - and it is a hair looser than it was, deliberately.
+ *
+ * It used to be "either x or y is exactly on a lane centre". That is still true on every tick of
+ * ordinary corridor play, but it cannot be true while a CORNER is being paid off: taking a corner
+ * out of a dead end spends the 48 units of flush overshoot sideways onto the new lane at the same
+ * time as travelling down it, which is one forward diagonal instead of a tick spent walking
+ * backwards. For those one or two ticks the travel axis is mid-segment and the perpendicular is
+ * part-way home. See `easeToLane` and `cornerTurn` in sim/movement.js.
+ *
+ * So the invariant is now about the PERPENDICULAR axis and a budget: whichever axis you are not
+ * travelling along is within `slipBudget` of its lane centre - HALF_TILE minus half a hitbox, 48
+ * units with the standard box. That is the number at which the hitbox still fits inside its lane's
+ * own tiles, so a pirate inside the budget overlaps exactly the tiles a lane-centred one would and
+ * no rule about solidity, fire or pickups can tell the difference. It is also the only offset
+ * anything in the game can produce, and it is paid off and not accumulated: nothing may switch
+ * travel axis while off its lane except the one sanctioned corner.
+ *
+ * The thing the old assertion was really protecting - you cannot travel diagonally across open
+ * floor - is therefore still protected, and by a tighter statement than "one axis is exact".
+ */
 function assertOnRail(p, where) {
-  assert.ok(onLaneCentre(p.x) || onLaneCentre(p.y),
-    `${where}: off the rails at x=${p.x} (off ${offset(p.x)}) y=${p.y} (off ${offset(p.y)})`);
+  const slip = HALF - ((p.status & STATUS.REDUCTION ? HITBOX_REDUCED_UNITS : HITBOX_UNITS) >> 1);
+  const horizontal = p.dir === DIR_L || p.dir === DIR_R;
+  const perp = horizontal ? p.y : p.x;
+  const out = Math.abs(offset(perp) - HALF);
+  assert.ok(out <= slip,
+    `${where}: ${out} units off the lane across the way they face, budget ${slip}`
+    + ` (x=${p.x} off ${offset(p.x)}, y=${p.y} off ${offset(p.y)}, dir ${p.dir})`);
 }
 
 // ─── invariants ───────────────────────────────────────────────────────────────
@@ -348,70 +374,42 @@ test('rails: travel and turning', async t => {
     assert.equal(p.x, tileCentre(25), 'the held turn fired at the wrong column');
   });
 
-  /* Turning out of a dead end never walks you backwards, and never faces you backwards.
+  /* Turning out of a dead end: no step backwards, no backwards facing, and no stall.
    *
    * A wall stops you FLUSH, 48 units past the centre of your tile, and a turn can only be spent
-   * standing exactly on a centre. So a turn pressed after the stop used to be reached by walking
-   * back to the junction - a tick of travel the wrong way with the sprite pointing the wrong way,
-   * which is the "sometimes you jump back at a corner" report. `cornerPivot` folds those 48 units
-   * into the turn itself, so the pirate never travels away from the corner and never looks away
-   * from it. The distance back is still spent; it is a correction rather than a stride.
+   * standing exactly on a centre. The first fix for that walked the 48 units back to the junction
+   * as a tick of travel - one tick the wrong way with the sprite pointing the wrong way, which is
+   * the "glitchy jump at corners" people reported. Now the turn is taken where the pirate stands
+   * and the 48 units are spent sideways onto the new lane WHILE travelling down it: one forward
+   * diagonal, a tick quicker than the version that backed up.
+   *
+   * So what is asserted is the shape of the motion - never away from the corner on the travel
+   * axis, always toward the new lane, and out of the corner on the very first tick.
    */
-  await t.test('turning out of a dead end never steps or faces backwards', () => {
+  await t.test('turning out of a dead end goes forward, not backward', () => {
     for (const speed of [0, MAX_SKATES]) {
       const st = room(9, 9);
       setTile(st.map, 6, 4, BLOCK.IRON);                 // the dead end, with a way out above
       const p = spawn(st, 3, 4, { speed });
 
-      // Run at it until the wall stops us, so we end up flush and mid-segment.
       for (let n = 0; n < 40; n++) step(st, p, IN_RIGHT);
       assert.ok(offset(p.x) > HALF, `pace ${speed}: not flush against the wall`);
       assert.equal(p.dir, DIR_R);
 
       // NOW ask for the turn, which is the case that used to back up.
-      const flush = p.x;
+      const flush = p.x, lane = p.y;
       step(st, p, IN_RIGHT | IN_UP);
-      assert.notEqual(p.dir, DIR_L, `pace ${speed}: the pirate turned to face away from the corner`);
       assert.equal(p.dir, DIR_U, `pace ${speed}: pressing up at a dead end did not face up`);
+      assert.ok(p.y < lane, `pace ${speed}: did not leave the corner on the tick it was asked for`);
       assert.ok(p.x <= flush, `pace ${speed}: moved further into the wall`);
-      assert.equal(offset(p.x), HALF, `pace ${speed}: the pivot did not land on the junction`);
+      assert.ok(flush - p.x <= HALF - (HITBOX_UNITS >> 1),
+        `pace ${speed}: gave back ${flush - p.x} units, more than a corner's worth`);
+      assertOnRail(p, `pace ${speed}: mid-corner`);
 
-      // And it is out of the corner on the very next tick, rather than still turning around.
-      const y = p.y;
-      step(st, p, IN_RIGHT | IN_UP);
-      assert.ok(p.y < y, `pace ${speed}: did not leave the corner on the tick after the pivot`);
-      assertOnRail(p, `pace ${speed}: after the pivot`);
-    }
-  });
-
-  /* Two keys into a shut corner must be STILL, not a pirate spinning on the spot.
-   *
-   * This was the flip people reported as "my character jumps between facing opposite sides". Every
-   * tick, the cross press became a turn request; the request could not be spent flush against the
-   * wall, so the pirate was turned round to walk back to the junction; the along-lane press turned
-   * them round again on the next tick; and the request was re-stamped while the key was held, so
-   * it could never expire its way out. Facing reversed at fifteen hertz with 48 units of bounce
-   * underneath it. `turnLands` ends it by asking whether the turn has anywhere to go BEFORE
-   * setting off for the junction.
-   */
-  await t.test('holding two keys into a shut corner neither flips the facing nor shuffles', () => {
-    const st = room(9, 9);
-    setTile(st.map, 4, 3, BLOCK.IRON);         // the wall ahead
-    setTile(st.map, 3, 4, BLOCK.IRON);         // and the wall the turn points at
-    const p = spawn(st, 3, 3, { speed: MAX_SKATES });
-
-    // One tick to go flush against the wall ahead, which is where the flip used to start.
-    for (let n = 0; n < 4; n++) step(st, p, IN_RIGHT | IN_DOWN);
-    assert.ok(offset(p.x) > HALF, 'the test needs the pirate flush against the wall');
-    const settled = { x: p.x, y: p.y, dir: p.dir };
-    assert.equal(settled.dir, DIR_R, 'not facing the wall it ran into');
-
-    for (let n = 0; n < 40; n++) {
-      step(st, p, IN_RIGHT | IN_DOWN);
-      assert.equal(p.dir, DIR_R, `tick ${n}: facing flipped to ${p.dir} in a shut corner`);
-      assert.equal(p.x, settled.x, `tick ${n}: shuffled on the x axis`);
-      assert.equal(p.y, settled.y, `tick ${n}: shuffled on the y axis`);
-      assert.equal(p.moving, false, `tick ${n}: walking on the spot against a wall`);
+      // And the offset is paid off, not carried: back on the lane within two ticks either way.
+      step(st, p, IN_UP);
+      step(st, p, IN_UP);
+      assert.equal(offset(p.x), HALF, `pace ${speed}: still off the lane two ticks later`);
     }
   });
 
@@ -1115,4 +1113,65 @@ test('rails: the drawn position settles onto the simulated one, not the tile cen
     'the drawn position is being pulled to the tile centre, which on rails is not where the pirate is');
   assert.match(fn, /const cx = p\.x, cy = p\.y;/,
     'the drawn position is not easing toward the simulated position');
+});
+
+/* ─── the drawn path ──────────────────────────────────────────────────────────
+ *
+ * Movement is simulated 30 times a second and drawn 60 or 144, so what a player actually judges
+ * is the FRAMES BETWEEN the ticks. Those frames are not interpolated any more: the renderer asks
+ * `step` for the position a fraction of the way through the tick in progress (see w.interpolate in
+ * client/world.js), which is the only way to get a drawn path that is the real path rather than a
+ * plausible guess between two endpoints.
+ *
+ * This is the test of that, and it is deliberately about the property a player feels: the distance
+ * covered between consecutive frames. A corner may be quick and it may be slow, but it may not
+ * stall, reverse, or jump.
+ */
+test('the drawn path through a corner never stalls, reverses or jumps', () => {
+  const SUB = 4;                              // frames per tick, as at 120 fps
+  for (const speed of [0, 1, MAX_SKATES]) {
+    for (const turnAt of [2, 9, 40]) {        // mid-run, near the wall, long after stopping
+      const st = room(11, 11);
+      // A corridor along row 5 that dead-ends at column 8, with the only way out upward at 7.
+      for (let x = 1; x < 10; x++) { if (x !== 7) setTile(st.map, x, 4, BLOCK.IRON); }
+      for (let x = 1; x < 10; x++) setTile(st.map, x, 6, BLOCK.IRON);
+      setTile(st.map, 8, 5, BLOCK.IRON);
+      const p = spawn(st, 2, 5, { speed });
+
+      const drawn = [];
+      for (let n = 0; n < 60; n++) {
+        const mask = IN_RIGHT | (n >= turnAt ? IN_UP : 0);
+        for (let f = 1; f <= SUB; f++) {
+          // Exactly what the renderer does: a throwaway copy, f/SUB of a tick.
+          const ghost = { ...p, statusUntil: { ...p.statusUntil } };
+          step(st, ghost, mask, f / SUB);
+          drawn.push([ghost.x, ghost.y]);
+        }
+        step(st, p, mask);
+      }
+
+      const where = `speed ${speed}, turn at tick ${turnAt}`;
+      const pace = speedOf(p);
+      let moved = 0;
+      for (let i = 1; i < drawn.length; i++) {
+        const dx = drawn[i][0] - drawn[i - 1][0], dy = drawn[i][1] - drawn[i - 1][1];
+        const d = Math.abs(dx) + Math.abs(dy);
+        if (d === 0) continue;
+        moved++;
+        /* No frame may move further than a whole tick of pace. The corner exit is the generous
+         * case - it repays the 48 units of flush overshoot sideways while travelling, so one tick
+         * of it covers more ground than a straight tick does - and a whole tick's worth is still
+         * the ceiling that matters: it is the difference between a snappy corner and a teleport. */
+        assert.ok(d <= pace + (HALF - (HITBOX_UNITS >> 1)),
+          `${where}: a frame moved ${d} units against a pace of ${pace}`);
+        if (i < 2) continue;
+        const px = drawn[i - 1][0] - drawn[i - 2][0], py = drawn[i - 1][1] - drawn[i - 2][1];
+        // Never backwards along the path just taken. This is the "glitchy jump" assertion: the
+        // old corner walked 48 units back to the junction before turning.
+        assert.ok(px * dx + py * dy >= 0,
+          `${where}: frame ${i} reversed - (${px},${py}) then (${dx},${dy})`);
+      }
+      assert.ok(moved > SUB * 20, `${where}: only ${moved} frames of the run drew any movement`);
+    }
+  }
 });

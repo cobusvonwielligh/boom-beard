@@ -159,10 +159,12 @@ test('the escape from a wall is a drift, never a teleport', () => {
   }
   assert.ok(!blocked(s, p, p.x, p.y), `never escaped: ${ticks} ticks`);
   assert.ok(ticks <= 30, `the escape took ${ticks} ticks - entombment should cost about a second`);
-  /* Two tick-sized movements is the honest ceiling: the drift out of the wall, plus - on the one
-   * tick the position becomes legal again - easing back onto the lane. Both are bounded by the
-   * legs. What must never reappear is a jump of a whole tile or more. */
-  assert.ok(biggest <= 2 * speedOf(p),
+  /* Three tick-sized movements is the honest ceiling, and it was two. On the one tick the position
+   * becomes legal again, three bounded things can happen at once: the drift out of the wall, the
+   * ease back onto the lane, and - since the corner rework let those two run together with travel
+   * instead of taking the tick off - a stride. Each is separately capped by the legs, which is the
+   * property that matters; what must never reappear is a jump of a whole tile or more. */
+  assert.ok(biggest <= 3 * speedOf(p),
     `one tick of the escape moved ${biggest} units against a pace of ${speedOf(p)} - that is a snap`);
   assert.ok(biggest < UNITS_PER_TILE, `one tick of the escape moved ${biggest} units - a teleport`);
 });

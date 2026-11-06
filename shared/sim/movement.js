@@ -122,7 +122,10 @@ function startSlide(state, p, mask) {
    * held direction alone is no good either, because Control on its own has to do something, and
    * the only sensible something is "the way I am looking".
    */
-  const dir = askedDir(p, mask) ?? p.dir;
+  const asked = askedDir(p, mask);
+  // A slide may not switch axis from the middle of a segment either - see canTurnAxis. It would
+  // be three tiles of diagonal rather than one corner's worth.
+  const dir = asked !== null && canTurnAxis(p, asked) ? asked : p.dir;
   p.stamina -= SLIDE_STAMINA_COST;
   if (p.stamina <= 0) { p.stamina = 0; p.tired = true; }
   p.dir = dir;
@@ -149,7 +152,7 @@ function startSlide(state, p, mask) {
  * slide that kept its momentum while pressed against stone would let you hold a slide round a
  * corner, and the one thing this mechanic must not become is a better way to walk.
  */
-function stepSlide(state, p) {
+function stepSlide(state, p, paceOf = 1) {
   /* Strictly along the lane, and it cannot turn.
    *
    * `dir` is forced to `slideDir` for the duration so `railTravel` runs down the slide's own lane
@@ -168,7 +171,8 @@ function stepSlide(state, p) {
   p.slideTick = state.tick;
   // Same rule as walking: a tick spent easing back onto the lane is not a tick of sliding. The
   // drag below still applies, so a slide that starts off-lane simply loses a little of itself.
-  const moved = pinToLane(state, p, p.slideV) ? p.slideV : railTravel(state, p, p.slideV);
+  const pace = Math.max(1, (p.slideV * paceOf) | 0);
+  const moved = easeToLane(state, p, pace) ? pace : railTravel(state, p, pace);
   p.slideFor++;
   p.slideV = ((p.slideV * SLIDE_DRAG_NUM) / SLIDE_DRAG_DEN) | 0;
   // Stopped dead, out of speed, or the seatbelt: either way, put the brakes on and start the
@@ -388,51 +392,61 @@ function faceNearestJunction(p, horizontal) {
 }
 
 /**
- * Flush against a wall with a turn waiting: pivot into it, this tick, without walking backwards.
+ * Flush against a wall with a turn waiting: take it from where you stand.
  *
- * This is the "sometimes you jump back at a corner" bug, and it was not a rendering artefact.
- * Running into a dead end stops you FLUSH - 48 units past the centre of your tile, because that
- * is what makes a wall feel solid - and a turn can only be spent standing exactly on a tile
- * centre. So a turn pressed after the stop had to be reached by walking 48 units BACKWARDS, which
- * at boot speed is one whole tick: one tick of travel the wrong way with the sprite facing the
- * wrong way, then the turn. Press the same turn a tick earlier, while still exactly on the
- * junction, and the corner was instant - which is why it only happened sometimes.
+ * This replaces a version that stepped BACK to the junction first and owned the tick doing it,
+ * which was the corner jump: a tick of travel away from the corner, sprite and all, before any of
+ * the turn happened. The step back was there because a turn may only be spent standing exactly on
+ * a tile centre - and that rule has not changed. What changed is who pays for it: the 48 units
+ * become an offset on the new lane, and `easeToLane` works them off WHILE travel runs down that
+ * lane, in the same tick. The result is one forward diagonal out of the corner instead of a
+ * reversal and a stall, and it is a tick quicker as well as smoother.
  *
- * The 48 units are not optional; the rails put every turn on a tile centre and that is the whole
- * reason corners are reliable. What is optional is spending a visible tick of travel on them. So
- * they are folded INTO the turn: the along-axis goes back to the junction and the facing becomes
- * the one that was asked for, in the same tick, and the rest of the tick's pace is then spent down
- * the new lane. The renderer draws the tick as one line, so it reads as cutting the corner, which
- * is what the player asked for. Nobody gains ground: the distance is one they had already
- * travelled, and the exchange is a tick of latency for none.
+ * Only ever from the flush band with the way ahead shut, which is what bounds the offset to a
+ * corner's worth - see `slipBudget`. And only when the turn has somewhere to go, so it never
+ * leaves a pirate pointed at a wall with an offset to pay off for nothing.
  *
- * Refused unless the turn is actually takeable, so it never moves anybody for nothing.
- *
- * @returns true if the pivot happened, in which case the turn is spent and `dir` is the new one.
+ * @returns true if the turn was taken, in which case `dir` is the new one and travel this tick
+ *   runs down the new lane.
  */
-function cornerPivot(state, p, horizontal) {
+function cornerTurn(state, p, horizontal) {
   const along = horizontal ? p.x : p.y;
-  // Only from the far half of the tile - the flush band. Short of the centre the travel loop
-  // already stops on the junction by itself, and exactly on it there is nothing to fix.
-  if ((along & (UNITS_PER_TILE - 1)) <= HALF_TILE) return false;
-  /* And only with the way ahead genuinely shut, which is what BOUNDS the step back.
+  /* How far PAST the junction behind us we are, measured along the way we are facing.
    *
-   * A blocked tile ahead means the hitbox cannot be inside it, so the furthest past the centre
-   * you can be is flush - half a hitbox short of the boundary, 48 units. Without this guard the
-   * same code reached from a standstill mid-corridor could snap half a tile, which is a teleport
-   * and not a pivot.
+   * Signed, and that sign is not a detail: the first version of this tested `offset > HALF_TILE`
+   * flat, which is "past the junction" only when travelling right or down. Walking up or left it
+   * means the junction is still AHEAD - so the turn fired half a tile early, from the wrong side,
+   * and handed the new lane an offset bigger than any corner can produce. The soak caught it as a
+   * pirate 54 units off a lane with a 48-unit budget.
+   *
+   * Refused unless the overshoot is a corner's worth. That bounds the debt by construction rather
+   * than by argument, which is what the budget is for.
+   */
+  const sign = p.dir === DIR_R || p.dir === DIR_D ? 1 : -1;
+  const o = along & (UNITS_PER_TILE - 1);
+  const past = sign > 0 ? o - HALF_TILE : HALF_TILE - o;
+  if (past <= 0 || past > slipBudget(p)) return false;
+  /* And only with the way on genuinely shut, which is what makes this a CORNER.
+   *
+   * A pirate with somewhere to go keeps going and spends the turn at the junction they are already
+   * heading for, which costs nothing and needs none of this. This path is only for the dead end.
    */
   if (canStand(state, p, ...aheadTile(p))) return false;
-
   if (!turnLands(state, p)) return false;
+  /* And only from a lane we are exactly on, which is what stops the offset COMPOUNDING.
+   *
+   * Without this, a corner taken while still paying off the last one puts the unpaid offset on the
+   * new travel axis - where it is indistinguishable from honest mid-segment travel and is never
+   * collected - and starts a fresh offset on the other axis. Two corners in quick succession then
+   * leave a pirate off BOTH lanes by most of a tile, which is free 2D movement and exactly what
+   * the rails exist to prevent. Found by the long random-input soak, which is the only test shaped
+   * to notice; it reported a pirate 94 units off one lane and 114 off the other.
+   *
+   * With the gate there is only ever one offset outstanding, it is always exactly `slipBudget`,
+   * and it is always paid off inside a tick or two before another corner can be taken.
+   */
+  if (!onLane(horizontal ? p.y : p.x)) return false;
 
-  const back = tileCentre(toTile(along));
-  const nx = horizontal ? back : p.x, ny = horizontal ? p.y : back;
-  // It is where we came from, so it is legal - unless a wall grew there or a bomb landed on it
-  // while we stood flush. Verified rather than assumed, like every other move on the rails.
-  if (blocked(state, p, nx, ny)) return false;
-
-  p.x = nx; p.y = ny;
   p.dir = p.turnWant;
   clearTurn(p);
   return true;
@@ -606,16 +620,62 @@ const clearTurn = p => { p.turnWant = DIR_NONE; p.turnLeft = 0; };
  */
 const wantsTurn = p => p.turnLeft > 0 && p.turnWant !== DIR_NONE;
 
-/**
- * Pin the axis we are NOT travelling along to its lane centre. The invariant, enforced.
+/* How far off your lane you are allowed to be, and why it is this number and not a nicer one.
  *
- * Never while the position is already illegal. `unstick` eases out of a wall along ONE axis over
- * several ticks, and a snap on the other axis undoes it: an entombed pirate was shoved out and
- * pulled straight back in, every tick, which is worse than the problem the seatbelt exists for.
- * Skipping here leaves the pirate briefly off-lane, which is exactly what being stuck in a wall
- * is - and the rails put them back on one as soon as they are standing somewhere legal.
+ * HALF_TILE minus half a hitbox - 48 units with the standard box. It is the overshoot a flush wall
+ * stop produces, which is the only thing that ever creates an off-lane offset in ordinary play, so
+ * the budget is exactly the debt. It is also the largest offset at which the hitbox STILL FITS
+ * INSIDE its lane's tile band: 48 + 80 = 128, half a tile. That is the property that makes this
+ * safe rather than a loosening - a pirate inside the budget overlaps exactly the tiles a
+ * lane-centred one would, so solidity, fire, pickups and the chamfer cannot tell the difference.
+ *
+ * Nothing can accumulate it. The ease below only ever reduces it, and the one thing that creates
+ * it is a corner you had already walked into, so there is no diagonal to farm here: the 48 units
+ * are a debt being repaid, not ground being gained.
  */
-function pinToLane(state, p, speed) {
+const slipBudget = p => HALF_TILE - halfBox(p);
+
+/* May this pirate start travelling on the OTHER axis from where they are standing?
+ *
+ * Changing the axis you travel on hands your current along-axis offset to the perpendicular, and
+ * on the perpendicular an offset is a lane debt that `easeToLane` has to walk off sideways. From a
+ * junction or from flush against a wall that debt is zero or exactly `slipBudget`, which is a
+ * corner and is the whole point. From the middle of a segment it is up to half a tile, and walking
+ * that off while travelling the new lane is not a corner - it is a diagonal across open floor.
+ *
+ * This is the guard the first version of the corner rework was missing, and the soak found it in
+ * seventy ticks: pressing into a wall turns you to LOOK at it, that look switched axis mid-segment,
+ * and from then on the pirate was off both lanes at once and drifting. The rails' one promise is
+ * that you cannot travel diagonally; it is kept here.
+ */
+function canTurnAxis(p, dir) {
+  const was = p.dir === DIR_L || p.dir === DIR_R;
+  if (was === (dir === DIR_L || dir === DIR_R)) return true;
+  return onLane(was ? p.x : p.y);
+}
+
+/**
+ * Ease the axis we are NOT travelling along back toward its lane centre.
+ *
+ * It used to OWN THE TICK - correct, or travel, never both - and that is where the corner jump
+ * came from. A wall stops you flush, 48 units past the centre of your tile, and a turn can only be
+ * spent standing on a centre; so taking a corner out of a dead end meant first walking those 48
+ * units BACK, as a tick of travel in the wrong direction, before any of the turn happened. One
+ * tick at full pace, drawn as the pirate stepping backwards out of the corner and then forwards
+ * round it. Reported, correctly, as a glitchy jump.
+ *
+ * Now the turn is spent where the pirate stands (see `cornerTurn`) and the 48 units become an
+ * offset on the NEW lane, worked off by this function at the same time as travel down that lane.
+ * The two together are a diagonal out of the corner: one continuous forward motion, at full pace,
+ * with nothing to reverse. Within `slipBudget` that is free of consequence, for the reason set out
+ * above - the hitbox has not left the lane's tiles.
+ *
+ * @returns true if the correction must OWN the tick, which is now only the case beyond the corner
+ *   budget: an unstick, a spawn, Reduction expiring inside a column. Those are not corners and
+ *   they are not forward motion, and travelling while being shoved half a tile sideways would be
+ *   genuine free 2D movement rather than a corner being paid for.
+ */
+function easeToLane(state, p, speed) {
   if (blocked(state, p, p.x, p.y, false)) return false;
   const horizontal = p.dir === DIR_L || p.dir === DIR_R;
   const perp = horizontal ? p.y : p.x;
@@ -650,7 +710,7 @@ function pinToLane(state, p, speed) {
   // bookkeeping invariant.
   if (blocked(state, p, nx, ny)) return false;
   p.x = nx; p.y = ny;
-  return true;
+  return Math.abs(gap) > slipBudget(p);
 }
 
 /**
@@ -736,8 +796,27 @@ export function unstick(state, p) {
 /**
  * Advance one player by one tick. `mask` is the input bitmask from docs/PROTOCOL.md §3.
  * Pure in everything that matters: same player, same map, same mask -> same result, every time.
+ *
+ * `paceOf` is a FRACTION of the tick's travel, and it exists for one caller: the renderer, which
+ * runs this on a throwaway copy of your pirate to find out where you will be part of the way
+ * through the tick that is currently in progress. It defaults to a whole tick, so the server and
+ * the prediction are untouched by it.
+ *
+ * Doing it this way rather than interpolating between two finished ticks is the difference between
+ * a drawn path that is CORRECT and one that is plausible. A tick that turns a corner moves on both
+ * axes, and from its two endpoints alone the renderer cannot tell a corner from a diagonal - it
+ * either draws a straight line, which cuts the corner and dips the apparent speed because the
+ * chord is shorter than the path, or an L, which is wrong whenever the motion really was
+ * simultaneous. Asking the movement function for the position at 40% of a tick has no such
+ * ambiguity: it turns at the junction if 40% of the pace reaches the junction, and not otherwise,
+ * because it is the same code that will shortly do it for real.
+ *
+ * It also costs nothing in latency, which interpolation does. Drawn from the CURRENT position
+ * toward where the live input is about to take you, the picture is never behind the simulation -
+ * where a lerp between the last two ticks is a full tick behind by construction, which is the 33 ms
+ * of mush that made holding a direction feel soft.
  */
-export function step(state, p, mask) {
+export function step(state, p, mask, paceOf = 1) {
   if (!p || !p.alive) return;
 
   // Before anything reads the position, make sure it is one we could legally be standing in.
@@ -757,12 +836,12 @@ export function step(state, p, mask) {
    */
   if (p.slideV > 0) {
     p.moving = true;
-    if (stepSlide(state, p)) return;
+    if (stepSlide(state, p, paceOf)) return;
     // It ended this tick. Fall through on this tick's keys, so landing out of a slide already
     // running keeps running rather than pausing for a tick.
   } else if ((mask & IN_SLIDE) && startSlide(state, p, mask)) {
     p.moving = true;
-    stepSlide(state, p);
+    stepSlide(state, p, paceOf);
     return;
   }
 
@@ -816,7 +895,6 @@ export function step(state, p, mask) {
   const horizontal = p.dir === DIR_L || p.dir === DIR_R;
   const along = horizontal ? dx : dy;
   const across = horizontal ? dy : dx;
-  let pivoted = false;
 
   if (across) {
     const want = horizontal
@@ -862,9 +940,8 @@ export function step(state, p, mask) {
        * pirate keeps facing the way they are actually travelling.
        */
       if (!turnLands(state, p)) clearTurn(p);
-      // Pivot into the corner if we can, and only walk back to the junction if we cannot.
-      else if (cornerPivot(state, p, horizontal)) pivoted = true;
-      else faceNearestJunction(p, horizontal);
+      // Take the corner from here if we can, and only walk back to the junction if we cannot.
+      else if (!cornerTurn(state, p, horizontal)) faceNearestJunction(p, horizontal);
     }
   } else if (!coasting) {
     /* NOTHING pressed along this lane, so the pirate must not continue down it.
@@ -898,7 +975,7 @@ export function step(state, p, mask) {
        */
       const want = p.turnWant;
       if (!spendTurn(state, p)) {
-        if (want !== DIR_NONE) p.dir = want;
+        if (want !== DIR_NONE && canTurnAxis(p, want)) p.dir = want;
         clearTurn(p);
       }
     } else if (wantsTurn(p)) {
@@ -918,19 +995,21 @@ export function step(state, p, mask) {
       /* Same rule as above: a turn with a wall behind it is not worth walking to a junction for.
        * Face what was pressed and drop it, which is exactly what spending it at the junction would
        * have done on arrival - see the refusal a few lines up. */
-      if (!turnLands(state, p)) { p.dir = p.turnWant; clearTurn(p); }
-      else if (cornerPivot(state, p, horizontal)) pivoted = true;
-      else faceNearestJunction(p, horizontal);
+      if (!turnLands(state, p)) {
+        if (canTurnAxis(p, p.turnWant)) p.dir = p.turnWant;
+        clearTurn(p);
+      }
+      else if (!cornerTurn(state, p, horizontal)) faceNearestJunction(p, horizontal);
     }
   }
 
-  /* A correction owns the tick; see pinToLane. In ordinary play neither of these fires.
-   *
-   * The pivot owns it for the same reason the lane correction does: it has already moved the
-   * pirate along the lane this tick, and travelling on top of that would be two axes of movement
-   * bought with one tick of pace - the one thing rail travel may never do. One tick to turn in the
-   * corner, facing the way you asked, and the next tick walks out of it. */
-  const travelled = (pivoted || pinToLane(state, p, speed)) ? 0 : railTravel(state, p, speed);
+  /* The lane correction and travel now run TOGETHER inside a corner's worth of offset, and that
+   * is the whole of the corner rework - see easeToLane. Beyond that budget it still owns the tick,
+   * because being shoved half a tile out of a wall is not forward motion. In ordinary corridor
+   * play neither fires: rail travel keeps the invariant exactly, so there is nothing to correct. */
+  // A fraction of a tick, for the renderer only; a whole one for everybody else. See `paceOf`.
+  const pace = paceOf === 1 ? speed : Math.max(1, (speed * paceOf) | 0);
+  const travelled = easeToLane(state, p, pace) ? 0 : railTravel(state, p, pace);
 
   /* `moving` is GROUND COVERED, not keys held.
    *
@@ -941,7 +1020,7 @@ export function step(state, p, mask) {
    * right", and that is exactly what it was. Nothing else about the tick changes; the stamina
    * drain above is still charged for pressing, because leaning on a wall is effort.
    */
-  p.moving = travelled > 0 || pivoted;
+  p.moving = travelled > 0;
 
   // One last chance at the turn, so arriving exactly on a junction this tick turns on this tick
   // rather than on the next. Without it every corner costs a tick at the pace that lands square.
